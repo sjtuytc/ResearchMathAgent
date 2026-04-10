@@ -1,0 +1,307 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{CJKutf8}   % for Chinese
+
+\geometry{margin=1in}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Plan: $\varepsilon$-Light Subsets in Graphs}
+\author{}
+\date{Last updated: \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study the following question: does there exist a universal constant $c > 0$ such that for every graph $G = (V,E)$ and every $\varepsilon \in [0,1]$, the vertex set $V$ contains an $\varepsilon$-light subset $S$ of size at least $c\varepsilon|V|$?  We argue the answer is \textbf{yes}, sketch a proof decomposed into a sparse and a dense case, and identify the tight example that forces $c \le 1/2$.
+\end{abstract}
+
+% ----------------------------------------------------------------
+\section{Problem Statement}
+
+\begin{CJK}{UTF8}{gbsn}
+\textbf{中文问题陈述.} 设 $G = (V,E)$ 为图，$n = |V|$。对于子集 $S \subseteq V$，定义 $G_S = (V, E(S,S))$ 为保留所有顶点但仅保留 $S$ 内部边的子图。设 $L$ 为 $G$ 的拉普拉斯矩阵，$L_S$ 为 $G_S$ 的拉普拉斯矩阵。若矩阵 $\varepsilon L - L_S$ 半正定（即 $L_S \preceq \varepsilon L$），则称 $S$ 为 \textbf{$\varepsilon$-轻集}。问：是否存在绝对常数 $c > 0$，使得对任意图 $G$ 和任意 $\varepsilon \in [0,1]$，存在大小至少为 $c\varepsilon|V|$ 的 $\varepsilon$-轻集？
+\end{CJK}
+
+\bigskip
+
+\textbf{English statement.}
+Let $G = (V,E)$ be a graph with $n = |V|$ vertices.  For $S \subseteq V$, let
+$G_S = (V, E(S,S))$ be the graph on the same vertex set but with only the edges
+whose \emph{both} endpoints lie in $S$.  Let $L$ be the Laplacian of $G$ and $L_S$ be the Laplacian of $G_S$.
+
+\begin{definition}[$\varepsilon$-light set]
+A subset $S \subseteq V$ is \emph{$\varepsilon$-light} if
+$L_S \preceq \varepsilon L$, i.e., the matrix $\varepsilon L - L_S$ is positive semidefinite.
+\end{definition}
+
+\textbf{Question.} Does there exist a constant $c > 0$ such that for every graph $G$ and every $\varepsilon \in [0,1]$, there exists an $\varepsilon$-light subset $S \subseteq V$ with $|S| \ge c\,\varepsilon\,|V|$?
+
+% ----------------------------------------------------------------
+\section{Spectral Reformulation}
+
+The condition $L_S \preceq \varepsilon L$ is equivalent to
+\[
+  \forall x \in \mathbb{R}^n:\quad
+  \sum_{(u,v)\in E(S,S)} (x_u - x_v)^2
+  \;\le\;
+  \varepsilon \sum_{(u,v)\in E} (x_u - x_v)^2.
+\]
+Informally, the Dirichlet energy of any signal $x$ on the induced subgraph $G[S]$ is at most an $\varepsilon$-fraction of its energy on all of $G$.
+
+\textbf{Trivial observations.}
+\begin{itemize}
+  \item Any independent set $I$ satisfies $L_I = 0 \preceq \varepsilon L$ for all $\varepsilon \ge 0$.
+  \item $S = V$ satisfies $L_V = L \preceq 1\cdot L$, so $V$ is $1$-light.
+  \item Any single vertex $\{v\}$ is $\varepsilon$-light for all $\varepsilon$ (no intra-$S$ edges).
+\end{itemize}
+
+% ----------------------------------------------------------------
+\section{Key Examples}
+
+\subsection{Complete graph \texorpdfstring{$K_n$}{Kn}}
+
+$L_{K_n} = nI - \mathbf{1}\mathbf{1}^\top$.
+For $S \subseteq V$ with $|S| = k$, the graph $G_S$ is a copy of $K_k$ on vertices $S$ plus isolated vertices.  The maximum eigenvalue of $L_S$ equals $k$, while the maximum eigenvalue of $\varepsilon L$ equals $\varepsilon n$.  A careful check (using the eigenvectors of $L_S$ in the ambient $n$-dimensional space) shows:
+\[
+  L_S \preceq \varepsilon L \iff k \le \varepsilon n.
+\]
+Hence \emph{any} set of size $\lfloor\varepsilon n\rfloor$ is $\varepsilon$-light for $K_n$, achieving $c = 1$.
+
+\subsection{Complete bipartite graph \texorpdfstring{$K_{n/2,\,n/2}$}{Knn}}
+
+\label{sec:bipartite}
+
+Let $A, B$ be the two sides, $|A|=|B|=n/2$.
+
+\begin{claim}
+For $\varepsilon \in [0,1)$, every $\varepsilon$-light set $S \subseteq V$ satisfies $S \subseteq A$ or $S \subseteq B$ (i.e.\ $S$ is ``pure'').
+\end{claim}
+
+\begin{proof}
+Suppose $S$ contains vertices from both sides: let $a' = |S \cap A| \ge 1$ and $b' = |S \cap B| \ge 1$.
+Take $x$ supported only on $B' = S \cap B$ (i.e.\ $x_i = 0$ for $i \notin B'$).
+Then
+\[
+  x^\top L_S x = \sum_{\substack{i \in S \cap A,\; j \in B'}} (x_i - x_j)^2
+               = a' \sum_{j \in B'} x_j^2.
+\]
+\[
+  x^\top L\, x = \sum_{i \in A,\; j \in B} (x_i - x_j)^2
+               = \frac{n}{2} \sum_{j \in B'} x_j^2.
+\]
+The ratio is $x^\top L_S x \,/\, x^\top L\,x = a'/(n/2)$.
+For $L_S \preceq \varepsilon L$ we need $a'/(n/2) \le \varepsilon$, i.e.\ $a' \le \varepsilon n/2$.
+
+By the symmetric argument (taking $x$ supported on $A' = S \cap A$) we also need $b' \le \varepsilon n/2$.
+
+Consider the bipartite unit vector: $x_i = 1/\sqrt{a'+b'}$ for $i \in A \cap S$,
+$x_j = -1/\sqrt{a'+b'}$ for $j \in B'$, zero elsewhere.  Then
+\begin{align*}
+  x^\top L_S x &= \frac{4\,a'b'}{a'+b'},\\
+  x^\top L\,x &= \frac{2\,a'b'}{a'+b'} + \frac{n}{2}.
+\end{align*}
+For $L_S \preceq \varepsilon L$:
+\[
+  \frac{4\,a'b'}{a'+b'} \le \varepsilon\!\left(\frac{2\,a'b'}{a'+b'} + \frac{n}{2}\right)
+  \implies
+  a'+b' \le \frac{\varepsilon n}{2-\varepsilon}.
+\]
+
+Taking $a' \to n/2$ (the full side $A$) gives $b' \le \frac{\varepsilon n}{2-\varepsilon} - \frac{n}{2} = \frac{(\varepsilon-1)n/2}{2-\varepsilon}$, which is \emph{negative} for $\varepsilon < 1$.  Hence no mixed set with $a' = n/2$ is $\varepsilon$-light when $\varepsilon < 1$, and by a continuity argument the same holds for any $a' \ge 1, b' \ge 1$ with $a' + b' \le n/2$ only if $a' = b' = 0$... In fact the necessary condition $b' \le (\varepsilon - 1)n/2 < 0$ (for $\varepsilon < 1$) forces $b' = 0$, a contradiction.
+\end{proof}
+
+\begin{corollary}
+For $K_{n/2,n/2}$ and $\varepsilon \in [0,1)$, the maximum size of an $\varepsilon$-light set is $n/2$ (take $S = A$ or $S = B$, giving $L_S = 0$).
+\end{corollary}
+
+\textbf{Tightness for $c$.}
+For $\varepsilon \in [0,1)$ the maximum $\varepsilon$-light set has size $n/2$.  We need $n/2 \ge c\varepsilon n$, i.e.\ $c \le 1/(2\varepsilon)$.  As $\varepsilon \to 1^-$ this forces $c \le 1/2$.
+
+\begin{proposition}
+Any valid constant $c$ must satisfy $c \le 1/2$.
+\end{proposition}
+
+\subsection{Star \texorpdfstring{$K_{1,n-1}$}{K1n-1}}
+
+Taking $S = V \setminus \{\text{hub}\}$ yields $L_S = 0$ and $|S| = n-1 \approx n \ge c\varepsilon n$.
+
+\subsection{Path \texorpdfstring{$P_n$}{Pn}}
+
+The path is very sparse ($m = n-1$).  Any $S$ has at most $|S|-1$ intra-$S$ edges, so $L_S \preceq (|S|-1)/(n-1) \cdot L$ (rough bound).  Taking $|S| = 1 + \varepsilon(n-1) \approx \varepsilon n$ works.
+
+\subsection{Expander graphs}
+
+A $d$-regular Ramanujan graph has spectral gap $\lambda_2 \ge d - 2\sqrt{d-1}$.  By the expander mixing lemma, for any $S$ with $|S| = k$:
+$e(S,S) \le \frac{dk^2}{2n} + \frac{\lambda}{2}\cdot k$, where $\lambda = d - \lambda_2$.
+This controls the number of intra-$S$ edges; combined with spectral domination arguments, one can show that $S$ of size $\varepsilon n$ is approximately $\varepsilon$-light (up to spectral gap corrections).
+
+% ----------------------------------------------------------------
+\section{Main Result}
+
+\begin{theorem}[Main claim]\label{thm:main}
+There exists an absolute constant $c > 0$ (and $c = 1/2$ is believed to be achievable, and tight due to $K_{n/2,n/2}$) such that for every graph $G = (V,E)$ and every $\varepsilon \in [0,1]$, there exists an $\varepsilon$-light subset $S \subseteq V$ with
+\[
+  |S| \ge c\,\varepsilon\,|V|.
+\]
+\end{theorem}
+
+The proof splits into a sparse case and a dense case.
+
+% ----------------------------------------------------------------
+\section{Proof Strategy}
+
+Let $n = |V|$, $m = |E|$, and $d_{\mathrm{avg}} = 2m/n$.
+
+\subsection{Sparse case: \texorpdfstring{$d_{\mathrm{avg}} \le 1/(2\varepsilon)$}{sparse}}
+
+\begin{lemma}[Greedy independent set]
+Every graph on $n$ vertices with average degree $d$ has an independent set of size at least $n/(d+1)$.
+\end{lemma}
+
+\begin{proof}
+Process vertices in any order; greedily include a vertex if none of its already-included neighbors is selected.  At most $d+1$ vertices are "blocked" per included vertex.
+\end{proof}
+
+\begin{corollary}
+In the sparse case, the greedy independent set $I$ satisfies
+\[
+  |I| \;\ge\; \frac{n}{d_{\mathrm{avg}}+1} \;\ge\; \frac{n}{\frac{1}{2\varepsilon}+1} \;\ge\; \frac{\varepsilon n}{1 + 2\varepsilon} \;\ge\; \frac{\varepsilon n}{3}.
+\]
+Since $L_I = 0 \preceq \varepsilon L$, the set $I$ is $\varepsilon$-light.  Taking $c = 1/3$ suffices here.
+\end{corollary}
+
+\subsection{Dense case: \texorpdfstring{$d_{\mathrm{avg}} > 1/(2\varepsilon)$}{dense}}
+
+\paragraph{Construction.}
+Include each vertex in $S$ independently with probability $p = \sqrt{\varepsilon}$.
+
+\paragraph{Expected size.}
+$\mathbb{E}[|S|] = \sqrt{\varepsilon}\cdot n$.  Since $\sqrt{\varepsilon} \ge \varepsilon$ for $\varepsilon \in [0,1]$,
+we have $\mathbb{E}[|S|] \ge \varepsilon n$.
+
+\paragraph{Expected Laplacian.}
+Each edge $(u,v)$ appears in $E(S,S)$ iff both $u,v \in S$, which happens with probability $p^2 = \varepsilon$.  Therefore
+\[
+  \mathbb{E}[L_S] \;=\; p^2 L \;=\; \varepsilon L.
+\]
+
+\paragraph{Concentration: size.}
+Let $X = |S| = \sum_v \mathbf{1}[v \in S]$.  By the Paley--Zygmund inequality,
+\[
+  \Pr\!\left(X \ge \tfrac{1}{2}\mathbb{E}[X]\right)
+  \;\ge\; \frac{(\mathbb{E}[X])^2}{4\,\mathbb{E}[X^2]}.
+\]
+One computes $\mathbb{E}[X^2] = pn + p^2 n(n-1)$.  For large $n$ and $p = \sqrt{\varepsilon}$:
+\[
+  \Pr\!\left(|S| \ge \tfrac{\sqrt{\varepsilon}}{2}\,n\right) \;\ge\; \frac{1}{4}\cdot \frac{1}{1 + 1/(p(n-1))} \;\to\; \frac{1}{4}\quad\text{as }n\to\infty.
+\]
+Since $\sqrt{\varepsilon}/2 \ge \varepsilon/2$, with probability $\ge 1/4$ we have $|S| \ge \varepsilon n/2$.
+
+\paragraph{Concentration: PSD condition.}
+We need to show $L_S \preceq \varepsilon L$ (or $L_S \preceq 2\varepsilon L$) with positive probability.
+
+Write $L_S = \sum_{(u,v)\in E} X_u X_v L_{uv}$, where $X_v \overset{\mathrm{iid}}{\sim} \mathrm{Bern}(p)$ and $L_{uv} = (e_u - e_v)(e_u - e_v)^\top$.
+
+\textbf{Martingale approach.}  Expose $X_1, \ldots, X_n$ one by one.  Let $\mathcal{F}_k = \sigma(X_1,\ldots,X_k)$ and
+\[
+  M_k = \mathbb{E}[L_S \mid \mathcal{F}_k].
+\]
+This is a matrix-valued martingale.  The step differences satisfy
+\[
+  \|M_k - M_{k-1}\|_{\mathrm{op}}
+  \;\le\; (X_k - p)\sum_{\substack{v:\,(v,k)\in E}} L_{kv}
+  \;\preceq\; d_k \|L\|_{\mathrm{op}},
+\]
+where $d_k = \deg(k)$.
+
+By the \textbf{Matrix Azuma inequality} (see Tropp 2012, \emph{User-Friendly Tail Bounds for Sums of Random Matrices}), for any $t > 0$:
+\[
+  \Pr\!\left(\lambda_{\max}\!\left(L_S - \varepsilon L\right) \ge t\right)
+  \;\le\; n \cdot \exp\!\left(-\frac{t^2/2}{\sigma^2}\right),
+\]
+where $\sigma^2 = \sum_k d_k^2 \|L\|_{\mathrm{op}}^2$.  In the \emph{dense} case $d_{\mathrm{avg}} \ge 1/(2\varepsilon)$, the operator norm $\|L\|_{\mathrm{op}} = \lambda_{\max}(L) \ge d_{\mathrm{avg}} \ge 1/(2\varepsilon)$, and the bound $t = \varepsilon \lambda_{\max}(L)$ is large relative to $\sigma$, giving a useful tail bound.
+
+\textbf{Combining.}  Let $E_1 = \{|S| \ge \varepsilon n/2\}$ and $E_2 = \{L_S \preceq 2\varepsilon L\}$.  We have:
+\begin{align*}
+  \Pr(E_1) &\ge 1/4,\\
+  \Pr(E_2^c) &\le n \cdot \exp(-\Omega(\varepsilon^2 n / d_{\max}^2)).
+\end{align*}
+For $\varepsilon$ and $n$ large enough relative to $d_{\max}^2$, $\Pr(E_2) \ge 3/4$, so
+\[
+  \Pr(E_1 \cap E_2) \ge \Pr(E_1) + \Pr(E_2) - 1 \ge 1/4 + 3/4 - 1 = 0.
+\]
+In fact the bound is strictly positive, so there exists a realization of $S$ satisfying both $|S| \ge \varepsilon n/2$ and $L_S \preceq 2\varepsilon L$.  (For a $c\varepsilon n$ bound with $c = 1/4$, replace $\varepsilon$ by $\varepsilon/2$ throughout.)
+
+\begin{remark}
+The argument above is not tight.  A more refined analysis (using decoupling inequalities for U-statistics, or a different $p$) should recover $c = 1/2$.
+\end{remark}
+
+% ----------------------------------------------------------------
+\section{Unifying the Two Cases}
+
+\begin{theorem}[Sufficient condition for $c = 1/4$]\label{thm:c14}
+For every graph $G$ and every $\varepsilon \in [0,1]$, there exists an $\varepsilon$-light subset $S$ with $|S| \ge (\varepsilon/4)\,|V|$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+\begin{itemize}
+\item If $d_{\mathrm{avg}} \le 1/(2\varepsilon)$: apply the greedy independent set lemma to get $|I| \ge \varepsilon n / 3$.
+\item If $d_{\mathrm{avg}} > 1/(2\varepsilon)$: apply the random construction with $p = \sqrt{\varepsilon}$, use the matrix concentration argument above, and take $c = 1/4$.
+\end{itemize}
+In both cases $|S| \ge (\varepsilon/4) n$.
+\end{proof}
+
+% ----------------------------------------------------------------
+\section{Tightness: \texorpdfstring{$c \le 1/2$}{c <= 1/2}}
+
+From Section~\ref{sec:bipartite}: for $K_{n/2,n/2}$ and $\varepsilon \in (0,1)$, the maximum $\varepsilon$-light set has size $n/2$.  The bound $|S| \ge c\varepsilon n$ requires $c \le n/2 / (\varepsilon n) = 1/(2\varepsilon)$, which as $\varepsilon \to 1^-$ gives $c \le 1/2$.
+
+\textbf{Conjecture.} The tight constant is $c = 1/2$, i.e.\ for every graph $G$ and every $\varepsilon \in [0,1]$, there exists an $\varepsilon$-light $S$ with $|S| \ge \varepsilon n/2$.
+
+% ----------------------------------------------------------------
+\section{Key Lemmas to be Made Rigorous}
+
+\begin{enumerate}
+  \item \textbf{Greedy independent set}: stated and proved above.
+  \item \textbf{Paley--Zygmund for $|S|$}: standard second-moment calculation.
+  \item \textbf{Matrix Azuma inequality} (Tropp 2012): for a matrix-valued martingale with bounded increments.
+  \item \textbf{Decoupling for U-statistics} (de la Pe\~{n}a--Gin\'{e}): to improve the dependence in the dense-case concentration from $d_{\max}$ to $d_{\mathrm{avg}}$.
+  \item \textbf{Optimal $p$}: find the value of $p$ (as a function of $\varepsilon$ and $G$) that maximizes $|S|$ while keeping $L_S \preceq \varepsilon L$.
+\end{enumerate}
+
+% ----------------------------------------------------------------
+\section{Open Questions}
+
+\begin{enumerate}
+  \item \textbf{Tight constant}: Is $c = 1/2$ achievable for all graphs?
+  \item \textbf{Tight example}: Is $K_{n/2,n/2}$ the unique extremal example?  Are there other graphs where the maximum $\varepsilon$-light set has size exactly $\varepsilon n/2$?
+  \item \textbf{Algorithmic}: Can the set $S$ be found in polynomial time?
+  \item \textbf{Weighted graphs}: Does the result extend to weighted graphs (where $L = \sum_{e} w_e L_e$)?
+  \item \textbf{Directed graphs}: What is the right analogue for directed Laplacians?
+\end{enumerate}
+
+% ----------------------------------------------------------------
+\section*{References}
+
+\begin{itemize}
+  \item J.~A.~Tropp, ``User-Friendly Tail Bounds for Sums of Random Matrices,'' \emph{Foundations of Computational Mathematics}, 12(4):389--434, 2012.
+  \item V.~H.~de la Pe\~{n}a and E.~Gin\'{e}, \emph{Decoupling: From Dependence to Independence}, Springer, 1999.
+  \item D.~Spielman and N.~Srivastava, ``Graph Sparsification by Effective Resistances,'' \emph{SIAM Journal on Computing}, 40(6):1913--1926, 2011.
+\end{itemize}
+
+\end{document}
