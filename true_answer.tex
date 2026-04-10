@@ -1,0 +1,80 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\geometry{letterpaper, margin=1in}
+
+\title{Light Sets of Vertices (First Proof - Question 6)}
+\author{Based on the solution by Daniel Spielman}
+\date{}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{claim}{Claim}
+\newtheorem{proposition}{Proposition}
+
+\begin{document}
+\maketitle
+
+\section{Introduction and Notation}
+Throughout this note, $G = (V,E,w)$ will be a weighted graph with $n$ vertices. For an edge $(s,t) \in E$, we let $w(s,t)$ be its weight. For two vertex sets, $S$ and $T$, the subgraph $G_{S,T}$ of $G$ has vertex set $V$, but only the edges going between vertices in $S$ and $T$. We write $G_S$ for the graph that only contains the edges between vertices in $S$.
+
+The matrix $L$ is the Laplacian of $G$, which may be defined by:
+\[
+L = \sum_{(s,t) \in E} w(s,t)(\delta_s - \delta_t)(\delta_s - \delta_t)^T
+\]
+where $\delta_s$ is the elementary unit vector with a 1 in position $s$. We let $L_S$ denote the Laplacian of $G_S$. 
+
+\begin{lemma} \label{lem:main}
+For every weighted graph $G=(V,E,w)$ with $n$ vertices, and for every $0 < \epsilon < 1$ there is an $S \subseteq V$ of size at least $\epsilon n/42$ so that $L_S \preceq \epsilon L$.
+\end{lemma}
+
+We call such a set of vertices $S$ an $\epsilon$-light set. We will prove Lemma \ref{lem:main} by building up $S$ in a greedy fashion. 
+
+\section{Proof Strategy}
+We define $L_{S,T}$ to be the Laplacian of $G_{S,T}$. For a matrix $L$, we write its pseudo-inverse as $L^{\dagger}$ and its square root as $L^{\dagger/2}$. We will find it convenient to multiply all Laplacian matrices on the left and right by $L^{\dagger/2}$. We define $\tilde{L}_S = L^{\dagger/2} L_S L^{\dagger/2}$ and $\tilde{L}_{S,T} = L^{\dagger/2} L_{S,T} L^{\dagger/2}$. 
+
+As we add vertices to $S$, we will need to maintain bounds on two quantities: a modification of the upper barrier function from [BSS12] and the sum of the leverage scores of edges between $S$ and $V \setminus S$.
+
+The leverage score of an edge $(s,t)$ is defined to be $w(s,t)$ times the effective resistance between $s$ and $t$:
+\[
+l(s,t) = \text{Tr}(w(s,t)(\delta_s - \delta_t)(\delta_s - \delta_t)^T L^{\dagger}) = \text{Tr}(L_{\{s\},\{t\}} L^{\dagger})
+\]
+For subsets of vertices $S$ and $T$, we define $l(S,T) = \sum_{s \in S} \sum_{t \in T} l(s,t)$, and we define $l(S) = l(S, V \setminus S)$. Note that $l(S,T) = \text{Tr}(\tilde{L}_{S,T})$.
+
+\subsection{Modified Barrier Function}
+We modify the BSS barrier function by only incorporating the largest $\sigma$ eigenvalues of the matrix. For a matrix $A$ with eigenvalues $\lambda_1 \ge \lambda_2 \ge \dots \ge \lambda_n$ and a $u > \lambda_1$, we define
+\[
+\Phi_\sigma^u(A) = \sum_{i=1}^\sigma \frac{1}{u - \lambda_i}
+\]
+We overload the definition by setting $\Phi_\sigma^u(S) \triangleq \Phi_\sigma^u(\tilde{L}_S)$. We deal with this barrier function by considering a modified trace of a matrix that only sums the largest $\sigma$ eigenvalues: $Tr_\sigma(A) = \sum_{i=1}^\sigma \lambda_i$. Thus, $\Phi_\sigma^u(A) = Tr_\sigma((uI - A)^{-1})$.
+
+For the rest of this note, define:
+\[
+\delta = \frac{21}{n}, \quad \phi = \frac{n}{21}, \quad \text{and} \quad \sigma = \lfloor \epsilon n / 42 \rfloor
+\]
+
+\section{Main Proof}
+
+We will prove Lemma \ref{lem:main} by iteratively applying the following inductive lemma:
+
+\begin{lemma} \label{lem:inductive}
+If $|S| \le \sigma$, $l(S) \le 4|S|$ and $\Phi_\sigma^u(S) \le \phi$, then there is a $t \notin S$ so that $\Phi_\sigma^{u+\delta}(S \cup \{t\}) \le \phi$ and $l(S \cup \{t\}) \le l(S) + 4$.
+\end{lemma}
+
+The proof of Lemma \ref{lem:inductive} relies on establishing that for more than half the vertices $t \notin S$, the condition $l(S \cup \{t\}) \le l(S) + 4$ holds, and simultaneously for at least half the vertices $t \notin S$, the barrier condition $\Phi_\sigma^{u+\delta}(S \cup \{t\}) \le \phi$ holds. Therefore, there must exist at least one vertex satisfying both conditions simultaneously.
+
+\begin{proof}[Proof of Lemma \ref{lem:main}]
+Set $u_0 = \epsilon/2$ and let $S_0 = \{v_0\}$ for an arbitrary $v_0 \in V$. As $G_{S_0}$ has no edges, $L_{S_0} = 0$, and thus:
+\[
+\Phi_\sigma^{u_0}(S_0) = \frac{\sigma}{u_0} \le \frac{\epsilon n / 42}{\epsilon / 2} = \frac{n}{21} = \phi
+\]
+By applying Lemma \ref{lem:inductive} exactly $\sigma$ times, we inductively construct a set $S$ of $\sigma + 1$ vertices so that $l(S) \le 4\sigma$ and $\Phi_\sigma^{u_0 + \sigma \delta}(S) \le \phi$. 
+
+Because the barrier function remains bounded, this implies that all of the eigenvalues of $\tilde{L}_S$ are strictly less than the upper barrier $u_0 + \sigma \delta$. We can compute this final bound:
+\[
+u_0 + \sigma \delta = \frac{\epsilon}{2} + \sigma \frac{21}{n} \le \frac{\epsilon}{2} + \left(\frac{\epsilon n}{42}\right)\frac{21}{n} = \epsilon
+\]
+Therefore, $\tilde{L}_S \preceq \epsilon I$, which is equivalent to $L_S \preceq \epsilon L$. The size of $S$ is $\sigma + 1 > \epsilon n / 42$. This completes the proof.
+\end{proof}
+
+\end{document}
