@@ -2,11 +2,12 @@
 \usepackage{amsmath, amssymb, amsthm}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{hyperref}
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue]{hyperref}
 \usepackage{geometry}
 \usepackage{CJKutf8}
-\usepackage{tikz}
 \usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
 
 \geometry{margin=1in}
 
@@ -19,15 +20,35 @@
 \newtheorem{example}[theorem]{Example}
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
-\newtheorem{intuition}[theorem]{Intuition}
+\newtheorem{intuition}[theorem]{Intuition \& Analogy}
 
-\title{Background Knowledge:\\
-Mathematical Foundations for the $\varepsilon$-Light Subset Problem}
+% colored box for "Where to learn more"
+\newcommand{\resources}[1]{%
+  \vspace{4pt}
+  \noindent\colorbox{blue!8}{\parbox{\dimexpr\linewidth-2\fboxsep}{%
+    \small\textbf{Resources \& Links:} #1}}
+  \vspace{4pt}
+}
+
+\title{\textbf{Mathematical Background}\\
+\large for the $\varepsilon$-Light Subset Problem\\[4pt]
+\normalsize (Written for CS undergraduates)}
 \author{}
 \date{Last updated: \today}
 
 \begin{document}
 \maketitle
+
+\begin{abstract}
+\begin{CJK}{UTF8}{gbsn}
+本文为 CS 本科生整理了阅读 $\varepsilon$-轻集问题所需的全部数学背景知识，包括图拉普拉斯矩阵、半正定矩阵、概率工具和矩阵集中不等式，每个概念都配有直观解释、具体例子和在线学习链接。
+\end{CJK}
+
+\medskip
+This document collects all mathematical background needed to read the $\varepsilon$-light subset plan.
+Every concept comes with an intuitive explanation, worked examples, and links to free online resources.
+\end{abstract}
+
 \tableofcontents
 \newpage
 
@@ -35,449 +56,850 @@ Mathematical Foundations for the $\varepsilon$-Light Subset Problem}
 \section{Graph Theory Basics}
 % ================================================================
 
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item Spielman's full textbook (free, April 2025 draft):
+        \url{http://cs-www.cs.yale.edu/homes/spielman/sagt/sagt.pdf}
+  \item Spielman's course page (lecture notes, videos):
+        \url{https://www.cs.yale.edu/homes/spielman/561/}
+  \item Wikipedia's Expander Graph page (good overview of graph families):
+        \url{https://en.wikipedia.org/wiki/Expander_graph}
+\end{itemize}
+}
+
 \subsection{Graphs, Vertices, and Edges}
 
-A \textbf{graph} $G = (V, E)$ consists of a set of \textbf{vertices} (also called nodes)
-$V = \{1, 2, \ldots, n\}$ and a set of \textbf{edges} $E \subseteq \binom{V}{2}$.
-We write $n = |V|$ and $m = |E|$.
+A \textbf{graph} $G = (V, E)$ has a vertex set $V = \{1,\ldots,n\}$ and an edge set
+$E \subseteq \binom{V}{2}$ of unordered pairs.  We write $n = |V|$ and $m = |E|$.
+We consider only \textbf{simple undirected graphs}: no self-loops, no repeated edges.
 
 \begin{CJK}{UTF8}{gbsn}
-（图 $G=(V,E)$ 由顶点集 $V$ 和边集 $E$ 组成，顶点数记为 $n$，边数记为 $m$。）
+（图 $G=(V,E)$：$V$ 是顶点集，$E$ 是边集，$n$ 表示顶点数，$m$ 表示边数。）
 \end{CJK}
 
-An edge between vertices $u$ and $v$ is written $(u,v)$ or $\{u,v\}$.
-We only consider \textbf{simple undirected graphs}: no self-loops, no repeated edges,
-and edges have no direction.
+\begin{example}[The four graphs we use most]
+\leavevmode
+\begin{enumerate}
+  \item \textbf{Complete graph $K_n$}:
+        every pair of vertices is connected; $m = \binom{n}{2}$.
+        $K_4$ has 4 vertices and 6 edges (a tetrahedron skeleton).
 
-\begin{example}
-The \textbf{complete graph} $K_n$ has all $\binom{n}{2}$ possible edges.
-The \textbf{path} $P_n$ has edges $(1,2),(2,3),\ldots,(n-1,n)$.
-The \textbf{star} $K_{1,n-1}$ has one ``hub'' vertex connected to all other $n-1$ vertices.
-The \textbf{complete bipartite graph} $K_{a,b}$ has two groups of vertices $A$ (size $a$)
-and $B$ (size $b$) with every vertex in $A$ connected to every vertex in $B$,
-but no edges within $A$ or within $B$.
+  \item \textbf{Path $P_n$}:
+        vertices $1,2,\ldots,n$ in a line; edges $(1,2),(2,3),\ldots,(n{-}1,n)$.
+        $P_5$: \quad $1$---$2$---$3$---$4$---$5$.  Very sparse ($m = n-1$).
+
+  \item \textbf{Star $K_{1,n-1}$}:
+        one hub vertex connected to all $n-1$ leaves; no edges among leaves.
+        Like a wheel without the rim.
+
+  \item \textbf{Complete bipartite $K_{a,b}$}:
+        two disjoint groups $A$ (size $a$) and $B$ (size $b$);
+        every vertex in $A$ is connected to every vertex in $B$,
+        no edges within $A$ or within $B$.  Example: $K_{2,3}$ has 2 vertices
+        in $A$, 3 in $B$, and $2\times 3 = 6$ edges.
+\end{enumerate}
+\end{example}
+
+\begin{example}[Petersen graph]
+A famous 3-regular graph on 10 vertices.  It is vertex-transitive, has girth 5,
+and is the smallest bridgeless cubic graph that is not 3-edge-colorable.
+Used as a hard test case in many graph algorithms.
 \end{example}
 
 \subsection{Degree}
 
-The \textbf{degree} $\deg(v)$ of vertex $v$ is the number of edges incident to $v$.
-The \textbf{average degree} is $d_{\mathrm{avg}} = \frac{1}{n}\sum_{v} \deg(v) = \frac{2m}{n}$.
+The \textbf{degree} $\deg(v)$ of vertex $v$ is the number of edges touching $v$.
 
-\subsection{Induced Subgraph}
-
-For a subset $S \subseteq V$, the \textbf{induced subgraph} $G[S]$ keeps only the vertices in $S$
-and all edges with \emph{both} endpoints in $S$.  In our problem we use a slight variant:
 \[
-  G_S = (V,\, E(S,S)),
+  \sum_{v \in V} \deg(v) = 2m
+  \quad\text{(each edge contributes 1 to each endpoint)}.
 \]
-which keeps the \emph{full} vertex set $V$ but only the edges inside $S$.
-The difference is cosmetic (isolated vertices do not affect the Laplacian).
+
+The \textbf{average degree} $d_{\mathrm{avg}} = \frac{2m}{n}$.
+The \textbf{maximum degree} $d_{\max} = \max_v \deg(v)$.
+
+\begin{example}
+$K_n$: every vertex has degree $n-1$, so $d_{\mathrm{avg}} = d_{\max} = n-1$.\\
+$K_{1,n-1}$: the hub has degree $n-1$; each leaf has degree $1$.
+$d_{\mathrm{avg}} = 2(n-1)/n \approx 2$.\\
+$P_n$: internal vertices have degree 2; endpoints have degree 1.
+$d_{\mathrm{avg}} = 2(n-1)/n \approx 2$.
+\end{example}
+
+\subsection{Induced Subgraph and \texorpdfstring{$G_S$}{GS}}
+
+\begin{definition}
+For $S \subseteq V$, the \textbf{induced subgraph} $G[S]$ keeps only vertices in $S$
+and edges with \emph{both} endpoints in $S$.
+
+In our problem we use $G_S = (V, E(S,S))$: same vertex set as $G$,
+but only edges inside $S$.  Vertices in $V \setminus S$ become isolated.
+\end{definition}
+
+\begin{example}
+$G = K_5$ with $S = \{1,2,3\}$: $G_S$ is $K_3$ on $\{1,2,3\}$ plus two isolated vertices $\{4,5\}$.
+\end{example}
+
+\begin{example}
+$G = K_{3,3}$ with $A = \{1,2,3\}$, $B = \{4,5,6\}$, and $S = \{1,2,4\}$:
+$G_S$ has edges $(1,4)$ and $(2,4)$ only (edges of $K_{2,1}$), plus three isolated vertices.
+\end{example}
 
 \subsection{Independent Sets}
 
-An \textbf{independent set} is a set $I \subseteq V$ such that no two vertices in $I$ are adjacent
-(there are no edges within $I$).
+\begin{definition}
+$I \subseteq V$ is an \textbf{independent set} if no two vertices in $I$ share an edge.
+\end{definition}
 
 \begin{CJK}{UTF8}{gbsn}
-（独立集：集合内没有两个顶点之间存在边。）
+（独立集：集合内任意两个顶点之间无边相连。）
 \end{CJK}
 
+\begin{intuition}
+Think of a social network where two people are connected if they know each other.
+An independent set is a group of strangers who know no one else in the group.
+\end{intuition}
+
+\begin{example}
+$K_n$: the only independent sets are single vertices (everyone knows everyone).\\
+$K_{a,b}$: the entire side $A$ is an independent set of size $a$; so is $B$.\\
+$P_n$: $\{1,3,5,7,\ldots\}$ (every other vertex) is independent, size $\lceil n/2 \rceil$.\\
+Petersen graph: independence number = 4.
+\end{example}
+
 \begin{lemma}[Greedy independent set]\label{lem:greedy-indep}
-Every graph $G$ on $n$ vertices with average degree $d_{\mathrm{avg}}$ has an independent set of size
-at least $\dfrac{n}{d_{\mathrm{avg}}+1}$.
+Every graph on $n$ vertices with average degree $d_{\mathrm{avg}}$ has an independent set of size
+$\ge n / (d_{\mathrm{avg}} + 1)$.
 \end{lemma}
 
 \begin{proof}
-Process vertices one by one.  Keep a vertex $v$ in $I$ if none of its neighbors already belong to $I$,
-then remove $v$ \emph{and all its neighbors} from consideration.
-Each time we include a vertex, we remove at most $\deg(v)+1$ vertices.
-After processing all $n$ vertices, we get $|I| \ge n/(d_{\mathrm{avg}}+1)$.
+\textbf{Algorithm:} While $G$ is non-empty, pick any vertex $v$, add it to $I$,
+remove $v$ and all its neighbors.
+
+Each step removes at most $\deg(v)+1$ vertices from the graph.
+The number of steps (= $|I|$) is at least $n / (\text{average removed per step})
+\ge n / (d_{\mathrm{avg}}+1)$.
 \end{proof}
 
+\begin{example}
+$K_n$: $d_{\mathrm{avg}} = n-1$, bound gives $n/n = 1$.  Tight (only singletons).\\
+$K_{a,b}$: $d_{\mathrm{avg}} = 2ab/(a+b)$.  For $a=b=n/2$: bound gives $n/(n/2+1) \approx 2$.
+But $A$ is an independent set of size $n/2$.  The greedy bound is very loose here!\\
+$P_n$: $d_{\mathrm{avg}} \approx 2$, bound gives $n/3$.  Actual independence number $\approx n/2$.
+\end{example}
+
+\resources{
+Probabilistic proof of the same (and tighter) bound:
+\href{https://www.cs.cmu.edu/~15850/handouts/matousek-vondrak-prob-ln.pdf}%
+{Matou\v{s}ek--Vondr\'ak probabilistic method notes (CMU)}, Chapter 1.
+}
+
 % ================================================================
-\section{Matrices and Linear Algebra Recap}
+\section{Matrices and Linear Algebra}
 % ================================================================
 
-\subsection{Vectors and Inner Products}
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item UBC course notes on PSD matrices (beginner-friendly):
+        \url{https://www.cs.ubc.ca/~dsuth/440/24w2/notes/psd.pdf}
+  \item UCLA lecture on PSD matrices:
+        \url{http://www.seas.ucla.edu/~vandenbe/133B/lectures/psd.pdf}
+  \item U.\ Washington lecture notes (linear algebra for TCS):
+        \url{https://homes.cs.washington.edu/~jrl/teaching/cse599Isp21/notes/lecture1.pdf}
+  \item 3Blue1Brown (video): ``Essence of Linear Algebra'' --- highly recommended for visual intuition:
+        \url{https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab}
+\end{itemize}
+}
 
-A vector $x \in \mathbb{R}^n$ is just a list of $n$ real numbers $x = (x_1, x_2, \ldots, x_n)^\top$.
-Think of it as assigning a real number $x_v$ to each vertex $v$.
+\subsection{Vectors as Vertex Signals}
 
-The \textbf{inner product} (dot product) of $x$ and $y$ is
-$\langle x, y\rangle = x^\top y = \sum_{v=1}^n x_v y_v$.
+A vector $x \in \mathbb{R}^n$ assigns a real number $x_v$ to each vertex $v$.
 
-The \textbf{norm} (length) of $x$ is $\|x\| = \sqrt{x^\top x} = \sqrt{\sum_v x_v^2}$.
+\begin{example}
+For a graph of 5 cities, $x_v$ could be the population of city $v$.
+Or the temperature.  Or the ``importance'' score.
+In our problem, $x$ is an arbitrary test signal used to probe the graph's spectral structure.
+\end{example}
 
 \subsection{Symmetric Matrices}
 
-A matrix $M \in \mathbb{R}^{n\times n}$ is \textbf{symmetric} if $M = M^\top$ (entry $(i,j)$ equals entry $(j,i)$).
-All matrices appearing in this problem (Laplacians) are symmetric.
+A matrix $M \in \mathbb{R}^{n \times n}$ is \textbf{symmetric} if $M = M^\top$ (entry $(i,j)$ = entry $(j,i)$).
+All Laplacians are symmetric.
 
 \subsection{Quadratic Forms}
 
-For a symmetric matrix $M$ and a vector $x \in \mathbb{R}^n$, the expression
+For symmetric $M$ and vector $x$:
 \[
-  x^\top M x = \sum_{i,j} M_{ij}\, x_i x_j
+  x^\top M x = \sum_{i=1}^n \sum_{j=1}^n M_{ij}\, x_i x_j.
 \]
-is called the \textbf{quadratic form} of $M$ at $x$.
 
 \begin{intuition}
-Think of $x^\top M x$ as a ``score'' that $M$ assigns to the signal $x$.
-A large score means $x$ is ``interesting'' to $M$; a score of 0 means $M$ ``doesn't see'' $x$.
+$x^\top M x$ is the ``score'' $M$ assigns to signal $x$.
+If $M$ is a Laplacian, this score measures how much $x$ varies across edges.
 \end{intuition}
+
+\begin{example}
+Let $M = \begin{pmatrix}2&-1\\-1&2\end{pmatrix}$ and $x = \begin{pmatrix}a\\b\end{pmatrix}$.
+Then $x^\top M x = 2a^2 - 2ab + 2b^2 = (a-b)^2 + a^2 + b^2 \ge 0$.
+(This is the Laplacian of $K_2$ plus the identity.)
+\end{example}
 
 \subsection{Eigenvalues and Eigenvectors}
 
-A nonzero vector $v$ is an \textbf{eigenvector} of $M$ with \textbf{eigenvalue} $\lambda$ if
-$Mv = \lambda v$.  For a real symmetric matrix, all eigenvalues are real.
-If we sort them as $\lambda_1 \le \lambda_2 \le \cdots \le \lambda_n$, the smallest is
-$\lambda_1$ and the largest is $\lambda_n$.
+$v \ne 0$ is an \textbf{eigenvector} of $M$ with eigenvalue $\lambda$ if $Mv = \lambda v$.
+Real symmetric matrices have $n$ real eigenvalues $\lambda_1 \le \cdots \le \lambda_n$
+and $n$ orthonormal eigenvectors $u_1, \ldots, u_n$ (the \textbf{spectral theorem}).
 
-Key fact: for symmetric $M$,
 \[
-  \lambda_{\max}(M) = \max_{\|x\|=1} x^\top M x,
-  \qquad
+  \lambda_{\max}(M) = \max_{\|x\|=1} x^\top M x, \qquad
   \lambda_{\min}(M) = \min_{\|x\|=1} x^\top M x.
 \]
+
+\begin{example}[Eigenvalues of small matrices]
+$M = I_2 = \begin{pmatrix}1&0\\0&1\end{pmatrix}$: eigenvalues $\{1,1\}$.
+Every vector is an eigenvector.
+
+$M = \begin{pmatrix}0&1\\1&0\end{pmatrix}$: eigenvalues $\{-1,1\}$,
+eigenvectors $\frac{1}{\sqrt2}\begin{pmatrix}1\\-1\end{pmatrix}$ and
+$\frac{1}{\sqrt2}\begin{pmatrix}1\\1\end{pmatrix}$.
+This is the Laplacian of $K_2$ without the $D$ part (actually the negative of it).
+
+$M = \begin{pmatrix}1&-1\\-1&1\end{pmatrix}$ (Laplacian of $K_2$):
+eigenvalues $\{0, 2\}$, eigenvectors $\frac{1}{\sqrt2}\begin{pmatrix}1\\1\end{pmatrix}$
+(constant signal, eigenvalue 0) and $\frac{1}{\sqrt2}\begin{pmatrix}1\\-1\end{pmatrix}$
+(alternating signal, eigenvalue 2).
+\end{example}
 
 \subsection{Positive Semidefinite (PSD) Matrices}
 
 \begin{definition}[PSD]
-A symmetric matrix $M$ is \textbf{positive semidefinite} (PSD), written $M \succeq 0$, if
+Symmetric $M$ is \textbf{positive semidefinite} (PSD), written $M \succeq 0$, if
 \[
-  x^\top M x \;\ge\; 0 \quad \forall x \in \mathbb{R}^n.
+  x^\top M x \ge 0 \quad \forall\, x \in \mathbb{R}^n.
 \]
-Equivalently, all eigenvalues of $M$ are $\ge 0$.
+\textbf{Equivalent conditions:}
+\begin{enumerate}
+  \item All eigenvalues $\lambda_i \ge 0$.
+  \item $M = B^\top B$ for some matrix $B$ (Cholesky-like factorization).
+  \item All upper-left $k \times k$ principal minors (determinants) are $\ge 0$.
+\end{enumerate}
 \end{definition}
 
 \begin{CJK}{UTF8}{gbsn}
-（半正定矩阵：对所有向量 $x$，二次型 $x^\top M x \ge 0$；等价地，所有特征值非负。）
+（半正定矩阵：对所有向量 $x$，二次型 $x^\top Mx \ge 0$。等价条件：所有特征值非负。）
 \end{CJK}
 
-\begin{definition}[PSD ordering]
-For two symmetric matrices $A$ and $B$, write $A \preceq B$ if $B - A \succeq 0$,
-i.e.\ $x^\top(B-A)x \ge 0$ for all $x$.
-\end{definition}
+\begin{example}[Is it PSD?]
+\leavevmode
+\begin{itemize}
+  \item $\begin{pmatrix}4&2\\2&3\end{pmatrix}$:
+        eigenvalues $\approx 1.7, 5.3 > 0$. \textbf{PSD.} \\
+        Check via quadratic form: $4a^2+4ab+3b^2 = 3(a+\frac{2}{3}b)^2 + \frac{5}{3}b^2 \ge 0$. ✓
 
-\begin{example}
-If $A \preceq B$, every eigenvalue of $A$ is $\le$ the corresponding eigenvalue of $B$
-(by the Courant--Fischer minimax theorem).  In particular, $\lambda_{\max}(A) \le \lambda_{\max}(B)$.
+  \item $\begin{pmatrix}1&2\\2&1\end{pmatrix}$:
+        eigenvalues $-1, 3$.  $\lambda_1 < 0$. \textbf{Not PSD.}
+        Counterexample: $x = \begin{pmatrix}1\\-1\end{pmatrix}$ gives $x^\top M x = 1-2-2+1 = -2 < 0$.
+
+  \item Any covariance matrix $\Sigma = \mathbb{E}[Z Z^\top]$ is PSD:
+        $x^\top \Sigma x = \mathbb{E}[(Z^\top x)^2] \ge 0$. Used everywhere in statistics.
+
+  \item Any graph Laplacian $L$ is PSD (proof in Section~\ref{sec:laplacian}).
+\end{itemize}
 \end{example}
 
+\begin{definition}[PSD ordering $\preceq$]
+For symmetric $A, B$: write $A \preceq B$ (equivalently $B \succeq A$) if $B - A \succeq 0$,
+i.e., $x^\top(B - A)x \ge 0$ for all $x$.
+\end{definition}
+
 \begin{intuition}
-$A \preceq B$ means ``$B$ dominates $A$ in all directions.''
-If you think of $x^\top A x$ as the ``energy'' of signal $x$ under $A$,
-then $A \preceq B$ means $B$ always assigns at least as much energy as $A$.
+$A \preceq B$ means ``$B$ dominates $A$ in every direction.''
+If you think of the quadratic form as a bowl shape (a paraboloid),
+$A \preceq B$ means $B$'s bowl is always at least as steep as $A$'s.
 \end{intuition}
 
-The key condition in our problem is:
-\[
-  L_S \preceq \varepsilon L
-  \;\iff\;
-  \forall x:\; x^\top L_S x \le \varepsilon\, x^\top L x.
-\]
+\begin{example}
+$A = I$ and $B = 2I$: $B - A = I \succeq 0$, so $I \preceq 2I$. \\
+$A = \begin{pmatrix}2&0\\0&1\end{pmatrix}$ and $B = 3I$:
+$B-A = \begin{pmatrix}1&0\\0&2\end{pmatrix} \succeq 0$.  So $A \preceq 3I$.\\
+The condition in our problem: $L_S \preceq \varepsilon L$ means the Laplacian of $G_S$
+is dominated by $\varepsilon$ times the Laplacian of $G$.
+\end{example}
+
+\begin{remark}
+$A \preceq B$ implies $\lambda_i(A) \le \lambda_i(B)$ for each $i$ (Weyl's inequality),
+but the converse is \emph{false} in general---the eigenvectors must also align.
+\end{remark}
+
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item Interactive tutorial on PSD matrices with examples:
+        \url{https://pressbooks.pub/linearalgebraandapplications/chapter/positive-semi-definite-matrices/}
+  \item IIT Kanpur lecture notes on PSD matrices:
+        \url{https://cse.iitk.ac.in/users/rmittal/prev_course/s14/notes/lec11.pdf}
+\end{itemize}
+}
 
 % ================================================================
 \section{The Graph Laplacian}
+\label{sec:laplacian}
 % ================================================================
 
-\subsection{Definition}
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item Short tutorial (good for first reading):
+        \url{https://csustan.csustan.edu/~tom/Clustering/GraphLaplacian-tutorial.pdf}
+  \item Spielman's lecture on the Laplacian (2015, 20 pages):
+        \url{https://www.cs.yale.edu/homes/spielman/561/lect02-15.pdf}
+  \item Spielman's textbook Chapter 2 (Laplacians and their eigenvalues):
+        \url{http://cs-www.cs.yale.edu/homes/spielman/sagt/sagt.pdf}
+\end{itemize}
+}
 
-\begin{definition}[Laplacian]
-The \textbf{Laplacian} of a graph $G = (V,E)$ is the $n\times n$ symmetric matrix
+\subsection{Definition: Degree Matrix and Adjacency Matrix}
+
 \[
-  L = D - A,
+  D = \mathrm{diag}(\deg(1), \deg(2), \ldots, \deg(n)), \qquad
+  A_{uv} = \begin{cases}1 & (u,v)\in E,\\ 0 & \text{otherwise.}\end{cases}
 \]
-where $D = \mathrm{diag}(\deg(1),\ldots,\deg(n))$ is the \textbf{degree matrix}
-and $A$ is the \textbf{adjacency matrix} ($A_{uv} = 1$ if $(u,v)\in E$, else $0$).
-\end{definition}
+
+\[
+  \boxed{L = D - A}
+\]
+
+Entries:
+\[
+  L_{vv} = \deg(v), \qquad L_{uv} = -1\text{ if }(u,v)\in E, \qquad L_{uv} = 0\text{ otherwise}.
+\]
 
 \begin{CJK}{UTF8}{gbsn}
-（拉普拉斯矩阵 $L = D - A$，其中 $D$ 是度数对角矩阵，$A$ 是邻接矩阵。）
+（拉普拉斯矩阵 $L = D - A$：对角线是各顶点的度数，相邻顶点对应位置为 $-1$，其余为 $0$。）
 \end{CJK}
 
-Explicitly, the entries of $L$ are:
+\begin{example}[$K_3$: triangle]
+Vertices $\{1,2,3\}$, edges $\{(1,2),(1,3),(2,3)\}$.
 \[
-  L_{vv} = \deg(v), \qquad L_{uv} = -1 \text{ if }(u,v)\in E, \qquad L_{uv} = 0 \text{ otherwise.}
+  D = \begin{pmatrix}2&0&0\\0&2&0\\0&0&2\end{pmatrix},\quad
+  A = \begin{pmatrix}0&1&1\\1&0&1\\1&1&0\end{pmatrix},\quad
+  L = \begin{pmatrix}2&-1&-1\\-1&2&-1\\-1&-1&2\end{pmatrix}.
 \]
+Eigenvalues of $L$: $0$ (eigenvector $\frac{1}{\sqrt3}(1,1,1)^\top$) and $3$ (multiplicity 2).
+\end{example}
+
+\begin{example}[$P_4$: path on 4 vertices]
+Edges $(1,2),(2,3),(3,4)$.
+\[
+  L = \begin{pmatrix}1&-1&0&0\\-1&2&-1&0\\0&-1&2&-1\\0&0&-1&1\end{pmatrix}.
+\]
+Eigenvalues: $0,\, 2-\sqrt2 \approx 0.59,\, 2,\, 2+\sqrt2 \approx 3.41$.
+\end{example}
+
+\begin{example}[$K_n$: complete graph]
+$D = (n-1)I$, $A = J - I$ (where $J$ is the all-ones matrix).
+\[
+  L_{K_n} = nI - J.
+\]
+Eigenvalues: $0$ (once, eigenvector $\mathbf{1}$) and $n$ (multiplicity $n-1$).
+\end{example}
+
+\begin{example}[$K_{a,b}$: complete bipartite]
+Using the block structure with $A$-vertices first:
+\[
+  L_{K_{a,b}} = \begin{pmatrix}bI_a & -J_{a\times b}\\ -J_{b\times a} & aI_b\end{pmatrix}.
+\]
+Eigenvalues: $0$ (once), $b$ (mult $a-1$), $a$ (mult $b-1$), $a+b$ (once).
+
+Eigenvector for $\lambda = a+b$: $\big(\frac{1}{\sqrt{a}}\mathbf{1}_A,\; -\frac{1}{\sqrt{b}}\mathbf{1}_B\big)^\top$
+(positive on $A$, negative on $B$).
+\end{example}
 
 \subsection{Edge Laplacians}
 
-For a single edge $(u,v)$, define the \textbf{edge Laplacian}
+For a single edge $(u,v)$, define the \textbf{rank-1 PSD matrix}:
 \[
-  L_{uv} \;=\; (e_u - e_v)(e_u - e_v)^\top,
+  L_{uv} = (e_u - e_v)(e_u - e_v)^\top,
 \]
-where $e_u \in \mathbb{R}^n$ is the standard basis vector with a $1$ in position $u$.
-Explicitly:
+where $e_v \in \mathbb{R}^n$ is the standard basis vector.
+
 \[
-  (L_{uv})_{ij} =
-  \begin{cases}
-  +1 & i = j = u \text{ or } i = j = v,\\
-  -1 & \{i,j\} = \{u,v\},\\
-  0 & \text{otherwise.}
-  \end{cases}
+  \underbrace{L}_{\text{full graph}} = \sum_{(u,v)\in E} L_{uv}.
 \]
-The full Laplacian decomposes as a sum of edge Laplacians:
+
+\begin{example}
+$K_2$ with vertices $\{1,2\}$:
 \[
-  L = \sum_{(u,v)\in E} L_{uv}.
+  L_{12} = \begin{pmatrix}1\\-1\end{pmatrix}\begin{pmatrix}1&-1\end{pmatrix}
+          = \begin{pmatrix}1&-1\\-1&1\end{pmatrix} = L_{K_2}.
 \]
+For $K_3$: $L = L_{12} + L_{13} + L_{23}$.  Verify by adding the three rank-1 matrices.
+\end{example}
 
 \subsection{The Key Identity}
+\label{sec:key-identity}
 
-\begin{proposition}[Quadratic form of the Laplacian]\label{prop:quadratic}
-For any $x \in \mathbb{R}^n$,
+\begin{proposition}
+For any $x \in \mathbb{R}^n$:
 \[
-  x^\top L x \;=\; \sum_{(u,v)\in E} (x_u - x_v)^2.
+  \boxed{x^\top L x = \sum_{(u,v)\in E}(x_u - x_v)^2.}
 \]
 \end{proposition}
 
 \begin{proof}
-$x^\top L_{uv} x = x^\top (e_u-e_v)(e_u-e_v)^\top x = \bigl((e_u-e_v)^\top x\bigr)^2 = (x_u - x_v)^2$.
+$x^\top L_{uv} x = x^\top(e_u-e_v)(e_u-e_v)^\top x = \bigl((e_u-e_v)^\top x\bigr)^2 = (x_u-x_v)^2$.
 Sum over all edges.
 \end{proof}
 
 \begin{intuition}
-Think of $x_v$ as a ``height'' at vertex $v$.
-Then $x^\top L x$ is the total ``slope energy'' across all edges:
-it sums up the squared height differences.
-A constant signal ($x_v = c$ for all $v$) has zero energy.
-A signal that is smooth (nearby vertices have similar values) has small energy.
+Imagine heights on a landscape.  $x_v$ is the altitude at vertex $v$.
+$x^\top L x$ is the total squared height difference across all edges---
+a measure of how ``bumpy'' the landscape is along the graph.
+\begin{itemize}
+  \item Constant signal ($x_v = c$): $x^\top L x = 0$ (flat landscape, no variation).
+  \item Alternating signal ($x_v = (-1)^v$): $x^\top L x = $ 4 times the number of edges
+        that cross between even and odd vertices.
+\end{itemize}
 \end{intuition}
 
-\subsection{Basic Properties of the Laplacian}
+\begin{CJK}{UTF8}{gbsn}
+（关键恒等式：$x^\top L x$ 等于所有边上端点值之差的平方和。直觉上，这衡量信号 $x$ 在图上的"变化程度"。）
+\end{CJK}
 
-\begin{enumerate}
-  \item $L \succeq 0$ (PSD): Since $x^\top L x = \sum_e (x_u-x_v)^2 \ge 0$.
-  \item The all-ones vector $\mathbf{1}$ satisfies $L\mathbf{1} = 0$, so $0$ is always an eigenvalue.
-  \item For a connected graph, the smallest eigenvalue is $\lambda_1 = 0$ (with eigenvector $\mathbf{1}$)
-        and all other eigenvalues are positive: $0 = \lambda_1 < \lambda_2 \le \cdots \le \lambda_n$.
-  \item The largest eigenvalue $\lambda_n = \lambda_{\max}(L)$ satisfies $\lambda_{\max}(L) \le 2d_{\max}$
-        (where $d_{\max}$ is the maximum degree).
-\end{enumerate}
-
-\begin{example}[Laplacian of $K_n$]
-Every vertex has degree $n-1$, so $D = (n-1)I$.  The adjacency matrix is $A = J - I$
-where $J$ is the all-ones matrix.  Therefore
+\begin{example}[Applying the identity]
+$G = P_3$ (path $1$---$2$---$3$), $x = (1,0,-1)^\top$:
 \[
-  L_{K_n} = (n-1)I - (J-I) = nI - J.
+  x^\top L x = (x_1-x_2)^2 + (x_2-x_3)^2 = (1-0)^2 + (0-(-1))^2 = 1+1 = 2.
 \]
-The eigenvalues are $0$ (once, eigenvector $\mathbf{1}$) and $n$ (with multiplicity $n-1$).
+Direct check: $L = \begin{pmatrix}1&-1&0\\-1&2&-1\\0&-1&1\end{pmatrix}$,\;
+$Lx = \begin{pmatrix}1\\-2+2-0\\1\end{pmatrix}$\ldots let's just confirm $x^\top L x = 2$. ✓
 \end{example}
 
-\begin{example}[Laplacian of $K_{a,b}$]
-Vertices in $A$ have degree $b$; vertices in $B$ have degree $a$.
-Writing vertices as $A = \{1,\ldots,a\}$ and $B = \{a+1,\ldots,a+b\}$:
-\[
-  L_{K_{a,b}} =
-  \begin{pmatrix} bI_a & -J_{a\times b} \\ -J_{b\times a} & aI_b \end{pmatrix},
-\]
-where $J_{a\times b}$ is the $a\times b$ all-ones matrix.
-The eigenvalues are $0$ (once), $b$ (with multiplicity $a-1$), $a$ (multiplicity $b-1$),
-and $a+b$ (once).
-\end{example}
+\subsection{Laplacian of an Induced Subgraph}
 
-\subsection{The Laplacian of an Induced Subgraph}
-
-For $S \subseteq V$, the graph $G_S = (V, E(S,S))$ has Laplacian:
 \[
-  L_S = \sum_{(u,v)\in E(S,S)} L_{uv}
-      = \sum_{\substack{(u,v)\in E \\ u\in S,\, v\in S}} L_{uv}.
-\]
-Its quadratic form counts only edges within $S$:
-\[
+  L_S = \sum_{\substack{(u,v)\in E \\ u\in S,\, v\in S}} L_{uv},
+  \qquad
   x^\top L_S x = \sum_{\substack{(u,v)\in E \\ u\in S,\, v\in S}} (x_u - x_v)^2.
 \]
 
-\textbf{Key fact}: $0 \preceq L_S \preceq L$ always holds,
-since $E(S,S) \subseteq E$ means we sum over fewer non-negative terms.
+Key sandwich: $\; 0 \preceq L_S \preceq L \;$ for any $S$, since $E(S,S) \subseteq E$.
+
+\begin{example}
+$G = K_4$, $S = \{1,2,3\}$:
+$G_S = K_3$ plus isolated vertex $4$.
+$L_S = L_{12}+L_{13}+L_{23}$ (the $4\times4$ matrix with $L_{K_3}$ block).
+Check: $L_S \preceq L_{K_4}$ since $K_3 \subset K_4$.
+\end{example}
+
+\begin{example}[$\varepsilon$-light condition in action]
+$G = K_4$, $\varepsilon = 1/2$.  Is $S = \{1,2\}$ $\varepsilon$-light?
+$L_S = L_{12}$ (one edge).  We need $L_{12} \preceq \frac{1}{2} L_{K_4} = \frac{1}{2}(4I-J)$.
+
+The vector $x = \frac{1}{\sqrt2}(1,-1,0,0)^\top$ gives
+$x^\top L_{12} x = 1$ and $x^\top L_{K_4} x = (1+1)^2/2 + (1+0)^2 \cdot 2/2 = 2+1 = 3$
+(from the key identity: edges $(1,2),(1,3),(1,4),(2,3),(2,4)$ contribute
+$(\frac{1}{\sqrt2}-(-\frac{1}{\sqrt2}))^2 + 4\cdot(\frac{1}{\sqrt2})^2 = 2 + 2 = 4$,
+divided by normalizing... let me be more careful).
+
+$x^\top L_{K_4} x = \sum_{\text{all 6 edges}} (x_u - x_v)^2$:
+$(x_1-x_2)^2 = (\sqrt2)^2 = 2$;
+$(x_1-x_3)^2 = (1/\sqrt2)^2 = 1/2$; same for $(x_1,x_4),(x_2,x_3),(x_2,x_4)$;
+$(x_3-x_4)^2 = 0$.
+Total: $2 + 4\cdot\frac{1}{2} + 0 = 4$.
+
+So $x^\top L_S x = 2$, $x^\top(\frac{1}{2} L_{K_4})x = 2$. They are equal!
+The eigenvalue of $L_{12}$ along this direction is $2$, matching $\frac{1}{2}\cdot 4 = 2$.
+So $S = \{1,2\}$ is $\frac{1}{2}$-light for $K_4$. ✓
+\end{example}
+
+\subsection{Properties of the Laplacian}
+
+\begin{enumerate}
+  \item \textbf{$L \succeq 0$}: Since $x^\top Lx = \sum_e(x_u-x_v)^2 \ge 0$.
+  \item \textbf{Null space}: $L\mathbf{1} = 0$.  Eigenvalue 0 always exists.
+  \item \textbf{Connected graph}: $\lambda_1 = 0 < \lambda_2 \le \cdots \le \lambda_n$.
+        The second eigenvalue $\lambda_2 > 0$ iff $G$ is connected.
+  \item \textbf{Bound}: $\lambda_{\max}(L) \le 2d_{\max}$.
+\end{enumerate}
 
 % ================================================================
-\section{Probability Basics}
+\section{Probability Tools}
 % ================================================================
 
-\subsection{Random Variables and Expectation}
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item MIT notes on Chernoff and Markov bounds (9 pages, very clear):
+        \url{https://math.mit.edu/~goemans/18310S15/chernoff-notes.pdf}
+  \item Rice University lecture (Markov, Chebyshev, Chernoff all in one):
+        \url{https://www.cs.rice.edu/~as143/COMP480_580_Fall22/scribe/Lec3.pdf}
+  \item Stanford interactive explanation of Chernoff bound:
+        \url{https://crypto.stanford.edu/~blynn/pr/chernoff.html}
+  \item CMU lecture on Chernoff bounds with applications:
+        \url{https://www.cs.cmu.edu/afs/cs/academic/class/15859-f04/www/scribes/lec9.pdf}
+\end{itemize}
+}
 
-A \textbf{random variable} $X$ takes values with certain probabilities.
-The \textbf{expectation} (average) is $\mathbb{E}[X] = \sum_x x \cdot \Pr(X = x)$.
+\subsection{Basic Definitions}
 
-A \textbf{Bernoulli random variable} $X \sim \mathrm{Bern}(p)$ equals $1$ with probability $p$
-and $0$ with probability $1-p$.  $\mathbb{E}[X] = p$, $\mathrm{Var}(X) = p(1-p)$.
+A \textbf{Bernoulli} random variable $X \sim \mathrm{Bern}(p)$:
+$\Pr(X=1) = p$, $\Pr(X=0) = 1-p$, $\mathbb{E}[X] = p$, $\mathrm{Var}(X) = p(1-p)$.
+
+If $X_1,\ldots,X_n \overset{\mathrm{iid}}{\sim} \mathrm{Bern}(p)$, then $S = \sum_i X_i \sim
+\mathrm{Binomial}(n,p)$, with $\mathbb{E}[S] = np$, $\mathrm{Var}(S) = np(1-p)$.
+
+In our problem: $X_v = \mathbf{1}[v \in S]$ where each vertex is independently
+included in $S$ with probability $p$.
 
 \subsection{Markov's Inequality}
 
 \begin{lemma}[Markov]
-For any non-negative random variable $X$ and $t > 0$:
-\[
-  \Pr(X \ge t) \;\le\; \frac{\mathbb{E}[X]}{t}.
-\]
+For any non-negative $X$ and $t > 0$:
+$\displaystyle\Pr(X \ge t) \le \frac{\mathbb{E}[X]}{t}.$
 \end{lemma}
 
 \begin{CJK}{UTF8}{gbsn}
-（马尔可夫不等式：非负随机变量超过阈值的概率不超过期望除以阈值。）
+（马尔可夫不等式：一个非负随机变量超过阈值 $t$ 的概率，不超过期望除以 $t$。）
 \end{CJK}
 
-\begin{intuition}
-If the average height of people in a room is 1.7m, then at most half of them can be taller than 3.4m.
-\end{intuition}
+\begin{proof}
+$\mathbb{E}[X] \ge \mathbb{E}[X \cdot \mathbf{1}_{X \ge t}] \ge t \cdot \Pr(X \ge t)$.
+\end{proof}
+
+\begin{example}
+Average exam score in a class is 70.  At most $70/90 \approx 78\%$ of students scored $\ge 90$.
+(Bound: $\Pr(\text{score} \ge 90) \le 70/90$.)
+This is a \emph{weak} bound but works for any distribution.
+\end{example}
+
+\begin{example}
+$|S|$ when each of $n$ vertices is included with probability $p = \varepsilon$:
+$\mathbb{E}[|S|] = \varepsilon n$.  Markov gives: $\Pr(|S| \ge 2\varepsilon n) \le 1/2$.
+So $|S| < 2\varepsilon n$ with probability $\ge 1/2$.  (Upper tail.)
+\end{example}
 
 \subsection{Paley--Zygmund Inequality}
 
-The Paley--Zygmund inequality gives a \emph{lower} bound on the probability that a random variable
-is not too small:
+Markov gives upper bounds.  The \textbf{Paley--Zygmund inequality} gives a lower bound:
 
 \begin{lemma}[Paley--Zygmund]\label{lem:pz}
-For a non-negative random variable $X$ with finite second moment:
+For $X \ge 0$ with $\mathbb{E}[X^2] < \infty$ and any $\theta \in (0,1)$:
 \[
-  \Pr\!\left(X \ge \frac{1}{2}\,\mathbb{E}[X]\right) \;\ge\; \frac{(\mathbb{E}[X])^2}{4\,\mathbb{E}[X^2]}.
+  \Pr\!\bigl(X > \theta\,\mathbb{E}[X]\bigr)
+  \;\ge\; (1-\theta)^2 \cdot \frac{(\mathbb{E}[X])^2}{\mathbb{E}[X^2]}.
+\]
+Taking $\theta = 1/2$: $\;\Pr\!\bigl(X > \tfrac{1}{2}\mathbb{E}[X]\bigr) \ge
+\tfrac{1}{4} \cdot \dfrac{(\mathbb{E}[X])^2}{\mathbb{E}[X^2]}$.
+\end{lemma}
+
+\begin{CJK}{UTF8}{gbsn}
+（Paley--Zygmund 不等式：随机变量不小于其期望一半的概率有正的下界，由一阶矩和二阶矩决定。）
+\end{CJK}
+
+\begin{proof}[Proof sketch]
+Write $\mathbb{E}[X] = \mathbb{E}[X \cdot \mathbf{1}_{X \le \theta\mathbb{E}[X]}]
++ \mathbb{E}[X \cdot \mathbf{1}_{X > \theta\mathbb{E}[X]}]$.
+First term $\le \theta\mathbb{E}[X]$.
+Second term $\le \sqrt{\mathbb{E}[X^2] \cdot \Pr(X > \theta\mathbb{E}[X])}$ by Cauchy--Schwarz.
+Solve for the probability.
+\end{proof}
+
+\begin{example}
+Let $X = |S|$ with $p = \sqrt{\varepsilon}$:
+$\mathbb{E}[X] = \sqrt{\varepsilon}\,n$,\;
+$\mathbb{E}[X^2] = \sqrt{\varepsilon}\,n + \varepsilon\,n(n-1)$.
+
+$\dfrac{(\mathbb{E}[X])^2}{\mathbb{E}[X^2]} = \dfrac{\varepsilon n^2}{\sqrt{\varepsilon}n + \varepsilon n(n-1)}
+\to \dfrac{\varepsilon n^2}{\varepsilon n^2} = 1$ as $n \to \infty$.
+
+So $\Pr(|S| \ge \frac{\sqrt{\varepsilon}}{2} n) \to \frac{1}{4}$ for large $n$.
+Since $\frac{\sqrt{\varepsilon}}{2} \ge \frac{\varepsilon}{2}$ (as $\sqrt{\varepsilon} \ge \varepsilon$ for $\varepsilon \in [0,1]$),
+we get $|S| \ge \frac{\varepsilon}{2} n$ with probability $\ge 1/4$.
+\end{example}
+
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item Blog post with nice examples:
+        \url{https://sarcasticresonance.wordpress.com/2024/03/14/the-useful-paley-zygmund-inequality/}
+  \item Wharton lecture notes (lower bound proofs using PZ):
+        \url{http://www-stat.wharton.upenn.edu/~steele/Courses/530/Resources/Lower%20Bounds/LowerBounds.pdf}
+  \item Wikipedia with proof:
+        \url{https://en.wikipedia.org/wiki/Paley-Zygmund_inequality}
+\end{itemize}
+}
+
+\subsection{Chernoff Bound}
+
+\begin{lemma}[Chernoff, multiplicative form]
+Let $X = \sum_{i=1}^n X_i$, $X_i \overset{\mathrm{iid}}{\sim} \mathrm{Bern}(p)$, $\mu = np$.
+For $\delta \in (0,1)$:
+\[
+  \Pr(X \le (1-\delta)\mu) \le e^{-\delta^2\mu/2},\qquad
+  \Pr(X \ge (1+\delta)\mu) \le e^{-\delta^2\mu/3}.
 \]
 \end{lemma}
 
 \begin{CJK}{UTF8}{gbsn}
-（Paley--Zygmund 不等式：给出随机变量不小于期望一半的概率下界。）
+（Chernoff 界：独立 Bernoulli 之和以指数速度集中在均值附近，偏离超过 $\delta$ 比例的概率指数小。）
 \end{CJK}
 
-We use this to show that the random set $S$ has $|S| \ge \frac{1}{2}\mathbb{E}[|S|]$ with positive probability.
-
-\subsection{Concentration Inequalities}
-
-Sometimes we want to say a random variable is \emph{close} to its expectation with high probability.
-This is the subject of \textbf{concentration inequalities}.
-
-\begin{lemma}[Chernoff bound -- simplified]
-Let $X = \sum_{i=1}^n X_i$ where $X_i \overset{\mathrm{iid}}{\sim} \mathrm{Bern}(p)$,
-and $\mu = \mathbb{E}[X] = np$.  For $\delta \in (0,1)$:
+\begin{example}
+Flip 10000 fair coins.  Expected heads: $\mu = 5000$.  With $\delta = 0.1$:
 \[
-  \Pr(X \le (1-\delta)\mu) \;\le\; e^{-\delta^2 \mu / 2},
-  \qquad
-  \Pr(X \ge (1+\delta)\mu) \;\le\; e^{-\delta^2 \mu / 3}.
+  \Pr(\text{heads} \le 4500) \le e^{-0.01 \cdot 5000/2} = e^{-25} \approx 10^{-11}.
 \]
-\end{lemma}
+The probability of fewer than 4500 heads is essentially impossible.
+\end{example}
 
-\begin{CJK}{UTF8}{gbsn}
-（Chernoff 界：独立 Bernoulli 随机变量之和高度集中在期望附近，偏差概率指数小。）
-\end{CJK}
-
-\begin{intuition}
-If you flip 1000 fair coins, the number of heads is almost always between 450 and 550.
-The probability of seeing fewer than 400 heads is astronomically small.
-\end{intuition}
+\begin{example}[Random set $S$]
+Each of $n$ vertices included with probability $p = \varepsilon$, so $\mu = \varepsilon n$.
+Taking $\delta = 1/2$:
+\[
+  \Pr\!\bigl(|S| \le \varepsilon n/2\bigr) \le e^{-(1/4)\cdot\varepsilon n/2} = e^{-\varepsilon n/8}.
+\]
+For $n$ large, $|S| \ge \varepsilon n/2$ with overwhelming probability.
+\end{example}
 
 % ================================================================
 \section{Matrix Concentration Inequalities}
 % ================================================================
 
-In the $\varepsilon$-light problem, we care not just about scalars but about
-\emph{matrices}.  We need tools that say a random matrix is close to its expectation.
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item \textbf{Best starting point}: Tropp's introductory monograph (free PDF, 200 pages):
+        \url{https://arxiv.org/abs/1501.01571}\\
+        Also at: \url{https://tropp.caltech.edu/books/Tro14-Introduction-Matrix-FnTML-rev.pdf}
+  \item Original research paper (arXiv 1004.4389):
+        \url{https://arxiv.org/abs/1004.4389}
+  \item Published version (Foundations of Computational Mathematics 2012):
+        \url{https://link.springer.com/article/10.1007/s10208-011-9099-z}
+  \item Wikipedia on Matrix Chernoff bound:
+        \url{https://en.wikipedia.org/wiki/Matrix_Chernoff_bound}
+  \item Simons Institute talk by Tropp (video):
+        \url{https://simons.berkeley.edu/user-friendly-tools-random-matrices}
+\end{itemize}
+}
 
-\subsection{Random Matrices}
+\subsection{Why Scalars Don't Generalize}
 
-A \textbf{random matrix} $M$ is a matrix whose entries are random variables.
-The \textbf{expectation} $\mathbb{E}[M]$ is the matrix of entry-wise expectations.
+Scalar Chernoff bounds use the moment generating function $\mathbb{E}[e^{tX}]$.
+For matrices, the key identity $e^{A+B} = e^A e^B$ fails when $AB \ne BA$.
 
-We care about the \textbf{operator norm} $\|M\|_{\mathrm{op}} = \lambda_{\max}(M)$
-(for PSD matrices, this is just the largest eigenvalue).
+\begin{example}
+$A = \begin{pmatrix}0&1\\0&0\end{pmatrix}$, $B = \begin{pmatrix}0&0\\1&0\end{pmatrix}$:
+$e^{A+B} \ne e^A e^B$ because $AB = \begin{pmatrix}1&0\\0&0\end{pmatrix} \ne
+\begin{pmatrix}0&0\\0&1\end{pmatrix} = BA$.
+The Baker--Campbell--Hausdorff formula quantifies the correction.
+\end{example}
 
-\subsection{The Challenge: Matrices Don't Commute}
-
-Scalar concentration proofs rely on the moment generating function $\mathbb{E}[e^{tX}]$.
-For matrices, $e^{A+B} \ne e^A e^B$ in general (because matrices don't commute),
-so one cannot naively generalize scalar proofs.
-
-The key tool that gets around this is the \textbf{Golden--Thompson inequality}
-and related trace inequalities, which led to matrix versions of Bernstein and Azuma bounds.
+The fix is Lieb's theorem and the Golden--Thompson inequality:
+$\mathrm{tr}(e^{A+B}) \le \mathrm{tr}(e^A e^B)$,
+which allows concentration bounds for matrix sums.
 
 \subsection{Matrix Azuma Inequality}
 
 A \textbf{matrix martingale} is a sequence of random matrices $M_0, M_1, \ldots, M_n$
-(with $M_k$ depending on observations $1,\ldots,k$) such that $\mathbb{E}[M_k | M_{k-1}] = M_{k-1}$.
+with $\mathbb{E}[M_k \mid M_0,\ldots,M_{k-1}] = M_{k-1}$.
 
 \begin{theorem}[Matrix Azuma, Tropp 2012]\label{thm:mazuma}
-Let $M_0, M_1, \ldots, M_n$ be a symmetric matrix martingale where $M_0 = 0$.
-Suppose the differences $H_k = M_k - M_{k-1}$ satisfy $\|H_k\|_{\mathrm{op}} \le R$ almost surely.
-Let $\sigma^2 = \sum_{k=1}^n R_k^2$ where $R_k$ bounds $\|H_k\|_{\mathrm{op}}$.
-Then for any $t > 0$:
+Let $Y_1, \ldots, Y_n$ be independent, centered, symmetric random matrices with
+$\|Y_k\|_{\mathrm{op}} \le R_k$ almost surely.  Then for $t > 0$:
 \[
-  \Pr\!\bigl(\lambda_{\max}(M_n) \ge t\bigr) \;\le\; n \cdot e^{-t^2/(2\sigma^2)}.
+  \Pr\!\Bigl(\lambda_{\max}\!\Bigl(\sum_{k=1}^n Y_k\Bigr) \ge t\Bigr)
+  \;\le\; n \cdot \exp\!\!\left(-\frac{t^2/2}{\sum_k R_k^2}\right).
 \]
 \end{theorem}
 
 \begin{CJK}{UTF8}{gbsn}
-（矩阵 Azuma 不等式：矩阵鞅的最大特征值以指数速度集中在 0 附近。）
+（矩阵 Azuma 不等式：由有界增量构成的矩阵和，其最大特征值以指数速度集中在零附近。）
 \end{CJK}
 
 \begin{intuition}
-This says a symmetric matrix ``built up'' by small increments (each bounded in operator norm by $R_k$)
-is unlikely to have a very large eigenvalue.
-It is the matrix analogue of: a sum of small bounded random variables concentrates around its mean.
+This is the matrix analogue of: ``a sum of bounded zero-mean random variables concentrates.''
+The key quantity is $\sigma^2 = \sum_k R_k^2$ (variance proxy).
+The $n$ factor comes from a union bound over eigenvalue directions.
 \end{intuition}
 
-\subsection{How We Apply It}
+\subsection{Matrix Bernstein Inequality}
 
-In the dense case of our proof, we construct $L_S = \sum_{(u,v)\in E} X_u X_v L_{uv}$
-where $X_v \overset{\mathrm{iid}}{\sim} \mathrm{Bern}(p)$.
-
-We expose the $X_v$'s one by one and define the martingale
-$M_k = \mathbb{E}[L_S \mid X_1,\ldots,X_k] - \mathbb{E}[L_S]$.
-
-When we reveal $X_k$, the change in $M_k$ is bounded by the operator norm of
-$L$ restricted to edges touching $k$, which is at most $\deg(k) \cdot \lambda_{\max}(L)$.
-
-Applying Theorem~\ref{thm:mazuma} with $t = \varepsilon \lambda_{\max}(L)$ gives:
+\begin{theorem}[Matrix Bernstein, Tropp 2012]
+Let $Y_1, \ldots, Y_m$ be independent, centered, symmetric random matrices with
+$\|Y_k\|_{\mathrm{op}} \le R$ and variance proxy
+$\sigma^2 = \|\sum_k \mathbb{E}[Y_k^2]\|_{\mathrm{op}}$.  Then:
 \[
-  \Pr\!\bigl(L_S \not\preceq 2\varepsilon L\bigr) \;\le\; n\cdot\exp\!\left(-\frac{\varepsilon^2\lambda_{\max}(L)^2}{2\sum_k \deg(k)^2 \lambda_{\max}(L)^2}\right)
-  = n\cdot\exp\!\left(-\frac{\varepsilon^2}{2\,\overline{d^2}/n}\right),
+  \Pr\!\Bigl(\lambda_{\max}\!\Bigl(\sum_k Y_k\Bigr) \ge t\Bigr)
+  \;\le\; n \cdot \exp\!\!\left(-\frac{t^2/2}{\sigma^2 + Rt/3}\right).
 \]
-where $\overline{d^2} = \frac{1}{n}\sum_v \deg(v)^2$.
-This probability is small when $n \gg \overline{d^2}/\varepsilon^2$.
+\end{theorem}
+
+\begin{example}[Independent edge sampling]
+Sample each edge $(u,v)$ independently with probability $q$, forming subgraph $H$.
+Let $Y_{uv} = \mathbf{1}_{e \in H] \cdot L_{uv} - q L_{uv}$ (centered).
+Then $\mathbb{E}[Y_{uv}] = 0$ and $\|Y_{uv}\|_{\mathrm{op}} \le \|L_{uv}\|_{\mathrm{op}} = 2$.
+
+By Matrix Bernstein, $L_H \approx qL$ with high probability, giving a spectral sparsifier.
+This is Spielman--Srivastava's approach.
+\end{example}
+
+\begin{example}[In our problem: vertex sampling]
+We sample each vertex with probability $p$.  The Laplacian of the induced subgraph is:
+\[
+  L_S = \sum_{(u,v)\in E} X_u X_v L_{uv},\quad X_v \overset{\mathrm{iid}}{\sim}\mathrm{Bern}(p).
+\]
+Note $X_u X_v$ are \emph{not} independent (they share vertex information).
+We handle this by exposing vertices one by one (martingale approach) or by decoupling
+(replacing $X_u$ and $X_v$ by independent copies).
+
+The step-$k$ Azuma increment, when we reveal $X_k$:
+\[
+  \Delta_k = (X_k - p) \sum_{v:\,(v,k)\in E} p\, L_{kv} \preceq (X_k-p)\cdot\deg(k)\cdot \lambda_{\max}(L)\cdot I.
+\]
+Bound: $R_k = \deg(k) \cdot \lambda_{\max}(L)$.
+\end{example}
 
 % ================================================================
 \section{Spectral Graph Theory Concepts}
 % ================================================================
 
-\subsection{Spectral Gap and Expanders}
-
-For a $d$-regular graph, the Laplacian eigenvalues are $0 = \lambda_1 \le \lambda_2 \le \cdots \le \lambda_n \le 2d$.
-The \textbf{spectral gap} $\lambda_2$ measures how ``well-connected'' the graph is:
-\begin{itemize}
-  \item $\lambda_2 = 0$: the graph is disconnected.
-  \item Large $\lambda_2$: the graph is a good \textbf{expander} --- few edges cut many vertices.
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item Hoory--Linial--Wigderson survey on expanders (124 pages, the standard reference):
+        \url{https://www.cs.huji.ac.il/~nati/PAPERS/expander_survey.pdf}
+  \item Barak's lecture notes on expanders (shorter, friendlier):
+        \url{https://www.boazbarak.org/expandercourse/allnotes.pdf}
+  \item Harvard lecture notes on expander graphs (CS225):
+        \url{https://people.seas.harvard.edu/~salil/cs225/spring09/lecnotes/Chap4.pdf}
+  \item Kowalski's introduction to expander graphs (ETH Z\"{u}rich):
+        \url{https://people.math.ethz.ch/~kowalski/expander-graphs.pdf}
+  \item Wikipedia: Expander Mixing Lemma:
+        \url{https://en.wikipedia.org/wiki/Expander_mixing_lemma}
+  \item MPI lecture on the Expander Mixing Lemma (with proof):
+        \url{https://resources.mpi-inf.mpg.de/departments/d1/teaching/ws11/SGT/Lecture3.pdf}
 \end{itemize}
+}
 
-\begin{definition}[Expander]
-A $d$-regular graph is a \textbf{$(n, d, \lambda)$-expander} if all non-zero eigenvalues of $L$
-satisfy $\lambda_i \ge \lambda$.  Ramanujan graphs achieve the optimal $\lambda \ge d - 2\sqrt{d-1}$.
+\subsection{Spectral Gap}
+
+For a $d$-regular graph, the Laplacian eigenvalues satisfy
+$0 = \lambda_1 \le \lambda_2 \le \cdots \le \lambda_n \le 2d$.
+
+\begin{definition}
+The \textbf{spectral gap} is $\lambda_2$ (or sometimes $d - \lambda_2$ for normalized Laplacian).
+A large spectral gap means the graph is well-connected (hard to disconnect).
 \end{definition}
 
 \begin{CJK}{UTF8}{gbsn}
-（扩展图：谱间隙大，意味着图连通性好，任意小的子集都有很多向外的边。）
+（谱间隙 $\lambda_2$：越大说明图越难被分割，连通性越好。）
 \end{CJK}
+
+\begin{example}[Spectral gaps of standard graphs]
+\leavevmode
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lllll}
+\toprule
+Graph & $d$ & $\lambda_2$ & Spectral gap & Interpretation \\
+\midrule
+$K_n$ & $n-1$ & $n$ & $n$ (maximum) & Maximally connected \\
+$P_n$ & $\le 2$ & $\approx \pi^2/n^2$ & tiny & Almost disconnected \\
+$C_n$ (cycle) & 2 & $2-2\cos(2\pi/n) \approx 4\pi^2/n^2$ & tiny & \\
+$K_{n/2,n/2}$ & $n/2$ & $n/2$ & large & Bipartite, but no odd cycles \\
+Ramanujan graph & $d$ & $\ge d - 2\sqrt{d-1}$ & $\Omega(d)$ & Optimal expander \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{example}
+
+\begin{intuition}
+Think of the graph as a road network.  $\lambda_2$ measures how many ``critical roads''
+exist.  A small $\lambda_2$ means there's a bottleneck (remove a few roads and the
+network splits).  A large $\lambda_2$ means the network is robust---many parallel routes.
+\end{intuition}
+
+\subsection{Expander Graphs}
+
+\begin{definition}
+A $d$-regular graph is a \textbf{$(n, d, \lambda)$-expander} if all non-zero Laplacian eigenvalues
+satisfy $\lambda_i \ge \lambda > 0$.
+A \textbf{Ramanujan graph} achieves the optimal $\lambda \ge d - 2\sqrt{d-1}$
+(Alon--Boppana lower bound).
+\end{definition}
+
+\begin{CJK}{UTF8}{gbsn}
+（扩展图：谱间隙大，连通性强，任意小子集都有很多向外的边。Ramanujan 图是谱间隙最优的扩展图。）
+\end{CJK}
+
+\begin{example}[Concrete expanders]
+\begin{itemize}
+  \item \textbf{Petersen graph}: 10 vertices, 3-regular, $\lambda_2 = 2$.
+        A Ramanujan graph since $3 - 2\sqrt{2} \approx 0.17 < 2$.
+  \item \textbf{Complete graph $K_n$}: trivially $(n, n-1, n)$-expander. Best possible.
+  \item \textbf{Random $d$-regular graph}: almost surely a good expander for $d \ge 3$
+        (the spectral gap concentrates near $d - 2\sqrt{d-1}$).
+  \item \textbf{Cayley graphs of $\mathrm{SL}_2(\mathbb{F}_p)$} with specific generators:
+        a family of Ramanujan graphs (Lubotzky--Phillips--Sarnak, 1988).
+\end{itemize}
+\end{example}
 
 \subsection{Expander Mixing Lemma}
 
-\begin{lemma}[Expander Mixing Lemma]
+\begin{lemma}[Expander Mixing Lemma (EML)]
 Let $G$ be a $d$-regular $(n,d,\lambda)$-expander.
-For any $S, T \subseteq V$, the number of edges between $S$ and $T$ satisfies
+For any $S, T \subseteq V$:
 \[
-  \left| e(S,T) - \frac{d|S||T|}{n} \right| \;\le\; (d-\lambda)\sqrt{|S||T|},
+  \left|e(S,T) - \frac{d\,|S|\,|T|}{n}\right| \;\le\; (d-\lambda)\sqrt{|S|\,|T|},
 \]
-where $e(S,T)$ counts edges between $S$ and $T$.
+where $e(S,T)$ counts edges between $S$ and $T$ (with edges inside $S \cap T$ counted twice).
 \end{lemma}
 
-Setting $S = T$, the number of edges \emph{within} $S$ satisfies:
-\[
-  e(S,S) \;\le\; \frac{d|S|^2}{2n} + \frac{(d-\lambda)|S|}{2}.
-\]
+\begin{CJK}{UTF8}{gbsn}
+（扩展混合引理：扩展图中，任意两个顶点子集之间的边数接近"均匀随机"图中的期望值，偏差由谱间隙控制。）
+\end{CJK}
 
-\begin{intuition}
-In a good expander ($\lambda \approx d$, so $d-\lambda \approx 0$), any set $S$ of size $k = \varepsilon n$
-contains roughly $d\varepsilon^2 n / 2$ edges --- a fraction $\varepsilon$ of what a ``proportional'' subgraph
-would have.  This is exactly the right scale for an $\varepsilon$-light set!
-\end{intuition}
+\begin{proof}[Proof sketch]
+Write the indicator $\mathbf{1}_S = \frac{|S|}{n}\mathbf{1} + \mathbf{1}_S^\perp$ (decompose as
+mean plus zero-mean part).  Then $e(S,T) = \frac{1}{2}\mathbf{1}_S^\top A \mathbf{1}_T$
+where $A$ is the adjacency matrix.  The ``mean--mean'' part gives $\frac{d|S||T|}{n}$;
+the cross terms vanish; the ``perpendicular--perpendicular'' part is bounded by
+$\frac{\lambda_{\max}(A) - \lambda_{\min}(A)}{2} \cdot \sqrt{|S||T|} = (d-\lambda)\sqrt{|S||T|}$.
+\end{proof}
+
+\begin{example}[EML for intra-$S$ edges: $S = T$]
+Taking $T = S$:
+\[
+  \left|e(S,S) - \frac{d|S|^2}{n}\right| \le (d-\lambda)|S|.
+\]
+So $e(S,S) \le \frac{d|S|^2}{n} + (d-\lambda)|S|$.
+
+For $|S| = \varepsilon n$ and a good expander ($\lambda \approx d$, $d-\lambda$ small):
+$e(S,S) \lesssim \frac{d\varepsilon^2 n}{1} = d\varepsilon^2 n$ (ignoring lower-order terms).
+The total edges in $G$ are $dn/2$.  The fraction of edges inside $S$ is $\approx \varepsilon^2$.
+
+Intuitively: for $S$ of density $\varepsilon$, the induced subgraph has $\approx \varepsilon^2$
+fraction of edges, but (we need to argue) the \emph{spectral} fraction is also $\approx \varepsilon$
+--- exactly the $\varepsilon$-light condition.
+\end{example}
+
+\begin{example}[Upper bound on independence number]
+Setting $S = T$ as an independent set ($e(S,S) = 0$):
+$\frac{d|S|^2}{n} \le (d-\lambda)|S|$, so $|S| \le \frac{(d-\lambda)n}{d}$.
+For Ramanujan: $d-\lambda \le 2\sqrt{d-1}$, giving $|S| \le \frac{2\sqrt{d-1}}{d} n \approx
+\frac{2}{\sqrt{d}}n$.
+\end{example}
 
 \subsection{Effective Resistance}
 
-\begin{definition}[Effective resistance]
-For an edge $(u,v) \in E$, its \textbf{effective resistance} is
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item Spielman--Srivastava sparsification paper (arXiv 0803.0929):
+        \url{https://arxiv.org/abs/0803.0929}
+  \item Spielman's lecture on effective resistance and sparsification:
+        \url{https://www.cs.yale.edu/homes/spielman/561/lect17-15.pdf}
+  \item ``All You Need is Resistance'' (connections to optimal transport, arXiv 2404.15261):
+        \url{https://arxiv.org/abs/2404.15261}
+\end{itemize}
+}
+
+\begin{definition}
+For edge $(u,v)$, the \textbf{effective resistance} is:
 \[
   R_{uv} = (e_u - e_v)^\top L^+ (e_u - e_v),
 \]
@@ -485,110 +907,211 @@ where $L^+$ is the Moore--Penrose pseudoinverse of $L$.
 \end{definition}
 
 \begin{CJK}{UTF8}{gbsn}
-（有效电阻：把图想象成电阻网络，每条边电阻为 1，$R_{uv}$ 是 $u$ 和 $v$ 之间的有效电阻。）
+（有效电阻：把图想象成电阻网络，每条边电阻为 1。$R_{uv}$ 就是 $u$ 和 $v$ 之间测量到的等效电阻。$R_{uv}$ 小说明有很多并联通路；$R_{uv} = 1$ 说明 $(u,v)$ 是桥接边（去掉它图就断了）。）
 \end{CJK}
 
-Key fact: $\sum_{(u,v)\in E} R_{uv} = n - 1$ (for a connected graph).
-This is the ``trace of the pseudoinverse times $L$'' identity.
-Effective resistances measure how ``important'' each edge is to the graph's connectivity.
+\begin{intuition}
+Imagine the graph is a resistor network, each edge having resistance 1.
+$R_{uv}$ is the resistance measured between $u$ and $v$ with a voltmeter.
+\begin{itemize}
+  \item $R_{uv} = 1$: $(u,v)$ is a \textbf{bridge} --- the only path between them.
+  \item $R_{uv} \approx 0$: many parallel paths, the edge is ``cheap'' to bypass.
+\end{itemize}
+\end{intuition}
 
-Edges with small effective resistance ($R_{uv} \approx 0$) are parallel to many other paths;
-edges with large effective resistance ($R_{uv}$ close to $1$) are ``bridges.''
+\begin{example}
+$K_n$: $R_{uv} = 2/n$ for every edge (by symmetry and $\sum_e R_e = n-1$).\\
+$P_n$: $R_{i,i+1} = 1$ for every edge (each is a bridge). \\
+$K_{a,b}$: $R_{uv} = 1/a + 1/b$ for any edge $(u,v)$ between $A$ and $B$
+(by symmetry).  As $a,b\to\infty$, $R_{uv} \to 0$.
+\end{example}
+
+\begin{theorem}[Foster's theorem]
+For any connected graph:
+$\displaystyle\sum_{(u,v)\in E} R_{uv} = n-1.$
+\end{theorem}
+
+\begin{example}
+$K_4$: 6 edges, each with $R = 2/4 = 1/2$.  Sum $= 6 \times 1/2 = 3 = n-1$. ✓
+\end{example}
 
 % ================================================================
 \section{Probabilistic Method}
 % ================================================================
 
-\subsection{Existence via Expectation}
+\resources{
+\begin{itemize}\setlength\itemsep{0pt}
+  \item Alon--Spencer textbook (the definitive reference):
+        \url{https://www.amazon.com/Probabilistic-Method-Noga-Alon/dp/0470170204}
+  \item Matou\v{s}ek--Vondr\'ak lecture notes (free, 100 pages, very readable):
+        \url{https://www.cs.cmu.edu/~15850/handouts/matousek-vondrak-prob-ln.pdf}
+  \item Wikipedia overview:
+        \url{https://en.wikipedia.org/wiki/Probabilistic_method}
+\end{itemize}
+}
 
-The \textbf{probabilistic method} is a technique for proving that something exists
-by showing it has positive probability under a random construction.
+\subsection{The Core Idea}
 
 \begin{theorem}[Probabilistic existence]
-If $\Pr(\mathcal{E}) > 0$ for some event $\mathcal{E}$, then there exists at least one outcome
-in $\mathcal{E}$.
+If there exists a probability distribution over a set of objects such that a
+randomly chosen object satisfies property $\mathcal{P}$ with positive probability,
+then an object with property $\mathcal{P}$ exists.
 \end{theorem}
 
 \begin{CJK}{UTF8}{gbsn}
-（概率方法：若某随机构造满足所需性质的概率大于 0，则该性质的实例存在。）
+（概率方法：若某随机构造满足所需性质的概率 $> 0$，则满足该性质的对象存在。不需要显式构造。）
 \end{CJK}
 
-We use it as follows: construct a random set $S$ (each vertex included independently with prob $p$),
-show that $\Pr(|S| \ge c\varepsilon n \;\text{ and }\; L_S \preceq \varepsilon L) > 0$,
-and conclude the desired set exists.
+\begin{example}[Tournament with no dominating player]
+In a round-robin tournament with $n$ players, does there always exist an ordering
+where player $i$ beat player $i+1$?  Yes: a random ordering satisfies this with
+probability $1/2^{n-1} > 0$.
+\end{example}
+
+\begin{example}[Large independent set]
+Pick each vertex independently with probability $p$.  Let $X$ = number of edges
+within the random set.  $\mathbb{E}[X] = p^2 m$.  Remove one endpoint per edge:
+the remaining set is independent, with expected size $\ge p n - p^2 m$.
+Setting $p = 1/(2m/n) = n/(2m) = 1/d_{\mathrm{avg}}$:
+$\ge n/d_{\mathrm{avg}} - n/(2d_{\mathrm{avg}}) = n/(2d_{\mathrm{avg}})$.
+\textbf{There exists} an independent set of this size.
+\end{example}
 
 \subsection{Union Bound (Boole's Inequality)}
 
-\begin{lemma}[Union bound]
-For any events $A_1, \ldots, A_k$:
-$\Pr(A_1 \cup \cdots \cup A_k) \le \Pr(A_1) + \cdots + \Pr(A_k)$.
+\begin{lemma}
+$\Pr(A_1 \cup \cdots \cup A_k) \le \sum_i \Pr(A_i)$.
+Equivalently: $\Pr(A \cap B) \ge \Pr(A) + \Pr(B) - 1$.
 \end{lemma}
 
-Equivalently, $\Pr(A \cap B) \ge \Pr(A) + \Pr(B) - 1$.
-
-We use this as: if $\Pr(|S| < c\varepsilon n) \le 1/4$ and $\Pr(L_S \not\preceq \varepsilon L) \le 1/4$,
-then
-\[
-  \Pr\bigl(|S| \ge c\varepsilon n \;\text{ and }\; L_S \preceq \varepsilon L\bigr)
-  \;\ge\; 1 - 1/4 - 1/4 = 1/2 > 0.
-\]
+\begin{example}
+We want event $E_1 = \{|S| \ge c\varepsilon n\}$ and $E_2 = \{L_S \preceq \varepsilon L\}$ to hold simultaneously.
+If $\Pr(E_1) \ge 3/4$ and $\Pr(E_2) \ge 3/4$, then
+$\Pr(E_1 \cap E_2) \ge 3/4 + 3/4 - 1 = 1/2 > 0$.
+So such an $S$ exists!
+\end{example}
 
 \subsection{Second Moment Method}
 
-To show a random variable $X \ge 0$ is often large, use:
-\[
-  \Pr(X > 0) \;\ge\; \frac{(\mathbb{E}[X])^2}{\mathbb{E}[X^2]}.
-\]
-This is the Paley--Zygmund inequality with $\theta = 0$.
+\begin{lemma}
+$\Pr(X > 0) \ge (\mathbb{E}[X])^2 / \mathbb{E}[X^2]$.
+\end{lemma}
+
+\begin{example}[Triangle in a random graph]
+$G(n, 1/2)$: each edge present independently with prob $1/2$.
+$X = \#$ triangles.  $\mathbb{E}[X] = \binom{n}{3}/8 = \Theta(n^3)$.
+$\mathbb{E}[X^2] = O(n^6)$.  So $\Pr(X>0) \ge \Theta(n^6)/O(n^6) > 0$:
+random graphs on $\ge 3$ vertices almost surely contain triangles.
+\end{example}
 
 % ================================================================
-\section{Summary of Notation}
+\section{Notation Reference Table}
 % ================================================================
 
 \begin{center}
 \renewcommand{\arraystretch}{1.4}
-\begin{tabular}{|c|l|}
+\begin{tabular}{|c|p{10cm}|}
 \hline
 \textbf{Symbol} & \textbf{Meaning} \\
 \hline
-$G = (V,E)$ & Graph with vertex set $V$, edge set $E$ \\
-$n, m$ & $|V|$, $|E|$ \\
+$G = (V,E)$ & Graph: vertex set $V$, edge set $E$ \\
+$n, m$ & $n = |V|$ (vertices), $m = |E|$ (edges) \\
 $\deg(v)$ & Degree of vertex $v$ \\
-$d_{\mathrm{avg}}$, $d_{\max}$ & Average degree $2m/n$; maximum degree \\
+$d_{\mathrm{avg}} = 2m/n$ & Average degree \\
+$d_{\max}$ & Maximum degree \\
 $K_n$ & Complete graph on $n$ vertices \\
 $K_{a,b}$ & Complete bipartite graph \\
-$L$ & Laplacian matrix of $G$ \\
-$L_S$ & Laplacian of $G_S = (V, E(S,S))$ \\
-$L_{uv}$ & Edge Laplacian $(e_u-e_v)(e_u-e_v)^\top$ \\
+$P_n$ & Path on $n$ vertices \\
+$G_S = (V, E(S,S))$ & Same vertex set as $G$, only edges within $S$ \\
+$L = D - A$ & Laplacian matrix \\
+$L_S$ & Laplacian of $G_S$ \\
+$L_{uv} = (e_u-e_v)(e_u-e_v)^\top$ & Edge Laplacian (rank-1 PSD matrix) \\
 $\lambda_i(M)$ & $i$-th smallest eigenvalue of $M$ \\
-$\lambda_{\max}(M)$ & Largest eigenvalue $= \|M\|_{\mathrm{op}}$ for PSD $M$ \\
-$M \preceq N$ & $N - M$ is PSD \\
-$A \preceq B$ & ``$B$ dominates $A$'' in PSD order \\
-$\varepsilon$-light & $S \subseteq V$ with $L_S \preceq \varepsilon L$ \\
-$\mathbf{1}$ & All-ones vector \\
-$e_v$ & Standard basis vector (1 at position $v$, 0 elsewhere) \\
+$\lambda_{\max}(M)$ & Largest eigenvalue \\
+$\|M\|_{\mathrm{op}}$ & Operator norm = $\lambda_{\max}(M)$ for PSD $M$ \\
+$M \succeq 0$ & $M$ is positive semidefinite \\
+$A \preceq B$ & $B - A \succeq 0$ (``$B$ dominates $A$'') \\
+$S$ is $\varepsilon$-light & $L_S \preceq \varepsilon L$ \\
+$L^+$ & Moore--Penrose pseudoinverse of $L$ \\
+$R_{uv}$ & Effective resistance of edge $(u,v)$ \\
+$\mathbf{1}$ & All-ones vector $(1,1,\ldots,1)^\top$ \\
+$e_v$ & Standard basis vector ($1$ at position $v$, $0$ elsewhere) \\
+$J$ & All-ones matrix \\
 $\mathbb{E}[\cdot]$, $\Pr(\cdot)$ & Expectation, probability \\
-$\mathrm{Bern}(p)$ & Bernoulli random variable: $1$ w.p.\ $p$, $0$ w.p.\ $1-p$ \\
+$\mathrm{Bern}(p)$ & Bernoulli: $1$ w.p.\ $p$, $0$ w.p.\ $1-p$ \\
+$X \overset{\mathrm{iid}}{\sim} \mathrm{Bern}(p)$ & $X$ drawn i.i.d.\ from Bernoulli distribution \\
 \hline
 \end{tabular}
 \end{center}
 
 % ================================================================
-\section*{Further Reading}
+\section*{Complete Reading List by Topic}
 % ================================================================
 
+\subsection*{Graph Laplacians \& Spectral Graph Theory}
+
 \begin{itemize}
-  \item \textbf{Graph Laplacians and spectral graph theory}:
-        D.~Spielman, \emph{Spectral Graph Theory} (Yale lecture notes, freely available online).
-  \item \textbf{Probabilistic method}:
-        N.~Alon and J.~Spencer, \emph{The Probabilistic Method}, Wiley, 2016.
-  \item \textbf{Matrix concentration}:
-        J.~A.~Tropp, ``User-Friendly Tail Bounds for Sums of Random Matrices,''
-        \emph{Foundations of Computational Mathematics}, 12(4):389--434, 2012.
-        (Free on arXiv: \texttt{arXiv:1004.4389}.)
-  \item \textbf{Expander graphs}:
-        S.~Hoory, N.~Linial, and A.~Wigderson, ``Expander Graphs and their Applications,''
-        \emph{Bulletin of the AMS}, 43(4):439--561, 2006.
+  \item \textbf{[Book, free]} D.~Spielman, \emph{Spectral and Algebraic Graph Theory} (April 2025 draft):
+        \url{http://cs-www.cs.yale.edu/homes/spielman/sagt/sagt.pdf}
+  \item \textbf{[Course notes]} Spielman's Yale course (2018, slides + notes):
+        \url{https://www.cs.yale.edu/homes/spielman/561/}
+  \item \textbf{[Short tutorial]} Graph Laplacian tutorial (CSU Stanislaus, 12 pages):
+        \url{https://csustan.csustan.edu/~tom/Clustering/GraphLaplacian-tutorial.pdf}
+  \item \textbf{[Lecture]} Spielman's Laplacian lecture (15 pages):
+        \url{https://www.cs.yale.edu/homes/spielman/561/lect02-15.pdf}
+\end{itemize}
+
+\subsection*{Matrix Concentration Inequalities}
+
+\begin{itemize}
+  \item \textbf{[Book, free]} J.~A.~Tropp, \emph{An Introduction to Matrix Concentration Inequalities}
+        (arXiv 1501.01571, 200 pages):
+        \url{https://arxiv.org/abs/1501.01571}
+  \item \textbf{[Paper]} J.~A.~Tropp, ``User-Friendly Tail Bounds'' (arXiv 1004.4389):
+        \url{https://arxiv.org/abs/1004.4389}
+  \item \textbf{[Published]} Same paper in \emph{Found.\ Comput.\ Math.}\ 2012:
+        \url{https://link.springer.com/article/10.1007/s10208-011-9099-z}
+  \item \textbf{[Video]} Tropp at Simons Institute:
+        \url{https://simons.berkeley.edu/user-friendly-tools-random-matrices}
+\end{itemize}
+
+\subsection*{Expander Graphs}
+
+\begin{itemize}
+  \item \textbf{[Survey, free]} S.~Hoory, N.~Linial, A.~Wigderson, ``Expander Graphs and Their Applications,''
+        \emph{Bull.\ AMS} 2006 (124 pages):
+        \url{https://www.cs.huji.ac.il/~nati/PAPERS/expander_survey.pdf}
+  \item \textbf{[Lecture notes]} Barak's expander course notes:
+        \url{https://www.boazbarak.org/expandercourse/allnotes.pdf}
+  \item \textbf{[Friendly intro]} ETH Zürich introduction to expanders:
+        \url{https://people.math.ethz.ch/~kowalski/expander-graphs.pdf}
+\end{itemize}
+
+\subsection*{Graph Sparsification \& Effective Resistance}
+
+\begin{itemize}
+  \item \textbf{[Paper]} D.~Spielman, N.~Srivastava, ``Graph Sparsification by Effective Resistances''
+        (arXiv 0803.0929):
+        \url{https://arxiv.org/abs/0803.0929}
+  \item \textbf{[Survey]} Comprehensive survey on graph reduction (arXiv 2402.03358):
+        \url{https://arxiv.org/abs/2402.03358}
+\end{itemize}
+
+\subsection*{Probabilistic Method}
+
+\begin{itemize}
+  \item \textbf{[Book]} N.~Alon, J.~Spencer, \emph{The Probabilistic Method}, 4th ed., Wiley 2016.
+  \item \textbf{[Notes, free]} Matou\v{s}ek--Vondr\'ak lecture notes (CMU, 100 pages):
+        \url{https://www.cs.cmu.edu/~15850/handouts/matousek-vondrak-prob-ln.pdf}
+\end{itemize}
+
+\subsection*{Concentration Inequalities (Scalar)}
+
+\begin{itemize}
+  \item \textbf{[Notes]} MIT Chernoff bound notes (Goemans, 9 pages):
+        \url{https://math.mit.edu/~goemans/18310S15/chernoff-notes.pdf}
+  \item \textbf{[Notes]} Rice University lecture on Markov/Chebyshev/Chernoff:
+        \url{https://www.cs.rice.edu/~as143/COMP480_580_Fall22/scribe/Lec3.pdf}
 \end{itemize}
 
 \end{document}
