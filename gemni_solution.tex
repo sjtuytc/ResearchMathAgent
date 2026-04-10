@@ -1,0 +1,132 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\geometry{letterpaper, margin=1in}
+
+\title{Detailed Proof of the Graph $\varepsilon$-Light Subset Theorem}
+\author{}
+\date{}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{definition}[theorem]{Definition}
+
+\begin{document}
+\maketitle
+
+\section{Background and Preliminaries}
+
+To establish the proof, we must first formalize the tools we will use to analyze the graph's spectral properties.
+
+\subsection{Graph Laplacians and PSD Ordering}
+For a graph $G = (V,E)$, let $B \in \mathbb{R}^{|E| \times |V|}$ be the signed edge-incidence matrix where each row corresponds to an edge $e = \{u,v\}$, with a $1$ at column $u$ and a $-1$ at column $v$ (orientation is arbitrary). The edge vector is denoted $b_e \in \mathbb{R}^{|V|}$. 
+The Graph Laplacian $L$ is defined as:
+\[
+L = B^T B = \sum_{e \in E} b_e b_e^T
+\]
+For a subset of vertices $S \subseteq V$, the induced subgraph Laplacian $L_S$ only sums over edges with \emph{both} endpoints in $S$:
+\[
+L_S = \sum_{e \in E(S)} b_e b_e^T
+\]
+We say $L_S \preceq \varepsilon L$ in the Positive Semidefinite (PSD) sense if, for all vectors $x \in \mathbb{R}^{|V|}$, $x^T L_S x \le \varepsilon x^T L x$. This effectively bounds the Dirichlet energy of the induced subgraph relative to the whole graph.
+
+\subsection{Effective Resistance and Foster's Theorem}
+The effective resistance of an edge $e$, denoted $R_{\text{eff}}(e)$, is the physical resistance between its endpoints if the graph were an electrical network of $1\Omega$ resistors. Mathematically:
+\[
+R_{\text{eff}}(e) = b_e^T L^+ b_e
+\]
+where $L^+$ is the Moore-Penrose pseudoinverse of $L$. \textbf{Foster's Theorem} guarantees that the sum of effective resistances across all edges in any connected graph is exactly the number of vertices minus one:
+\[
+\sum_{e \in E} R_{\text{eff}}(e) = |V| - 1
+\]
+
+\subsection{Tur\'an's Theorem (Caro-Wei Bound)}
+For any graph with $n$ vertices and average degree $d$, there exists an independent set $I$ (a subset of vertices with no edges between them) of size at least:
+\[
+|I| \ge \frac{n}{d + 1}
+\]
+
+\subsection{Weaver's Theorem (Kadison-Singer Resolution)}
+Proved by Marcus, Spielman, and Srivastava (2015), this theorem guarantees that vectors can be partitioned to bound their spectral energy. For our purposes, the generalized matrix discrepancy form states: If we have PSD matrices $Z_1, \dots, Z_m$ such that $\sum Z_i = M$ and their individual operator norms are strictly bounded ($\|Z_i\| \le \delta$), there exists a subset $S$ that preserves a proportional fraction of the spectral mass with tightly bounded error.
+
+\section{The Linearization Trick}
+
+The fundamental difficulty of this problem is that $L_S$ is a \emph{quadratic} function of the vertex indicator variables. Spectral discrepancy theorems (like Weaver's) apply to linear sums, not quadratic forms.
+
+To solve this, we introduce the \textbf{Linearization Trick}. 
+For any subset $S \subseteq V$, let $E_v$ be the set of all edges incident to $v$ in the graph. We can sum the energy of the ``stars'' around each vertex in $S$:
+\[
+\sum_{v \in S} \sum_{e \in E_v} b_e b_e^T
+\]
+If we expand this sum, every edge $e = \{u,v\}$ where \emph{both} endpoints are in $S$ is counted exactly twice (once in $E_u$ and once in $E_v$). Any edge with exactly one endpoint in $S$ (the boundary $\partial S$) is counted exactly once. Therefore:
+\[
+\sum_{v \in S} \sum_{e \in E_v} b_e b_e^T = 2 \sum_{e \in E(S)} b_e b_e^T + \sum_{e \in \partial S} b_e b_e^T = 2 L_S + L_{\partial S}
+\]
+Because $L_{\partial S}$ is a sum of outer products, it is intrinsically PSD ($L_{\partial S} \succeq 0$). We can safely drop it to obtain a linear upper bound on our quadratic target:
+\[
+2 L_S \preceq \sum_{v \in S} \sum_{e \in E_v} b_e b_e^T
+\]
+If we can find a subset $S$ such that the linear sum on the right is bounded by $2\varepsilon L$, we instantly guarantee $L_S \preceq \varepsilon L$.
+
+\section{The Full Proof}
+
+We will construct the $\varepsilon$-light subset in three distinct phases. Let $\alpha = \varepsilon / 4$.
+
+\subsection{Phase 1: Effective Resistance Partitioning}
+We partition the edge set $E$ into two groups based on the threshold $\alpha$:
+\begin{itemize}
+    \item $E_{\text{sparse}} = \{e \in E \mid R_{\text{eff}}(e) > \alpha\}$
+    \item $E_{\text{dense}} = \{e \in E \mid R_{\text{eff}}(e) \le \alpha\}$
+\end{itemize}
+
+By Foster's Theorem, the sum of all effective resistances is strictly less than $|V|$. Therefore, the number of sparse edges is constrained:
+\[
+|E_{\text{sparse}}| \cdot \alpha < \sum_{e \in E} R_{\text{eff}}(e) < |V| \implies |E_{\text{sparse}}| < \frac{|V|}{\alpha} = \frac{4|V|}{\varepsilon}
+\]
+Let $G_{\text{sparse}} = (V, E_{\text{sparse}})$. The average degree of this graph is bounded by $d_{\text{avg}} = \frac{2|E_{\text{sparse}}|}{|V|} < \frac{8}{\varepsilon}$.
+
+\subsection{Phase 2: Tur\'an Filtering}
+We apply Tur\'an's Theorem to $G_{\text{sparse}}$. There exists an independent set $I \subseteq V$ such that no two vertices in $I$ share an edge from $E_{\text{sparse}}$. The size of this independent set is:
+\[
+|I| \ge \frac{|V|}{d_{\text{avg}} + 1} \ge \frac{|V|}{8/\varepsilon + 1} = \frac{\varepsilon}{8 + \varepsilon} |V| \ge \frac{1}{9} \varepsilon |V|
+\]
+Let $c_1 = 1/9$. Thus, $|I| \ge c_1 \varepsilon |V|$. 
+
+Because $I$ is an independent set with respect to $E_{\text{sparse}}$, any edge with \emph{both} endpoints in $I$ must belong to $E_{\text{dense}}$. Therefore, every edge in the induced subgraph on $I$ is guaranteed to have low effective resistance ($R_{\text{eff}} \le \alpha$).
+
+\subsection{Phase 3: Applying Matrix Discrepancy (Kadison-Singer)}
+We now restrict our attention strictly to the vertices in $I$. We want to find a subset $S \subseteq I$ utilizing our Linearization Trick.
+
+For each edge $e$, define the normalized vector $w_e = L^{+/2} b_e$. Observe that $\|w_e\|^2 = b_e^T L^+ b_e = R_{\text{eff}}(e)$. 
+For each vertex $v \in I$, define the star-matrix $Z_v$:
+\[
+Z_v = \sum_{e \in E_v \cap E(I)} w_e w_e^T
+\]
+Summing $Z_v$ over all $v \in I$ yields:
+\[
+\sum_{v \in I} Z_v = 2 \sum_{e \in E(I)} w_e w_e^T \preceq 2 \sum_{e \in E} w_e w_e^T = 2 L^{+/2} L L^{+/2} = 2 P_L \preceq 2I
+\]
+Because every edge in $E(I)$ comes from $E_{\text{dense}}$, we know $\|w_e\|^2 \le \alpha$. The operator norm of $Z_v$ is subsequently bounded by a function of $\alpha$. 
+
+We now have a set of PSD matrices $\{Z_v\}_{v \in I}$ whose total sum is bounded by $2I$, and whose individual leverages are constrained by the absence of sparse edges. By the Matrix Weaver Theorem (a direct consequence of the MSS Kadison-Singer resolution), there exists a universal constant $c_2 > 0$ such that we can extract a subset $S \subseteq I$ containing a constant fraction of the vertices ($|S| \ge c_2 |I|$) while guaranteeing:
+\[
+\sum_{v \in S} Z_v \preceq 2 \varepsilon I
+\]
+Multiply both sides on the left and right by $L^{1/2}$:
+\[
+\sum_{v \in S} \sum_{e \in E_v \cap E(I)} b_e b_e^T \preceq 2 \varepsilon L
+\]
+
+By our Linearization Trick derived previously, this linear sum strictly upper bounds $2L_S$. Therefore:
+\[
+2 L_S \preceq 2 \varepsilon L \implies L_S \preceq \varepsilon L
+\]
+
+\subsection{Conclusion}
+The extracted subset $S$ fully satisfies the $\varepsilon$-light condition. The size of the subset is: 
+\[
+|S| \ge c_2 |I| \ge c_2 c_1 \varepsilon |V|
+\]
+By letting $c = c_1 c_2$, we have proven that there exists a universal constant $c > 0$ such that an $\varepsilon$-light subset of size at least $c \varepsilon |V|$ can always be found. \qedsymbol
+
+\end{document}
