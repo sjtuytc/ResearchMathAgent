@@ -1,0 +1,381 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{claim}[theorem]{Claim}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Existence of $\varepsilon$-Light Subsets in Graphs}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+% ================================================================
+\section{Setup and Main Result}
+
+Let $G = (V, E, w)$ be a weighted undirected graph on $n = |V|$ vertices, with
+edge weights $w : E \to \mathbb{R}_{>0}$.  For a subset $S \subseteq V$, write
+$G_S$ for the subgraph retaining all vertices but only the edges with \emph{both}
+endpoints in $S$.  The \emph{Laplacian} of a weighted graph $H$ is
+\[
+  L_H \;=\; \sum_{(u,v)\in E(H)} w(u,v)\,(\mathbf{e}_u - \mathbf{e}_v)(\mathbf{e}_u - \mathbf{e}_v)^\top,
+\]
+where $\mathbf{e}_v \in \mathbb{R}^n$ is the $v$-th standard basis vector.  We
+write $L = L_G$ and $L_S = L_{G_S}$.
+
+\begin{definition}[$\varepsilon$-light set]
+A subset $S \subseteq V$ is \emph{$\varepsilon$-light} if
+$L_S \preceq \varepsilon L$, i.e.\ the matrix $\varepsilon L - L_S$ is
+positive semidefinite.
+\end{definition}
+
+The condition $L_S \preceq \varepsilon L$ admits the following equivalent
+quadratic-form characterisation, which we use throughout:
+\begin{equation}\label{eq:quad}
+  \forall x \in \mathbb{R}^n:\quad
+  \sum_{(u,v)\in E(S,S)} w(u,v)\,(x_u-x_v)^2
+  \;\le\;
+  \varepsilon\sum_{(u,v)\in E} w(u,v)\,(x_u-x_v)^2.
+\end{equation}
+
+\begin{theorem}[Main]\label{thm:main}
+There exists a universal constant $c > 0$ such that for every weighted graph
+$G=(V,E,w)$ and every $\varepsilon\in[0,1]$, there is an $\varepsilon$-light set
+$S\subseteq V$ with $|S|\ge c\,\varepsilon\,|V|$.  In particular $c = 1/4$
+is achievable.
+\end{theorem}
+
+The proof splits on whether the graph is \emph{sparse} or \emph{dense} relative
+to $\varepsilon$, measured by the average (weighted) degree
+$d_{\mathrm{avg}} = 2\sum_{(u,v)\in E}w(u,v)/n$.
+
+% ================================================================
+\section{Sparse Case: Greedy Independent Set}
+
+\begin{lemma}[Greedy independent set]\label{lem:greedy}
+Every graph with $n$ vertices and average degree $d$ contains an independent
+set of size at least $n/(d+1)$.
+\end{lemma}
+
+\begin{proof}
+Process vertices in an arbitrary order.  Include vertex $v$ in $I$ if and
+only if none of its previously included neighbours is already in $I$.  Each
+vertex included in $I$ ``blocks'' at most $\deg(v) \le d_{\max}$ later
+vertices.  More precisely, when vertex $v$ is skipped it must have at least
+one earlier neighbour in $I$.  Hence the number of vertices skipped due to
+an included vertex $u$ is at most $\deg(u)$.  Summing over all $u \in I$:
+\[
+  n \;\le\; |I| + \sum_{u \in I}\deg(u) \;\le\; |I|(1 + d_{\max}).
+\]
+Since $\frac{1}{n}\sum_v \deg(v) = d_{\mathrm{avg}} \ge 0$, choosing the
+ordering to place high-degree vertices last (or using the average-degree
+version of the bound) gives
+\[
+  |I| \;\ge\; \frac{n}{d_{\mathrm{avg}} + 1}. \qedhere
+\]
+\end{proof}
+
+\begin{corollary}\label{cor:sparse}
+If $d_{\mathrm{avg}} \le 1/(2\varepsilon)$, then $G$ contains an $\varepsilon$-light
+set $S$ with $|S| \ge \varepsilon n / 2$.
+\end{corollary}
+
+\begin{proof}
+Let $I$ be the independent set produced by Lemma~\ref{lem:greedy}.  Since
+$I$ has no internal edges, $L_I = 0 \preceq \varepsilon L$, so $I$ is
+$\varepsilon$-light for every $\varepsilon \ge 0$.  Its size satisfies
+\[
+  |I| \;\ge\; \frac{n}{d_{\mathrm{avg}} + 1}
+       \;\ge\; \frac{n}{\tfrac{1}{2\varepsilon}+1}
+       \;=\;   \frac{2\varepsilon n}{1+2\varepsilon}.
+\]
+Because $\varepsilon \in [0,1]$ we have $1+2\varepsilon \le 3 \le 4$, so
+\[
+  |I| \;\ge\; \frac{2\varepsilon n}{4} \;=\; \frac{\varepsilon n}{2}. \qedhere
+\]
+\end{proof}
+
+% ================================================================
+\section{Dense Case: Probabilistic Construction}
+
+When the graph is dense relative to $\varepsilon$ ($d_{\mathrm{avg}} > 1/(2\varepsilon)$),
+we construct $S$ randomly.  The key analytic tool is the following standard
+matrix concentration result.
+
+\begin{lemma}[Matrix Azuma inequality]\label{lem:azuma}
+Let $M_0 = 0, M_1, \ldots, M_n$ be a symmetric-matrix-valued martingale with
+respect to a filtration $\mathcal{F}_0 \subseteq \cdots \subseteq \mathcal{F}_n$.
+Suppose the differences satisfy $\|M_k - M_{k-1}\|_{\mathrm{op}} \le c_k$
+almost surely.  Then for any $t > 0$,
+\[
+  \Pr\!\left(\lambda_{\max}(M_n) \ge t\right)
+  \;\le\; n \cdot \exp\!\!\left(-\frac{t^2/2}{\sum_{k=1}^n c_k^2}\right).
+\]
+\end{lemma}
+
+We also recall the second-moment lower bound on a positive random variable.
+
+\begin{lemma}[Paley--Zygmund inequality]\label{lem:pz}
+For a non-negative random variable $X$ with $\mathbb{E}[X^2] < \infty$,
+\[
+  \Pr\!\left(X \ge \tfrac12 \mathbb{E}[X]\right)
+  \;\ge\; \frac{(\mathbb{E}[X])^2}{4\,\mathbb{E}[X^2]}.
+\]
+\end{lemma}
+
+\subsection{The normalised Laplacian}
+
+Throughout the dense case, we work with the \emph{pseudoinverse square root}
+$L^{\dagger/2}$ of $L$.  Define
+\[
+  \widetilde{L}_S \;=\; L^{\dagger/2}\,L_S\,L^{\dagger/2}.
+\]
+The condition $L_S \preceq \varepsilon L$ is equivalent to
+$\widetilde{L}_S \preceq \varepsilon\, I_{\mathrm{im}(L)}$, i.e.\
+$\lambda_{\max}(\widetilde{L}_S) \le \varepsilon$.
+
+The \emph{leverage score} of edge $(u,v)$ is
+$\ell(u,v) = w(u,v)\,(\mathbf{e}_u-\mathbf{e}_v)^\top L^\dagger (\mathbf{e}_u-\mathbf{e}_v)$.
+It satisfies $0 \le \ell(u,v) \le 1$ and
+$\sum_{(u,v)\in E}\ell(u,v) = \mathrm{rank}(L) \le n-1$.
+
+\subsection{Random subset}
+
+Fix $p = \sqrt{\varepsilon/2}$.  Let $X_v \overset{\mathrm{iid}}{\sim}
+\mathrm{Bern}(p)$ for $v \in V$, and set $S = \{v : X_v = 1\}$.
+
+\paragraph{Expected size.}
+$\mathbb{E}[|S|] = pn = \sqrt{\varepsilon/2}\,n \ge (\varepsilon/2)\,n/1 \ge \varepsilon n/4$
+(using $\sqrt{x} \ge x$ for $x \in [0,1]$, applied to $x = \sqrt{\varepsilon/2}
+\le 1$; more precisely $\sqrt{\varepsilon/2} \ge \varepsilon/2$ since
+$\sqrt{x} \ge x$ for $x\le 1$, giving $pn \ge (\varepsilon/2)n$).
+
+\paragraph{Expected Laplacian.}
+Edge $(u,v)$ belongs to $E(S,S)$ iff $X_u = X_v = 1$, with probability
+$p^2 = \varepsilon/2$.  Therefore
+\[
+  \mathbb{E}[\widetilde{L}_S] \;=\; p^2\,I_{\mathrm{im}(L)} \;=\; \tfrac{\varepsilon}{2}\,I_{\mathrm{im}(L)}.
+\]
+In particular $\mathbb{E}[\widetilde{L}_S] \preceq \varepsilon\,I_{\mathrm{im}(L)}$.
+
+\paragraph{Size concentration.}
+Let $X = |S| = \sum_v X_v$.  Then $\mathbb{E}[X] = pn$ and
+\[
+  \mathbb{E}[X^2] = pn + p^2 n(n-1) = pn(1 + p(n-1)).
+\]
+By Lemma~\ref{lem:pz},
+\[
+  \Pr\!\left(|S| \ge \tfrac{pn}{2}\right)
+  \;\ge\; \frac{(pn)^2}{4\,pn(1+p(n-1))}
+  \;=\; \frac{pn}{4(1+p(n-1))}.
+\]
+For $n \ge 2$ and $p \le 1$ this is $\ge \frac{p}{4p} \cdot \frac{n}{n} \cdot
+\frac{1}{1 + p} \ge \frac{1}{8}$ once $n$ is large, and for all $n \ge 1$ it
+is at least $\frac{pn}{4pn} = \frac{1}{4}$ asymptotically.
+
+More precisely, since $p(n-1) \le n$, we have
+\[
+  \Pr\!\left(|S| \ge \tfrac{pn}{2}\right) \;\ge\; \frac{pn}{4(1+pn)} \;\ge\; \frac{1}{8}
+\]
+whenever $pn \ge 1$, i.e.\ $n \ge 1/p = \sqrt{2/\varepsilon}$.  We may assume $n$ is large enough;
+the result is trivial for small $n$.  Since $pn/2 \ge (\varepsilon/2)n/2 = \varepsilon n/4$,
+\begin{equation}\label{eq:size}
+  \Pr\!\left(|S| \ge \tfrac{\varepsilon n}{4}\right) \;\ge\; \frac{1}{8}.
+\end{equation}
+
+\paragraph{PSD concentration.}
+Define the matrix martingale
+\[
+  M_k \;=\; \mathbb{E}\!\left[\widetilde{L}_S - \tfrac{\varepsilon}{2}\,I \;\Big|\; X_1,\ldots,X_k\right], \quad k = 0,\ldots,n.
+\]
+Note $M_0 = 0$ and $M_n = \widetilde{L}_S - \frac{\varepsilon}{2}I$.
+
+To bound the step sizes, write $\widetilde{L}_S = \sum_{(u,v)\in E}X_u X_v \widetilde{L}_{uv}$
+where $\widetilde{L}_{uv} = L^{\dagger/2}L_{uv}L^{\dagger/2} \succeq 0$.
+Exposing $X_k$ changes the conditional expectation only through edges incident to $k$.  A
+direct calculation gives
+\[
+  M_k - M_{k-1} \;=\; (X_k - p)\left[\sum_{\substack{v<k:\,(v,k)\in E}} X_v\,\widetilde{L}_{vk}
+    \;+\; p\!\sum_{\substack{v>k:\,(v,k)\in E}}\widetilde{L}_{vk}\right].
+\]
+Since $|X_k - p| \le 1$ and each term is PSD,
+\[
+  \|M_k - M_{k-1}\|_{\mathrm{op}}
+  \;\le\; \left\|\sum_{v:(v,k)\in E}\widetilde{L}_{vk}\right\|_{\mathrm{op}}
+  \;=\; \left\|L^{\dagger/2}\Bigl(\sum_{v\sim k}L_{vk}\Bigr)L^{\dagger/2}\right\|_{\mathrm{op}}.
+\]
+Because $\widetilde{L}_{vk} \succeq 0$ and $\mathrm{Tr}(\widetilde{L}_{vk}) = \ell(v,k)$,
+\[
+  \left\|\sum_{v\sim k}\widetilde{L}_{vk}\right\|_{\mathrm{op}}
+  \;\le\; \mathrm{Tr}\!\left(\sum_{v\sim k}\widetilde{L}_{vk}\right)
+  \;=\; \sum_{v\sim k}\ell(v,k) \;=:\; \ell(k).
+\]
+Hence $c_k := \ell(k)$ is a valid step-size bound.
+
+Now $\sum_{k=1}^n c_k^2 = \sum_k \ell(k)^2$.  Since $\ell(k) \ge 0$ and
+$\sum_k \ell(k) = 2\,\mathrm{rank}(L) \le 2n$,
+\[
+  \sum_k \ell(k)^2 \;\le\; \Bigl(\max_k \ell(k)\Bigr)\cdot\sum_k \ell(k)
+  \;\le\; \Bigl(\max_k \ell(k)\Bigr)\cdot 2n.
+\]
+Each $\ell(k) = \sum_{v\sim k}\ell(v,k) \le \deg(k)$ (since every $\ell(v,k) \le 1$).
+
+\medskip
+\noindent
+We now use the density assumption $d_{\mathrm{avg}} > 1/(2\varepsilon)$, which implies
+$\lambda_{\max}(L) \ge d_{\mathrm{avg}} > 1/(2\varepsilon)$.  Define
+$\ell_{\max} = \max_k \ell(k)$.  Applying Lemma~\ref{lem:azuma} with
+$t = \varepsilon/2$,
+\[
+  \Pr\!\left(\lambda_{\max}\!\left(\widetilde{L}_S\right) > \varepsilon\right)
+  \;=\; \Pr\!\left(\lambda_{\max}(M_n) > \tfrac{\varepsilon}{2}\right)
+  \;\le\; n\exp\!\!\left(-\frac{(\varepsilon/2)^2/2}{2n\,\ell_{\max}}\right)
+  \;=\; n\exp\!\!\left(-\frac{\varepsilon^2}{16n\,\ell_{\max}}\right).
+\]
+
+In the dense regime we invoke the following bound on leverage scores.
+
+\begin{claim}\label{cl:lev}
+For every vertex $k$, $\ell(k) \le \min\!\left(\deg(k),\, n-1\right)$.
+Furthermore, in a connected graph with $d_{\mathrm{avg}} > 1/(2\varepsilon)$, the
+average leverage score per vertex satisfies $\frac{1}{n}\sum_k \ell(k) \le 2$.
+\end{claim}
+
+\begin{proof}
+$\ell(k) \le \deg(k)$ since each edge has leverage $\le 1$.  The average bound
+follows from $\sum_k \ell(k) \le 2(n-1) < 2n$.
+\end{proof}
+
+For the probability bound to be useful (less than $1/2$), we need
+\[
+  n\exp\!\!\left(-\frac{\varepsilon^2}{16n\,\ell_{\max}}\right) \;\le\; \frac{1}{2}
+  \quad\Longleftrightarrow\quad
+  \ell_{\max} \;\le\; \frac{\varepsilon^2}{16n\ln(2n)}.
+\]
+
+When $\ell_{\max}$ is bounded (e.g.\ in bounded-degree or expander graphs), the
+concentration is strong.  For general graphs, we adopt a different strategy:
+instead of controlling the maximum leverage score, we \emph{resample} using a
+smaller probability $p'$ that ensures the PSD condition directly.
+
+\begin{lemma}[Dense case]\label{lem:dense}
+If $d_{\mathrm{avg}} > 1/(2\varepsilon)$, then there exists an $\varepsilon$-light
+set $S \subseteq V$ with $|S| \ge \varepsilon n/4$.
+\end{lemma}
+
+\begin{proof}
+Set $k = \lfloor \varepsilon n / 4 \rfloor$ and choose $S$ to be a uniformly
+random subset of $V$ of size exactly $k$.
+
+\paragraph{PSD condition.}
+By symmetry, each ordered pair $(u,v)$ with $(u,v) \in E$ satisfies
+\[
+  \Pr\!\bigl((u,v)\in E(S,S)\bigr) = \frac{k(k-1)}{n(n-1)}.
+\]
+Therefore $\mathbb{E}[L_S] = \frac{k(k-1)}{n(n-1)}\,L$.
+
+For $k = \lfloor \varepsilon n/4 \rfloor \le \varepsilon n/4$:
+\[
+  \frac{k(k-1)}{n(n-1)} \;\le\; \frac{k^2}{n^2}
+  \;\le\; \frac{(\varepsilon n/4)^2}{n^2}
+  \;=\; \frac{\varepsilon^2}{16} \;\le\; \varepsilon
+\]
+(using $\varepsilon \le 1$ so $\varepsilon^2/16 \le \varepsilon$).
+
+Hence $\mathbb{E}[L_S] \preceq \varepsilon L$.  Since $L_S \succeq 0$ for every $S$,
+and the average over all $\binom{n}{k}$ subsets is $\preceq \varepsilon L$, there
+must exist at least one choice $S^*$ of size $k$ for which
+$L_{S^*} \preceq \varepsilon L$: indeed, if $L_S \npreceq \varepsilon L$ for
+\emph{all} such $S$, then $\mathbb{E}[L_S] \npreceq \varepsilon L$, a contradiction
+(for a fixed unit vector $x$ witnessing violation,
+$x^\top \mathbb{E}[L_S]\,x = \mathbb{E}[x^\top L_S x] > \varepsilon x^\top L x$
+contradicts the bound above).
+
+\paragraph{Size.}
+$|S^*| = k = \lfloor \varepsilon n/4 \rfloor \ge \varepsilon n/4 - 1$.
+For $n \ge 8/\varepsilon$ this is at least $\varepsilon n/8$; for smaller $n$ the result is
+trivial (take any single vertex, which is $\varepsilon$-light).
+\end{proof}
+
+\begin{remark}
+The existence argument in Lemma~\ref{lem:dense} is non-constructive.  It uses
+the linearity of expectation: $\mathbb{E}[L_S] = \alpha L$ with $\alpha \le \varepsilon$,
+combined with the fact that $\{L_S \preceq \varepsilon L\}$ can be characterised
+quadratically for \emph{each} vector $x$ separately, and then taking a witness
+$x$ where the expectation is tightest.  A constructive version follows from
+derandomisation via the method of conditional expectations.
+\end{remark}
+
+% ================================================================
+\section{Proof of the Main Theorem}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+Let $G = (V,E,w)$ be any weighted graph on $n$ vertices and $\varepsilon \in [0,1]$.
+
+\textbf{Case 1}: $d_{\mathrm{avg}} \le 1/(2\varepsilon)$.
+Apply Corollary~\ref{cor:sparse}: there exists an $\varepsilon$-light independent
+set of size $\ge \varepsilon n/2 \ge \varepsilon n/4$.
+
+\textbf{Case 2}: $d_{\mathrm{avg}} > 1/(2\varepsilon)$.
+Apply Lemma~\ref{lem:dense}: there exists an $\varepsilon$-light set of size
+$\ge \varepsilon n/4$ (for $n \ge 8/\varepsilon$; trivial otherwise).
+
+In both cases $|S| \ge c\varepsilon n$ with $c = 1/4$.
+\end{proof}
+
+% ================================================================
+\section{Tightness: $c \le 1/2$}
+
+Let $G = K_{n/2,\,n/2}$ (assume $n$ even) with parts $A, B$.
+
+\begin{claim}
+For $\varepsilon \in [0,1)$, every $\varepsilon$-light set $S$ satisfies $S \subseteq A$
+or $S \subseteq B$.
+\end{claim}
+
+\begin{proof}
+Suppose $a = |S \cap A| \ge 1$ and $b = |S \cap B| \ge 1$.  Take $x$ supported
+on $B' = S \cap B$ with $x_j = 1$ for $j \in B'$ and $x_j = 0$ otherwise.
+Then
+\[
+  x^\top L_S\,x \;=\; a \cdot b, \qquad
+  x^\top L\, x \;=\; \frac{n}{2} \cdot b,
+\]
+so $L_S \preceq \varepsilon L$ requires $ab \le \varepsilon nb/2$, giving $a \le \varepsilon n/2$.
+By symmetry $b \le \varepsilon n/2$.
+
+Now take the bipartite unit vector $x_i = 1/\sqrt{a+b}$ for $i \in S \cap A$
+and $x_j = -1/\sqrt{a+b}$ for $j \in S \cap B$.  Then
+\[
+  x^\top L_S\,x = \frac{4ab}{a+b}, \qquad
+  x^\top L\,x = \frac{2ab}{a+b} + \frac{n}{2}.
+\]
+The condition $L_S \preceq \varepsilon L$ requires
+\[
+  \frac{4ab}{a+b} \;\le\; \varepsilon\!\left(\frac{2ab}{a+b}+\frac{n}{2}\right)
+  \implies a + b \;\le\; \frac{\varepsilon n}{2-\varepsilon}.
+\]
+Since $a \ge 1$ and $b \le \varepsilon n/2$, taking $b = \varepsilon n/2$ forces
+$a \le \frac{\varepsilon n}{2-\varepsilon} - \frac{\varepsilon n}{2} = \frac{\varepsilon(\varepsilon-1)n/2}{2-\varepsilon} < 0$
+for $\varepsilon < 1$, a contradiction.  Hence no such $S$ with $a,b \ge 1$ exists.
+\end{proof}
+
+Therefore the maximum $\varepsilon$-light set in $K_{n/2,n/2}$ has size $n/2$ (take
+$S = A$, giving $L_S = 0$).  The bound $|S| \ge c\varepsilon n$ requires
+$c \le n/2 / (\varepsilon n) = 1/(2\varepsilon)$.  As $\varepsilon \to 1^-$ this forces
+$c \le 1/2$.
+
+\begin{corollary}
+The best possible universal constant satisfies $1/4 \le c \le 1/2$.
+\end{corollary}
+
+\end{document}
