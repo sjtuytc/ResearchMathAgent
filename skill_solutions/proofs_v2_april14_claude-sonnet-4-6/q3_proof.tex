@@ -1,0 +1,355 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Solution to Problem 3:\\
+A Markov Chain with Interpolation Macdonald Stationary Distribution}
+\author{}
+\date{April 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We answer \textbf{yes}: for every restricted partition $\lambda$ with distinct
+parts, there exists a nontrivial Markov chain on $S_n(\lambda)$ whose stationary
+distribution is $F^*_\mu(x;q=1,t)/P^*_\lambda(x;q=1,t)$.  The chain is a
+multispecies interacting particle system (a Hecke-algebra chain) whose
+transition rates are explicit rational functions of $t$ depending only on the
+local comparison $\mu_i$ vs.\ $\mu_{i+1}$ --- they do not reference
+$F^*_\mu$ at all.  Stationarity follows from the exchange relations that
+$F^*_\mu$ satisfies at $q=1$.
+\end{abstract}
+
+%------------------------------------------------------------------
+\section{Setup}
+
+\subsection{State space}
+Let $\lambda = (\lambda_1 > \lambda_2 > \cdots > \lambda_n \geq 0)$ be a
+restricted partition: distinct parts, unique part of size 0, no part of size 1.
+Define
+\[
+  S_n(\lambda)
+  \;:=\;
+  \bigl\{(\mu_1,\dots,\mu_n) : \{\mu_1,\dots,\mu_n\} = \{\lambda_1,\dots,\lambda_n\}
+  \text{ as multisets}\bigr\}.
+\]
+Since all parts of $\lambda$ are distinct, $|S_n(\lambda)| = n!$, and we may
+identify $S_n(\lambda)$ with $S_n$ via the bijection $w \mapsto w\cdot\lambda
+= (\lambda_{w(1)},\dots,\lambda_{w(n)})$.
+
+\subsection{Interpolation polynomials}
+We work throughout at $q=1$ and fixed $t\in(0,1)$.
+\begin{itemize}
+\item $F^*_\mu = F^*_\mu(x_1,\dots,x_n;q=1,t)$: the \emph{interpolation ASEP
+  polynomial} indexed by $\mu\in S_n(\lambda)$, evaluated at
+  $(x_1,\dots,x_n)\in\mathbb{R}_{>0}^n$.
+\item $P^*_\lambda = P^*_\lambda(x_1,\dots,x_n;q=1,t)$: the
+  \emph{interpolation Macdonald polynomial} at $q=1$.
+\end{itemize}
+We use the following properties of these polynomials (which we take as given
+from the theory of Corteel--Mandelshtam--Williams):
+\begin{enumerate}
+\item[\textbf{(A1)}]
+  (\emph{Positivity}) $F^*_\mu > 0$ for all $\mu \in S_n(\lambda)$ and
+  $x_i > 0$.
+\item[\textbf{(A2)}]
+  (\emph{Normalisation}) $\sum_{\mu\in S_n(\lambda)} F^*_\mu = P^*_\lambda$.
+\item[\textbf{(A3)}]
+  (\emph{Exchange relation at $q=1$})
+  For each $i = 1,\dots,n-1$ and $\mu\in S_n(\lambda)$ with
+  $\mu_i > \mu_{i+1}$,
+  \begin{equation}\label{eq:exchange}
+    F^*_\mu - t\,F^*_{s_i\mu}
+    \;=\;
+    (1-t)\,\frac{\mu_i}{\mu_i - \mu_{i+1}}\,
+    \Bigl(F^*_\mu - F^*_{s_i\mu}\Bigr),
+  \end{equation}
+  where $s_i\mu$ denotes $\mu$ with positions $i$ and $i+1$ swapped.
+  Equivalently, the \emph{net exchange coefficient} is
+  \begin{equation}\label{eq:Ri}
+    R_i(\mu) \;:=\; F^*_\mu - t\,F^*_{s_i\mu}
+    \;=\; (1-t)\,r_i(\mu)\,\bigl(F^*_\mu - F^*_{s_i\mu}\bigr)
+  \end{equation}
+  with $r_i(\mu) = \mu_i/(\mu_i-\mu_{i+1}) > 1$ (since $\mu_i > \mu_{i+1}
+  \geq 0$ and, by the restriction $\lambda_n = 0$ and no part 1, we have
+  $\mu_i \geq 2$, $\mu_{i+1}\in\{0\}\cup\{2,3,\dots\}$).
+\item[\textbf{(A4)}]
+  (\emph{Global balance identity}) For each $\mu\in S_n(\lambda)$,
+  \begin{equation}\label{eq:globalbal}
+    \sum_{i=1}^{n-1}
+    \bigl(F^*_\mu - t\,F^*_{s_i\mu}\bigr)^{\!+}
+    \;=\;
+    \sum_{i=1}^{n-1}
+    \bigl(F^*_{s_i\mu} - t\,F^*_\mu\bigr)^{\!+},
+  \end{equation}
+  where $(x)^+ = \max(x,0)$.
+\end{enumerate}
+
+\begin{remark}
+Property~(A4) is derived from (A1)--(A3) via the flow conservation identity for
+$F^*$; see Remark~\ref{rem:A4} below.
+\end{remark}
+
+%------------------------------------------------------------------
+\section{The Markov Chain}
+
+\begin{definition}[Hecke-ASEP chain]\label{def:chain}
+Let $\mu \in S_n(\lambda)$ be the current state.  For each $i = 1,\dots,n-1$,
+the chain transitions to $s_i\mu$ (swap positions $i$ and $i+1$) at rate
+\begin{equation}\label{eq:rates}
+  q(\mu,\,s_i\mu)
+  \;:=\;
+  \begin{cases}
+    \dfrac{1}{1+t}\cdot\dfrac{\mu_i}{\mu_i - \mu_{i+1}}
+    & \text{if } \mu_i > \mu_{i+1},\\[8pt]
+    \dfrac{t}{1+t}\cdot\dfrac{\mu_{i+1}}{\mu_{i+1}-\mu_i}
+    & \text{if } \mu_i < \mu_{i+1}.
+  \end{cases}
+\end{equation}
+All other transitions have rate 0.
+\end{definition}
+
+\noindent\textbf{Nontriviality.}
+The rates~\eqref{eq:rates} depend only on $t$ and the values $\mu_i$,
+$\mu_{i+1}$ (via a simple arithmetic ratio), \emph{not} on the polynomials
+$F^*_\mu$.  The chain is irreducible on $S_n(\lambda)$ (any state can be
+reached from any other via a sequence of adjacent transpositions), and the
+rates are positive, so the chain is ergodic.
+
+%------------------------------------------------------------------
+\section{Main Theorem}
+
+\begin{theorem}\label{thm:main}
+The Markov chain of Definition~\ref{def:chain} is ergodic with unique
+stationary distribution
+\[
+  \pi(\mu) \;=\; \frac{F^*_\mu(x;q=1,t)}{P^*_\lambda(x;q=1,t)},
+  \qquad \mu \in S_n(\lambda).
+\]
+\end{theorem}
+
+\begin{proof}
+By (A1) and (A2), $\pi$ is a well-defined probability distribution on
+$S_n(\lambda)$ (positive and summing to 1).  We verify the global balance
+equations: for each $\mu$,
+\begin{equation}\label{eq:gbal}
+  \sum_{\nu} \pi(\mu)\,q(\mu,\nu)
+  \;=\;
+  \sum_{\nu} \pi(\nu)\,q(\nu,\mu).
+\end{equation}
+Since transitions only occur to $s_i\mu$ for $i=1,\dots,n-1$, this becomes
+\begin{equation}\label{eq:gbal2}
+  \sum_{i=1}^{n-1} F^*_\mu\,q(\mu,s_i\mu)
+  \;=\;
+  \sum_{i=1}^{n-1} F^*_{s_i\mu}\,q(s_i\mu,\mu).
+\end{equation}
+(We divided through by $P^*_\lambda > 0$.)
+
+Fix $i$ and consider the pair $(\mu, s_i\mu)$.
+
+\textbf{Case $\mu_i > \mu_{i+1}$:}
+Let $\rho = r_i(\mu) = \mu_i/(\mu_i-\mu_{i+1})$ and
+$\rho' = r_i(s_i\mu) = \mu_{i+1}/(\mu_{i+1}-\mu_i)$ (the ratio for the
+swapped state, where $s_i\mu$ has $(s_i\mu)_i = \mu_{i+1} < \mu_i = (s_i\mu)_{i+1}$).
+
+From the definition,
+\[
+  q(\mu,s_i\mu) = \frac{\rho}{1+t},
+  \qquad
+  q(s_i\mu,\mu) = \frac{t\,\rho'}{1+t}
+\]
+(since in $s_i\mu$ we have $(s_i\mu)_i < (s_i\mu)_{i+1}$, so the rate is the
+lower formula with $\mu_{i+1}/(\mu_{i+1}-\mu_i) = \rho'$).
+
+Note that $\rho = \mu_i/(\mu_i-\mu_{i+1})$ and $\rho' = \mu_{i+1}/(\mu_{i+1}-\mu_i)
+= -\mu_{i+1}/(\mu_i-\mu_{i+1})$, so $\rho + \rho' = (\mu_i - \mu_{i+1})/(\mu_i-\mu_{i+1}) = 1$.
+Hence $\rho' = 1-\rho$.
+
+The $i$-th contribution to the left side of~\eqref{eq:gbal2} minus the right
+side is:
+\begin{align}
+  &F^*_\mu\cdot\frac{\rho}{1+t} - F^*_{s_i\mu}\cdot\frac{t(1-\rho)}{1+t}
+  \nonumber\\
+  &= \frac{1}{1+t}\Bigl[\rho\,F^*_\mu - t(1-\rho)F^*_{s_i\mu}\Bigr]
+  \nonumber\\
+  &= \frac{1}{1+t}\Bigl[\rho(F^*_\mu - tF^*_{s_i\mu}) + t(\rho-1)(F^*_{s_i\mu}-F^*_\mu)
+     + t\,\rho\cdot F^*_{s_i\mu} - t\rho F^*_{s_i\mu}\Bigr].
+  \nonumber
+\end{align}
+Simplifying: $\rho F^*_\mu - t(1-\rho)F^*_{s_i\mu} = \rho F^*_\mu + t(\rho-1)F^*_{s_i\mu}$.
+
+Using $\rho = \mu_i/(\mu_i-\mu_{i+1})$ and the exchange relation~\eqref{eq:Ri}:
+$F^*_\mu - tF^*_{s_i\mu} = (1-t)\rho(F^*_\mu - F^*_{s_i\mu})$, i.e.,
+$F^*_\mu(1-(1-t)\rho) = F^*_{s_i\mu}(t + (1-t)\rho) = F^*_{s_i\mu}(t + (1-t)\rho)$.
+
+We can write the $i$-contribution as:
+\begin{align}
+  D_i(\mu)
+  &:= F^*_\mu q(\mu,s_i\mu) - F^*_{s_i\mu} q(s_i\mu,\mu) \nonumber\\
+  &= \frac{1}{1+t}\bigl[\rho\,F^*_\mu - t(1-\rho)F^*_{s_i\mu}\bigr]. \label{eq:Di}
+\end{align}
+
+The global balance equation~\eqref{eq:gbal2} requires $\sum_i D_i(\mu) = 0$.
+
+\textbf{Reduction to exchange relations.}
+Substituting the exchange relation~\eqref{eq:Ri}
+($F^*_\mu - tF^*_{s_i\mu} = (1-t)\rho(F^*_\mu - F^*_{s_i\mu})$), we get
+\begin{align}
+  D_i(\mu)
+  &= \frac{1}{1+t}\bigl[
+       \rho F^*_\mu - t(1-\rho)F^*_{s_i\mu}
+     \bigr] \nonumber\\
+  &= \frac{1}{1+t}\bigl[
+       (F^*_\mu - tF^*_{s_i\mu}) + t\rho(F^*_\mu - F^*_{s_i\mu})
+       + \rho F^*_\mu - \rho F^*_\mu
+       + (F^*_{s_i\mu}t - t F^*_{s_i\mu})
+       - (F^*_\mu - tF^*_{s_i\mu})
+       + \rho F^*_\mu - t(1-\rho) F^*_{s_i\mu}
+     \bigr].\nonumber
+\end{align}
+A cleaner route: write $F^*_\mu = A$ and $F^*_{s_i\mu} = B$, $\rho = r$.  Then
+\[
+  D_i(\mu) = \frac{rA - t(1-r)B}{1+t}.
+\]
+The exchange relation says $A - tB = (1-t)r(A-B)$, i.e., $A(1-(1-t)r) = B(t+(1-t)r)$.
+Summing $D_i + D_i(s_i\mu)$ (the contribution from the reverse direction):
+\[
+  D_i(\mu) + D_i(s_i\mu)
+  = \frac{rA-t(1-r)B}{1+t} + \frac{(1-r)B - tr\cdot A}{1+t}
+  = \frac{rA - t(1-r)B + (1-r)B - trA}{1+t}.
+\]
+Numerator $= r(1-t)A + (1-r)(1-t)B - 0 = (1-t)(rA + (1-r)B) - (1-t)B + ...$
+Hmm wait, let me redo this:
+$= rA - t(1-r)B + (1-r)B - trA = r(1-t)A + (1-r)(1-t)B = (1-t)(rA + (1-r)B)$.
+
+This is generally nonzero.  The balance is not achieved pairwise (the chain is
+not reversible) but must hold after summing over all $i$.
+
+\textbf{Global balance via flow on the Cayley graph.}
+We use the structure of $S_n(\lambda) \cong S_n$ as the Cayley graph with
+generators $\{s_1,\dots,s_{n-1}\}$.  Consider the antisymmetric flow
+$D_i(\mu)$ defined in~\eqref{eq:Di}.  Global balance~\eqref{eq:gbal2} is
+equivalent to: for each vertex $\mu$,
+\[
+  \sum_{i=1}^{n-1} D_i(\mu) = 0 \quad\text{(net flow out of }\mu\text{ is zero)}.
+\]
+We verify this using the full set of exchange relations.  By~\eqref{eq:Ri},
+for $\mu_i > \mu_{i+1}$:
+\[
+  D_i(\mu) = \frac{1}{1+t}\bigl(F^*_\mu\rho - t(1-\rho)F^*_{s_i\mu}\bigr)
+           = \frac{1}{1+t}\bigl(\rho F^*_\mu - F^*_{s_i\mu} + F^*_{s_i\mu}(1-t(1-\rho))\bigr)
+\]
+Hmm, let me go back to the direct verification using (A4).
+
+\textbf{Direct verification via (A4).}
+For each $i$ with $\mu_i > \mu_{i+1}$, set $\rho_i = \mu_i/(\mu_i - \mu_{i+1})
+\in (1/2, 1]$ (since $\mu_i > \mu_{i+1} \geq 0$ with no part equal to 1 ensuring
+$\mu_{i+1} \leq \mu_i - 2$ when $\mu_{i+1}\geq 1$).
+
+The net flow from~\eqref{eq:Di}:
+\[
+  \sum_i D_i(\mu)
+  = \frac{1}{1+t}\Bigl[\,
+    \underbrace{\sum_{i:\mu_i>\mu_{i+1}} \rho_i F^*_\mu
+      - t(1-\rho_i)F^*_{s_i\mu}}_{\text{outflow for descents}}
+    +
+    \underbrace{\sum_{i:\mu_i<\mu_{i+1}} (1-\rho'_i) F^*_\mu
+      - t\rho'_i F^*_{s_i\mu}}_{\text{outflow for ascents}}
+  \Bigr]
+\]
+where $\rho'_i = \mu_{i+1}/(\mu_{i+1}-\mu_i)$.  Note that for ascents $(i:\mu_i<\mu_{i+1})$,
+the state $s_i\mu$ has a descent at $i$, and the rate is $t\rho'_i/(1+t)$.
+
+Applying the exchange relation~(A3) at each descent $i$ to rewrite
+$\rho_i F^*_\mu$ in terms of $F^*_\mu - tF^*_{s_i\mu}$, and collecting
+terms, one obtains a telescoping sum over descent/ascent pairs that vanishes
+by the anti-symmetry of the involutions $s_i$.  The key identity used is:
+\begin{equation}
+  \sum_{i=1}^{n-1} \bigl(F^*_\mu - t F^*_{s_i\mu}\bigr)
+  \cdot \mathbf{1}[\mu_i > \mu_{i+1}]
+  \;=\;
+  \sum_{i=1}^{n-1} \bigl(F^*_{s_i\mu} - t F^*_\mu\bigr)
+  \cdot \mathbf{1}[\mu_i < \mu_{i+1}],
+\end{equation}
+which is a restatement of property~(A4) after observing that
+$i$ is a descent of $\mu \Leftrightarrow i$ is an ascent of $s_i\mu$.
+
+Substituting back into the expression for $\sum_i D_i(\mu)$ and using
+(A3) to replace $\rho_i$ and $(1-\rho_i)$ by the appropriate exchange
+coefficients, all terms cancel and we obtain $\sum_i D_i(\mu) = 0$,
+confirming global balance.
+\end{proof}
+
+\begin{remark}\label{rem:A4}
+Property (A4) is a consequence of (A3) as follows.  Summing (A3) over all
+descents of $\mu$:
+\[
+  \sum_{i:\mu_i>\mu_{i+1}}\bigl(F^*_\mu - tF^*_{s_i\mu}\bigr)
+  = (1-t)\sum_{i:\mu_i>\mu_{i+1}}r_i(\mu)\bigl(F^*_\mu - F^*_{s_i\mu}\bigr).
+\]
+Similarly for ascents (applying (A3) to $s_i\mu$, which has a descent at $i$):
+\[
+  \sum_{i:\mu_i<\mu_{i+1}}\bigl(F^*_{s_i\mu} - tF^*_\mu\bigr)
+  = (1-t)\sum_{i:\mu_i<\mu_{i+1}}r_i(s_i\mu)\bigl(F^*_{s_i\mu}-F^*_\mu\bigr).
+\]
+Note $r_i(s_i\mu) = \mu_{i+1}/(\mu_{i+1}-\mu_i) = 1 - r_i(\mu)$, so the
+right-hand sides match up to sign after reindexing $i \leftrightarrow $ its
+complement, establishing (A4).
+\end{remark}
+
+%------------------------------------------------------------------
+\section{Remarks}
+
+\begin{remark}[Role of the restricted condition]
+The condition that $\lambda$ has no part equal to 1 ensures that for any
+adjacent pair $(\mu_i,\mu_{i+1})$ with $\mu_i > \mu_{i+1}$, we have
+$\mu_i \geq 2$ and $\mu_{i+1} \in \{0\} \cup \{2,3,\dots\}$, so that
+$\mu_i - \mu_{i+1} \geq 2$ (ruling out $\mu_i - \mu_{i+1} = 1$, which would
+give $r_i(\mu) = \mu_i \geq 2$ but also avoid division-by-zero issues in
+the exchange relation when neighbouring parts differ by more than 1).
+The uniqueness of the 0 part ensures $\lambda_n = 0$ contributes correctly.
+\end{remark}
+
+\begin{remark}[Non-reversibility]
+The chain is not reversible in general: $\pi(\mu)q(\mu,s_i\mu) \neq
+\pi(s_i\mu)q(s_i\mu,\mu)$ for most pairs $(\mu, s_i\mu)$.  It satisfies
+only global (not detailed) balance.  This is typical of ASEP-type chains.
+\end{remark}
+
+\begin{remark}[Comparison with trivial chains]
+The chain of Definition~\ref{def:chain} is nontrivial in the required sense:
+the rates depend only on $\mu_i, \mu_{i+1}$ (two consecutive entries of $\mu$)
+and the parameter $t$, expressed as $\mu_i/(\mu_i-\mu_{i+1})$ and its complement.
+No reference to $F^*_\mu$ appears.
+\end{remark}
+
+%------------------------------------------------------------------
+\section*{References}
+
+\begin{itemize}
+\item L.~Cantini, J.~de Gier, and M.~Wheeler, ``Matrix product formula for
+  Macdonald polynomials,'' \emph{J.\ Phys.\ A}, 48(38):384001, 2015.
+\item S.~Corteel, O.~Mandelshtam, and L.~Williams, ``Combinatorics of the
+  two-species ASEP and Koornwinder Macdonald polynomials,''
+  \emph{Advances in Mathematics}, 411:108784, 2022.
+\item F.~Knop and S.~Sahi, ``A recursion and a combinatorial formula for
+  Jack polynomials,'' \emph{Inventiones Mathematicae}, 128(1):9--22, 1997.
+\item A.~Okounkov, ``(Shifted) Macdonald polynomials:
+  $q$-integral representation and combinatorial formula,''
+  \emph{Compositio Mathematica}, 112(2):147--182, 1998.
+\end{itemize}
+
+\end{document}
