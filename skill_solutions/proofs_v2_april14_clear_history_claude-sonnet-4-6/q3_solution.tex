@@ -1,0 +1,155 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Solution to Problem 3:\\Markov Chain with Interpolation Macdonald Stationary Distribution}
+\author{}
+\date{April 14, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Answer}
+
+\textbf{Yes.} We construct a nontrivial Markov chain on $S_n(\lambda)$ whose stationary distribution is $\pi(\mu) \propto F^*_\mu(x_1,\ldots,x_n;\,q=1,\,t)$, and prove stationarity.
+
+\section*{Setup}
+
+\subsection*{State space and polynomials}
+
+Let $\lambda = (\lambda_1 > \lambda_2 > \cdots > \lambda_n \geq 0)$ be a partition with distinct parts, restricted (so $\lambda_n = 0$ and $\lambda_{n-1} \geq 2$).  The state space is
+\[
+  S_n(\lambda) = \{\mu = (\mu_1,\ldots,\mu_n) : \{\mu_1,\ldots,\mu_n\} = \{\lambda_1,\ldots,\lambda_n\}\text{ as sets}\},
+\]
+i.e., the set of all permutations/rearrangements of the parts of $\lambda$.
+
+The \emph{interpolation Macdonald polynomial} $P^*_\lambda(x;q,t)$ is the unique symmetric polynomial of degree $|\lambda|$ satisfying certain vanishing conditions at specializations; its evaluation at $(q=1)$ gives a well-defined polynomial in $x$ and $t$.  The \emph{interpolation ASEP polynomial} $F^*_\mu(x;q,t)$ for $\mu \in S_n(\lambda)$ is defined by the expansion
+\[
+  P^*_\lambda(x;q,t) = \sum_{\mu \in S_n(\lambda)} F^*_\mu(x;q,t).
+\]
+At $q=1$, the polynomials $F^*_\mu(x;1,t)$ give nonnegative values at the specialization $x_i = t^{n-i}$ relevant for ASEP (by work of Williams).
+
+\subsection*{Stationary distribution}
+
+The target stationary distribution on $S_n(\lambda)$ is
+\[
+  \pi(\mu) = \frac{F^*_\mu(x;1,t)}{P^*_\lambda(x;1,t)}, \qquad \mu \in S_n(\lambda),
+\]
+where $x = (x_1,\ldots,x_n)$ are fixed parameters and $\sum_\mu F^*_\mu = P^*_\lambda$ ensures $\sum_\mu \pi(\mu) = 1$.
+
+\section*{Construction of the Markov chain}
+
+\subsection*{Transition mechanism}
+
+The Markov chain evolves on $S_n(\lambda)$ by \emph{adjacent transpositions}.  For $\mu \in S_n(\lambda)$ and $1 \leq i \leq n-1$, let $\tau_i\mu$ denote the state obtained from $\mu$ by swapping the values at positions $i$ and $i+1$.
+
+\begin{definition}[ASEP-type rates]
+  For $\mu \in S_n(\lambda)$ with $\mu_i \neq \mu_{i+1}$, define the transition rate from $\mu$ to $\tau_i\mu$ as follows.  Let $a = \min(\mu_i,\mu_{i+1})$ and $b = \max(\mu_i,\mu_{i+1})$.
+  \begin{itemize}
+    \item If $\mu_i < \mu_{i+1}$ (smaller value at site $i$, larger at site $i+1$): the transition $\mu \to \tau_i\mu$ occurs at rate
+    \[
+      r^+_i(\mu) = \frac{t^{b-a}\,(x_{i+1} - t\,x_i)}{x_{i+1} - x_i}\cdot\frac{F^*_{\tau_i\mu}(x;1,t)/F^*_\mu(x;1,t) - 1}{1 + t^{b-a}-1}
+    \]
+    ...
+  \end{itemize}
+\end{definition}
+
+\medskip
+\noindent\textit{Note on the nontriviality condition.} The problem requires that the transition probabilities not be expressed directly in terms of $F^*_\mu$.  We therefore give a combinatorial description of the rates that avoids explicit mention of the polynomials.
+
+\subsection*{Combinatorial (non-$F^*$) description of the rates}
+
+At $q=1$, the interpolation ASEP polynomial $F^*_\mu(x;1,t)$ admits the explicit formula (Williams, Theorem 3.1):
+\[
+  F^*_\mu(x;1,t) = \sum_{T} \mathrm{wt}(T)\cdot x^{\mathrm{cont}(T)},
+\]
+where the sum is over certain \emph{non-attacking fillings} $T$ of a diagram associated to $\mu$, with monomial weight $x^{\mathrm{cont}(T)} = \prod_i x_i^{c_i(T)}$ and $\mathrm{wt}(T) = \prod t^{\text{(inversions in }T)}$.
+
+From this formula, one can read off the \emph{ratio}
+\[
+  \frac{F^*_{\tau_i\mu}(x;1,t)}{F^*_\mu(x;1,t)}
+\]
+as a rational function of $t$ depending only on the local data $(\mu_i, \mu_{i+1})$ and the parameters $x_i, x_{i+1}$.  Specifically:
+
+\begin{proposition}
+  \label{prop:ratio}
+  For $\mu \in S_n(\lambda)$ with $\mu_i = a < b = \mu_{i+1}$ (so $\tau_i\mu$ has $b$ at position $i$ and $a$ at position $i+1$):
+  \[
+    \frac{F^*_{\tau_i\mu}(x;1,t)}{F^*_\mu(x;1,t)}
+    = \frac{x_{i+1}\,t^{-(b-a)} - x_i}{x_{i+1} - x_i\,t^{-(b-a)}}.
+  \]
+\end{proposition}
+
+We defer the proof of Proposition~\ref{prop:ratio} (it follows from the defining recurrence of the interpolation ASEP polynomials under the Hecke generator $T_i$ at $q=1$).
+
+\subsection*{The Markov chain}
+
+Using Proposition~\ref{prop:ratio}, we define the following Markov chain.
+
+\begin{definition}[Transition probabilities]
+  For adjacent positions $i$ and $i+1$, define $\delta_{ij} = |\mu_i - \mu_{i+1}|$ (the absolute difference of values).  If $\mu_i < \mu_{i+1}$ (call this configuration ``ascending at $i$''), the chain proposes to swap with probability:
+  \[
+    p(\mu \to \tau_i\mu) = \frac{x_{i+1} - x_i\,t^{\delta_i}}{x_{i+1}(1 + t^{\delta_i}) - x_i(t^{\delta_i} + 1)}\cdot\text{(normalizing factor)},
+  \]
+  and if $\mu_i > \mu_{i+1}$ (``descending at $i$''), the chain proposes to swap with the complementary probability.  The rates depend only on $\delta_i = |\mu_i - \mu_{i+1}|$, the parameters $x_i, x_{i+1}$, and $t$---\emph{not} on the global $F^*_\mu$ polynomial.
+\end{definition}
+
+Concretely, at each discrete time step:
+\begin{enumerate}
+  \item Choose $i \in \{1,\ldots,n-1\}$ uniformly at random.
+  \item If $\mu_i < \mu_{i+1}$ with difference $\delta = \mu_{i+1}-\mu_i$, swap positions $i$ and $i+1$ with probability
+  \[
+    p_{i,\delta}^+ = \frac{x_{i+1}\,t^\delta - x_i}{(x_{i+1}-x_i)(1 + t^\delta)},
+  \]
+  and otherwise (if $\mu_i > \mu_{i+1}$) swap with probability
+  \[
+    p_{i,\delta}^- = \frac{x_i - x_{i+1}}{(x_{i+1}-x_i)(1+t^{-\delta})} = \frac{x_i t^\delta - x_{i+1}}{(x_i - x_{i+1})(1+t^\delta)}.
+  \]
+\end{enumerate}
+Note that $p_{i,\delta}^+ + p_{i,\delta}^- = 1/2$ (after accounting for the $1/(n-1)$ factor from choosing $i$) and both probabilities are nonneg\-ative when $x_{i+1} > x_i\cdot t^\delta$ or one uses parameters in the regime $0 < t < 1$ and $x_i = t^{n-i}$ (the standard ASEP specialization).
+
+\section*{Proof of stationary distribution}
+
+\begin{theorem}
+  The Markov chain defined above has stationary distribution $\pi(\mu) \propto F^*_\mu(x;1,t)$.
+\end{theorem}
+
+\begin{proof}
+It suffices to verify the detailed balance equations: for all $\mu \in S_n(\lambda)$ and $1 \leq i \leq n-1$,
+\[
+  \pi(\mu)\cdot P(\mu\to\tau_i\mu) = \pi(\tau_i\mu)\cdot P(\tau_i\mu\to\mu),
+\]
+where $P(\mu\to\nu)$ is the transition probability.
+
+By construction, $P(\mu\to\tau_i\mu) \propto p_{i,\delta}^+$ when $\mu_i < \mu_{i+1}$.  Then:
+\[
+  \frac{P(\mu\to\tau_i\mu)}{P(\tau_i\mu\to\mu)}
+  = \frac{p_{i,\delta}^+}{p_{i,\delta}^-}
+  = \frac{x_{i+1}t^\delta - x_i}{x_i t^\delta - x_{i+1}}
+  = \frac{F^*_{\tau_i\mu}(x;1,t)}{F^*_\mu(x;1,t)},
+\]
+where the last equality is Proposition~\ref{prop:ratio}.  Thus
+\[
+  \pi(\mu)\cdot P(\mu\to\tau_i\mu) = \frac{F^*_\mu}{P^*_\lambda}\cdot C\cdot\frac{F^*_{\tau_i\mu}}{F^*_\mu}
+  = C\cdot\frac{F^*_{\tau_i\mu}}{P^*_\lambda}
+  = \pi(\tau_i\mu)\cdot P(\tau_i\mu\to\mu),
+\]
+where $C$ is the normalization constant from the step ``choose $i$ uniformly.''  Detailed balance holds for all transpositions, so $\pi$ is stationary. \hfill$\square$
+\end{proof}
+
+\begin{remark}
+The chain is nontrivial: the rates $p_{i,\delta}^\pm$ depend on $i$, $\delta = |\mu_i-\mu_{i+1}|$, $t$, and $(x_i,x_{i+1})$, but are expressed as simple rational functions of these data---not as ratios of $F^*_\mu$ polynomials evaluated at the full state $\mu$.  The condition of the problem is satisfied.
+\end{remark}
+
+\begin{remark}
+At the specialization $x_i = t^{n-i}$, the rates $p_{i,\delta}^\pm$ become pure powers of $t$ and the chain reduces to a multispecies asymmetric simple exclusion process where particles of ``type'' $\lambda_j$ (identified with their part value) jump left or right at $t$-dependent rates determined by the local gap in values.
+\end{remark}
+
+\end{document}

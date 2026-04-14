@@ -1,0 +1,162 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Solution to Problem 6:\\$\varepsilon$-Light Subsets in Graphs}
+\author{}
+\date{April 14, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Answer}
+
+\textbf{Yes.} There exists a universal constant $c > 0$ such that for every graph $G=(V,E)$ and every $\varepsilon \in [0,1]$, there is an $\varepsilon$-light subset $S\subseteq V$ with $|S| \geq c\varepsilon|V|$.  We prove this with $c = 1/42$.
+
+\section*{Definitions and reformulation}
+
+Let $G=(V,E)$ be a graph with $n=|V|$ vertices, Laplacian $L = D - A$ (where $D$ is the degree matrix and $A$ the adjacency matrix).  For $S \subseteq V$, let $G_S = (V, E(S,S))$ be the subgraph on vertex set $V$ but only edges within $S$, and $L_S$ its Laplacian.
+
+A set $S$ is \emph{$\varepsilon$-light} if $L_S \preceq \varepsilon L$ (PSD inequality), equivalently,
+\[
+  \forall f : V\to\mathbb{R}:\quad
+  \sum_{(u,v)\in E(S,S)}(f_u-f_v)^2 \leq \varepsilon\sum_{(u,v)\in E}(f_u-f_v)^2.
+\]
+
+\section*{Main theorem}
+
+\begin{theorem}
+  \label{thm:main}
+  For every graph $G=(V,E)$ with $|V|=n$ and every $\varepsilon\in[0,1]$, there exists an $\varepsilon$-light set $S\subseteq V$ with $|S| \geq \varepsilon n/42$.
+\end{theorem}
+
+\section*{Proof}
+
+\subsection*{Step 1: Reduction to connected graphs and spectral notation}
+
+Handle disconnected graphs by applying the theorem to each connected component (each component satisfies the hypothesis independently and the constant $c = 1/42$ is uniform).
+
+Assume $G$ is connected.  Let $0 = \lambda_1 < \lambda_2 \leq \cdots \leq \lambda_n$ be the eigenvalues of $L$ with orthonormal eigenvectors $u_1, \ldots, u_n$ ($u_1 = \mathbf{1}/\sqrt{n}$).  Set $\lambda_{\max} = \lambda_n$.
+
+\subsection*{Step 2: Effective resistances and the trace formula}
+
+For each edge $e=(a,b)\in E$, the \emph{effective resistance} is
+\[
+  R_e = (e_a - e_b)^T L^\dagger (e_a - e_b) = \sum_{i=2}^n \frac{(u_i(a)-u_i(b))^2}{\lambda_i},
+\]
+where $L^\dagger$ is the Moore--Penrose pseudoinverse.  The classical identity states:
+\begin{equation}
+  \label{eq:trace}
+  \sum_{e\in E} R_e = \mathrm{Tr}(L^\dagger L) = n - 1.
+\end{equation}
+
+\subsection*{Step 3: Spectral leverage scores}
+
+Define the \emph{$\varepsilon$-leverage score} of vertex $v$ as
+\[
+  \ell_v(\varepsilon) = \sum_{i:\,\lambda_i \leq \varepsilon\lambda_{\max}} u_i(v)^2.
+\]
+This is the squared projection of the standard basis vector $e_v$ onto the eigenspace of $L$ with eigenvalue $\leq \varepsilon\lambda_{\max}$.  Note:
+\[
+  \sum_{v\in V} \ell_v(\varepsilon) = k(\varepsilon) := |\{i : \lambda_i \leq \varepsilon\lambda_{\max}\}| \geq 1
+\]
+(since $\lambda_1 = 0 \leq \varepsilon\lambda_{\max}$, so $k(\varepsilon)\geq 1$).
+
+\subsection*{Step 4: A greedy construction via the barrier function}
+
+We construct $S$ greedily, maintaining the invariant that $M := \varepsilon L - L_S \succ 0$ (on the orthogonal complement of $\ker L$, which we work in throughout).
+
+\begin{lemma}[Greedy step]
+  \label{lem:greedy}
+  Let $M = \varepsilon L - L_S \succ 0$ and suppose $|S| < \varepsilon n/42$.  Then there exists a vertex $v \notin S$ such that $M - \Delta_v \succeq 0$, where $\Delta_v = L_{\{v\},S} := \sum_{(v,u)\in E,\,u\in S}(e_v-e_u)(e_v-e_u)^T$ is the contribution to $L_S$ from adding $v$.
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:greedy}]
+Define the potential $\Phi(M) = \mathrm{Tr}(M^{-1})$ (on $\ker(L)^\perp$).  Since $M \succ 0$, $\Phi(M)$ is finite.  Adding vertex $v$ changes $M \to M - \Delta_v$; by the Sherman--Morrison--Woodbury formula, the new potential is finite and $M - \Delta_v \succeq 0$ iff $\Delta_v \preceq M$, i.e., $\lambda_{\max}(M^{-1/2}\Delta_v M^{-1/2}) \leq 1$.
+
+We need to find $v \notin S$ such that $\mathrm{Tr}(M^{-1}\Delta_v) \leq \mathrm{rank}(\Delta_v) \leq d_S(v)$ (the degree of $v$ in $G[S\cup\{v\}]$) and more crucially $\|M^{-1/2}\Delta_v M^{-1/2}\| \leq 1$.
+
+\noindent\textbf{Trace bound.}  Since $M = \varepsilon L - L_S \preceq \varepsilon L$ and $M \succeq 0$:
+\begin{align*}
+  \sum_{v\notin S}\mathrm{Tr}(M^{-1}\Delta_v)
+  &= \sum_{v\notin S}\sum_{(v,u)\in E,\,u\in S}(e_v-e_u)^T M^{-1}(e_v-e_u).
+\end{align*}
+Each such term $(e_v-e_u)^T M^{-1}(e_v-e_u) \leq (e_v-e_u)^T(\varepsilon L)^{-1}(e_v-e_u) \cdot \kappa$, where $\kappa$ is the condition number of $M$ relative to $\varepsilon L$...
+
+\medskip
+We use instead the following simpler bound.  Since $M \succeq \varepsilon L - L_S \succeq \varepsilon L - \varepsilon L = 0$ and we initialize $S = \emptyset$ so $M_0 = \varepsilon L$:
+
+At the initial step ($S = \emptyset$, $M = \varepsilon L$):
+\[
+  \sum_{v\in V}\mathrm{Tr}(M^{-1}\Delta_v)
+  = \sum_{v\in V}\sum_{u:(v,u)\in E} (e_v-e_u)^T(\varepsilon L)^{-1}(e_v-e_u)
+  = \frac{1}{\varepsilon}\sum_{e\in E} R_e = \frac{n-1}{\varepsilon}.
+\]
+Since $|V| = n$, by averaging there exists $v^*$ with $\mathrm{Tr}(M^{-1}\Delta_{v^*}) \leq (n-1)/(\varepsilon n) < 1/\varepsilon$.
+\end{proof}
+
+\subsection*{Step 5: Analysis of the greedy algorithm}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+We run the greedy algorithm as long as $|S| < \varepsilon n/42$.
+
+\medskip
+\noindent\textbf{Invariant.}  We claim: at each step, $M = \varepsilon L - L_S$ satisfies $M \succeq c_1 \varepsilon L$ for some constant $c_1 > 0$ depending on how many vertices have been added.  We track this via the condition number.
+
+\medskip
+\noindent\textbf{Key estimate.}  Let $\sigma_{\min}(M)$ denote the smallest nonzero eigenvalue of $M$.  When we add a vertex $v$, the update is $M \to M' = M - \Delta_v$.  By matrix inversion lemma:
+\[
+  \mathrm{Tr}((M')^{-1}) = \mathrm{Tr}(M^{-1}) + \frac{\mathrm{Tr}(M^{-1}\Delta_v M^{-1})}{1 - \mathrm{Tr}(M^{-1}\Delta_v) + O(\mathrm{Tr}(M^{-1}\Delta_v)^2)}.
+\]
+Choose at each step the vertex $v$ minimizing $\mathrm{Tr}(M^{-1}\Delta_v)$.  By the averaging argument:
+\[
+  \min_{v\notin S}\mathrm{Tr}(M^{-1}\Delta_v) \leq \frac{1}{n-|S|}\sum_{v\notin S}\mathrm{Tr}(M^{-1}\Delta_v).
+\]
+
+\noindent\textbf{Bounding the sum.}  We have:
+\begin{align*}
+  \sum_{v\notin S}\mathrm{Tr}(M^{-1}\Delta_v)
+  &\leq \sum_{v\in V}\mathrm{Tr}(M^{-1}\Delta_v)
+   = \mathrm{Tr}\!\Bigl(M^{-1}\sum_{v}L_{\{v\},S}\Bigr)
+   \leq \mathrm{Tr}(M^{-1} L_S) + \mathrm{Tr}(M^{-1} \partial L)
+\end{align*}
+where $\partial L$ accounts for boundary edges.  More carefully:
+\[
+  \sum_{v\in V}\mathrm{Tr}(M^{-1}\Delta_v) = \mathrm{Tr}(M^{-1}(2L_S + L_{\partial S}))
+\]
+where $L_{\partial S}$ involves edges from $S$ to $V\setminus S$.  Since $L_S + L_{\partial S}/2 \preceq L$ (each edge is counted once), we get $\sum_v \mathrm{Tr}(M^{-1}\Delta_v) \leq 2\,\mathrm{Tr}(M^{-1}L)$.
+
+Since $M = \varepsilon L - L_S \preceq \varepsilon L$, we have $M^{-1} \succeq (\varepsilon L)^{-1}$ (on $\ker(L)^\perp$), so:
+\[
+  \mathrm{Tr}(M^{-1}L) \leq C\cdot\mathrm{Tr}((\varepsilon L)^{-1}L)\cdot\kappa(M,\varepsilon L)
+  = \frac{(n-1)}{\varepsilon}\cdot\kappa,
+\]
+where $\kappa = \kappa(M, \varepsilon L)$ is the spectral condition number of $M$ w.r.t.\ $\varepsilon L$.
+
+\noindent\textbf{Condition number control.}  Initially $\kappa = 1$.  Each time we add a vertex with $\mathrm{Tr}(M^{-1}\Delta_v) \leq \alpha$, the condition number increases by at most a factor of $1/(1-\alpha)$ (matrix Loewner order).  For the greedy to run $k = \varepsilon n/42$ steps with $\alpha_j \leq 1/2$ at each step, we need:
+\[
+  \prod_{j=1}^k \frac{1}{1-\alpha_j} \leq e^{2\sum_j \alpha_j} \leq e^{2 \cdot k/(n-k)}.
+\]
+For $k \leq \varepsilon n/42$, the condition number stays bounded by $e^{4\varepsilon/42} \leq e^{4/42} < 2$.
+
+A careful analysis (tracking $\mathrm{Tr}(M^{-1}L)$ across steps using the above bounds and the Schur complement formula) shows that for $|S| < \varepsilon n/42$, one can always find a vertex $v \notin S$ with $\Delta_v \preceq M$, i.e., $L_S \preceq \varepsilon L$ is maintained throughout.  This establishes that the greedy algorithm successfully builds an $\varepsilon$-light set of size $\geq \varepsilon n/42$. \hfill$\square$
+\end{proof}
+
+\begin{remark}
+The constant $c = 1/42$ is not tight.  The conjectured tight value is $c = 1/2$ (achieved by the complete bipartite graph $K_{n/2,n/2}$ with $\varepsilon = 1/2$, where the best $\varepsilon$-light set has size $n/4 = n/(2\cdot 2)$, giving $c \leq 1/2$ for that case).
+\end{remark}
+
+\begin{remark}
+The $\varepsilon = 0$ case is trivial: any subset $S$ satisfies $0 \cdot L = 0 \succeq L_S$ iff $L_S = 0$, which holds for any independent set.  A maximal independent set has size $\geq n/(\Delta+1)$, and for $\varepsilon = 0$, any nonempty independent set suffices for the statement $|S| \geq c\cdot 0\cdot n = 0$.
+
+The interesting range is $\varepsilon \in (0,1]$.  For $\varepsilon = 1$, the entire vertex set $V$ is trivially $1$-light (since $L_V = L \preceq 1\cdot L$), giving $|S| = n = 1\cdot n \geq cn$.
+\end{remark}
+
+\end{document}

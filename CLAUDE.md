@@ -23,12 +23,6 @@ All 10 problems from the *First Proof* benchmark live in `problems/`:
 - `problems/q10.tex` — Numerical Linear Algebra: Preconditioned CG for RKHS-CP decomposition (Kolda, Ward)
 - `problems/preamble.tex` — Shared LaTeX preamble for all problems
 
-### Baselines (reference only)
-- `baselines/Claude_solution.tex` — Claude's earlier proof sketch
-- `baselines/true_answer.tex` — Spielman's rigorous proof (c = 1/42)
-- `baselines/gemni_solution.tex` — Gemini's solution
-- `baselines/background.tex` — Background material
-
 ### AI Assignments
 - `ai_assignments/proof_v1.tex` — Proof attempt v1 (flawed dense case)
 - `ai_assignments/proof_v2.tex` — Proof v2 (corrected, barrier function, c = 1/42)

@@ -1,0 +1,192 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+
+\DeclareMathOperator{\vecop}{vec}
+\DeclareMathOperator{\diag}{diag}
+
+\title{Solution to Problem 10:\\Preconditioned CG for RKHS-Constrained CP Decomposition}
+\author{}
+\date{April 14, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Overview}
+
+We show how to solve the system
+\begin{equation}
+  \label{eq:system}
+  \underbrace{\bigl[(Z\otimes K)^T S\,S^T(Z\otimes K) + \lambda(I_r\otimes K)\bigr]}_{=:\,\mathcal{A}}\vecop(W)
+  = \underbrace{(I_r\otimes K)\vecop(B)}_{=:\,b}
+\end{equation}
+of size $nr\times nr$ using \emph{preconditioned conjugate gradient} (PCG) with $O(n^2r^2 + qnr + n^3 + r^3)$ per-iteration cost, avoiding any $O(N)$ computation.
+
+\section*{1. Structure of the linear system}
+
+\subsection*{Notation review}
+\begin{itemize}
+  \item $K\in\bR^{n\times n}$: PSD RKHS kernel matrix (mode $k$).
+  \item $Z = A_d\odot\cdots\odot A_{k+1}\odot A_{k-1}\odot\cdots\odot A_1 \in\bR^{M\times r}$: Khatri-Rao product of all other factor matrices.
+  \item $S\in\bR^{N\times q}$: selection matrix (subset of $I_N$) picking $q$ observed entries.
+  \item $T\in\bR^{n\times M}$: mode-$k$ unfolding with zeros at missing entries.
+  \item $B = TZ \in\bR^{n\times r}$: MTTKRP.
+  \item $W\in\bR^{n\times r}$: unknown; $A_k = KW$.
+\end{itemize}
+
+The system~\eqref{eq:system} arises from the KKT conditions for the RKHS-constrained CP subproblem:
+\[
+  \min_{A_k = KW}\;\frac12\|S^T[\vecop(T) - (Z\otimes I_n)\vecop(A_k)]\|^2 + \frac\lambda2\|W\|^2_K,
+\]
+where $\|W\|_K^2 = \mathrm{Tr}(W^T K W)$.
+
+\section*{2. Matrix-vector products without $O(N)$ computations}
+
+The bottleneck in CG is applying $\mathcal{A}$ to a vector $v = \vecop(V)$ for $V\in\bR^{n\times r}$.  We compute $\mathcal{A}\vecop(V)$ in three steps, exploiting the Kronecker structure.
+
+\subsection*{Step 1: Apply $(Z\otimes K)$}
+
+Using the identity $(A\otimes B)\vecop(X) = \vecop(BXA^T)$ for conformable matrices:
+\[
+  (Z\otimes K)\vecop(V) = \vecop(KVZ^T).
+\]
+Cost: $O(n^2 r)$ for $KV$ (matrix multiply $n\times n$ by $n\times r$) plus $O(nrM)$ for $VZ^T$---but $M = N/n$, which is $O(N/n)$.  This would cost $O(N r)$, which is too large.
+
+\textbf{Key insight:} we do NOT form $\vecop(KVZ^T)$ explicitly.  Instead, we only need $(Z\otimes K)\vecop(V)$ \emph{evaluated at the $q$ selected entries}, which is $S^T\vecop(KVZ^T)$.  This selects $q$ entries from the $N$-vector $\vecop(KVZ^T)$, costing $O(q n r)$ (compute $KV$ in $O(n^2 r)$, then for each of the $q$ observed entries $(i_1,\ldots,i_d)$, extract the value $(KV)_{i_k,:} \cdot z_{j_{-k}}$ where $j_{-k}$ encodes the other modes, using the Khatri-Rao structure of $Z$).
+
+More precisely, the $q$ observed entries of the tensor $\mathcal{T}$ correspond to multi-indices $\Omega = \{(\alpha_1, \ldots, \alpha_d)_s\}_{s=1}^q$.  For each $s$, the entry in $\vecop(KVZ^T)$ at position corresponding to $(\alpha_1,\ldots,\alpha_d)_s$ is:
+\[
+  [KVZ^T]_{i_k, j_{-k}} = (KV)_{i_k,:}\cdot Z_{j_{-k},:}^T
+  = \sum_{r'=1}^r (KV)_{i_k,r'} Z_{j_{-k},r'},
+\]
+where $i_k = (\alpha_k)_s$ and $j_{-k}$ is the row of $Z$ corresponding to all other mode indices.  Each such entry costs $O(r)$ given $KV$, so the $q$ entries cost $O(qr)$ total (after computing $KV$ in $O(n^2 r)$).
+
+\subsection*{Step 2: Apply $S S^T$}
+
+$SS^T$ is the diagonal projection onto observed entries.  Applying it to a length-$q$ vector is $O(q)$.  Applying $S$ (extend by zeros to length $N$) and then $S^T$ (select $q$ entries) costs $O(q)$.  No $O(N)$ computation.
+
+\subsection*{Step 3: Apply $(Z\otimes K)^T$}
+
+$(Z\otimes K)^T = (Z^T\otimes K^T) = (Z^T\otimes K)$ (since $K$ is symmetric).  Applying $(Z\otimes K)^T$ to a length-$q$ vector $w = S^T\vecop(KVZ^T)$:
+\[
+  (Z\otimes K)^T S w = \vecop(K \cdot [S\,w]\text{ unfolded at mode }k \cdot Z)
+\]
+The vector $Sw \in\bR^N$ is supported on the $q$ observed entries.  The mode-$k$ unfolding of the $q$-sparse tensor (given by $Sw$) multiplied by $Z$ gives a matrix in $\bR^{n\times r}$:
+\[
+  [S\,w\,\text{ unfolded}] \cdot Z = \sum_{s=1}^q w_s \cdot e_{i_k(s)} z_{j_{-k}(s)}^T \in\bR^{n\times r},
+\]
+where $e_{i_k(s)}$ is the $i_k(s)$-th standard basis vector and $z_{j_{-k}(s)}$ is the $j_{-k}(s)$-th row of $Z$.  This accumulation costs $O(qr)$.  Then multiplying by $K$ costs $O(n^2 r)$.
+
+\subsection*{Step 4: Add the regularization term}
+
+$(I_r\otimes K)\vecop(V) = \vecop(KV)$, costing $O(n^2 r)$.
+
+\subsection*{Total per-iteration cost}
+
+\[
+  O(n^2 r + qr) \text{ per step } = O(n^2 r + qr),
+\]
+dominated by $O(n^2 r)$ (the $KV$ multiply) since $q \ll N$ but we assumed $n,r < q$, so $q\geq n,r$.
+
+\section*{3. Preconditioner}
+
+\subsection*{Choice of preconditioner}
+
+The ideal preconditioner is $\mathcal{A}^{-1}$, but applying it is as hard as solving the system.  We use the \emph{Kronecker approximation}:
+\[
+  P := (Z^T Z \otimes K + \lambda I_r\otimes K)^{-1}
+     = \bigl((Z^TZ + \lambda I_r)\otimes K\bigr)^{-1}
+     = (Z^TZ+\lambda I_r)^{-1}\otimes K^{-1}.
+\]
+This approximates $\mathcal{A}^{-1}$ by replacing the ``effective Gram matrix'' $(Z\otimes K)^T S S^T (Z\otimes K)$ with its full-data version $(Z\otimes K)^T(Z\otimes K) = Z^TZ\otimes K^2$ (i.e., pretending all $N$ entries are observed).  Under this approximation:
+\begin{align*}
+  \mathcal{A}_{\rm approx}
+  &= Z^TZ\otimes K^2 + \lambda I_r\otimes K
+   = (Z^TZ\otimes K + \lambda I_r\otimes I_n)\cdot(I_r\otimes K),
+\end{align*}
+so $\mathcal{A}_{\rm approx}^{-1} = (I_r\otimes K^{-1})\cdot(Z^TZ\otimes K + \lambda I_r\otimes I_n)^{-1}$.
+
+The simpler and more standard choice is:
+\begin{equation}
+  \label{eq:precond}
+  P = (Z^TZ + \lambda I_r)^{-1}\otimes K^{-1}.
+\end{equation}
+
+\subsection*{Applying the preconditioner}
+
+Given $v = \vecop(V)$, compute $P\vecop(V) = \vecop(K^{-1} V (Z^TZ+\lambda I_r)^{-1})$ via:
+\begin{enumerate}
+  \item Precompute (once): eigendecompositions $K = U_K\Sigma_K U_K^T$ and $Z^TZ = U_Z\Sigma_Z U_Z^T$ (costs $O(n^3)$ and $O(Mr^2 + r^3)$ resp.).
+  \item At each CG iteration: $P\vecop(V) = \vecop\!\bigl(U_K\,\Sigma_K^{-1}\,U_K^T\,V\,U_Z\,(\Sigma_Z+\lambda I_r)^{-1}\,U_Z^T\bigr)$.  Cost: $O(n^2 r + nr^2)$ per application.
+\end{enumerate}
+
+\textbf{Note}: computing $Z^TZ \in\bR^{r\times r}$ from $Z\in\bR^{M\times r}$ naively costs $O(Mr^2) = O(Nr^2/n)$, which is $O(N)$.  To avoid this: use the Khatri-Rao structure $Z = A_d\odot\cdots\odot A_1$.  The Khatri-Rao product satisfies $Z^TZ = A_d^TA_d\ast\cdots\ast A_1^TA_1$ (elementwise product of Gram matrices), where each $A_j^TA_j$ costs $O(n_j^2 r)$.  Total: $O(r\sum_j n_j^2) \ll O(N r^2)$.
+
+\section*{4. The PCG algorithm}
+
+\begin{algorithm}
+\caption{Preconditioned CG for RKHS-CP mode-$k$ subproblem}
+\label{alg:pcg}
+\begin{algorithmic}[1]
+  \State \textbf{Precompute:} $B = TZ$ (MTTKRP, $O(qr)$ for sparse $T$); $b = \vecop(KB)$ ($O(n^2 r)$);
+  \State \quad eigendecompositions of $K$ and $Z^TZ = \bigast_j A_j^TA_j$: $O(n^3 + r^3)$.
+  \State \textbf{Initialize:} $w_0 = 0$, $r_0 = b$, $z_0 = Pr_0$, $p_0 = z_0$, $k=0$.
+  \While{$\|r_k\| > \text{tol}$}
+    \State Compute $q_k = \mathcal{A}p_k$: \Comment{$O(n^2r + qr)$}
+      \begin{enumerate}
+        \item $V_k \leftarrow$ reshape $p_k$ to $n\times r$
+        \item $\hat{V} \leftarrow KV_k$ \Comment{$O(n^2 r)$}
+        \item For each observed entry $s$: compute $a_s = \sum_{r'}(\hat{V})_{i_k(s),r'} Z_{j_{-k}(s),r'}$ \Comment{$O(qr)$}
+        \item Accumulate: $C \leftarrow \sum_s a_s e_{i_k(s)} z_{j_{-k}(s)}^T$ \Comment{$O(qr)$}
+        \item $q_k \leftarrow \vecop(KC + \lambda \hat{V})$ \Comment{$O(n^2 r)$}
+      \end{enumerate}
+    \State $\alpha_k \leftarrow \langle r_k, z_k\rangle / \langle p_k, q_k\rangle$
+    \State $w_{k+1} \leftarrow w_k + \alpha_k p_k$
+    \State $r_{k+1} \leftarrow r_k - \alpha_k q_k$
+    \State $z_{k+1} \leftarrow P r_{k+1}$ \Comment{$O(n^2r + nr^2)$}
+    \State $\beta_k \leftarrow \langle r_{k+1}, z_{k+1}\rangle / \langle r_k, z_k\rangle$
+    \State $p_{k+1} \leftarrow z_{k+1} + \beta_k p_k$
+    \State $k \leftarrow k+1$
+  \EndWhile
+  \State \textbf{Output:} $W \leftarrow$ reshape $w_k$ to $n\times r$.
+\end{algorithmic}
+\end{algorithm}
+
+\section*{5. Complexity analysis}
+
+\begin{theorem}
+  \label{thm:complexity}
+  Algorithm~\ref{alg:pcg} solves~\eqref{eq:system} to relative accuracy $\varepsilon$ in at most $T = O(\sqrt{\kappa}\log(1/\varepsilon))$ iterations (where $\kappa$ is the condition number of $P^{1/2}\mathcal{A}P^{1/2}$), with total cost:
+  \[
+    O\!\bigl(\sqrt{\kappa}\log(1/\varepsilon)\cdot(n^2 r + qr)\bigr) + O(n^3 + r^3)
+  \]
+  where:
+  \begin{itemize}
+    \item $O(n^3 + r^3)$: one-time setup (eigendecompositions of $K$ and $Z^TZ$).
+    \item $O(n^2 r + qr)$ per CG iteration: matrix-vector product with $\mathcal{A}$ and with $P$.
+  \end{itemize}
+  This is much less than $O(n^3 r^3)$ (direct solve) under the assumption $n, r < q \ll N$.
+\end{theorem}
+
+\begin{remark}[Why this works]
+  The preconditioner $P = (Z^TZ+\lambda I_r)^{-1}\otimes K^{-1}$ is effective because:
+  \begin{itemize}
+    \item When $q \approx N$ (nearly fully observed data), $\mathcal{A} \approx (Z^TZ+\lambda I_r)\otimes K$, so $P\mathcal{A}\approx I$ and CG converges in 1 step.
+    \item For $q \ll N$, the condition number $\kappa$ of the preconditioned system depends on the ratio of observed to total entries and the coherence of $Z$; in well-conditioned regimes $\kappa = O(1)$.
+    \item The key savings come from the Khatri-Rao structure of $Z$: computing $Z^TZ$ in $O(r\sum_j n_j^2)$ and applying $\mathcal{A}$ in $O(n^2 r + qr)$ avoids the $O(N)$ cost of working with the full $M\times r$ matrix $Z$.
+  \end{itemize}
+\end{remark}
+
+\begin{remark}[Comparison to direct solve]
+  Direct LU factorization of $\mathcal{A}\in\bR^{nr\times nr}$ costs $O((nr)^3) = O(n^3 r^3)$.  PCG with the Kronecker preconditioner reduces this to $O(\sqrt\kappa\log(1/\varepsilon)(n^2r + qr))$, a factor of $\Theta(n r^2 / (\sqrt\kappa\log(1/\varepsilon)))$ improvement.  Since $q \ll N = n M = n\cdot M$ and $n\ll M$, the dominant cost is $O(n^2 r)$ per iteration, giving total cost $O(\sqrt\kappa\log(1/\varepsilon) n^2 r)$---far below $O(n^3 r^3)$.
+\end{remark}
+
+\end{document}
