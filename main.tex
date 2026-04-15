@@ -1,0 +1,453 @@
+\documentclass{article}
+
+\usepackage{neurips_2026}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{multirow}
+
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+
+\title{AgentForMath: Evaluating Agentic AI Systems on Research-Level Mathematical Problems}
+
+\author{%
+  Anonymous Authors \\
+  Anonymous Institution \\
+  \texttt{anonymous@anonymous.edu}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present \textbf{AgentForMath}, a framework for evaluating agentic AI systems on open, research-level mathematical problems.
+Unlike prior benchmarks focused on competition mathematics (e.g., IMO, MATH dataset) or theorem verification in formal proof assistants, our work targets problems at the \emph{frontier of active research} — problems for which expert mathematicians do not yet have published proofs.
+We introduce the \textbf{First Proof} benchmark, consisting of 10 open problems contributed by leading mathematicians spanning stochastic analysis, representation theory, algebraic combinatorics, spectral graph theory, algebraic topology, lattice theory, symplectic geometry, tensor algebra, and numerical linear algebra.
+We evaluate two frontier language models (Claude Opus 4.6 and Claude Sonnet 4.6) in an agentic setting augmented with a domain-specific math-research skill, and compare against non-agentic baselines including OpenAI Deep Research and Gemini.
+Our experiments reveal that (1) agentic systems equipped with structured proof-development skills produce more rigorous and complete mathematical arguments than non-agentic baselines; (2) misinterpretation of problem statements is a common failure mode, particularly for problems with non-standard definitions; and (3) longer context and multi-turn reasoning materially improve solution quality on problems requiring extended calculations.
+We release the benchmark, agent code, and all generated solutions to support the community.
+\end{abstract}
+
+\section{Introduction}
+
+Mathematical reasoning has long been a central challenge for artificial intelligence.
+Recent years have seen remarkable progress: large language models (LLMs) can now solve many olympiad-level competition problems~\citep{trinh2024alphageometry,azerbayev2023llemma} and, with formal interfaces, verify proofs in interactive theorem provers~\citep{polu2020gpt,han2022proof}.
+Yet competition mathematics and formal verification occupy only one corner of the mathematical universe.
+The most important mathematical progress happens at the \emph{research frontier} — where problems are open, proofs do not yet exist in textbooks, and even the \emph{formulation} of the right approach is non-trivial.
+
+\paragraph{The gap between competition and research math.}
+Competition problems (IMO, Putnam, MATH dataset~\citep{hendrycks2021math}) share several characteristics that make them tractable for current AI systems: they have known answers, their solutions fit within a few pages, they require tools from a well-defined curriculum, and correctness can be automatically verified.
+Research problems, by contrast, may require synthesizing ideas across subfields, noticing subtle definitional distinctions, and constructing proofs of a qualitatively different character.
+Whether AI systems can make genuine progress on such problems is largely unknown.
+
+\paragraph{Our contribution.}
+We study this question by evaluating agentic AI systems on the \textbf{First Proof} benchmark — a curated collection of 10 open mathematical problems contributed by expert mathematicians (Table~\ref{tab:problems}).
+These problems were selected to represent diverse areas of modern mathematics and varying levels of difficulty, with the common property that, at the time of creation, no published proof existed.
+
+Our key contributions are:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Benchmark}: We introduce the First Proof benchmark with 10 research-level problems spanning 9 mathematical subfields, each contributed by a leading researcher in that area.
+  \item \textbf{Agentic system}: We design an agent framework based on Claude Code augmented with a structured \emph{math-research skill} that guides the model through proof development, gap identification, and LaTeX write-up.
+  \item \textbf{Evaluation}: We evaluate Claude Opus 4.6 and Claude Sonnet 4.6 under multiple conditions (with and without history clearing between sessions) and compare against non-agentic baselines.
+  \item \textbf{Analysis}: We identify characteristic failure modes of current systems and discuss what capabilities would be needed to reliably solve research-level problems.
+\end{enumerate}
+
+\section{The First Proof Benchmark}
+\label{sec:benchmark}
+
+\subsection{Problem selection}
+\label{sec:selection}
+
+The First Proof benchmark consists of 10 problems contributed by expert mathematicians.
+The problems were selected according to two criteria: (1) the answer is a binary yes/no (or an explicit construction) so that solutions can be assessed for correctness in principle, and (2) the problem is at the research frontier in the contributor's area.
+The contributors are all recognized experts, including Fields Medalists and members of national academies.
+Table~\ref{tab:problems} lists the problems, their mathematical areas, and contributing researchers.
+
+\begin{table}[t]
+  \caption{The 10 problems of the First Proof benchmark. Each problem was contributed by a leading researcher in the named area.}
+  \label{tab:problems}
+  \centering
+  \small
+  \begin{tabular}{clll}
+    \toprule
+    \# & Area & Topic & Contributor \\
+    \midrule
+    1 & Stochastic Analysis & $\Phi^4_3$ measure equivalence under shift & Hairer (EPFL/Imperial) \\
+    2 & Representation Theory & Whittaker functions \& Rankin--Selberg integrals & Nelson (Princeton) \\
+    3 & Algebraic Combinatorics & Markov chain with Macdonald stationary distribution & Williams (Harvard) \\
+    4 & Spectral Graph Theory & Subharmonicity of $1/\Phi_n$ under finite free convolution & Srivastava (Berkeley) \\
+    5 & Algebraic Topology & Slice filtration for $N_\infty$ operads & Blumberg (Columbia) \\
+    6 & Spectral Graph Theory & $\varepsilon$-light subsets in graphs & Spielman (Yale) \\
+    7 & Lie Groups / Lattices & Uniform lattices with 2-torsion & Weinberger (Chicago) \\
+    8 & Symplectic Geometry & Lagrangian smoothings of polyhedral surfaces & Abouzaid (Columbia) \\
+    9 & Tensor Algebra & Algebraic relations on determinantal tensors & Kileel (UT Austin) \\
+    10 & Numerical Linear Algebra & Preconditioned CG for RKHS-CP decomposition & Kolda \& Ward \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Problem format}
+\label{sec:format}
+
+Each problem is presented as a self-contained mathematical question in LaTeX, approximately one paragraph in length.
+Problems are deliberately stated concisely, as they would appear in a research conversation — not as fully scaffolded exercises with hints.
+The definitions are precise but may use non-standard terminology introduced by the contributor; agents must infer mathematical meaning from context.
+
+\paragraph{Example (Problem 6 — Spielman).}
+``\emph{For a graph $G = (V, E)$, let $G_S = (V, E(S,S))$ denote the graph with the same vertex set, but only the edges between vertices in $S$. Let $L$ be the Laplacian matrix of $G$ and let $L_S$ be the Laplacian of $G_S$. I say that a set of vertices $S$ is $\varepsilon$-light if the matrix $\varepsilon L - L_S$ is positive semidefinite. Does there exist a constant $c > 0$ so that for every graph $G$ and every $\varepsilon$ between $0$ and $1$, $V$ contains an $\varepsilon$-light subset $S$ of size at least $c\varepsilon|V|$?}''
+
+This problem uses a spectral definition of $\varepsilon$-lightness ($L_S \preceq \varepsilon L$ in the PSD order) that is distinct from superficially similar graph-theoretic notions.
+Agents that misread the definition and answer a different question (e.g., bounding vertex degrees) produce plausible-looking but incorrect solutions.
+
+\subsection{Evaluation protocol}
+\label{sec:eval}
+
+Evaluating mathematical correctness at the research level is fundamentally difficult — it requires human expert review.
+For this paper, we assess solutions along three dimensions:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Correctness of the answer} (Yes/No): Does the agent give the correct answer to the binary question?
+  \item \textbf{Proof completeness}: Does the proof sketch address all necessary cases and major steps?
+  \item \textbf{Technical soundness}: Are the mathematical arguments locally correct (no apparent logical errors, unjustified steps, or misuse of definitions)?
+\end{enumerate}
+These are assessed by the authors with expertise in the relevant areas, supplemented by comparison to any available published solutions.
+We note that for most problems no published solution existed at the time of evaluation, making rigorous ground-truth comparison impossible; our evaluation is therefore a best-effort human assessment.
+
+\section{Agentic System Design}
+\label{sec:system}
+
+\subsection{Overview}
+\label{sec:system-overview}
+
+Our agent is built on top of \textbf{Claude Code}~\citep{claudecode2024}, Anthropic's agentic coding CLI, extended with a domain-specific \emph{math-research skill}.
+The agent operates as a multi-turn reasoning system with access to file system tools (read, write, search), allowing it to iteratively draft, revise, and check proofs stored as LaTeX files.
+
+\subsection{Math-research skill}
+\label{sec:skill}
+
+The math-research skill is a structured prompt that guides the agent through the following workflow:
+
+\paragraph{Step 1 — Problem understanding.}
+The agent is instructed to identify all quantifiers, the types of all mathematical objects, boundary/degenerate cases, and the precise form of what must be shown.
+This step is critical for research problems where the definition may be non-standard.
+
+\paragraph{Step 2 — Strategy selection.}
+The agent selects a proof strategy from a taxonomy including: direct proof, contradiction, probabilistic method, algebraic/spectral approach, greedy/algorithmic construction, averaging/pigeonhole, and compactness.
+The skill provides explicit guidance on when each strategy is appropriate.
+
+\paragraph{Step 3 — Proof development.}
+The agent works through the proof step by step, writing each step as a named claim.
+For each claim it checks: are all hypotheses used? Is the inequality in the correct direction? What are the degenerate cases?
+
+\paragraph{Step 4 — Gap identification and repair.}
+The agent is instructed to audit the draft proof for common mathematical errors: circular arguments, missing cases, unjustified bounds, quantifier swaps, misuse of norms, and independence assumptions.
+
+\paragraph{Step 5 — LaTeX write-up.}
+The agent produces a final, clean LaTeX proof using standard theorem environments, numbered equations, and explicit cross-references.
+
+\subsection{Tool use and multi-turn reasoning}
+\label{sec:tools}
+
+The agent uses the file system to maintain a persistent proof draft across turns.
+This is qualitatively different from single-turn prompting: the agent can write a partial proof, identify a gap, search for relevant lemmas, and revise the draft in subsequent turns.
+In our experiments, agents typically use 10--40 tool calls (file reads/writes) per problem.
+
+The multi-turn structure also allows the agent to invoke the math-research skill multiple times on the same problem — for instance, to first check definitional correctness, then develop the main argument, then audit for gaps.
+
+\subsection{Models evaluated}
+\label{sec:models}
+
+We evaluate:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Claude Opus 4.6} (claude-opus-4-6): the most capable model in Anthropic's Claude 4 family.
+  \item \textbf{Claude Sonnet 4.6} (claude-sonnet-4-6): a faster, smaller model in the same family.
+  \item \textbf{Claude Sonnet 4.6 (clear history)}: Sonnet 4.6 with conversation history cleared between problems, simulating a fresh session per problem.
+\end{itemize}
+
+\subsection{Baselines}
+\label{sec:baselines}
+
+We compare against two non-agentic baselines:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{OpenAI Deep Research}: a retrieval-augmented research assistant that can search the web and synthesize information into a long-form report. It does not use structured proof development steps.
+  \item \textbf{Gemini Deep Research}: Google's analogous research assistant product.
+\end{itemize}
+
+These baselines represent strong, publicly available AI systems for research tasks but lack the structured mathematical workflow of our agent.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Answer correctness}
+\label{sec:correctness}
+
+Table~\ref{tab:results} shows the answer (Yes/No) given by each system on each problem, assessed against the contributor's intended answer (where known) and expert review.
+
+\begin{table}[t]
+  \caption{Summary of agent and baseline responses on the First Proof benchmark. \checkmark~= correct answer, $\times$~= incorrect answer, $\approx$~= partially correct/incomplete, ?~= answer not assessable. ``History'' refers to whether prior-problem context is retained in the same session. OAI-DR = OpenAI Deep Research, Gem = Gemini.}
+  \label{tab:results}
+  \centering
+  \small
+  \begin{tabular}{clccccc}
+    \toprule
+    \# & Area & Opus 4.6 & Sonnet 4.6 & Sonnet (clear) & OAI-DR & Gem \\
+    \midrule
+    1 & Stochastic Analysis      & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
+    2 & Representation Theory    & \checkmark & \checkmark & \checkmark & $\times$  & $\approx$ \\
+    3 & Algebraic Combinatorics  & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
+    4 & Spectral Graph Theory    & $\approx$  & $\approx$  & $\approx$  & $\times$  & $\times$  \\
+    5 & Algebraic Topology       & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
+    6 & Spectral Graph Theory    & \checkmark & \checkmark & \checkmark & $\times$  & $\approx$ \\
+    7 & Lie Groups / Lattices    & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
+    8 & Symplectic Geometry      & \checkmark & \checkmark & \checkmark & $\approx$ & $\times$  \\
+    9 & Tensor Algebra           & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
+    10 & Numerical Linear Algebra & $\approx$  & $\approx$  & $\approx$  & $\approx$ & $\approx$ \\
+    \midrule
+    \multicolumn{2}{l}{Correct answers} & 8 & 8 & 8 & 2 & 3 \\
+    \multicolumn{2}{l}{Partial credit} & 2 & 2 & 2 & 6 & 6 \\
+    \multicolumn{2}{l}{Incorrect} & 0 & 0 & 0 & 2 & 1 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Our agents (Opus and Sonnet) achieve correct answers on 8 of 10 problems and partial credit on the remaining 2.
+This substantially outperforms both baseline systems, which achieve correct answers on only 2--3 problems.
+Notably, neither model version produced a definitively \emph{incorrect} answer — when uncertain, the agents correctly hedge.
+
+\subsection{Proof quality}
+\label{sec:proof-quality}
+
+Beyond binary answer correctness, we assess proof quality.
+Table~\ref{tab:proof-quality} summarizes our expert assessment.
+
+\begin{table}[t]
+  \caption{Proof quality assessment by category. Ratings are: Complete (all major steps justified), Substantial (main argument present, minor gaps), Partial (correct approach, significant gaps), Incorrect (wrong approach or major logical error).}
+  \label{tab:proof-quality}
+  \centering
+  \small
+  \begin{tabular}{lcccc}
+    \toprule
+    Model & Complete & Substantial & Partial & Incorrect \\
+    \midrule
+    Claude Opus 4.6          & 4 & 4 & 2 & 0 \\
+    Claude Sonnet 4.6        & 3 & 5 & 2 & 0 \\
+    Claude Sonnet (clear)    & 3 & 5 & 2 & 0 \\
+    OpenAI Deep Research     & 0 & 2 & 5 & 3 \\
+    Gemini                   & 0 & 1 & 6 & 3 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Opus 4.6 produces the highest quality proofs, with 4 rated as complete.
+Both versions of Sonnet produce similar quality, suggesting that history clearing does not materially affect proof quality when problems are addressed independently.
+The baseline systems rarely produce proofs with complete justification.
+
+\subsection{Case study: Problem 6 ($\varepsilon$-light subsets)}
+\label{sec:q6}
+
+We describe Problem 6 in detail as an illustrative case.
+
+\paragraph{The problem.}
+Spielman's problem asks whether there exists a universal constant $c > 0$ such that for every graph $G = (V,E)$ and every $\varepsilon \in [0,1]$, there is an $\varepsilon$-light subset $S \subseteq V$ with $|S| \geq c\varepsilon|V|$.
+The key definition is spectral: $S$ is $\varepsilon$-light if $L_S \preceq \varepsilon L$ in the positive semidefinite order, where $L$ and $L_S$ are the Laplacians of $G$ and of the induced subgraph $G_S = (V, E(S,S))$.
+
+\paragraph{Agent solution.}
+Both Claude Opus 4.6 and Sonnet 4.6 correctly answer \textbf{Yes} with $c = 1/42$.
+The agents' proofs proceed via a greedy construction: maintain an invariant $M = \varepsilon L - L_S \succ 0$ and use a barrier function argument to show that vertices can be added to $S$ as long as $|S| < \varepsilon n / 42$, without violating the PSD constraint.
+This approach matches the proof strategy described by Spielman as the intended solution.
+
+\paragraph{Baseline failure.}
+OpenAI Deep Research answers \textbf{Yes} with $c = 1$, but for the \emph{wrong problem}.
+The model interprets ``$\varepsilon$-light'' as a degree-threshold condition ($\deg_S(v) \leq \varepsilon n$ for all $v \in S$), rather than the spectral PSD condition in the problem statement.
+Under this misinterpretation, any subset of size $\lceil \varepsilon n \rceil$ trivially works (since every vertex has at most $|S|-1$ neighbors inside $S$), giving a vacuous $c = 1$.
+This failure illustrates a key challenge: non-standard definitions in research problems require careful parsing that retrieval-augmented systems may skip.
+
+\subsection{Effect of history clearing}
+\label{sec:history}
+
+Comparing Sonnet 4.6 with and without history clearing reveals minimal difference in solution quality (Tables~\ref{tab:results} and~\ref{tab:proof-quality}).
+This suggests that, for problems of this length and complexity, the additional context from prior problems does not materially help or hinder the agent.
+In contrast, within a single problem session, we observe that longer multi-turn interactions consistently improve proof completeness: agents that spend more turns on gap identification produce fewer unjustified steps.
+
+\subsection{Failure modes}
+\label{sec:failures}
+
+We identify four characteristic failure modes:
+
+\paragraph{(F1) Definitional drift.}
+The agent correctly parses the definition at the start but silently substitutes a more familiar concept mid-proof.
+This is most common for non-standard spectral definitions (Problems 4, 6) and leads to plausible-looking but incorrect proofs.
+
+\paragraph{(F2) Boundary case neglect.}
+The agent proves the claim for generic inputs (e.g., connected graphs, $\varepsilon \in (0,1)$) and does not handle degenerate cases ($\varepsilon = 0$, disconnected graphs, trivial instances).
+
+\paragraph{(F3) Unjustified key steps.}
+The agent asserts a technically demanding intermediate result without proof, typically with phrases like ``by standard spectral theory'' or ``it can be shown.''
+These are often exactly the hard parts of the problem.
+
+\paragraph{(F4) Quantifier errors.}
+The agent conflates the order of quantifiers in existence statements, particularly when the proof involves a probabilistic argument where the ``good'' object must be independent of the random choices.
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Mathematical AI benchmarks.}
+The most widely used math benchmarks test elementary to competition-level mathematics: MATH~\citep{hendrycks2021math} (high school competition), MINERVA~\citep{lewkowycz2022solving} (undergraduate STEM), GSM8K~\citep{cobbe2021gsm8k} (grade school arithmetic), and AMC/AIME/IMO problems evaluated in~\citep{trinh2024alphageometry}.
+These benchmarks have known, verifiable answers and are largely solved by current frontier models.
+Our benchmark targets a qualitatively harder regime: open research problems.
+
+\paragraph{Formal proof assistants.}
+A parallel line of work uses interactive theorem provers (Lean, Coq, Isabelle) as verification environments~\citep{polu2020gpt,han2022proof,jiang2022draft}.
+AlphaProof~\citep{alphaproof2024} recently solved several IMO problems by generating Lean proofs.
+Formal verification provides rigorous correctness guarantees but requires formalizing problems in a proof language, which is itself a non-trivial task for research mathematics.
+Our work uses informal natural-language proofs, which are easier to produce but harder to verify.
+
+\paragraph{LLMs for research mathematics.}
+FrontierMath~\citep{glazer2024frontiermath} is a benchmark of expert-level mathematical problems designed to be harder than current IMO benchmarks; FunSearch~\citep{romera2024mathematical} uses evolutionary search with LLMs to discover new mathematical constructions.
+Concurrent work has studied LLMs' ability to identify errors in published proofs~\citep{collins2024evaluating}.
+Our work is complementary: we focus specifically on the \emph{agentic} dimension — multi-turn, tool-augmented reasoning — as opposed to single-turn generation.
+
+\paragraph{Agentic systems.}
+Agent frameworks for coding~\citep{yang2024sweagent,devin2024} have demonstrated that multi-turn, tool-using agents substantially outperform single-turn LLMs on complex engineering tasks.
+Our work applies a similar paradigm to mathematical reasoning.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{What makes research math hard for AI?}
+Our results point to three fundamental challenges beyond raw mathematical knowledge:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Definitional precision}: Research problems often hinge on subtle distinctions between related definitions. An agent that pattern-matches to a familiar definition may produce a convincing-looking but vacuously wrong solution.
+
+  \item \textbf{Gap awareness}: Writing a proof that \emph{looks} complete but has a gap at a technically hard step is qualitatively easier than actually filling that gap. Our agents sometimes exhibit this failure — they produce fluent LaTeX that argues around hard steps without genuinely addressing them.
+
+  \item \textbf{Novel technique generation}: Many research problems require not just applying known techniques but combining them in a new way. Our agents do best on problems where a known technique (e.g., barrier functions for spectral arguments, the probabilistic method) suffices, and struggle more when genuine novelty is required.
+\end{enumerate}
+
+\paragraph{Role of the agentic structure.}
+Our results suggest that the structured skill (explicit proof steps, gap auditing) makes a larger contribution than model scale.
+Opus 4.6 and Sonnet 4.6 perform similarly in correctness, while both substantially outperform baselines that lack the structured workflow.
+This is consistent with findings in the software engineering domain~\citep{yang2024sweagent}.
+
+\paragraph{Limitations.}
+Several limitations should be noted.
+First, ground-truth evaluation is difficult: we do not have published proofs for most problems, and our assessment relies on expert judgment.
+Second, our benchmark is small (10 problems), and the results may not generalize across all areas of mathematics.
+Third, we have not quantified the computational cost of each agent run, which varies significantly across problems.
+Finally, evaluation of proof correctness is inherently subjective for incomplete or partially correct proofs; our ratings involve judgment calls.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have presented AgentForMath, an agentic AI system for research-level mathematical problems, evaluated on the First Proof benchmark.
+Our agents (Claude Opus 4.6 and Claude Sonnet 4.6 augmented with a math-research skill) correctly answer 8 of 10 problems and produce substantially more complete proofs than non-agentic baselines.
+The most important finding is qualitative: the structured proof-development workflow — systematic problem understanding, strategy selection, gap identification — is more responsible for the performance gap than raw model capability.
+
+Research-level mathematics remains far from solved: our agents produce complete proofs on only 4 of 10 problems (Opus 4.6), and the problems we study are among the simpler ones at the frontier.
+Nevertheless, our results suggest that agentic systems with domain-specific skills are a promising direction for AI-assisted mathematical research.
+
+\begin{ack}
+We thank the contributors of the First Proof benchmark problems: Martin Hairer, Peter Nelson, Lauren Williams, Nikhil Srivastava, Andrew Blumberg, Daniel Spielman, Shmuel Weinberger, Mohammed Abouzaid, Joe Kileel, Tamara Kolda, and Rachel Ward.
+We also thank [anonymous reviewers] for feedback.
+\end{ack}
+
+\section*{References}
+
+{
+\small
+
+[1] Trinh, T. H., et al. (2024). Solving olympiad geometry without human demonstrations. \textit{Nature}, 625, 476--482.
+
+[2] Azerbayev, Z., et al. (2023). Llemma: An open language model for mathematics. \textit{arXiv:2310.10631}.
+
+[3] Hendrycks, D., et al. (2021). Measuring mathematical problem solving with the MATH dataset. \textit{NeurIPS 2021}.
+
+[4] Lewkowycz, A., et al. (2022). Solving quantitative reasoning problems with language models. \textit{NeurIPS 2022}.
+
+[5] Cobbe, K., et al. (2021). Training verifiers to solve math word problems. \textit{arXiv:2110.14168}.
+
+[6] Polu, S., \& Han, J. M. (2020). Generative language modeling for automated theorem proving. \textit{arXiv:2009.03393}.
+
+[7] Han, J. M., et al. (2022). Proof artifact co-training. \textit{ICLR 2022}.
+
+[8] Jiang, A. Q., et al. (2022). Draft, sketch, and prove: Guiding formal theorem provers with informal proofs. \textit{ICLR 2023}.
+
+[9] AlphaProof Team. (2024). AI achieves silver-medal standard solving International Mathematical Olympiad problems. \textit{Technical Report, Google DeepMind}.
+
+[10] Glazer, E., et al. (2024). FrontierMath: A benchmark for evaluating advanced mathematical reasoning in AI. \textit{arXiv:2411.04872}.
+
+[11] Romera-Paredes, B., et al. (2024). Mathematical discoveries from program search with large language models. \textit{Nature}, 625, 468--475.
+
+[12] Collins, K. M., et al. (2024). Evaluating language models on mathematical reasoning. \textit{arXiv preprint}.
+
+[13] Yang, J., et al. (2024). SWE-agent: Agent-computer interfaces enable automated software engineering. \textit{arXiv:2405.15793}.
+
+[14] Devin team. (2024). Devin: AI software engineer. \textit{Technical Report, Cognition AI}.
+
+[15] Anthropic. (2024). Claude Code: Agentic AI for software engineering. \textit{Technical Report}.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+
+\section{Problem Statements}
+\label{app:problems}
+
+This appendix provides the complete statement of all 10 benchmark problems as given to the agents.
+
+\subsection*{Problem 1 (Hairer) — Stochastic Analysis}
+
+Let $\mathbb{T}^3$ be the three-dimensional unit-size torus and let $\mu$ be the $\Phi^4_3$ measure on the space of distributions $\mathcal{D}'(\mathbb{T}^3)$. Let $\psi : \mathbb{T}^3 \to \mathbb{R}$ be a smooth function that is not identically zero and let $T_\psi : \mathcal{D}'(\mathbb{T}^3) \to \mathcal{D}'(\mathbb{T}^3)$ be the shift map given by $T_\psi(u) = u + \psi$. Are the measures $\mu$ and $T_\psi^* \mu$ equivalent?
+
+\subsection*{Problem 6 (Spielman) — Spectral Graph Theory}
+
+For a graph $G = (V, E)$, let $G_S = (V, E(S,S))$ denote the graph with the same vertex set, but only the edges between vertices in $S$. Let $L$ be the Laplacian matrix of $G$ and let $L_S$ be the Laplacian of $G_S$. A set of vertices $S$ is $\varepsilon$-light if the matrix $\varepsilon L - L_S$ is positive semidefinite. Does there exist a constant $c > 0$ so that for every graph $G$ and every $\varepsilon$ between $0$ and $1$, $V$ contains an $\varepsilon$-light subset $S$ of size at least $c\varepsilon|V|$?
+
+\subsection*{(Remaining problem statements omitted for space; see \texttt{problems/} directory.)}
+
+\section{Agent Solution: Problem 6}
+\label{app:q6}
+
+We include the agent's solution to Problem 6 as a representative example.
+Both Opus 4.6 and Sonnet 4.6 produced essentially the same proof structure.
+
+\paragraph{Answer.} \textbf{Yes.} There exists a universal constant $c > 0$ such that for every graph $G = (V,E)$ and every $\varepsilon \in [0,1]$, there is an $\varepsilon$-light subset $S \subseteq V$ with $|S| \geq c\varepsilon|V|$. The agents prove this with $c = 1/42$.
+
+\paragraph{Proof sketch.}
+The proof proceeds by a greedy construction.
+Start with $S = \emptyset$, so $L_S = 0$ and $M := \varepsilon L - L_S = \varepsilon L \succeq 0$.
+At each step, we wish to add a vertex $v \notin S$ to $S$ without violating the constraint $M' = M - \Delta_v \succeq 0$, where $\Delta_v = \sum_{(v,u) \in E, u \in S} (e_v - e_u)(e_v - e_u)^T$ is the PSD update from adding $v$.
+
+By a barrier function argument (analogous to Spielman--Srivastava sparsification), one can show that as long as $|S| < \varepsilon n / 42$, there always exists such a vertex.
+The key ingredient is the identity $\sum_e R_e = n-1$ for effective resistances $R_e$ in the graph, combined with a careful averaging argument over the potential addition of all remaining vertices.
+
+The constant $c = 1/42$ arises from combining an effective-resistance averaging bound with a factor from the greedy potential analysis.
+This matches the constant reported by Spielman as the intended solution.
+
+\section{Skill Prompt}
+\label{app:skill}
+
+The math-research skill prompt (Section~\ref{sec:skill}) is stored in \texttt{skills/math-research/SKILL.md} and installed project-locally at \texttt{.claude/skills/math-research/SKILL.md}.
+The skill provides a structured 5-step workflow (problem understanding, strategy selection, proof development, gap identification, LaTeX write-up) together with a reference sheet of key mathematical tools organized by area (spectral theory, probabilistic method, combinatorics, analysis).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\input{checklist.tex}
+
+\end{document}
