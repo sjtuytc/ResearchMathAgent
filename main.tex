@@ -300,25 +300,68 @@ The agent conflates the order of quantifiers in existence statements, particular
 \section{Related Work}
 \label{sec:related}
 
-\paragraph{Mathematical AI benchmarks.}
-The most widely used math benchmarks test elementary to competition-level mathematics: MATH~\citep{hendrycks2021math} (high school competition), MINERVA~\citep{lewkowycz2022solving} (undergraduate STEM), GSM8K~\citep{cobbe2021gsm8k} (grade school arithmetic), and AMC/AIME/IMO problems evaluated in~\citep{trinh2024alphageometry}.
-These benchmarks have known, verifiable answers and are largely solved by current frontier models.
-Our benchmark targets a qualitatively harder regime: open research problems.
+\paragraph{Math benchmarks: from arithmetic to olympiad.}
+Benchmarking mathematical reasoning in AI has progressed through several capability levels.
+Early work focused on arithmetic word problems: GSM8K~\citep{cobbe2021gsm8k} tests grade-school multi-step arithmetic, while SVAMP~\citep{patel2021svamp} and ASDiv~\citep{miao2020asdiv} probe robustness to paraphrasing.
+The MATH dataset~\citep{hendrycks2021math} raised the bar to high-school competition mathematics across seven categories (algebra, counting, geometry, number theory, etc.), and became a standard benchmark for frontier models.
+MINERVA~\citep{lewkowycz2022solving} extended evaluation to undergraduate STEM problems requiring multi-step symbolic reasoning.
+More recently, AMC, AIME, and IMO problems have been used to probe the limits of frontier models~\citep{trinh2024alphageometry,openai2024openaio1}; current systems routinely achieve top-quartile AMC scores and can solve several AIME problems.
+OlympiadBench~\citep{he2024olympiadbench} and OmniMath~\citep{gao2024omnimath} collect bilingual olympiad problems with expert-annotated solutions.
+Despite this progress, all these benchmarks share a key property: answers are known and verifiable in advance.
+Our work is the first to evaluate AI systems on \emph{open} research problems where no published proof exists.
 
-\paragraph{Formal proof assistants.}
-A parallel line of work uses interactive theorem provers (Lean, Coq, Isabelle) as verification environments~\citep{polu2020gpt,han2022proof,jiang2022draft}.
-AlphaProof~\citep{alphaproof2024} recently solved several IMO problems by generating Lean proofs.
-Formal verification provides rigorous correctness guarantees but requires formalizing problems in a proof language, which is itself a non-trivial task for research mathematics.
-Our work uses informal natural-language proofs, which are easier to produce but harder to verify.
+\paragraph{Expert-level and research-oriented benchmarks.}
+Recognizing that frontier models were saturating competition benchmarks, FrontierMath~\citep{glazer2024frontiermath} introduced problems requiring graduate-level expertise in specialized subfields (number theory, algebraic geometry, combinatorics), with verification via symbolic computation.
+Models at the time of its introduction (late 2024) solved fewer than 2\% of problems.
+Concurrent with our work, the AI Mathematical Olympiad (AIMO) prize and related challenges have attracted efforts to solve unseen competition problems.
+However, competition problems, even at the hardest olympiad level, differ from research problems: they are known to have elementary solutions (in the sense of the relevant curriculum), the problem poser has a solution in hand, and the solution fits within a few pages.
+Research problems, by contrast, may be open for decades and require synthesizing techniques across subfields.
+Our First Proof benchmark specifically selects problems at the research frontier.
 
-\paragraph{LLMs for research mathematics.}
-FrontierMath~\citep{glazer2024frontiermath} is a benchmark of expert-level mathematical problems designed to be harder than current IMO benchmarks; FunSearch~\citep{romera2024mathematical} uses evolutionary search with LLMs to discover new mathematical constructions.
-Concurrent work has studied LLMs' ability to identify errors in published proofs~\citep{collins2024evaluating}.
-Our work is complementary: we focus specifically on the \emph{agentic} dimension — multi-turn, tool-augmented reasoning — as opposed to single-turn generation.
+\paragraph{Neural theorem proving and formal verification.}
+A parallel line of work uses interactive theorem provers (Lean 4, Coq, Isabelle/HOL, Metamath) as verification environments for AI-generated proofs.
+GPT-f~\citep{polu2020gpt} first demonstrated that language models could serve as proof search policies, outperforming classical tactics on Metamath.
+Proof artifact co-training~\citep{han2022proof} improved sample efficiency via a self-supervised curriculum.
+HyperTree Proof Search~\citep{lample2022hypertree} applied Monte Carlo Tree Search with LLM-generated tactics to achieve state-of-the-art on miniF2F.
+Draft, Sketch, and Prove~\citep{jiang2022draft} introduced a two-stage pipeline in which an informal proof is first generated and then translated into formal Isabelle steps, significantly improving success rates on competition problems.
+AlphaProof~\citep{alphaproof2024} combined reinforcement learning with Lean 4 to solve 4 of 6 IMO 2024 problems, reaching a silver-medal standard — a landmark result.
+DeepSeek-Prover~\citep{xin2024deepseekprover} demonstrated that fine-tuned open models could achieve competitive neural theorem proving performance.
+These systems provide rigorous correctness guarantees via machine-checked proofs, but require formalizing problems in a proof language, which demands substantial mathematical expertise and is itself a research challenge for advanced problems.
+Our work operates in the informal proof regime, trading verification rigor for accessibility and broader coverage.
 
-\paragraph{Agentic systems.}
-Agent frameworks for coding~\citep{yang2024sweagent,devin2024} have demonstrated that multi-turn, tool-using agents substantially outperform single-turn LLMs on complex engineering tasks.
-Our work applies a similar paradigm to mathematical reasoning.
+\paragraph{LLMs for mathematical research and discovery.}
+Beyond benchmarks, several works have explored LLMs as tools for mathematical discovery.
+FunSearch~\citep{romera2024mathematical} uses an evolutionary search loop with LLM-generated programs to discover new combinatorial constructions, finding improved bounds on the cap set problem and bin packing.
+AlphaGeometry~\citep{trinh2024alphageometry} combines a language model with a symbolic deduction engine to solve olympiad geometry problems without human demonstrations.
+Bubeck et al.~\citep{bubeck2023sparks} provide an extensive qualitative evaluation of GPT-4 on mathematical tasks ranging from novel proofs to open problems, finding impressive but inconsistent performance.
+Several studies have examined LLMs' ability to verify or identify errors in mathematical arguments~\citep{collins2024evaluating,frieder2024mathematical}, finding that models are better at identifying errors in short, elementary proofs than in long, advanced ones.
+Liao et al.~\citep{liao2024mario} propose a process-level reward model for step-by-step mathematical reasoning, improving performance on competition problems.
+Our work differs by focusing on the \emph{agentic} dimension: multi-turn reasoning with tool use, rather than single-turn generation or passive evaluation.
+
+\paragraph{Chain-of-thought and structured reasoning.}
+Chain-of-thought prompting~\citep{wei2022chain} showed that eliciting intermediate reasoning steps substantially improves LLM performance on multi-step problems.
+This has been extended to self-consistency~\citep{wang2022self} (sampling diverse reasoning paths and taking a majority vote), tree-of-thought~\citep{yao2023tree} (exploring a tree of partial solutions with backtracking), and process reward models~\citep{lightman2023verify} (training verifiers to score individual reasoning steps).
+OpenAI's o1 and o3 model series~\citep{openai2024openaio1} internalize extended chain-of-thought via reinforcement learning, achieving strong results on competition mathematics.
+Our math-research skill can be viewed as a structured, domain-specific chain-of-thought that decomposes proof development into expert-guided stages (problem understanding, strategy selection, gap auditing).
+
+\paragraph{Tool-augmented and program-aided reasoning.}
+Program-aided language models (PAL~\citep{gao2023pal}) and PoT~\citep{chen2022pot} delegate computation to a Python interpreter, improving arithmetic accuracy.
+Toolformer~\citep{schick2023toolformer} trains models to decide when and how to call external APIs.
+For mathematics specifically, tool use enables symbolic computation (via SymPy, Mathematica, or Wolfram Alpha), exact arithmetic, and proof assistant calls~\citep{wu2022autoformalization}.
+Our agent uses the file system as its primary tool — persistent state across turns — rather than external mathematical computation, which keeps the system domain-agnostic.
+
+\paragraph{Agentic systems for complex tasks.}
+Agent frameworks that combine LLMs with tools, memory, and multi-turn interaction have shown large gains over single-turn prompting on complex engineering tasks.
+SWE-agent~\citep{yang2024sweagent} introduces an agent-computer interface for software engineering, substantially outperforming single-turn GPT-4 on SWE-bench.
+OpenHands~\citep{wang2024openhands} extends this to a wider class of computer tasks.
+ReAct~\citep{yao2022react} interleaves reasoning traces and environment actions, enabling agents to self-correct.
+AutoGen~\citep{wu2023autogen} and similar frameworks enable multi-agent debate and collaboration.
+Our work applies the same agentic paradigm to mathematical research, showing that structured multi-turn reasoning with a domain-specific skill significantly outperforms single-turn baselines on research-level problems.
+
+\paragraph{AI-assisted scientific discovery.}
+More broadly, our work connects to the growing literature on AI for science~\citep{wang2023scientific,jumper2021alphafold}.
+AlphaFold~\citep{jumper2021alphafold} demonstrated that AI can make qualitatively new scientific discoveries; our work explores whether a similar leap is possible in pure mathematics.
+Unlike natural sciences where AI can interface with experimental data, mathematics is purely deductive — correctness is an all-or-nothing property — making it a particularly clean testbed for AI reasoning capabilities.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -361,41 +404,8 @@ We thank the contributors of the First Proof benchmark problems: Martin Hairer, 
 We also thank [anonymous reviewers] for feedback.
 \end{ack}
 
-\section*{References}
-
-{
-\small
-
-[1] Trinh, T. H., et al. (2024). Solving olympiad geometry without human demonstrations. \textit{Nature}, 625, 476--482.
-
-[2] Azerbayev, Z., et al. (2023). Llemma: An open language model for mathematics. \textit{arXiv:2310.10631}.
-
-[3] Hendrycks, D., et al. (2021). Measuring mathematical problem solving with the MATH dataset. \textit{NeurIPS 2021}.
-
-[4] Lewkowycz, A., et al. (2022). Solving quantitative reasoning problems with language models. \textit{NeurIPS 2022}.
-
-[5] Cobbe, K., et al. (2021). Training verifiers to solve math word problems. \textit{arXiv:2110.14168}.
-
-[6] Polu, S., \& Han, J. M. (2020). Generative language modeling for automated theorem proving. \textit{arXiv:2009.03393}.
-
-[7] Han, J. M., et al. (2022). Proof artifact co-training. \textit{ICLR 2022}.
-
-[8] Jiang, A. Q., et al. (2022). Draft, sketch, and prove: Guiding formal theorem provers with informal proofs. \textit{ICLR 2023}.
-
-[9] AlphaProof Team. (2024). AI achieves silver-medal standard solving International Mathematical Olympiad problems. \textit{Technical Report, Google DeepMind}.
-
-[10] Glazer, E., et al. (2024). FrontierMath: A benchmark for evaluating advanced mathematical reasoning in AI. \textit{arXiv:2411.04872}.
-
-[11] Romera-Paredes, B., et al. (2024). Mathematical discoveries from program search with large language models. \textit{Nature}, 625, 468--475.
-
-[12] Collins, K. M., et al. (2024). Evaluating language models on mathematical reasoning. \textit{arXiv preprint}.
-
-[13] Yang, J., et al. (2024). SWE-agent: Agent-computer interfaces enable automated software engineering. \textit{arXiv:2405.15793}.
-
-[14] Devin team. (2024). Devin: AI software engineer. \textit{Technical Report, Cognition AI}.
-
-[15] Anthropic. (2024). Claude Code: Agentic AI for software engineering. \textit{Technical Report}.
-}
+\bibliographystyle{plainnat}
+\bibliography{references}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newpage
