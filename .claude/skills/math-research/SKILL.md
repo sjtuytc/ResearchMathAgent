@@ -187,45 +187,96 @@ When you find a theorem $T$ in paper $P$ that you want to apply:
 
 ---
 
-## 3. Proof Verification Protocol
+## 3. Proof Verification Protocol — Three Rounds of Verify-and-Revise
 
-> ⚠️ **Run this protocol after finishing the proof draft. It is mandatory. Do not declare a proof complete until this protocol passes with zero open items.**
+> ⚠️ **This protocol is mandatory. You must complete all three rounds before declaring the proof done. Each round consists of a full check followed by revision of every issue found. Do not skip rounds even if Round 1 finds no problems — a fresh pass often catches what the first misses.**
 
-### 3.1 Line-by-line completeness check
+The structure is:
+```
+[Draft proof]
+  → Round 1: Full check → Revise all issues → Updated proof
+  → Round 2: Full check → Revise all issues → Updated proof
+  → Round 3: Full check → Revise all issues → Final proof
+```
+
+After Round 3, if any open items remain, perform additional rounds until the proof is clean. Three rounds is the minimum, not the maximum.
+
+---
+
+### Round Template (repeat for Rounds 1, 2, and 3)
+
+At the start of each round, write a heading: **"Verification Round N"**. Then run all four checks below in order. For every issue found, immediately write the fix in full, update the proof text, and note what was changed. Only move to the next check after all issues from the current check are resolved.
+
+#### Check A — Line-by-line completeness
 
 Go through every non-trivial step and answer:
 
-1. **Cited theorem?** → Name it. State its conclusion. Verify each hypothesis. Show conclusion gives the claim.
-2. **Direct calculation?** → Write out every algebraic step. No lines skipped.
-3. **"By similar argument"?** → Either write it out fully, or confirm it is word-for-word the same as an already-written step.
-4. **"Clearly" / "obviously" / "one can check"?** → Supply the verification.
-5. **Cases?** → List all cases. Confirm each is handled.
-6. **Constants?** → Recheck all arithmetic. Constants in conclusion must match constants used throughout.
+1. **Cited theorem?** → Name it. State its conclusion exactly. Verify each hypothesis holds in the current setting (list them one by one). Show the conclusion gives exactly the claimed step.
+2. **Direct calculation?** → Write out every algebraic/analytic step with no lines skipped.
+3. **"By a similar argument" or "analogously"?** → Either write the argument in full, or confirm it is word-for-word identical to a step already written immediately above.
+4. **"Clearly," "obviously," "one can check," "it follows that"?** → Supply the full verification.
+5. **Cases?** → List every case explicitly. Confirm each one is fully handled, including all degenerate/boundary cases from Step 1.
+6. **Constants?** → Recheck all numerical factors and arithmetic. Constants in the final conclusion must match those used throughout.
+7. **Scope of generality?** → Confirm the proof covers the full generality of the problem statement — not just a base case, not just a special family. If the proof was written for a special case, extend it now.
 
-For each item that reveals a gap: fix it immediately with a full argument, then re-run the check on the fixed portion.
+**Action**: For each issue found in Check A, write the fix immediately, update the proof, and mark it resolved before proceeding to Check B.
 
-### 3.2 Logical structure check
+#### Check B — Logical structure
 
-- Draw the dependency graph of all lemmas and claims. Is it acyclic? (No circularity.)
-- Does every edge in the dependency graph represent a proved implication (not an assertion)?
-- Is every existential claim ("there exists...") witnessed by an explicit construction or a probabilistic argument with a verified positive probability?
-- Are all universal claims ("for every...") proved for every element of the domain, including degenerate cases?
+- List all lemmas, claims, and sub-results used in the proof. Draw their dependency graph (can be written as a text list of "X uses Y").
+- Is the graph acyclic? If any circularity exists, identify the cycle and break it by proving one of the steps from scratch.
+- Does every edge represent a proved implication? Flag any edge that is merely asserted.
+- Is every existential statement ("there exists $x$ such that...") either (a) witnessed by an explicit construction, or (b) proved by a probabilistic/non-constructive argument with a verified positive probability/count?
+- Is every universal statement ("for all $x$...") proved for the entire domain, including $n=0$, $\varepsilon=0$, $\varepsilon=1$, empty sets, disconnected graphs, etc.?
 
-### 3.3 Definition consistency check
+**Action**: Fix every structural issue before proceeding to Check C.
 
-- Re-read the problem statement definition of every technical term.
-- Confirm the proof uses **that definition**, not a more familiar variant.
-- If the proof introduced a re-definition or alternative characterization, verify equivalence explicitly.
+#### Check C — Definition consistency
 
-### 3.4 Final output checklist
+- Re-read the original problem statement word by word.
+- For each technical term defined in the problem: confirm the proof uses that exact definition throughout. Write out the definition and point to each place it is used.
+- If the proof introduced an alternative characterization or equivalent reformulation, verify the equivalence explicitly with a proof (not an assertion).
+- If any step used a more familiar but subtly different definition (e.g., degree-threshold instead of spectral PSD condition), identify and correct it.
 
-Before writing the final LaTeX:
+**Action**: Fix every definition inconsistency before proceeding to Check D.
+
+#### Check D — Strength and completeness of the result
+
+- Does the proof establish the full claim in the problem statement, or only a weaker version?
+- If a weaker version was proved: identify exactly what is missing and attempt to strengthen it now.
+- Are the constants optimal or at least matching what was claimed? Recheck all constant arithmetic end-to-end.
+- Is the answer to the problem's binary question (Yes/No) clearly stated and supported by the proof?
+
+**Action**: Strengthen the result if needed. If the full generality genuinely cannot be reached, document exactly what was proved and what remains open — but do not relabel a partial result as complete.
+
+---
+
+### Round 1 — First verification pass
+
+*Run Checks A, B, C, D. Revise all issues. Write "Round 1 complete: [N issues found and fixed]."*
+
+### Round 2 — Second verification pass
+
+*Re-run Checks A, B, C, D on the revised proof. Common second-round catches: issues introduced by Round 1 fixes, constants that changed, new cases exposed by a broadened argument. Revise all issues. Write "Round 2 complete: [N issues found and fixed]."*
+
+### Round 3 — Final verification pass
+
+*Re-run Checks A, B, C, D on the twice-revised proof. This round should find zero or very few issues. Revise any remaining issues. Write "Round 3 complete: [N issues found and fixed]. Proof declared complete."*
+
+---
+
+### Final output checklist
+
+Only after Round 3 passes cleanly:
+- [ ] **Environment balance**: `\begin{proof}` count = `\end{proof}` count; all other environments balanced; no environment reaches `\end{document}` unclosed
 - [ ] Every claim has a complete `\begin{proof}...\end{proof}` block (no empty or sketch-only blocks)
-- [ ] Every displayed equation is labeled and referenced
-- [ ] All cases in case splits are fully proved
-- [ ] All constants in the final statement match the proof
+- [ ] Every displayed equation is labeled with `\label` and referenced with `\eqref`
+- [ ] All cases in case splits are fully proved, including degenerate cases
+- [ ] All constants in the final statement match constants used throughout the proof
 - [ ] No step ends with a placeholder phrase
-- [ ] Verification Protocol §3.1–3.3 completed with zero open items
+- [ ] Problem's full generality is covered (not just a base case or special family)
+- [ ] Rounds 1, 2, and 3 each completed with all issues resolved
+- [ ] Blocked papers were not consulted (§2 safeguard)
 
 ---
 
@@ -467,11 +518,31 @@ Before writing the final LaTeX:
 
 > ⚠️ A theorem environment that contains only a sketch is **not done**. Every `\begin{proof}` block must be complete.
 
-- `\varepsilon` not `\epsilon`; pick `\phi` or `\varphi` and be consistent
-- All theorems, lemmas, claims in `\newtheorem` environments
-- Every claim followed by a full `\begin{proof}...\end{proof}` block
-- Key inequalities displayed with `\[ \]` or `equation`, labeled with `\label`, referenced with `\eqref`
+### 5.1 Environment balance — most critical rule
+
+> ⛔ **Every `\begin{...}` must have a matching `\end{...}` before `\end{document}`.**  
+> The error `\begin{proof} on input line N ended by \end{document}` means a proof block was never closed. This breaks the entire file.
+
+**Mandatory environment-balance check** (do this before saving the file):
+1. Count every `\begin{proof}` — count every `\end{proof}`. They must be equal.
+2. Count every `\begin{theorem}` / `\begin{lemma}` / `\begin{claim}` / `\begin{corollary}` — count their matching `\end{...}`. All must be equal.
+3. Count every `\begin{enumerate}` / `\begin{itemize}` / `\begin{align}` / `\begin{cases}` — all must be closed.
+4. If any count is unequal, find the unclosed environment and close it with the correct `\end{...}` before proceeding.
+
+**Common causes of unclosed proofs** — watch for these patterns:
+- Writing `\begin{proof}` at the end of a section and forgetting `\end{proof}` before the next `\section{}`
+- A `proof` environment that spans a long case split where one case's `\end{proof}` is accidentally omitted
+- Copy-pasting a block that already contains `\begin{proof}` without its `\end{proof}`
+- Nested environments where an inner `\end{proof}` is mistakenly used to close the outer one
+
+### 5.2 General LaTeX rules
+
+- `\varepsilon` not `\epsilon`; pick `\phi` or `\varphi` and be consistent throughout
+- All theorems, lemmas, claims in `\newtheorem` environments; define them in the preamble
+- Every claim followed by a full `\begin{proof}...\end{proof}` block — no block may end with a placeholder
+- Key inequalities displayed with `\[ \]` or `equation` environment, labeled with `\label{eq:...}`, referenced with `\eqref{eq:...}`
 - `\preceq`, `\succeq` for PSD order; `\lesssim` for up-to-constant bounds
-- `\qedhere` inside last display of proof, or `\end{proof}` at end
-- Case splits: `\textbf{Case 1.}` or `cases` environment — **every case fully proved**
-- Do **not** end any proof block with "the remaining cases are analogous" unless a genuinely identical case has already been written out in full immediately above
+- `\qedhere` inside the last displayed equation of a proof; `\end{proof}` on its own line at the end
+- Case splits: `\textbf{Case 1.}` or `cases` environment — **every case fully proved before moving to the next**
+- Do **not** end any proof block with "the remaining cases are analogous" unless an identical case has already been written out in full immediately above
+- Always close: `align` → `\end{align}`, `itemize` → `\end{itemize}`, `enumerate` → `\end{enumerate}`, `figure` → `\end{figure}`, `table` → `\end{table}`
