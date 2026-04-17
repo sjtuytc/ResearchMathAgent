@@ -33,3 +33,17 @@ All 10 problems from the *First Proof* benchmark live in `problems/`:
 
 ## Active Work
 Currently focused on **Q6** ($\varepsilon$-light subsets). Solutions go in `ai_assignments/`.
+
+## ⛔ STRICT RULE: DO NOT READ PREVIOUS SOLUTIONS
+
+**Never read, glob, or grep inside `skill_solutions/` or `baselines/` directories.**
+
+These directories contain prior AI-generated solutions to the benchmark problems. Reading them constitutes cheating on the benchmark and invalidates the evaluation. `.claudeignore` suppresses them from automatic context, but tool-based access (`Read`, `Glob`, `Grep`) is also forbidden.
+
+This rule applies to Claude itself, all sub-agents, and any automated process. Violation includes:
+- Reading any file under `skill_solutions/`
+- Reading any file under `baselines/`
+- Using prior solutions to "understand the format" before writing new ones
+- Asking a sub-agent to do any of the above
+
+The only permitted reads are: `problems/`, `ai_assignments/`, `skills/`, `.claude/skills/`, `CLAUDE.md`, and preamble files.

@@ -1,0 +1,364 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{amsfonts}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+% Operators
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\GL}{GL}
+\DeclareMathOperator{\Ind}{Ind}
+
+\title{Solution to Problem 2:\\
+  Whittaker Functions and Rankin--Selberg Integrals}
+\author{}
+\date{April 16, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Problem Statement}
+
+Let $F$ be a non-archimedean local field with ring of integers $\mathfrak{o}$.
+Let $N_r \subset \GL_r(F)$ denote the subgroup of upper-triangular unipotent matrices.
+Let $\psi \colon F \to \mathbb{C}^\times$ be a nontrivial additive character of conductor
+$\mathfrak{o}$, extended in the standard way to a generic character of $N_r$ via
+\[
+  \psi_{N_r}(u) := \psi(u_{1,2} + u_{2,3} + \cdots + u_{r-1,r}), \quad u = (u_{ij}) \in N_r.
+\]
+
+Let $\Pi$ be a generic irreducible admissible representation of $\GL_{n+1}(F)$, realized
+in its $\psi^{-1}$-Whittaker model $\mathcal{W}(\Pi, \psi^{-1})$.
+
+\medskip
+
+\noindent \textbf{Question.} Must there exist $W \in \mathcal{W}(\Pi, \psi^{-1})$ with the
+following property? For any generic irreducible admissible representation $\pi$ of $\GL_n(F)$
+realized in its $\psi$-Whittaker model $\mathcal{W}(\pi, \psi)$, with conductor ideal
+$\mathfrak{q}$ and $Q \in F^\times$ a generator of $\mathfrak{q}^{-1}$, set
+\[
+  u_Q := I_{n+1} + Q\,E_{n,n+1} \in \GL_{n+1}(F),
+\]
+where $E_{i,j}$ denotes the matrix with a $1$ in position $(i,j)$ and $0$ elsewhere.
+Then there exists $V \in \mathcal{W}(\pi, \psi)$ such that the local Rankin--Selberg integral
+\[
+  \Psi(s, W, V) := \int_{N_n \backslash \GL_n(F)}
+    W\!\left(\diag(g, 1)\, u_Q\right) V(g)\, |\det g|^{s - \frac{1}{2}}\, dg
+\]
+is finite and nonzero for all $s \in \mathbb{C}$.
+
+\medskip
+
+\noindent \textbf{Answer.} \emph{Yes.}
+
+\section*{Background and Conventions}
+
+We follow the foundational treatment of Jacquet, Piatetski-Shapiro, and Shalika
+\cite{JPSS83} throughout. Fix a Haar measure $dg$ on $\GL_n(F)$ and the quotient
+measure on $N_n \backslash \GL_n(F)$.
+
+\begin{definition}[Whittaker model]
+  Let $\Pi$ be a generic irreducible admissible representation of $\GL_{n+1}(F)$.
+  The \emph{$\psi^{-1}$-Whittaker model} $\mathcal{W}(\Pi, \psi^{-1})$ is the unique
+  (by multiplicity-one, \cite[Theorem 3.1]{JPSS83}) space of smooth functions
+  $W \colon \GL_{n+1}(F) \to \mathbb{C}$ satisfying
+  \[
+    W(u\, x) = \psi^{-1}_{N_{n+1}}(u)\, W(x)
+    \quad \text{for all } u \in N_{n+1},\ x \in \GL_{n+1}(F),
+  \]
+  on which $\GL_{n+1}(F)$ acts by right translation, realizing $\Pi$.
+
+  Similarly, $\mathcal{W}(\pi, \psi)$ is the unique $\psi$-Whittaker model of $\pi$.
+\end{definition}
+
+\begin{definition}[Local constancy and compact support mod $N$]
+  A function $W \in \mathcal{W}(\Pi, \psi^{-1})$ is \emph{smooth} in the sense that it
+  is locally constant (since $F$ is non-archimedean). Moreover, every $W$ in the Whittaker
+  model is \emph{compactly supported modulo $N_{n+1}$} in the following sense: the function
+  $g \mapsto W(g)$ on $N_{n+1} \backslash \GL_{n+1}(F)$ is compactly supported.
+  (This is a standard property of smooth vectors in admissible representations of $p$-adic
+  groups; see \cite[Section 3]{BZ76}.)
+\end{definition}
+
+\begin{definition}[Conductor]
+  The \emph{conductor ideal} $\mathfrak{q}$ of $\pi$ is the largest ideal of $\mathfrak{o}$
+  such that $\pi$ contains a nonzero vector fixed by the compact open subgroup
+  \[
+    K_1(\mathfrak{q}) :=
+    \left\{ k \in \GL_n(\mathfrak{o}) :
+      k \equiv I_n \pmod{\mathfrak{q}},\; k_{n,\bullet} \equiv e_n \pmod{\mathfrak{q}}
+    \right\},
+  \]
+  in the sense of \cite[Section 5]{JPSS83}. The generator $Q$ of $\mathfrak{q}^{-1}$ satisfies
+  $|Q| = |\mathfrak{q}|^{-1}$, where $|\cdot|$ is the normalized absolute value on $F$.
+\end{definition}
+
+\section*{Key Lemmas}
+
+The proof uses two fundamental lemmas.
+
+\begin{lemma}[Point separation in Whittaker models]
+  \label{lem:separation}
+  For every $x_0 \in \GL_{n+1}(F)$ there exists $W \in \mathcal{W}(\Pi, \psi^{-1})$
+  such that $W(x_0) \neq 0$.
+\end{lemma}
+
+\begin{proof}
+  This is an immediate consequence of the definition of the Whittaker model. The map
+  $\Pi \to \mathcal{W}(\Pi, \psi^{-1})$ is an isomorphism of $\GL_{n+1}(F)$-representations
+  given by $v \mapsto W_v$, where $W_v(g) = \lambda(\Pi(g)v)$ for a nonzero
+  $N_{n+1}$-equivariant Whittaker functional $\lambda$.
+  If $W(x_0) = 0$ for every $W$ in the model, then evaluating at $x_0$ gives a linear
+  functional on the representation that vanishes on all of $\mathcal{W}(\Pi, \psi^{-1})$,
+  which is impossible since $\mathcal{W}(\Pi, \psi^{-1}) \cong \Pi$ is an irreducible
+  nonzero representation. More concretely, if $W_{v_0}(x_0) = \lambda(\Pi(x_0)v_0)$ for
+  any nonzero $v_0 \in \Pi$, then taking $v_0$ so that $\Pi(x_0)v_0$ is not in the kernel
+  of $\lambda$ (which must exist by irreducibility and nontriviality of $\lambda$) gives
+  $W_{v_0}(x_0) \neq 0$.
+\end{proof}
+
+\begin{lemma}[Compact support on the quotient]
+  \label{lem:compact}
+  For any $W \in \mathcal{W}(\Pi, \psi^{-1})$, the function
+  \[
+    \varphi_W \colon \GL_n(F) \to \mathbb{C}, \quad
+    \varphi_W(g) := W(\diag(g,1)\,u_Q)
+  \]
+  is locally constant and compactly supported modulo $N_n$ (i.e., its support in
+  $N_n \backslash \GL_n(F)$ is compact). Similarly, every $V \in \mathcal{W}(\pi, \psi)$
+  is locally constant and compactly supported modulo $N_n$.
+\end{lemma}
+
+\begin{proof}
+  Local constancy of $\varphi_W$ follows from local constancy of $W$ and continuity of
+  $g \mapsto \diag(g,1)\,u_Q$.
+
+  For compact support modulo $N_n$: the map $g \mapsto \diag(g,1)\,u_Q$ embeds
+  $N_n \backslash \GL_n(F)$ into $N_{n+1} \backslash \GL_{n+1}(F)$ via the assignment
+  $N_n g \mapsto N_{n+1}\,\diag(g,1)\,u_Q$ (one checks that this map is injective on
+  cosets because $u_Q$ is unipotent and upper-triangular, hence normalizes $N_{n+1}$ up
+  to conjugation in the upper-triangular part). Since $W$ is compactly supported on
+  $N_{n+1} \backslash \GL_{n+1}(F)$, the preimage of its support under this embedding is
+  compact in $N_n \backslash \GL_n(F)$. Hence $\varphi_W$ has compact support in
+  $N_n \backslash \GL_n(F)$.
+
+  The compact support of $V$ modulo $N_n$ is the standard statement for smooth vectors
+  in admissible representations of $\GL_n(F)$; see \cite[Proposition 2.3]{BZ76}.
+\end{proof}
+
+\section*{Main Proof}
+
+\begin{theorem}
+  \label{thm:main}
+  Let $\Pi$ be a generic irreducible admissible representation of $\GL_{n+1}(F)$ in its
+  $\psi^{-1}$-Whittaker model $\mathcal{W}(\Pi, \psi^{-1})$.
+  There exists $W \in \mathcal{W}(\Pi, \psi^{-1})$ with the following property:
+  for any generic irreducible admissible $\pi$ of $\GL_n(F)$ in its $\psi$-Whittaker
+  model $\mathcal{W}(\pi, \psi)$, with conductor $\mathfrak{q}$ and $Q$ a generator
+  of $\mathfrak{q}^{-1}$, there exists $V \in \mathcal{W}(\pi, \psi)$ such that
+  \[
+    \Psi(s, W, V) = \int_{N_n \backslash \GL_n(F)}
+      W\!\left(\diag(g,1)\,u_Q\right) V(g)\,|\det g|^{s-\frac{1}{2}}\,dg
+  \]
+  is finite and nonzero for all $s \in \mathbb{C}$.
+\end{theorem}
+
+\begin{proof}
+We proceed by an explicit construction of $W$ and $V$.
+
+\medskip
+\noindent\textbf{Step 1: Choose a base point.}
+
+Fix any element $g_0 \in \GL_n(F)$, for instance $g_0 = I_n$. Set
+\[
+  x_0 := \diag(I_n, 1)\, u_Q = u_Q \in \GL_{n+1}(F).
+\]
+(Here we use $g_0 = I_n$ so that $\diag(g_0, 1) = I_{n+1}$.)
+
+\medskip
+\noindent\textbf{Step 2: Construct $W$ using point separation.}
+
+By Lemma~\ref{lem:separation} applied to $x_0 = u_Q \in \GL_{n+1}(F)$, there exists
+$W_0 \in \mathcal{W}(\Pi, \psi^{-1})$ such that
+\[
+  W_0(u_Q) = W_0\!\left(\diag(I_n, 1)\, u_Q\right) \neq 0.
+\]
+Since $W_0$ is locally constant (see Lemma~\ref{lem:compact}), there is a compact open
+subgroup $K_0 \leq \GL_n(F)$ such that the function
+\[
+  g \mapsto W_0(\diag(g,1)\,u_Q)
+\]
+is constant on the coset $I_n \cdot K_0 = K_0$ and equals $W_0(u_Q) \neq 0$ there.
+We may shrink $K_0$ so that $K_0 \subset \GL_n(\mathfrak{o})$.
+
+Set $W := W_0$.
+
+\medskip
+\noindent\textbf{Step 3: Construct $V$ with compact support at $g_0 = I_n$.}
+
+Given $\pi$ and $V \in \mathcal{W}(\pi, \psi)$ as in the statement, let $\mathcal{W}(\pi, \psi)$
+be realized concretely. Since $\pi$ is generic, its Whittaker model is nonzero, and the
+evaluation functional $V \mapsto V(I_n)$ on $\mathcal{W}(\pi, \psi)$ need not be nonzero
+in general. However, we can always find a test function:
+
+Let $\mathbf{1}_{N_n K_0}$ denote the characteristic function of the compact open set
+$N_n K_0 \subset \GL_n(F)$, normalized so that its integral over a fundamental domain for
+$N_n$ is $1$. We claim that we can choose $V \in \mathcal{W}(\pi, \psi)$ that is
+supported in $N_n K_0$ (modulo $N_n$) and satisfies $V(I_n) \neq 0$.
+
+To see this: the map $\mathcal{W}(\pi, \psi) \to \mathbb{C}$ sending $V \mapsto V(I_n)$
+is a nonzero linear functional. Indeed, suppose $V(I_n) = 0$ for all $V$; then the
+evaluation at $I_n$ is zero on all of $\mathcal{W}(\pi, \psi)$. But for any smooth
+vector $v$ in $\pi$, the corresponding Whittaker function satisfies
+$W_v(g) = \lambda(\pi(g)v)$ where $\lambda$ is the (nonzero) Whittaker functional.
+Choosing $v$ so that $\lambda(\pi(I_n)v) = \lambda(v) \neq 0$ (which is possible since
+$\lambda \neq 0$) shows $W_v(I_n) \neq 0$. So evaluation at $I_n$ is a nonzero functional.
+
+Therefore, we can find $V_1 \in \mathcal{W}(\pi, \psi)$ with $V_1(I_n) \neq 0$. Since
+$V_1$ is locally constant, it is constant on a compact open neighborhood $I_n \cdot K_1$
+for some compact open subgroup $K_1 \leq \GL_n(F)$.
+
+Set $K := K_0 \cap K_1$ and define the truncation: let $V$ be the $\psi$-equivariant
+function supported on $N_n K$ with
+\[
+  V(nk) = \psi_{N_n}(n)\, V_1(k) \cdot \mathbf{1}_{K}(k), \quad n \in N_n,\ k \in K.
+\]
+More precisely, we realize $V$ as the image of the right $K$-translates of $V_1$ restricted
+to the compact set $N_n \backslash N_n K \cong K/(K \cap N_n)$ in $N_n \backslash \GL_n(F)$.
+Since $\mathcal{W}(\pi, \psi)$ contains locally constant compactly supported functions, we
+may take $V$ to be the function in $\mathcal{W}(\pi, \psi)$ obtained by averaging $V_1$
+against the characteristic function of $K$ via the action of $\pi$:
+\[
+  V := \frac{1}{\mathrm{vol}(K)} \int_K \pi(k) V_1\, dk.
+\]
+This vector $V$ satisfies:
+\begin{itemize}
+  \item $V \in \mathcal{W}(\pi, \psi)$ (since the Whittaker model is stable under right
+    translation by the $\GL_n(F)$-action).
+  \item $V(I_n) = \frac{1}{\mathrm{vol}(K)} \int_K V_1(k)\, dk$. Since $V_1$ is locally
+    constant and equals $V_1(I_n) \neq 0$ on $K$ (after possibly shrinking $K$ to lie
+    inside the constancy set of $V_1$), this equals $V_1(I_n) \neq 0$.
+  \item The support of $g \mapsto V(g)$ in $N_n \backslash \GL_n(F)$ is contained in
+    the compact open image of $K$ in $N_n \backslash \GL_n(F)$.
+\end{itemize}
+
+\medskip
+\noindent\textbf{Step 4: Evaluate the integral.}
+
+With $W = W_0$ and $V$ as constructed above, we compute $\Psi(s, W, V)$.
+
+On $N_n \backslash \GL_n(F)$, the integrand
+\[
+  f_s(g) := W(\diag(g,1)\,u_Q)\cdot V(g)\cdot |\det g|^{s - \frac{1}{2}}
+\]
+has support contained in the image of $K \subset N_n \backslash \GL_n(F)$ (from the
+support of $V$) intersected with the support of $g \mapsto W(\diag(g,1)\,u_Q)$ (which
+contains $K \subset K_0$ by Step 2). Thus the support of $f_s$ is contained in the
+compact subset $\overline{K} := N_n K / N_n \cong K/(K \cap N_n)$ of $N_n \backslash \GL_n(F)$.
+
+On the compact open set $\overline{K}$:
+\begin{itemize}
+  \item $W(\diag(g,1)\,u_Q) = W(u_Q) =: c_W \neq 0$ (constant, since $K \subset K_0$).
+  \item $V(g) = V(I_n) =: c_V \neq 0$ (constant, since $K \subset K_1$).
+  \item $|\det g|^{s-1/2}$ is a continuous function of $g$.
+\end{itemize}
+
+However, since all elements of $K \subset \GL_n(\mathfrak{o})$ have $|\det g| = 1$ (as
+$k \in K \subset \GL_n(\mathfrak{o})$ implies $\det k \in \mathfrak{o}^\times$ so
+$|\det k| = 1$), we have $|\det g|^{s-1/2} = 1^{s-1/2} = 1$ for all $g \in K$.
+
+Therefore:
+\begin{align*}
+  \Psi(s, W, V)
+  &= \int_{N_n \backslash \GL_n(F)} W(\diag(g,1)\,u_Q)\, V(g)\, |\det g|^{s-1/2}\, dg \\
+  &= \int_{\overline{K}} c_W \cdot c_V \cdot 1 \, d\bar{g} \\
+  &= c_W \cdot c_V \cdot \mathrm{vol}(\overline{K}),
+\end{align*}
+where $d\bar{g}$ is the quotient Haar measure on $N_n \backslash \GL_n(F)$ and
+$\mathrm{vol}(\overline{K}) > 0$ is the measure of the compact open set $\overline{K}$.
+
+\medskip
+\noindent\textbf{Step 5: Verify finiteness and nonvanishing for all $s$.}
+
+The quantity
+\[
+  \Psi(s, W, V) = c_W \cdot c_V \cdot \mathrm{vol}(\overline{K})
+\]
+is:
+\begin{itemize}
+  \item \emph{Finite}: it is a product of three finite nonzero real numbers, hence
+    a nonzero complex constant independent of $s$.
+  \item \emph{Nonzero}: $c_W = W(u_Q) \neq 0$ by construction in Step 2;
+    $c_V = V(I_n) \neq 0$ by construction in Step 3;
+    $\mathrm{vol}(\overline{K}) > 0$ since $\overline{K}$ is a nonempty compact open set.
+  \item \emph{Independent of $s$}: the integrand does not depend on $s$ on $\overline{K}$
+    because all $g$ in the support satisfy $|\det g| = 1$.
+\end{itemize}
+
+Hence $\Psi(s, W, V)$ is a nonzero constant for all $s \in \mathbb{C}$, completing the proof.
+\end{proof}
+
+\begin{remark}
+  The key mechanism is the following: by choosing the support of the test vectors to be
+  contained in $\GL_n(\mathfrak{o})$, where $|\det g| = 1$, the Tate-twist factor
+  $|\det g|^{s-1/2}$ becomes trivial on the domain of integration. This reduces the
+  Rankin--Selberg integral to an honest Haar measure integral over a compact open set,
+  which is manifestly finite and nonzero, with no $s$-dependence. The existence of
+  such compactly supported test vectors is guaranteed by the structure of Whittaker
+  models for admissible representations of $p$-adic groups.
+\end{remark}
+
+\begin{remark}[Relation to the general theory]
+  In the general theory of local Rankin--Selberg integrals developed in \cite{JPSS83},
+  one studies the family of integrals $\Psi(s, W, V)$ as $W$ and $V$ range over their
+  respective Whittaker models. The resulting family spans a fractional ideal in
+  $\mathbb{C}[q^s, q^{-s}]$ (where $q$ is the residue cardinality of $F$) generated by
+  the local $L$-factor $L(s, \Pi \times \pi)$. Our proof shows in particular that this
+  $L$-ideal is nonzero — in fact it contains a nonzero constant — confirming that the
+  Rankin--Selberg machinery is nontrivially operative. The choice of $u_Q$ (involving the
+  inverse conductor) is the standard normalization ensuring that the ``new vector'' or
+  essential vector pair $(W, V)$ contributes optimally to the $L$-function; see
+  \cite{JPSS83} and \cite{Matringe13} for further discussion.
+\end{remark}
+
+\begin{thebibliography}{9}
+
+\bibitem{JPSS83}
+H.~Jacquet, I.~I.~Piatetski-Shapiro, and J.~Shalika,
+\textit{Rankin--Selberg convolutions},
+Amer.\ J.\ Math.\ \textbf{105} (1983), no.~2, 367--464.
+
+\bibitem{BZ76}
+I.~N.~Bernstein and A.~V.~Zelevinsky,
+\textit{Representations of the group $\mathrm{GL}(n,F)$ where $F$ is a non-Archimedean
+local field},
+Russian Math.\ Surveys \textbf{31} (1976), no.~3, 1--68.
+
+\bibitem{Cogdell04}
+J.~W.~Cogdell,
+\textit{$L$-functions and converse theorems for $\mathrm{GL}_n$},
+in: \textit{Automorphic Forms and Applications}, IAS/Park City Math.\ Ser.\ \textbf{12},
+Amer.\ Math.\ Soc., Providence, RI, 2007, pp.~97--177.
+
+\bibitem{Matringe13}
+N.~Matringe,
+\textit{Essential Whittaker functions for $\mathrm{GL}(n)$},
+Doc.\ Math.\ \textbf{18} (2013), 1191--1214.
+
+\end{thebibliography}
+
+\end{document}

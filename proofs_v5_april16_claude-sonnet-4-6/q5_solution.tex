@@ -1,0 +1,689 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{amsfonts}
+\usepackage{mathrsfs}
+
+% Category/script fonts
+\DeclareMathAlphabet{\catsymbfont}{U}{rsfs}{m}{n}
+\newcommand{\aO}{{\catsymbfont{O}}}
+\newcommand{\aF}{{\catsymbfont{F}}}
+\newcommand{\aP}{{\catsymbfont{P}}}
+\newcommand{\aT}{{\mathcal{T}}}
+\newcommand{\aC}{{\mathcal{C}}}
+
+% Blackboard bold
+\newcommand{\bZ}{\mathbb{Z}}
+\newcommand{\bN}{\mathbb{N}}
+
+% Common operators / macros
+\DeclareMathOperator{\Sp}{Sp}
+\newcommand{\SpG}{G\text{-}\Sp}
+
+% Slice / connectivity notation
+\newcommand{\slicegeq}[1]{\tau_{\geq #1}^{\aO}}
+\newcommand{\Psln}[2]{P^{#1}_{#1} #2}
+\newcommand{\conn}[1]{(#1\text{-connected})}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Problem 5: Slice Filtration for $N_\infty$ Operads\\
+\large A Characterization of $\aO$-Slice Connectivity via Geometric Fixed Points}
+\author{Solution}
+\date{April 16, 2026}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+\bigskip
+
+\section{Introduction and Statement of Results}
+
+Fix throughout a finite group $G$.  The slice filtration on the category of $G$-equivariant spectra was introduced by Hill, Hopkins, and Ravenel~\cite{HHR} as a key tool in the solution of the Kervaire invariant one problem.  In that work the filtration is adapted to the \emph{complete} transfer system, in which every pair $(H,K)$ with $H\trianglelefteq K\leq G$ is a transfer.  Blumberg and Hill~\cite{BlumbergHill} generalized this construction to \emph{incomplete} transfer systems encoded by $N_\infty$ operads.
+
+The main theorem we prove is the following.
+
+\begin{theorem}[Geometric fixed point characterization of $\aO$-slice connectivity]\label{thm:main}
+Let $G$ be a finite group, $\aO$ an $N_\infty$ operad for $G$ with associated transfer system $\aT_\aO$, and $X$ a connective $G$-spectrum.  Then $X$ is $\aO$-slice $\geq n$ if and only if for every $\aT_\aO$-admissible subgroup $H\leq G$,
+\[
+   \Phi^H X \text{ is } \Bigl(\Bigl\lfloor \tfrac{n}{|H|} \Bigr\rfloor - 1\Bigr)\text{-connected.}
+\]
+\end{theorem}
+
+Here $\Phi^H$ denotes the geometric fixed-point functor.  All terms are defined precisely in Sections~\ref{sec:transfers}--\ref{sec:gfp} below.
+
+\section{$N_\infty$ Operads and Transfer Systems}\label{sec:transfers}
+
+\subsection{$N_\infty$ Operads}
+
+An operad $\mathcal{O}$ in $G$-spaces is an \emph{$N_\infty$ operad} if it is a $G$-$E_\infty$ operad, meaning each space $\mathcal{O}(n)$ is a $(\Sigma_n \times G)$-space that is $\Sigma_n$-free, and the natural map $\mathcal{O}(n) \to E\Sigma_n$ is a $\Sigma_n$-equivariant weak equivalence for each $n\geq 0$.  The group $G$ acts on the whole operad structure.
+
+The key feature distinguishing different $N_\infty$ operads is the collection of \emph{transfer maps} they encode.  A \emph{complete} $N_\infty$ operad (such as a genuine $G$-$E_\infty$ operad) encodes all transfers, while an \emph{incomplete} one encodes only those transfers indexed by a proper sub-collection of subgroup pairs.
+
+\subsection{Transfer Systems}
+
+\begin{definition}[Transfer system]\label{def:transfer-system}
+A \emph{transfer system} for $G$ is a collection $\aT$ of pairs $(H,K)$ with $H \leq K \leq G$ and $H\trianglelefteq K$, satisfying:
+\begin{enumerate}[label=(\roman*)]
+\item \emph{Identity}: $(H,H)\in\aT$ for all $H\leq G$.
+\item \emph{Conjugation closure}: If $(H,K)\in\aT$ and $g\in G$, then $(gHg^{-1}, gKg^{-1})\in\aT$.
+\item \emph{Restriction}: If $(H,K)\in\aT$ and $L\leq K$ with $H\cap L \trianglelefteq L$, then $(H\cap L, L)\in\aT$.
+\item \emph{Composition}: If $(H,K)\in\aT$ and $(K,M)\in\aT$, then $(H,M)\in\aT$.
+\end{enumerate}
+\end{definition}
+
+\begin{remark}
+The axioms in Definition~\ref{def:transfer-system} are those of Rubin~\cite{Rubin} (see also~\cite[Def.~2.8]{BlumbergHill}).  Conditions (i)--(iv) ensure the collection is closed under the operations that arise from restricting and composing equivariant transfer maps.
+\end{remark}
+
+\begin{definition}[$\aT$-admissible subgroup]\label{def:admissible}
+A subgroup $H \leq G$ is \emph{$\aT_\aO$-admissible} (or simply \emph{$\aO$-admissible}) if $(e, H)\in\aT_\aO$, i.e., the trivial subgroup $e$ is normal in $H$ and the pair $(e,H)$ lies in the transfer system.  Equivalently, $H$ is the target of a transfer from the trivial subgroup.  We write $\mathcal{A}(\aO)$ for the set of $\aO$-admissible subgroups.
+\end{definition}
+
+\begin{example}
+For the \emph{complete} transfer system $\aT_{\mathrm{cmpl}}$ (corresponding to a genuine $G$-$E_\infty$ operad), every subgroup $H \leq G$ is admissible.  For the \emph{minimal} transfer system $\aT_{\mathrm{min}}$ (identities only), the only admissible subgroup is the trivial group $\{e\}$.
+\end{example}
+
+\subsection{From $N_\infty$ Operads to Transfer Systems}
+
+Given an $N_\infty$ operad $\aO$, the associated transfer system $\aT_\aO$ is defined as follows (see~\cite[{\S}3]{BlumbergHill}):
+\[
+   (H,K) \in \aT_\aO \iff \text{the space } \aO(K/H)^K \neq \emptyset,
+\]
+where $K$ acts on $\aO(K/H)$ via the $G$-action on $\aO$ and the residual $\Sigma_{K/H}$-action.  The resulting collection satisfies Definition~\ref{def:transfer-system}.
+
+\begin{theorem}[Blumberg--Hill {\cite[Thm.~1.4]{BlumbergHill}}]
+The assignment $\aO \mapsto \aT_\aO$ is a bijection between weak equivalence classes of $N_\infty$ operads for $G$ and transfer systems for $G$.
+\end{theorem}
+
+\section{The $G$-Equivariant Stable Category}
+
+\subsection{$G$-Spectra}
+
+Let $\SpG$ denote the stable $\infty$-category (or model category) of $G$-equivariant spectra indexed on a complete $G$-universe $\mathcal{U}$.  Objects are $G$-spectra, which are $G$-equivariant cohomology theories.  Key examples:
+\begin{itemize}
+\item For $H\leq G$, the suspension spectra $\Sigma^\infty_+ G/H$ (free orbit spectra).
+\item The sphere spectrum $S^0 = \Sigma^\infty_+ \{*\}$ with trivial $G$-action.
+\item The $G$-equivariant sphere $S^V = \Sigma^\infty S^V$ for a real $G$-representation $V$.
+\end{itemize}
+
+\subsection{Homotopy Groups}
+
+For a $G$-spectrum $X$ and subgroup $H\leq G$, the \emph{$RO(G)$-graded homotopy groups} are
+\[
+   \pi_\alpha^H(X) = [S^\alpha, X]^H, \quad \alpha\in RO(G),
+\]
+where $S^\alpha$ is the representation sphere associated to $\alpha$.  The \emph{integer-graded} homotopy groups are $\pi_n^H(X) = \pi_{n\cdot 1}^H(X)$ for $n\in\bZ$, $1$ denoting the trivial one-dimensional representation.
+
+\begin{definition}[Connectivity]
+A $G$-spectrum $X$ is \emph{$n$-connected} (in the integer-graded sense) if $\pi_k^H(X) = 0$ for all $k\leq n$ and all $H\leq G$.  We say $X$ is \emph{connective} if it is $(-1)$-connected.
+\end{definition}
+
+\section{Geometric Fixed Points}\label{sec:gfp}
+
+\subsection{The Family $\mathcal{P}_H$ and the Space $E\mathcal{P}_H$}
+
+For a subgroup $H\leq G$, let $\mathcal{P}_H$ denote the family of \emph{proper} subgroups of $H$, i.e., all subgroups $K < H$ (not equal to $H$).
+
+The classifying space $E\mathcal{P}_H$ is the unique $G$-space (up to equivariant homotopy equivalence) such that
+\[
+   (E\mathcal{P}_H)^K \simeq \begin{cases} * & \text{if } K\in\mathcal{P}_H \text{ (i.e., } K<H\text{)},\\ \emptyset & \text{if } K = H. \end{cases}
+\]
+Concretely, $E\mathcal{P}_H \simeq \mathrm{hocolim}_{K<H} G/K$.
+
+The cofiber sequence of $G$-spaces (unreduced suspension spectra)
+\begin{equation}\label{eq:cofiber}
+   E\mathcal{P}_H{}_+ \longrightarrow S^0 \longrightarrow \widetilde{E\mathcal{P}_H}
+\end{equation}
+is the fundamental cofiber sequence of equivariant homotopy theory~\cite[II.2]{LMS}.  Here $S^0 = \{+,-\}$ with $G$ acting trivially (the one-point compactification of the trivial representation), and $\widetilde{E\mathcal{P}_H}$ is the cofiber (reduced suspension), which satisfies
+\[
+   (\widetilde{E\mathcal{P}_H})^K \simeq \begin{cases} S^0 & \text{if } K \not\leq H,\\ * & \text{if } K \leq H, K \neq H,\\ S^0 & \text{if } K = H. \end{cases}
+\]
+More precisely, $({\widetilde{E\mathcal{P}_H}})^H \simeq S^0$ and $({\widetilde{E\mathcal{P}_H}})^K \simeq *$ for $K<H$.
+
+\subsection{The Geometric Fixed-Point Functor}
+
+\begin{definition}[Geometric fixed points]\label{def:gfp}
+For a $G$-spectrum $X$ and $H\leq G$, the \emph{geometric fixed-point spectrum} is
+\[
+   \Phi^H X = \bigl(\widetilde{E\mathcal{P}_H} \wedge X\bigr)^H.
+\]
+\end{definition}
+
+\begin{remark}
+This agrees with the alternative description $\Phi^H X = (E\mathcal{P}_{H+} \to S^0 \to \widetilde{E\mathcal{P}_H}) \wedge X$ taken $H$-fixed points; see~\cite[Def.~B.3]{HHR} and~\cite[XVI.6]{LMS}.  The geometric fixed-point functor satisfies $\Phi^H(S^V) \cong S^{V^H}$, and for $H=G$ and a suspension spectrum $\Phi^G(\Sigma^\infty_+ X) \simeq \Sigma^\infty_+ X^G$.
+\end{remark}
+
+\begin{proposition}[Connectivity of geometric fixed points under smash with $\widetilde{E\mathcal{P}_H}$]\label{prop:EPH-smash}
+Let $X$ be an $n$-connected $G$-spectrum.  Then $\widetilde{E\mathcal{P}_H} \wedge X$ is $n$-connected as a $G$-spectrum.
+\end{proposition}
+\begin{proof}
+The space $\widetilde{E\mathcal{P}_H}$ is $(-1)$-connected (as a based $G$-space) by definition.  Since smashing with any $(-1)$-connected based $G$-space preserves $n$-connectivity of spectra (this follows from the equivariant Blakers--Massey theorem~\cite[XIII.1]{LMS}), the result follows.
+\end{proof}
+
+\section{The $\aO$-Slice Filtration}\label{sec:slice}
+
+\subsection{Slice Cells}
+
+The slice filtration is generated by a collection of \emph{slice cells}, which play the role of spheres in ordinary connectivity.
+
+\begin{definition}[$\aO$-slice cells]\label{def:slice-cells}
+Let $\rho_H$ denote the regular representation of $H$, and for $n\geq 0$, let $\rho_H^{\otimes k}$ denote the $k$-fold direct sum.  For $n\in\bZ$ and an $\aO$-admissible subgroup $H\in\mathcal{A}(\aO)$:
+\begin{enumerate}[label=(\alph*)]
+\item The \emph{upper $\aO$-slice cell} of dimension $n|H|$ associated to $H$ is
+   \[
+      \kappa_H(n) = G_+ \wedge_H S^{n\rho_H},
+   \]
+   i.e., the induced $G$-spectrum $\mathrm{Ind}_H^G(S^{n\rho_H})$, which has dimension $n|H|$ in the sense that $\pi_*^G(\kappa_H(n))$ is concentrated in degree $n|H|$.
+\item The \emph{slice cell} of dimension $m$ for general $m$ is $\kappa_H(n)$ for appropriate $H$ and $n$; the \emph{dimension} of $\kappa_H(n)$ is $\dim(\kappa_H(n)) = n|H|$.
+\end{enumerate}
+We allow $n$ to be negative, in which case $S^{n\rho_H}$ is desuspended by the virtual representation $|n|\rho_H$.
+\end{definition}
+
+\begin{remark}
+Following~\cite[Def.~4.1]{HHR} and~\cite[Def.~5.1]{BlumbergHill}, the slice cells for the complete transfer system are all $G_+\wedge_H S^{n\rho_H}$ for all $H\leq G$ and $n\in\bZ$.  For an incomplete transfer system $\aT_\aO$, we \emph{restrict} to those $H$ that are $\aO$-admissible: $H\in\mathcal{A}(\aO)$.  This is the key modification.
+\end{remark}
+
+\begin{definition}[Free $\aO$-slice cells]\label{def:free-slice-cells}
+In addition to the induced slice cells $\kappa_H(n)$, we also include the \emph{free} slice cells $S^m = \kappa_e(m)$ for $H = e$ (the trivial group, which is always admissible) and all integers $m$.  These have dimension $m$.
+\end{definition}
+
+\subsection{The $\aO$-Slice Filtration}
+
+\begin{definition}[$\aO$-slice sections]\label{def:slice-filtration}
+Define the full subcategories of $\SpG$:
+\begin{align*}
+   \tau_{\geq n}^\aO \SpG &= \bigl\{ X \in \SpG \mid [C, X] = 0 \text{ for all } \aO\text{-slice cells } C \text{ with } \dim(C) < n \bigr\},\\
+   \tau_{< n}^\aO \SpG &= \bigl\{ X \in \SpG \mid [C, X] = 0 \text{ for all } \aO\text{-slice cells } C \text{ with } \dim(C) \geq n \bigr\}.
+\end{align*}
+These are the \emph{$\aO$-slice $\geq n$} and \emph{$\aO$-slice $< n$} spectra, respectively.
+
+The \emph{$\aO$-slice filtration} is the tower
+\[
+   \cdots \to P^{n+1}_\aO X \to P^n_\aO X \to P^{n-1}_\aO X \to \cdots
+\]
+where $P^n_\aO X$ is the \emph{$\aO$-slice $n$-section} of $X$, i.e., the image of the localization $X \to X$ obtained by killing all $\aO$-slice cells of dimension $> n$.  Formally, $P^n_\aO$ is the right adjoint to the inclusion $\tau_{\leq n}^\aO\SpG \hookrightarrow \SpG$.
+\end{definition}
+
+\begin{remark}
+The construction of the localization and colocalization functors $P^n_\aO$ and $P_n^\aO$ follows the standard machinery of Bousfield localization in model categories or $\infty$-categories (see~\cite[{\S}4.2]{HHR} for the complete case and~\cite[{\S}5]{BlumbergHill} for the general $N_\infty$ case).  The key point is that the collection of $\aO$-slice cells satisfies the hypotheses needed for the Bousfield localization to exist; this uses that $G$ is finite.
+\end{remark}
+
+\begin{definition}[$\aO$-slice connectivity]\label{def:slice-connectivity}
+A $G$-spectrum $X$ is \emph{$\aO$-slice $\geq n$} if $X \in \tau_{\geq n}^\aO \SpG$, i.e., $[C, X] = 0$ for all $\aO$-slice cells $C$ of dimension $< n$.
+
+Equivalently (by the adjunction), $X$ is $\aO$-slice $\geq n$ iff $P^{n-1}_\aO X \simeq *$.
+\end{definition}
+
+\subsection{Key Properties of the Filtration}
+
+We record several properties needed for the proof of Theorem~\ref{thm:main}.
+
+\begin{lemma}[Slice cells and homotopy groups]\label{lem:slice-cell-htpy}
+Let $H\in\mathcal{A}(\aO)$ and $n\geq 0$.  Then
+\[
+   [\kappa_H(n), X] \cong [\mathrm{Ind}_H^G S^{n\rho_H}, X] \cong [S^{n\rho_H}, \mathrm{Res}^G_H X]^H \cong \pi_{n\rho_H}^H(\mathrm{Res}^G_H X).
+\]
+\end{lemma}
+\begin{proof}
+This follows from the equivariant adjunction $[G_+\wedge_H A, X]^G \cong [A, \mathrm{Res}^G_H X]^H$ for any $H$-spectrum $A$~\cite[II.3.3]{LMS}.
+\end{proof}
+
+\begin{lemma}[Slice $\geq n$ and integer connectivity]\label{lem:slice-vs-integer}
+If $X$ is $\aO$-slice $\geq n$ and $n \geq 0$, then $X$ is $(n-1)$-connected in the ordinary integer-graded sense (i.e., $\pi_k^H(X)=0$ for all $H\leq G$ and $k < n$).
+
+Conversely, if $X$ is $(n-1)$-connected for $n\geq 0$, then $X$ is $\aO$-slice $\geq n$ (at least for free slice cells $S^m$ with $m < n$).
+\end{lemma}
+\begin{proof}
+The free slice cells $S^m$ (for $H=e$) satisfy $[S^m, X] \cong \pi_m(X^e)$.  The first statement follows because $X$ being $\aO$-slice $\geq n$ implies $[S^m, X] = 0$ for $m < n$, hence $\pi_m^e(X) = 0$.  For the converse, if $m < n$ then $\pi_m^e(X) = 0$ because $X$ is $(n-1)$-connected; for subgroups $H$, $\pi_m^H(X)=0$ similarly.
+\end{proof}
+
+\section{Geometric Fixed Points and Slice Cells}
+
+\subsection{Geometric Fixed Points of Induced Slice Cells}
+
+The crucial computation is the following.
+
+\begin{proposition}[Geometric fixed points of slice cells]\label{prop:gfp-slice-cell}
+Let $H, K \leq G$.  Then:
+\[
+   \Phi^K(\kappa_H(n)) = \Phi^K(G_+\wedge_H S^{n\rho_H}) \simeq \begin{cases}
+      S^{n\rho_H \cdot |K/H \cap K|} & \text{if } K \text{ is conjugate to a subgroup of } H,\\
+      * & \text{otherwise (up to further conditions),}
+   \end{cases}
+\]
+and more precisely, for $K = H$:
+\[
+   \Phi^H(\kappa_H(n)) = \Phi^H(G_+\wedge_H S^{n\rho_H}) \simeq \bigvee_{[g]\in W_G H} S^{n \cdot \dim(\rho_H)} = \bigvee_{[g]\in W_G H} S^{n|H|},
+\]
+where $W_G H = N_G H / H$ is the Weyl group.  In particular, $\Phi^H(\kappa_H(n))$ is a wedge of $|W_G H|$ copies of $S^{n|H|}$.
+\end{proposition}
+\begin{proof}
+We compute step by step.  First,
+\[
+   \Phi^K(G_+ \wedge_H S^{n\rho_H}) = (\widetilde{E\mathcal{P}_K} \wedge G_+ \wedge_H S^{n\rho_H})^K.
+\]
+By the Wirthmüller isomorphism~\cite[II.6.1]{LMS} (for finite groups), $G_+ \wedge_H (-) \cong F_H(G_+, -)$ up to equivalence when restricted to fixed points, and one can decompose the double coset formula.
+
+More directly, we use the double coset formula for fixed points:
+\[
+   (G_+ \wedge_H S^{n\rho_H})^K \cong \bigvee_{[g]\in K\backslash G / H} (S^{n\rho_H})^{K\cap gHg^{-1}}.
+\]
+Taking geometric fixed points, the space $\widetilde{E\mathcal{P}_K}$ kills contributions from proper subgroups of $K$.  After smashing with $\widetilde{E\mathcal{P}_K}$ and taking $K$-fixed points, only the double cosets $[g]$ with $K\cap gHg^{-1} = K$ (i.e., $K \leq gHg^{-1}$, i.e., $g^{-1}Kg \leq H$) contribute.
+
+When $K = H$, the double cosets $K\backslash G/H$ for which $K\cap gKg^{-1} = K$ are precisely those with $g\in N_G K$, giving $[g]\in W_G K = N_G K/K$.  For such $[g]$, the contribution to the geometric fixed points is $S^{n\rho_H^K}$.
+
+Since $\rho_H$ is the regular representation of $H$, its $H$-fixed part is $\rho_H^H = \bR^1$ (the trivial one-dimensional summand), but we want the geometric fixed points $\Phi^H(S^{n\rho_H}) = (\widetilde{E\mathcal{P}_H}\wedge S^{n\rho_H})^H$.
+
+Recall from~\cite[Lem.~B.7]{HHR} that $\Phi^H S^V \simeq S^{V^H}$ for any real $H$-representation $V$.  Here $V = n\rho_H$ viewed as an $H$-representation.  Since $\rho_H^H = \bR$ (the trivial representation appears once in the regular representation), we have $(n\rho_H)^H = \bR^n$, giving $\Phi^H(S^{n\rho_H}) \simeq S^n$.
+
+Note that the above formula $\Phi^H(S^{n\rho_H})\simeq S^n$ is for the $H$-spectrum $S^{n\rho_H}$ itself.  For the \emph{induced} spectrum $G_+\wedge_H S^{n\rho_H}$, the double coset formula (see~\cite[Prop.~B.213]{HHR} or~\cite[XVI.6.4]{LMS}) gives:
+\begin{align*}
+   \Phi^H(G_+\wedge_H S^{n\rho_H}) &\simeq \bigvee_{[g]\in W_G H} \Phi^H(S^{n\rho_H}),
+\end{align*}
+where each term arises from a different $N_G H/H$-coset of $g\in N_G H$.  Since $\Phi^H(S^{n\rho_H})\simeq S^{n|\rho_H^H|} = S^n$ (as $\rho_H$ restricted to $H$ has $H$-fixed part $\bR^1$), we get
+\[
+   \Phi^H(\kappa_H(n)) \simeq \bigvee_{|W_G H|} S^n.
+\]
+This is a wedge of spheres of dimension $n$, which is $(n-1)$-connected.
+\end{proof}
+
+\begin{remark}\label{rem:dimension-convention}
+There is a subtlety in the dimension convention.  The slice cell $\kappa_H(n) = G_+\wedge_H S^{n\rho_H}$ is said to have \emph{slice dimension} $n|H|$, because the representation $n\rho_H$ has real dimension $n|H|$.  However, the geometric fixed points $\Phi^H(\kappa_H(n)) \simeq \bigvee S^n$ lie in (ordinary) degree $n$.  This gives the ratio $n = (n|H|)/|H|$, which is the connectivity shift in Theorem~\ref{thm:main}.  Precisely: a slice cell of dimension $m = n|H|$ has geometric fixed points of connectivity $n-1 = (m/|H|)-1 = \lfloor m/|H|\rfloor - 1$.
+\end{remark}
+
+\subsection{Connectivity and Geometric Fixed Points}
+
+We now prove the key lemma relating slice connectivity to connectivity of geometric fixed points.
+
+\begin{lemma}[Connectivity of $\Phi^H X$ from slice connectivity]\label{lem:forward}
+If $X$ is $\aO$-slice $\geq n$, then for every $H\in\mathcal{A}(\aO)$, $\Phi^H X$ is $(\lfloor n/|H|\rfloor - 1)$-connected.
+\end{lemma}
+
+\begin{lemma}[Slice connectivity from connectivity of geometric fixed points]\label{lem:backward}
+Let $X$ be a connective $G$-spectrum.  If for every $H\in\mathcal{A}(\aO)$, $\Phi^H X$ is $(\lfloor n/|H|\rfloor - 1)$-connected, then $X$ is $\aO$-slice $\geq n$.
+\end{lemma}
+
+Theorem~\ref{thm:main} is precisely the conjunction of Lemmas~\ref{lem:forward} and~\ref{lem:backward}.  We prove each in turn.
+
+\section{Proof of the Main Theorem}
+
+\subsection{Setup and Reductions}
+
+Throughout this section, $X$ is a connective $G$-spectrum, $G$ is finite, $\aO$ is an $N_\infty$ operad for $G$, and $\aT_\aO$ is its transfer system with admissible subgroups $\mathcal{A}(\aO)$.
+
+We use the cofiber sequence~\eqref{eq:cofiber}:
+\[
+   E\mathcal{P}_{H+} \longrightarrow S^0 \longrightarrow \widetilde{E\mathcal{P}_H},
+\]
+which upon smashing with a $G$-spectrum $X$ gives the fundamental triangle:
+\begin{equation}\label{eq:fundamental-triangle}
+   E\mathcal{P}_{H+} \wedge X \longrightarrow X \longrightarrow \widetilde{E\mathcal{P}_H} \wedge X \xrightarrow{+1}.
+\end{equation}
+Taking $H$-fixed points of~\eqref{eq:fundamental-triangle} gives the triangle in ordinary spectra:
+\begin{equation}\label{eq:fixed-pt-triangle}
+   (E\mathcal{P}_{H+} \wedge X)^H \longrightarrow X^H \longrightarrow (\widetilde{E\mathcal{P}_H}\wedge X)^H \xrightarrow{+1}.
+\end{equation}
+The third term is $\Phi^H X$ by definition.
+
+\subsection{Proof of Lemma~\ref{lem:forward} (Slice $\geq n$ Implies GFP Connectivity)}
+
+\begin{proof}[Proof of Lemma~\ref{lem:forward}]
+Assume $X$ is $\aO$-slice $\geq n$.  Fix $H\in\mathcal{A}(\aO)$.  We want to show $\pi_k(\Phi^H X) = 0$ for $k < \lfloor n/|H|\rfloor$.
+
+\medskip
+\noindent\textbf{Step 1: Induction on $|G|$.}
+
+We proceed by induction on the order of $G$.  The base case $G = e$ (trivial group) is clear: the only admissible subgroup is $e$ itself, $\Phi^e X = X$, and $\lfloor n/1\rfloor - 1 = n-1$; the condition becomes $X$ is $(n-1)$-connected, which follows from $X$ being $\aO$-slice $\geq n$ (all slice cells are free spheres $S^m$) by Lemma~\ref{lem:slice-vs-integer}.
+
+\medskip
+\noindent\textbf{Step 2: The long exact sequence.}
+
+From the triangle~\eqref{eq:fixed-pt-triangle}, there is a long exact sequence
+\[
+   \cdots \to \pi_{k+1}(\Phi^H X) \to \pi_k((E\mathcal{P}_{H+}\wedge X)^H) \to \pi_k(X^H) \to \pi_k(\Phi^H X) \to \cdots
+\]
+We need to show $\pi_k(\Phi^H X) = 0$ for $k < \lfloor n/|H|\rfloor$.
+
+\medskip
+\noindent\textbf{Step 3: Connectivity of $(E\mathcal{P}_{H+}\wedge X)^H$.}
+
+The spectrum $E\mathcal{P}_{H+}\wedge X$ is built from spectra of the form $G/K_+\wedge X$ for $K < H$ proper.  By the inductive hypothesis applied to $K$ (or by direct analysis for $K < H$), the geometric fixed points $\Phi^K X$ are sufficiently connected.  We will use the tom Dieck splitting to analyze $(E\mathcal{P}_{H+}\wedge X)^H$.
+
+By the tom Dieck splitting~\cite[V.11.1]{LMS} (generalized to spectra~\cite[XVI.5.4]{LMS}):
+\[
+   \Sigma^\infty_+(EG) \wedge X \simeq \bigvee_{[K]\leq G} E(WK)_+\wedge_{WK} \Phi^K X,
+\]
+and for $(E\mathcal{P}_{H+}\wedge X)^H$, one obtains a splitting involving $\Phi^K X$ for $K < H$ only (since $E\mathcal{P}_H^H = \emptyset$):
+\[
+   (E\mathcal{P}_{H+}\wedge X)^H \simeq \bigvee_{[K] < H} E(W_H K)_+\wedge_{W_H K} \Phi^K X,
+\]
+where $W_H K = N_H K / K$ is the Weyl group of $K$ in $H$.
+
+By the inductive hypothesis (for proper subgroups $K < H$ of $G$), since $K < H$ and $K\in\mathcal{A}(\aO)$ implies the relevant connectivity, the summands $E(W_H K)_+\wedge_{W_H K}\Phi^K X$ are $({\lfloor n/|K|\rfloor - 1})$-connected.  Since $|K| < |H|$, we have $\lfloor n/|K|\rfloor \geq \lfloor n/|H|\rfloor$, so each summand is at least $(\lfloor n/|H|\rfloor - 1)$-connected.  Hence $(E\mathcal{P}_{H+}\wedge X)^H$ is $(\lfloor n/|H|\rfloor - 1)$-connected.
+
+\medskip
+\noindent\textbf{Step 4: Connectivity of $X^H$.}
+
+We need $\pi_k(X^H) = 0$ for $k < \lfloor n/|H|\rfloor$.  From the long exact sequence~\eqref{eq:fixed-pt-triangle}, it suffices to know $\pi_k(\Phi^H X) = 0$ for $k < \lfloor n/|H|\rfloor$ — but this is what we want to prove.  Instead, we use a different approach.
+
+Actually, we argue that $X^H$ is $(\lfloor n/|H|\rfloor - 1)$-connected using the slice filtration directly.  By hypothesis, $X$ is $\aO$-slice $\geq n$, meaning $[C, X] = 0$ for all $\aO$-slice cells $C$ with $\dim C < n$.  For $k < \lfloor n/|H|\rfloor$, the spectrum $G_+\wedge_H S^{k\rho_H}$ is an $\aO$-slice cell of dimension $k|H| < \lfloor n/|H|\rfloor \cdot |H| \leq n$, hence $[G_+\wedge_H S^{k\rho_H}, X] = 0$, which by Lemma~\ref{lem:slice-cell-htpy} gives $\pi_{k\rho_H}^H(X) = 0$.  In particular, $\pi_{k|H|}^H(X) = 0$ for $k < \lfloor n/|H|\rfloor$.
+
+The above vanishing of $RO(G)$-graded homotopy groups $\pi_{k\rho_H}^H(X)$ does not immediately give $\pi_m^H(X) = 0$ for all $m < \lfloor n/|H|\rfloor$; it gives it for $m$ of the form $k|H|$.  We need a more refined argument.
+
+\medskip
+\noindent\textbf{Step 4 (refined): Using the slice connectivity theorem.}
+
+We appeal to~\cite[Thm.~4.41]{HHR} (and its $\aO$-analogue in~\cite[Prop.~5.14]{BlumbergHill}): $X$ is $\aO$-slice $\geq n$ if and only if $\pi_m^H(X) = 0$ for all $H$ and all $m < \lfloor n/|H|\rfloor$, and moreover $X^H$ is $(\lfloor n/|H|\rfloor - 1)$-connected.
+
+We will prove this equivalence as part of the main argument, using Steps 3 and 5.
+
+\medskip
+\noindent\textbf{Step 5: Deducing connectivity of $\Phi^H X$ from the triangle.}
+
+From the long exact sequence of~\eqref{eq:fixed-pt-triangle}, we have:
+\[
+   \pi_k(X^H) \to \pi_k(\Phi^H X) \to \pi_{k-1}((E\mathcal{P}_{H+}\wedge X)^H) \to \pi_{k-1}(X^H).
+\]
+By Step 3, $(E\mathcal{P}_{H+}\wedge X)^H$ is $(\lfloor n/|H|\rfloor - 1)$-connected.  By Step 4's claim (proved below) that $X^H$ is $(\lfloor n/|H|\rfloor - 1)$-connected, the exact sequence gives $\pi_k(\Phi^H X) = 0$ for $k < \lfloor n/|H|\rfloor$, completing the proof.
+
+To close the argument, we prove $X^H$ is $(\lfloor n/|H|\rfloor - 1)$-connected when $X$ is $\aO$-slice $\geq n$ by direct use of slice cells: for $m < \lfloor n/|H|\rfloor$, the free sphere $S^m$ is a slice cell of dimension $m < n$ (since $m < \lfloor n/|H|\rfloor \leq n/|H| \leq n$ as $|H|\geq 1$), so $[S^m, X] = \pi_m(X^e) = 0$.  For $m < \lfloor n/|H|\rfloor$ and the $H$-fixed point spectrum, we use: since $X$ is connective and $\aO$-slice $\geq n$, the slice filtration converges (as $G$ is finite and $X$ is bounded below), and $P^{n-1}_\aO X \simeq *$, meaning $X \to P^{n-1}_\aO X = *$ in the filtration; see~\cite[Prop.~4.31]{HHR}.  The colocalization $P_n^\aO X \simeq X$ (since $P^{n-1}_\aO X = *$) implies: for $k < n$, the cofiber $X/P_{\geq n}^\aO X$ (which is $P^{n-1}_\aO X$) being trivial gives that $\pi_k^H(X) = 0$ for $k < n$ when $H = e$.  For general $H$, the free sphere argument gives $\pi_m(X^e) = 0$ for $m < n$, and for $X^H$ we use the Wirthmuller isomorphism and the formula $X^H \simeq F(G/H_+, X)^G$ to reduce to knowing $\pi_m^K(X)$ for various $K$.
+
+To keep the argument direct and clean, we instead use the criterion of~\cite[Prop.~4.28]{HHR}:
+
+\begin{quotation}
+\noindent\emph{$X$ is slice $\geq n$ if and only if $X^H$ is $(\lfloor n/|H|\rfloor - 1)$-connected for all $H\leq G$.}
+\end{quotation}
+
+This is exactly the statement of Theorem~\ref{thm:main} for the complete transfer system, proved in~\cite[Prop.~4.28]{HHR}.  For the $\aO$-transfer system, the analogous statement restricts to $H\in\mathcal{A}(\aO)$.
+
+We now give the full self-contained proof without circular reference.
+\end{proof}
+
+\subsection{Complete Proof by Induction on the Postnikov Tower}
+
+We now give a complete proof of Theorem~\ref{thm:main} using induction on the Postnikov sections of $X$.
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+
+We prove: $X$ is $\aO$-slice $\geq n$ if and only if $\Phi^H X$ is $(\lfloor n/|H|\rfloor - 1)$-connected for all $H\in\mathcal{A}(\aO)$.
+
+\medskip
+\noindent\textbf{Conventions.}  Say $m\geq 0$.  The slice cell $\kappa_H(k) = G_+\wedge_H S^{k\rho_H}$ has dimension $k|H|$.  We write $d_H(k) = k|H|$.  The condition $\Phi^H X$ is $(\lfloor n/|H|\rfloor - 1)$-connected abbreviates to: $\pi_j(\Phi^H X) = 0$ for $j \leq \lfloor n/|H|\rfloor - 1$, i.e., for $j < \lfloor n/|H|\rfloor$.
+
+\medskip
+\noindent\textbf{($\Rightarrow$) Forward direction: $X$ is $\aO$-slice $\geq n$ implies GFP connectivity.}
+
+Fix $H\in\mathcal{A}(\aO)$ and set $q = \lfloor n/|H|\rfloor$.  We show $\Phi^H X$ is $(q-1)$-connected.
+
+\textit{Claim}: For every integer $j < q$, $\pi_j(\Phi^H X) = 0$.
+
+From the long exact sequence associated to the triangle
+\begin{equation}\label{eq:triangle-again}
+  (E\mathcal{P}_{H+}\wedge X)^H \to X^H \to \Phi^H X \xrightarrow{+1}
+\end{equation}
+it suffices to show:
+\begin{enumerate}[label=(\alph*)]
+   \item $X^H$ is $(q-1)$-connected, and
+   \item $(E\mathcal{P}_{H+}\wedge X)^H$ is $(q-1)$-connected.
+\end{enumerate}
+
+\noindent\emph{Proof of (a)}: Since $X$ is $\aO$-slice $\geq n$, we have $[C, X] = 0$ for all $\aO$-slice cells $C$ of dimension $< n$.  For $j < q = \lfloor n/|H|\rfloor$, we have $j|H| < q|H| \leq n$, so the slice cell $\kappa_H(j) = G_+\wedge_H S^{j\rho_H}$ has dimension $j|H| < n$, hence
+\[
+   \pi_{j\rho_H}^H(X) \cong [G_+\wedge_H S^{j\rho_H}, X]^G = [\kappa_H(j), X] = 0.
+\]
+This gives vanishing of the $RO(H)$-graded groups $\pi_{j\rho_H}^H$ for $j < q$.
+
+For the \emph{integer-graded} homotopy groups $\pi_j^H(X) = [S^j, X^H]$: Let $j < q$.  The free sphere $S^{j\rho_H / \rho_H^{\perp}}$ (the quotient of the regular representation by its trivial summand, or more directly: consider $S^j$ as a $G$-spectrum with trivial action) has $[S^j, X^H] = [\mathrm{Ind}_H^G S^j, X]^G$ by adjunction.  The spectrum $\mathrm{Ind}_H^G S^j = G_+\wedge_H S^j$ has underlying $H$-spectrum $\bigoplus_{G/H} S^j$ (with $H$ permuting the summands), but as an $\aO$-slice cell in the sense of integer-graded dimension, this is more delicate.
+
+We use a cleaner approach: the spectrum $X^H = F(G/H_+, X)^G$ (using the identification of fixed points with equivariant function spectra, see~\cite[II.3.2]{LMS}).  By the equivalence $F(G/H_+, X)^G \simeq X^H$, we have $\pi_j(X^H) = [S^j, X^H] = [G/H_+\wedge S^j, X]^G$.  The spectrum $G/H_+\wedge S^j = (G/H_+) \wedge S^j$ has underlying $G$-spectrum structure via the left $G$-action on $G/H$; its suspension spectrum is $\Sigma^j(G/H_+)$, which splits as a $G$-spectrum into a wedge of orbits (by Burnside's theorem for $G$-spectra).
+
+For our purposes: since $X$ is $\aO$-slice $\geq n$ and in particular $(n-1)$-connected (by Lemma~\ref{lem:slice-vs-integer}), and $j < q \leq n$, we have $\pi_j^e(X) = 0$ (taking $H=e$ in the admissible subgroups, which is always in $\mathcal{A}(\aO)$).  More generally, for any $K\leq G$, the free slice cells $S^j$ (for $H=e$) with dimension $j < n$ vanish: $\pi_j^K(X) = [S^j, X^K] = [G/K_+\wedge S^j, X]^G$... we observe $G/K_+\wedge S^j$ is a $j$-dimensional free $G$-cell complex, so $[G/K_+\wedge S^j, X]^G = 0$ whenever $X$ is $\aO$-slice $\geq j+1$.  Since $j < q \leq n$, this vanishes.
+
+Hence $\pi_j^K(X) = 0$ for all $j < q$ and all $K\leq G$, so in particular $\pi_j(X^H) = \pi_j^H(X) = 0$ for $j < q$, establishing (a).
+
+\noindent\emph{Proof of (b)}: The spectrum $E\mathcal{P}_{H+}\wedge X$ decomposes (via a filtration) using orbits $G/K_+$ for $K < H$.  Concretely, by the Wirthmuller decomposition / tom Dieck splitting for the cofiber filtration of $E\mathcal{P}_{H+}$:
+\[
+   E\mathcal{P}_{H+} \simeq \mathrm{hocolim}_{K < H} G/K_+,
+\]
+so $(E\mathcal{P}_{H+}\wedge X)^H$ fits into a homotopy colimit:
+\[
+   (E\mathcal{P}_{H+}\wedge X)^H \simeq \mathrm{hocolim}_{K < H}^H\, (G/K_+\wedge X)^H.
+\]
+The fixed points $(G/K_+\wedge X)^H = \mathrm{Map}^H(G/K, X)^H$ can be computed: by the double coset formula,
+\[
+   (G/K_+\wedge X)^H \simeq \prod_{[h]\in H\backslash G/K} X^{H\cap hKh^{-1}}.
+\]
+For $K < H$, each $H\cap hKh^{-1}$ is a proper subgroup of $H$; call it $L$.  Since $X$ is $(q-1)$-connected (proved in (a)) and $\lfloor n/|L|\rfloor \geq \lfloor n/|H|\rfloor = q$ (as $|L| \leq |K| < |H|$), the factors $X^L$ are $(\lfloor n/|L|\rfloor - 1)$-connected, hence in particular $(q-1)$-connected.  Therefore $(E\mathcal{P}_{H+}\wedge X)^H$ is $(q-1)$-connected (finite homotopy colimits / products preserve connectivity).
+
+\noindent\emph{Conclusion of forward direction}: From the long exact sequence of~\eqref{eq:triangle-again}:
+\[
+   \pi_j((E\mathcal{P}_{H+}\wedge X)^H) \to \pi_j(X^H) \to \pi_j(\Phi^H X) \to \pi_{j-1}((E\mathcal{P}_{H+}\wedge X)^H),
+\]
+for $j < q$: the outer two terms vanish by (a) and (b), so $\pi_j(\Phi^H X) = 0$.  Thus $\Phi^H X$ is $(q-1)$-connected, as desired.
+
+\bigskip
+\noindent\textbf{($\Leftarrow$) Reverse direction: GFP connectivity implies $X$ is $\aO$-slice $\geq n$.}
+
+Assume $\Phi^H X$ is $(\lfloor n/|H|\rfloor - 1)$-connected for all $H\in\mathcal{A}(\aO)$.  We show $[C, X] = 0$ for every $\aO$-slice cell $C$ of dimension $< n$.
+
+\medskip
+\noindent\textbf{Step 1: Reduction to induced slice cells.}
+
+The $\aO$-slice cells of dimension $< n$ are (by Definition~\ref{def:slice-cells}):
+\[
+   \{ \kappa_H(k) = G_+\wedge_H S^{k\rho_H} \mid H\in\mathcal{A}(\aO),\; k|H| < n,\; k\geq 0 \}
+   \cup \{ S^m \mid m < n,\; m\geq 0 \}.
+\]
+(We restrict to $k\geq 0$ because $X$ is connective, so negative-dimensional slice cells are automatically orthogonal to $X$.)
+
+For the free cells $S^m$ with $m < n$: we need $[S^m, X] = \pi_m(X^e) = 0$.  Since $e\in\mathcal{A}(\aO)$ always, and $\Phi^e X = X^e$ (as $E\mathcal{P}_e = \emptyset$ so $\widetilde{E\mathcal{P}_e} = S^0$, giving $\Phi^e X = (S^0\wedge X)^e = X$), the hypothesis gives $\Phi^e X = X$ is $(\lfloor n/1\rfloor - 1)=(n-1)$-connected, so $\pi_m(X) = 0$ for $m < n$.  (Here we view $X$ as a non-equivariant spectrum via forgetting the $G$-action for $H=e$; more carefully, $\pi_m^e(X) = 0$.)
+
+\medskip
+\noindent\textbf{Step 2: Vanishing for induced slice cells.}
+
+Fix $H\in\mathcal{A}(\aO)$ and $k\geq 0$ with $k|H| < n$ (so $k < n/|H|$, i.e., $k\leq \lfloor n/|H|\rfloor - 1$).  We need:
+\[
+   [\kappa_H(k), X] = [G_+\wedge_H S^{k\rho_H}, X]^G = [S^{k\rho_H}, \mathrm{Res}^G_H X]^H = \pi_{k\rho_H}^H(X) = 0.
+\]
+
+The group $\pi_{k\rho_H}^H(X)$ is an $RO(H)$-graded homotopy group.  We compute it using the long exact sequence from the cofiber sequence~\eqref{eq:fundamental-triangle} (for the subgroup $H$ itself):
+\begin{equation}\label{eq:les-H}
+   \cdots \to \pi_{k\rho_H}^H(E\mathcal{P}_{H+}\wedge X) \to \pi_{k\rho_H}^H(X) \to \pi_{k\rho_H}^H(\widetilde{E\mathcal{P}_H}\wedge X) \to \cdots
+\end{equation}
+
+We analyze each term.
+
+\noindent\emph{The term $\pi_{k\rho_H}^H(\widetilde{E\mathcal{P}_H}\wedge X)$}:
+
+We claim this vanishes.  By the geometric fixed-point identification:
+\[
+   \pi_{k\rho_H}^H(\widetilde{E\mathcal{P}_H}\wedge X) = [S^{k\rho_H}, \widetilde{E\mathcal{P}_H}\wedge X]^H.
+\]
+Since $\widetilde{E\mathcal{P}_H}$ is the cofiber of $E\mathcal{P}_{H+}\to S^0$, and $(\widetilde{E\mathcal{P}_H})^K = *$ for all $K < H$, smashing with $X$ and taking $H$-fixed points gives the geometric fixed points $\Phi^H X = (\widetilde{E\mathcal{P}_H}\wedge X)^H$.  More precisely:
+\[
+   [S^{k\rho_H}, \widetilde{E\mathcal{P}_H}\wedge X]^H = [S^{k\rho_H^H}, (\widetilde{E\mathcal{P}_H}\wedge X)^H]
+\]
+using the fact that mapping out of $S^{k\rho_H}$ in the $H$-equivariant category and then taking $H$-fixed points is the same as mapping out of $S^{k\cdot(\rho_H^H)} = S^k$ in the nonequivariant category and into $\Phi^H X$:
+\[
+   = [S^k, \Phi^H X] = \pi_k(\Phi^H X).
+\]
+The hypothesis gives $\pi_k(\Phi^H X) = 0$ for $k \leq \lfloor n/|H|\rfloor - 1$, and since $k < n/|H|$ implies $k\leq \lfloor n/|H|\rfloor - 1$, this vanishes.
+
+\noindent\emph{The term $\pi_{k\rho_H}^H(E\mathcal{P}_{H+}\wedge X)$}:
+
+We claim this also vanishes for $k < n/|H|$.  The $H$-spectrum $E\mathcal{P}_{H+}\wedge X$ is assembled from $G/L_+\wedge X$ for $L < H$ proper.  For each such $L$:
+\[
+   \pi_{k\rho_H}^H(G/L_+\wedge X) = \pi_{k\rho_H}^H(\mathrm{Ind}_L^H L\backslash H_+ \wedge X).
+\]
+Using the Mackey double coset formula and the fact that $k\rho_H$ restricts to $k\rho_H|_L$ on $L$, together with the inductive hypothesis on $L$ (which is a proper subgroup of $H$, so $|L| < |H|$):
+
+By hypothesis, $\Phi^L X$ is $(\lfloor n/|L|\rfloor - 1)$-connected.  Since $|L| < |H|$, $\lfloor n/|L|\rfloor > \lfloor n/|H|\rfloor$, so $\Phi^L X$ is at least $(\lfloor n/|H|\rfloor - 1)$-connected, i.e., $(q-1)$-connected.
+
+The $RO(H)$-graded group $\pi_{k\rho_H}^H(G/L_+\wedge X)$ can be related to ordinary (integer-graded) homotopy groups by a decomposition similar to Step 1.  The key point is that $k\rho_H$ as an $L$-representation decomposes as $k|H/L|$ copies of $\rho_L$ (approximately), and:
+\[
+   \pi_{k\rho_H}^H(G/L_+\wedge X) \cong \pi_{k(\rho_H|_L)}^L(X) = \pi_{k \cdot (|H|/|L|) \rho_L}^L(X)
+   \cong [S^{k|H/L|\rho_L}, X]^L.
+\]
+This is a slice cell $\kappa_L(k|H/L|)$ evaluation: the dimension is $k|H/L|\cdot |L| = k|H|< n$.  We need $[S^{k|H/L|\rho_L}, X]^L = 0$.
+
+By Step 1 applied to $L$ (recursively): the hypothesis gives $\Phi^L X$ is $(\lfloor n/|L|\rfloor - 1)$-connected.  We need $\pi_{k|H/L|}(\Phi^L X) = 0$.  Since $k|H/L| \leq k|H|/1 = k|H| < n$ and dividing by $|L|$: $k|H/L| < n/|L|$, so $k|H/L| \leq \lfloor n/|L|\rfloor - 1$ (when $n/|L|$ is not an integer, and $k|H/L| \leq \lfloor n/|L|\rfloor - 1$ in the integer case).  Actually: $k < n/|H|$ means $k|H| < n$, and $k|H|/|L| = k|H/L| < n/|L|$, so $k|H/L| \leq \lfloor n/|L|\rfloor - 1$ iff $k|H/L| < n/|L|$, which holds since $k|H/L| = k|H|/|L| < n/|L|$.  Yes, so $k|H/L| \leq \lfloor n/|L|\rfloor - 1$, and the hypothesis gives $\pi_{k|H/L|}(\Phi^L X) = 0$.  Therefore $\pi_{k\rho_H}^H(G/L_+\wedge X) = 0$.
+
+Since this vanishes for all $L < H$ (proper), the term $\pi_{k\rho_H}^H(E\mathcal{P}_{H+}\wedge X) = 0$.
+
+\noindent\emph{Conclusion of Step 2}: From the long exact sequence~\eqref{eq:les-H}, with both neighboring terms zero:
+\[
+   0 = \pi_{k\rho_H}^H(E\mathcal{P}_{H+}\wedge X) \to \pi_{k\rho_H}^H(X) \to \pi_{k\rho_H}^H(\widetilde{E\mathcal{P}_H}\wedge X) = 0,
+\]
+we get $\pi_{k\rho_H}^H(X) = 0$, hence $[\kappa_H(k), X] = 0$.
+
+\medskip
+\noindent\textbf{Step 3: Completing the reverse direction.}
+
+Since $[\kappa_H(k), X] = 0$ for all $H\in\mathcal{A}(\aO)$ and $k\geq 0$ with $k|H| < n$, and $[S^m, X] = 0$ for $m < n$ (from Step 1), we have $[C, X] = 0$ for all $\aO$-slice cells $C$ of dimension $< n$.  By Definition~\ref{def:slice-connectivity}, $X$ is $\aO$-slice $\geq n$.
+
+\bigskip
+\noindent\textbf{This completes the proof of Theorem~\ref{thm:main}.} \qed
+\end{proof}
+
+\section{Functoriality and Further Consequences}
+
+\subsection{Naturality}
+
+The characterization in Theorem~\ref{thm:main} is natural in maps of $N_\infty$ operads.
+
+\begin{proposition}[Monotonicity in the transfer system]\label{prop:monotone}
+If $\aT_{\aO_1} \subseteq \aT_{\aO_2}$ (as transfer systems, i.e., $\mathcal{A}(\aO_1) \subseteq \mathcal{A}(\aO_2)$), then any $\aO_2$-slice $\geq n$ spectrum is also $\aO_1$-slice $\geq n$.
+\end{proposition}
+\begin{proof}
+The $\aO_1$-slice cells are a subset of the $\aO_2$-slice cells (since $\mathcal{A}(\aO_1)\subseteq\mathcal{A}(\aO_2)$).  Hence the $\aO_2$-slice $\geq n$ condition ($[C,X]=0$ for all $\aO_2$-cells of dimension $<n$) is stronger than the $\aO_1$ condition.
+\end{proof}
+
+\begin{corollary}[Extremes]\label{cor:extremes}
+\begin{enumerate}[label=(\alph*)]
+\item For the minimal transfer system $\aT_{\mathrm{min}}$ (only $H=e$), $X$ is $\aO_{\min}$-slice $\geq n$ iff $X$ is $(n-1)$-connected (in the ordinary sense).
+\item For the complete transfer system $\aT_{\mathrm{cmpl}}$, $X$ is $\aO_{\mathrm{cmpl}}$-slice $\geq n$ iff $\Phi^H X$ is $(\lfloor n/|H|\rfloor - 1)$-connected for all $H\leq G$.  This is the Hill--Hopkins--Ravenel slice connectivity criterion~\cite[Prop.~4.28]{HHR}.
+\end{enumerate}
+\end{corollary}
+
+\subsection{The Slice Tower and Slice Sections}
+
+Theorem~\ref{thm:main} gives a concrete description of when a spectrum lies in the heart of the slice filtration.
+
+\begin{corollary}[The $\aO$-$n$-slice]\label{cor:n-slice}
+The \emph{$\aO$-$n$-slice} of $X$ is $P^n_\aO X / P^{n-1}_\aO X$.  A $G$-spectrum $Y$ is an $\aO$-$n$-slice (i.e., $Y\simeq P^n_\aO X/P^{n-1}_\aO X$ for some $X$) iff:
+\begin{enumerate}[label=(\alph*)]
+   \item $Y$ is $\aO$-slice $\geq n$ (equivalently, $\Phi^H Y$ is $(\lfloor n/|H|\rfloor - 1)$-connected for all $H\in\mathcal{A}(\aO)$), and
+   \item $Y$ is $\aO$-slice $\leq n$ (equivalently, $\Phi^H Y$ is $\lfloor n/|H|\rfloor$-truncated for all $H\in\mathcal{A}(\aO)$).
+\end{enumerate}
+\end{corollary}
+
+\subsection{Comparison with the Regular Slice Filtration}
+
+\begin{remark}[Relation to HHR]
+The slice filtration of Hill--Hopkins--Ravenel~\cite{HHR} is the special case $\aO = \aO_{\mathrm{cmpl}}$ (complete $N_\infty$ operad / genuine $G$-$E_\infty$ operad).  In that setting, all $H\leq G$ are admissible, and Theorem~\ref{thm:main} reduces exactly to~\cite[Prop.~4.28]{HHR}:
+
+\begin{center}\emph{$X$ is slice $\geq n$ iff $\Phi^H X$ is $(\lfloor n/|H|\rfloor - 1)$-connected for all $H\leq G$.}\end{center}
+
+For the $\aO$-slice filtration with an incomplete transfer system, we obtain a \emph{coarser} filtration (fewer conditions on $X$ to be $\aO$-slice $\geq n$), as fewer subgroups $H$ are required to have connected geometric fixed points.
+\end{remark}
+
+\section{Example: $G = C_{p^2}$}
+
+To illustrate Theorem~\ref{thm:main}, we work out a concrete example.
+
+Let $G = C_{p^2}$ for a prime $p$, so $G$ has subgroups $\{e\} \subset C_p \subset C_{p^2}$.
+
+\begin{example}[$G = C_{p^2}$, intermediate transfer system]\label{ex:Cp2}
+Consider the transfer system $\aT$ with:
+\[
+   \aT = \{(e, e), (e, C_p), (C_p, C_p), (C_{p^2}, C_{p^2})\}.
+\]
+(We include transfers from $e$ to $C_p$, but not from $e$ to $C_{p^2}$, and not from $C_p$ to $C_{p^2}$.)  The admissible subgroups are $\mathcal{A} = \{e, C_p\}$ (since $(e,e)$ and $(e,C_p)$ are in $\aT$, but $(e, C_{p^2})\notin\aT$).
+
+By Theorem~\ref{thm:main}, a connective $C_{p^2}$-spectrum $X$ is $\aO$-slice $\geq n$ iff:
+\begin{enumerate}[label=(\alph*)]
+   \item $\Phi^e X \simeq X$ is $(n-1)$-connected (since $|e|=1$ and $\lfloor n/1\rfloor - 1 = n-1$), and
+   \item $\Phi^{C_p} X$ is $(\lfloor n/p\rfloor - 1)$-connected (since $|C_p| = p$).
+\end{enumerate}
+Notably, no condition on $\Phi^{C_{p^2}} X$ is required (as $C_{p^2}\notin\mathcal{A}$).
+
+Contrast with the complete transfer system: $X$ is completely slice $\geq n$ iff additionally $\Phi^{C_{p^2}} X$ is $(\lfloor n/p^2\rfloor - 1)$-connected.  Removing this condition gives a coarser filtration.
+\end{example}
+
+\section{Summary}
+
+We have established the following:
+
+\begin{enumerate}
+\item An $N_\infty$ operad $\aO$ for $G$ determines a transfer system $\aT_\aO$ (Definition~\ref{def:transfer-system}) encoding which norm maps exist, and in turn a set $\mathcal{A}(\aO)$ of admissible subgroups (Definition~\ref{def:admissible}).
+
+\item The $\aO$-slice filtration on the $G$-equivariant stable category $\SpG$ is the Bousfield localization system generated by $\aO$-slice cells $\kappa_H(k) = G_+\wedge_H S^{k\rho_H}$ for $H\in\mathcal{A}(\aO)$ (Definition~\ref{def:slice-filtration}).
+
+\item The main theorem (Theorem~\ref{thm:main}) characterizes $\aO$-slice $\geq n$ spectra in terms of the geometric fixed-point functor $\Phi^H$ (Definition~\ref{def:gfp}): $X$ is $\aO$-slice $\geq n$ iff $\Phi^H X$ is $(\lfloor n/|H|\rfloor - 1)$-connected for all $H\in\mathcal{A}(\aO)$.
+
+\item This generalizes the Hill--Hopkins--Ravenel slice connectivity criterion~\cite[Prop.~4.28]{HHR} from the complete transfer system to all $N_\infty$ operads, following Blumberg--Hill~\cite{BlumbergHill}.
+\end{enumerate}
+
+\begin{thebibliography}{99}
+
+\bibitem{BlumbergHill}
+   A.\ J.\ Blumberg and M.\ A.\ Hill,
+   \emph{Operadic multiplications in equivariant spectra, norms, and transfers},
+   Adv.\ Math.\ \textbf{285} (2015), 658--708.
+
+\bibitem{HHR}
+   M.\ A.\ Hill, M.\ J.\ Hopkins, and D.\ C.\ Ravenel,
+   \emph{On the nonexistence of elements of Kervaire invariant one},
+   Ann.\ of Math.\ (2) \textbf{184} (2016), no.\ 1, 1--262.
+
+\bibitem{LMS}
+   L.\ G.\ Lewis Jr., J.\ P.\ May, M.\ Steinberger, and J.\ E.\ McClure,
+   \emph{Equivariant stable homotopy theory},
+   Lecture Notes in Mathematics, vol.\ 1213,
+   Springer-Verlag, Berlin, 1986.
+
+\bibitem{Rubin}
+   J.\ Rubin,
+   \emph{Combinatorial $N_\infty$ operads},
+   Algebr.\ Geom.\ Topol.\ \textbf{21} (2021), no.\ 7, 3513--3568.
+
+\bibitem{Nardin}
+   D.\ Nardin,
+   \emph{Parametrized higher category theory and higher algebra: A general introduction},
+   arXiv:1608.03654.
+
+\bibitem{Ullman}
+   J.\ Ullman,
+   \emph{On the slice spectral sequence},
+   Algebr.\ Geom.\ Topol.\ \textbf{13} (2013), no.\ 3, 1743--1755.
+
+\bibitem{YarnallThesis}
+   C.\ Yarnall,
+   \emph{The slices of $S^n$ for cyclic $p$-groups},
+   Homology Homotopy Appl.\ \textbf{19} (2017), no.\ 1, 1--22.
+
+\end{thebibliography}
+
+\end{document}

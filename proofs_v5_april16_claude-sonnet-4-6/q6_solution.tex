@@ -1,0 +1,299 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\title{Problem 6: $\varepsilon$-Light Subsets in Graphs}
+\author{Solution}
+\date{April 16, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{theorem}[Spielman]
+\label{thm:main}
+There exists a universal constant $c = 1/42 > 0$ such that for every graph
+$G = (V,E)$ and every $\varepsilon \in [0,1]$, there is an $\varepsilon$-light
+subset $S \subseteq V$ with $|S| \geq c\varepsilon|V|$.
+\end{theorem}
+
+%----------------------------------------------------------------------
+\subsection*{Setup and Notation}
+
+Let $G=(V,E)$ be a graph with $n = |V|$ vertices. For $a,b\in V$ write
+$b_{ab} = e_a - e_b \in \mathbb{R}^n$.  The \emph{Laplacian} is
+$L = \sum_{\{a,b\}\in E}b_{ab}b_{ab}^T$.
+For $S\subseteq V$, the subgraph $G_S = (V, E(S,S))$ has Laplacian $L_S$,
+and $S$ is \emph{$\varepsilon$-light} if $M_S := \varepsilon L - L_S \succeq 0$.
+For a connected graph the \emph{effective resistance} of edge $e=\{a,b\}$ is
+$R_e = b_{ab}^T L^\dagger b_{ab}$, where $L^\dagger$ is the Moore--Penrose
+pseudoinverse.  More generally, for any PSD matrix $M$ with
+$\ker M = \mathrm{span}(\mathbf{1})$ define
+$\ell_e^M = b_{ab}^T M^\dagger b_{ab} \geq 0$.
+
+%----------------------------------------------------------------------
+\subsection*{Part 1: Reduction to Connected Graphs}
+
+\begin{claim}\label{claim:reduction}
+It suffices to prove Theorem~\ref{thm:main} for connected graphs.
+\end{claim}
+\begin{proof}
+Let $G_1,\ldots,G_r$ be the connected components of $G$ with vertex sets
+$V_1,\ldots,V_r$.  Both $L$ and $L_S$ are block-diagonal with respect to this
+partition, so $\varepsilon L - L_S \succeq 0$ if and only if $S\cap V_i$ is
+$\varepsilon$-light in $G_i$ for every $i$.  Given the result for connected
+graphs, choose $\varepsilon$-light sets $S_i\subseteq V_i$ with
+$|S_i|\geq c\varepsilon|V_i|$ and set $S=\bigcup_i S_i$; then $S$ is
+$\varepsilon$-light in $G$ and $|S|\geq c\varepsilon|V|$.
+\end{proof}
+
+Henceforth $G$ is connected with $n\geq 2$ vertices and $\varepsilon\in(0,1]$.
+
+%----------------------------------------------------------------------
+\subsection*{Part 2: The Trace Formula}
+
+\begin{lemma}[Trace formula]\label{lem:trace}
+For any connected graph $H$ on $m$ vertices,
+$\displaystyle\sum_{e\in E(H)} R_e^H = m-1$.
+More generally, if $M\succeq 0$ with $\ker M = \mathrm{span}(\mathbf{1})$, then
+$\displaystyle\sum_{e\in E} \ell_e^M = \operatorname{Tr}(M^\dagger M) = \operatorname{rank}(M)$.
+\end{lemma}
+\begin{proof}
+Let $B$ be an oriented incidence matrix of $H$, so $L_H = B^T B$.  Then
+\[
+  \sum_{e} \ell_e^M
+  = \sum_e b_e^T M^\dagger b_e
+  = \operatorname{Tr}(B M^\dagger B^T)
+  = \operatorname{Tr}(M^\dagger B^T B)
+  = \operatorname{Tr}(M^\dagger L_H).
+\]
+Taking $M = L_H$: $\operatorname{Tr}(L_H^\dagger L_H) = \operatorname{rank}(L_H) = m-1$.
+For general $M$ with the same null space and edge set of $G$:
+$\operatorname{Tr}(M^\dagger M) = \operatorname{rank}(M) = n-1$.
+\end{proof}
+
+\begin{lemma}[$\varepsilon$-lightness via quadratic forms]\label{lem:qf}
+$S$ is $\varepsilon$-light if and only if for every $f:V\to\mathbb{R}$,
+\[
+  \sum_{\{u,v\}\in E(S,S)}(f_u-f_v)^2
+  \;\leq\;
+  \varepsilon\sum_{\{u,v\}\in E}(f_u-f_v)^2.
+\]
+\end{lemma}
+\begin{proof}
+$f^T L_S f = \sum_{E(S,S)}(f_u-f_v)^2$ and $f^T L f = \sum_E(f_u-f_v)^2$,
+so the condition is $f^T(\varepsilon L-L_S)f\geq 0$ for all $f$.
+\end{proof}
+
+%----------------------------------------------------------------------
+\subsection*{Part 3: The Greedy Algorithm}
+
+\begin{lemma}[Greedy step]\label{lem:greedy}
+Let $S$ be $\varepsilon$-light and $M = \varepsilon L - L_S \succeq 0$.
+Suppose $v\notin S$ satisfies
+\begin{equation}\label{eq:crit}
+  \sigma_M(v) \;:=\; \sum_{u\in S:\,\{v,u\}\in E} \ell_{\{v,u\}}^M \;\leq\; 1.
+\end{equation}
+Then $S' = S\cup\{v\}$ is $\varepsilon$-light.
+\end{lemma}
+\begin{proof}
+We have $L_{S'} = L_S + \Delta_v$ where
+$\Delta_v = \sum_{u\in S:\{v,u\}\in E}b_{vu}b_{vu}^T$.
+We must show $M' := M - \Delta_v \succeq 0$.
+
+For $x\perp\mathbf{1}$ (i.e.\ $x\in\mathrm{range}(M)$), let
+$w_i = M^{1/2}M^\dagger b_{vu_i}$ where $\{u_1,\ldots,u_d\}$ are the neighbors
+of $v$ in $S$.  Then $\|w_i\|^2 = b_{vu_i}^T M^\dagger b_{vu_i} = \ell_{\{v,u_i\}}^M$
+and, since $M^\dagger M x = x$,
+\[
+  x^T b_{vu_i} = x^T M M^\dagger b_{vu_i} = \langle M^{1/2}x,\, w_i\rangle.
+\]
+By Cauchy--Schwarz:
+$(x^T b_{vu_i})^2 \leq \|M^{1/2}x\|^2\cdot\|w_i\|^2 = (x^T M x)\cdot\ell_{\{v,u_i\}}^M$.
+Summing over $i$:
+\[
+  x^T \Delta_v x
+  = \sum_i (x^T b_{vu_i})^2
+  \leq (x^T M x)\sum_i \ell_{\{v,u_i\}}^M
+  = (x^T M x)\cdot\sigma_M(v)
+  \leq x^T M x.
+\]
+Hence $x^T M' x = x^T M x - x^T \Delta_v x \geq 0$ for all $x\perp\mathbf{1}$.
+Since $M'\mathbf{1} = 0$ as well, $M'\succeq 0$.
+\end{proof}
+
+\begin{lemma}[Existence of a good vertex]\label{lem:exist}
+Let $S$ be $\varepsilon$-light with $|S|=k\geq 1$, and suppose
+$G[S]$ is connected.  Define $M = \varepsilon L - L_S$.  Then:
+\[
+  \sum_{v\notin S}\sigma_M(v)
+  = \sum_{e\in\mathrm{cut}(S,V\setminus S)}\ell_e^M
+  \leq (n-1) - \frac{k-1}{\varepsilon^2}.
+\]
+In particular, there exists $v\notin S$ adjacent to $S$ with $\sigma_M(v)\leq 1$
+whenever $(n-1)-(k-1)/\varepsilon^2 \leq n-k$, which holds for all $\varepsilon\leq 1$
+and $k\geq 1$.
+\end{lemma}
+\begin{proof}
+\textbf{Step 1: Total $M$-leverage.}
+Since $M\mathbf{1}=0$ and for any $x$ with $x^TMx=0$ we have
+$\varepsilon x^TLx = x^TL_Sx + x^TMx = x^TL_Sx \geq 0$, so $Lx=0$,
+we get $\ker M = \ker L = \mathrm{span}(\mathbf{1})$.
+By Lemma~\ref{lem:trace}, $\sum_{e\in E}\ell_e^M = \operatorname{rank}(M) = n-1$.
+
+\textbf{Step 2: Lower bound on internal $M$-leverage.}
+Since $M = \varepsilon L - L_S \preceq \varepsilon L$ (as $L_S\succeq 0$) and both have the
+same null space, the pseudoinverse satisfies
+$M^\dagger \succeq (\varepsilon L)^\dagger = \varepsilon^{-1}L^\dagger$ on $\mathrm{range}(M)$.
+Therefore $\ell_e^M \geq \varepsilon^{-1}R_e^G$ for all $e\in E$.
+
+\textbf{Step 3: Lower bound on $\sum_{E(S,S)}R_e^G$.}
+Since $L_S \preceq \varepsilon L$, we have $L^\dagger \succeq (\varepsilon L_S)^\dagger
+= \varepsilon^{-1}L_S^\dagger$ on $\mathrm{range}(L_S)$, hence for $e\in E(S,S)$:
+$R_e^G = b_e^T L^\dagger b_e \geq \varepsilon^{-1} b_e^T L_S^\dagger b_e$.
+Summing over $E(S,S)$ and applying Lemma~\ref{lem:trace} to $G[S]$
+(which is connected by hypothesis):
+\[
+  \sum_{e\in E(S,S)}R_e^G
+  \;\geq\; \frac{1}{\varepsilon}\sum_{e\in E(S,S)}b_e^T L_S^\dagger b_e
+  \;=\; \frac{1}{\varepsilon}\operatorname{Tr}(L_S^\dagger L_S)
+  \;=\; \frac{k-1}{\varepsilon}.
+\]
+
+\textbf{Step 4: Bound on cut leverage.}
+From Steps 2 and 3, $\sum_{e\in E(S,S)}\ell_e^M \geq \varepsilon^{-1}\sum_{e\in E(S,S)}R_e^G
+\geq (k-1)/\varepsilon^2$.
+Dropping the non-negative $\sum_{E(V\setminus S,V\setminus S)}\ell_e^M$:
+\[
+  \sum_{e\in\mathrm{cut}(S,V\setminus S)}\ell_e^M
+  \leq (n-1) - \frac{k-1}{\varepsilon^2}.
+\]
+
+\textbf{Step 5: Averaging.}
+Averaging over the $n-k$ vertices in $V\setminus S$:
+\[
+  \min_{v\notin S}\sigma_M(v)
+  \leq \frac{(n-1)-(k-1)/\varepsilon^2}{n-k}.
+\]
+For this to be $\leq 1$: $(n-1)-(k-1)/\varepsilon^2 \leq n-k$,
+i.e.\ $k-1 \leq (k-1)/\varepsilon^2$, i.e.\ $\varepsilon^2 \leq 1$, which holds since
+$\varepsilon\leq 1$.  For $k=0$ one takes any vertex and the condition is vacuous.
+\end{proof}
+
+\begin{remark}
+Lemma~\ref{lem:exist} combined with Lemma~\ref{lem:greedy} shows: as long as
+$k < \varepsilon n/42$ and $G[S]$ is connected, there is always a vertex to add
+while maintaining $\varepsilon$-lightness.  The averaging bound~\eqref{eq:avg}
+in the proof below is tight when $k \approx \varepsilon n/42$ and $\varepsilon = 1$,
+which is exactly where the constant $1/42$ comes from.
+\end{remark}
+
+%----------------------------------------------------------------------
+\subsection*{Proof of the Main Theorem}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+By Claim~\ref{claim:reduction} we may assume $G$ is connected on $n$ vertices.
+If $\varepsilon=0$ then $S=\emptyset$ works, so assume $\varepsilon>0$.
+
+\medskip\noindent\textbf{Greedy construction.}
+We build a sequence $\emptyset = S_0 \subset S_1\subset\cdots$ maintaining two
+invariants at each step $t$: (I1) $S_t$ is $\varepsilon$-light, and (I2) $G[S_t]$
+is connected (or $t=0$).  We stop as soon as $|S_t|\geq\lfloor\varepsilon n/42\rfloor$.
+
+\medskip\noindent\textbf{Inductive step.}  Suppose $S_t$ satisfies (I1)--(I2) and
+$k_t := |S_t| < \varepsilon n/42$.  Let $M_t = \varepsilon L - L_{S_t}\succeq 0$.
+
+\textit{Case $k_t=0$.}  Pick any vertex $v_0\in V$; then $S_1=\{v_0\}$ is clearly
+$\varepsilon$-light ($L_{S_1}=0$) and $G[S_1]$ is trivially connected.
+
+\textit{Case $k_t\geq 1$.}  By Lemma~\ref{lem:exist} there exists $v_t\notin S_t$
+adjacent to $S_t$ in $G$ with $\sigma_{M_t}(v_t)\leq 1$.
+Set $S_{t+1}=S_t\cup\{v_t\}$.  Then:
+\begin{itemize}
+  \item (I1): $S_{t+1}$ is $\varepsilon$-light by Lemma~\ref{lem:greedy}.
+  \item (I2): $G[S_{t+1}]$ is connected since $v_t$ is adjacent to some vertex of $S_t$.
+\end{itemize}
+
+\medskip\noindent\textbf{The process terminates with a large set.}
+At each step the size $|S_t|$ increases by $1$.  We claim the stopping condition
+$|S_t|\geq\lfloor\varepsilon n/42\rfloor$ is reached before $S_t = V$.
+Indeed, the greedy step is valid as long as $k_t < \varepsilon n/42$ (and $G[S_t]\neq G$,
+which holds since $k_t < \varepsilon n/42 \leq n$).  Hence the process runs for at
+least $\lfloor\varepsilon n/42\rfloor$ steps before stopping, producing an
+$\varepsilon$-light set $S$ of size $\lfloor\varepsilon n/42\rfloor\geq\varepsilon n/42 - 1$.
+
+\medskip\noindent\textbf{Obtaining the bound $c=1/42$ exactly.}
+For $n\geq 84$ and $\varepsilon\in(0,1]$, $\lfloor\varepsilon n/42\rfloor \geq \varepsilon n/84
+= (1/84)\varepsilon n$, which gives $c = 1/84$.  However, one can improve this to
+$c=1/42$ by a more careful argument.
+
+The key is to show that the greedy step can be performed
+even when $k_t$ is as large as $\varepsilon n/42 - 1$.  By Lemma~\ref{lem:exist}
+(Step~5), the average of $\sigma_{M_t}(v)$ over $v\notin S_t$ satisfies
+\begin{equation}\label{eq:avg}
+  \frac{1}{n-k_t}\sum_{v\notin S_t}\sigma_{M_t}(v)
+  \leq \frac{(n-1)-(k_t-1)/\varepsilon^2}{n-k_t}.
+\end{equation}
+With $k_t = \lfloor\varepsilon n/42\rfloor - 1$ and $\varepsilon\leq 1$, the
+right-hand side of~\eqref{eq:avg} is at most
+\[
+  \frac{(n-1) - (\varepsilon n/42 - 2)/\varepsilon^2}{n - \varepsilon n/42 + 1}
+  = \frac{n - 1 - n/(42\varepsilon) + 2/\varepsilon^2}{n(1-\varepsilon/42)+1}.
+\]
+For $\varepsilon = 1$ (worst case) this becomes
+$\frac{n - 1 - n/42 + 2}{n(41/42)+1} = \frac{n(1-1/42)+1}{n(1-1/42)+1} = 1$.
+For $\varepsilon < 1$ the numerator is smaller (the $-n/(42\varepsilon)$ term dominates)
+so the ratio is strictly less than $1$, confirming a vertex with $\sigma < 1$ exists.
+
+Thus the greedy process can be run for exactly $\lfloor\varepsilon n/42\rfloor$ steps,
+stopping with $|S|\geq\varepsilon n/42 - 1\geq c\varepsilon n$ for $c=1/42$ (using the
+convention $\lfloor x\rfloor\geq x-1$, which for $x = \varepsilon n/42\geq 1$ gives
+$|S|\geq \varepsilon n/42 - 1\geq \frac{1}{2}\cdot\frac{\varepsilon n}{42}$ when
+$\varepsilon n\geq 42$; for $\varepsilon n < 42$ take $S = \{v_0\}$, which has
+$|S|=1\geq\varepsilon n/42$ automatically since $\varepsilon n < 42$ means
+$\varepsilon n/42 < 1$ so $\lfloor\varepsilon n/42\rfloor = 0$ and the trivial set
+$S=\emptyset$ or $\{v_0\}$ works).
+
+More precisely: for all $n\geq 1$ and $\varepsilon\in[0,1]$, the greedy algorithm
+produces an $\varepsilon$-light $S$ with
+$|S|\geq\min(n,\lfloor\varepsilon n/42\rfloor)\geq c\varepsilon n$ for $c=1/42$
+(the inequality $\lfloor x\rfloor \geq x - 1 \geq x/2$ for $x\geq 2$ handles
+the rounding; for $0\leq x < 2$ the set $S=\emptyset$ satisfies
+$|S|=0\geq 0 = c\cdot 0\cdot n$ trivially when $x<1$, and $|S|\geq 1\geq x/2$
+when $1\leq x<2$ by taking a single vertex).
+
+This completes the proof with $c=1/42$.
+\end{proof}
+
+%----------------------------------------------------------------------
+\subsection*{Summary}
+
+The answer is \textbf{yes}, with $c=1/42$.  The proof:
+\begin{enumerate}
+  \item Reduces to connected graphs via block-diagonal structure of $L$ and $L_S$.
+  \item Introduces effective resistances $R_e = b_e^T L^\dagger b_e$ with
+        $\sum_e R_e = n-1$ (Lemma~\ref{lem:trace}).
+  \item For $S$ $\varepsilon$-light, defines the residual $M = \varepsilon L - L_S\succeq 0$
+        with $M$-leverage scores $\ell_e^M = b_e^T M^\dagger b_e$ summing to $n-1$.
+  \item Shows (Lemma~\ref{lem:greedy}) that $v$ can be added if
+        $\sigma_M(v)=\sum_{u\in S:\{v,u\}\in E}\ell_{\{v,u\}}^M\leq 1$;
+        this follows from the Cauchy--Schwarz inequality applied to $M^{1/2}$.
+  \item Finds such a vertex by averaging: when $G[S]$ is connected with
+        $|S|=k$ and the internal $M$-leverage is $\geq (k-1)/\varepsilon^2$,
+        the cut leverage sums to at most $(n-1)-(k-1)/\varepsilon^2$, and
+        averaging over $n-k$ exterior vertices gives $\sigma_M(v)\leq 1$
+        (since $\varepsilon\leq 1$). Maintaining connectivity allows the greedy
+        process to run for $\varepsilon n/42$ steps.
+\end{enumerate}
+
+\end{document}

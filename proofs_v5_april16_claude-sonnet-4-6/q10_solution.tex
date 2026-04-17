@@ -1,0 +1,438 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\title{Q10: Preconditioned CG for RKHS-Constrained CP Decomposition\\
+\large Mode-$k$ Subproblem: Direct and Iterative Solvers}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+%=========================================================
+\section{Problem Setup and Notation}
+%=========================================================
+
+Let $\mathcal{T} \in \mathbb{R}^{n_1 \times \cdots \times n_d}$ be a $d$-way tensor with $N = \prod_{i=1}^d n_i$ entries, of which only $q \ll N$ are observed. Write $n \equiv n_k$ and $M = \prod_{i \neq k} n_i$, so $N = nM$.
+
+\paragraph{CP decomposition with RKHS constraint.}
+We seek a rank-$r$ CP decomposition $\mathcal{T} \approx \sum_{j=1}^r \bigotimes_{i=1}^d a_j^{(i)}$ where the mode-$k$ factor satisfies $A_k = KW$ with $K \in \mathbb{R}^{n \times n}$ a fixed positive semi-definite kernel matrix (the Gram matrix of an RKHS) and $W \in \mathbb{R}^{n \times r}$ the weight matrix to be solved for. All other factor matrices $A_i \in \mathbb{R}^{n_i \times r}$ for $i \neq k$ are held fixed at their current ALS iterate.
+
+\paragraph{Khatri--Rao product.}
+The Khatri--Rao (column-wise Kronecker) product of all factor matrices except mode $k$ is:
+\[
+Z = A_d \odot \cdots \odot A_{k+1} \odot A_{k-1} \odot \cdots \odot A_1 \in \mathbb{R}^{M \times r}.
+\]
+
+\paragraph{Mode-$k$ unfolding.}
+Let $T \in \mathbb{R}^{n \times M}$ be the mode-$k$ unfolding of $\mathcal{T}$, with zeros placed at missing entries. The observed entry set is $\Omega \subseteq [n] \times [M]$ with $|\Omega| = q$. The selection matrix $S \in \mathbb{R}^{nM \times q}$ has $S e_j = e_{(i_j - 1)n + m_j}$ for the $j$-th observed entry at position $(i_j, m_j) \in \Omega$ (using column-major vectorization of $T$).
+
+\paragraph{MTTKRP.}
+The Matricized Tensor Times Khatri--Rao Product is $B = TZ \in \mathbb{R}^{n \times r}$, which can be computed in $O(qr)$ by summing only over observed entries: $B_{i,j} = \sum_{m:(i,m)\in\Omega} T_{im} Z_{mj}$.
+
+\paragraph{System to solve.}
+The mode-$k$ RKHS-constrained ALS subproblem reduces (see Section~\ref{sec:derivation}) to the linear system:
+\begin{equation}\label{eq:main-system}
+\mathbf{A}\,\mathrm{vec}(W) = \mathbf{b},
+\end{equation}
+where
+\begin{align}
+\mathbf{A} &= (Z \otimes K)^T S S^T (Z \otimes K) + \lambda (I_r \otimes K) \in \mathbb{R}^{nr \times nr}, \label{eq:A-def}\\
+\mathbf{b} &= (I_r \otimes K)\,\mathrm{vec}(B) = \mathrm{vec}(KB) \in \mathbb{R}^{nr}. \label{eq:b-def}
+\end{align}
+Here $\lambda > 0$ is a regularization parameter, and $\otimes$ denotes the Kronecker product. The system size is $nr \times nr$; a naive Cholesky solve costs $O(n^3 r^3)$. Our goal is to reduce this via structure exploitation while avoiding any computation of order $N$ or $M$.
+
+%=========================================================
+\section{Structural Reformulation}\label{sec:derivation}
+%=========================================================
+
+\subsection{Decomposition of the Data Matrix}
+
+The selection matrix $SS^T \in \mathbb{R}^{nM \times nM}$ is a diagonal projector onto observed positions:
+\[
+SS^T = \sum_{(i,m)\in\Omega} e_{(m-1)n+i}\,e_{(m-1)n+i}^T,
+\]
+where we index the vectorization of $T$ by $(m-1)n + i$ for the $(i,m)$ entry (column-major).
+
+\begin{lemma}[Row-grouped decomposition]\label{lem:row-group}
+Define for each row index $i \in [n]$:
+\begin{itemize}
+\item $\Omega_i = \{m \in [M] : (i,m) \in \Omega\}$, the set of column indices observed in row $i$,
+\item $\tilde{Z}_i = Z[\Omega_i, :] \in \mathbb{R}^{|\Omega_i| \times r}$, the submatrix of $Z$ with rows in $\Omega_i$,
+\item $C_i = \tilde{Z}_i^T \tilde{Z}_i \in \mathbb{R}^{r \times r}$, the Gram matrix of these rows,
+\item $k_i = K_{i,:}^T \in \mathbb{R}^n$, the $i$-th row of $K$ transposed (= $i$-th column, since $K$ is symmetric).
+\end{itemize}
+Then:
+\begin{equation}\label{eq:A-decomp}
+(Z \otimes K)^T SS^T (Z \otimes K) = \sum_{i=1}^n C_i \otimes (k_i k_i^T).
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Write the $(Z \otimes K)$ matrix explicitly: its $((m-1)n+i, (j-1)n+\ell)$ entry (using the same column-major indexing on the left) is $Z_{mj} K_{i\ell}$. Therefore the $(((j-1)n+\ell),\,((j'-1)n+\ell'))$ entry of $(Z\otimes K)^T SS^T (Z\otimes K)$ equals:
+\[
+\sum_{(i,m)\in\Omega} Z_{mj}\,K_{i\ell}\,Z_{mj'}\,K_{i\ell'}.
+\]
+We regroup by summing over rows $i$ first:
+\[
+\sum_{i=1}^n K_{i\ell}\,K_{i\ell'} \sum_{m\in\Omega_i} Z_{mj}\,Z_{mj'}
+= \sum_{i=1}^n K_{i\ell}\,K_{i\ell'}\,(C_i)_{jj'}.
+\]
+Since $(k_ik_i^T)_{\ell\ell'} = K_{i\ell}K_{i\ell'}$ and $(C_i \otimes k_ik_i^T)_{(j-1)n+\ell,(j'-1)n+\ell'} = (C_i)_{jj'}(k_ik_i^T)_{\ell\ell'}$, the identity~\eqref{eq:A-decomp} follows.
+\end{proof}
+
+\begin{remark}
+The decomposition avoids any dependence on $M$. Each $C_i$ is computed from $|\Omega_i|$ rows of $Z$ (each of length $r$), so all $C_i$ together cost $O(qr^2)$ and $O(qr)$ storage (storing $r\times r$ matrices for each of the $n$ row indices).
+\end{remark}
+
+\subsection{The Reformulated System}
+
+Combining~\eqref{eq:A-def} and~\eqref{eq:A-decomp}:
+\begin{equation}\label{eq:A-reform}
+\mathbf{A} = \sum_{i=1}^n C_i \otimes (k_i k_i^T) + \lambda\,(I_r \otimes K).
+\end{equation}
+
+The matrix $\mathbf{A}$ is symmetric positive definite (SPD) when $K$ is SPD and $\lambda > 0$.
+
+\begin{proof}[Proof of SPD]
+Both $\sum_i C_i \otimes k_ik_i^T$ and $\lambda I_r \otimes K$ are PSD (being sums/multiples of PSD matrices). The regularization term $\lambda I_r \otimes K$ is SPD when $K$ is SPD, so $\mathbf{A}$ is SPD.
+\end{proof}
+
+%=========================================================
+\section{Efficient Matrix--Vector Product}\label{sec:matvec}
+%=========================================================
+
+The key computational primitive for both the direct and iterative solvers is the map $\mathrm{vec}(W) \mapsto \mathbf{A}\,\mathrm{vec}(W)$.
+
+\begin{proposition}[Matrix-vector product formula]\label{prop:matvec}
+For $W \in \mathbb{R}^{n \times r}$, define $P = KW \in \mathbb{R}^{n \times r}$ and $H \in \mathbb{R}^{n \times r}$ by
+\[
+H_{i,:} = P_{i,:}\,C_i, \quad i = 1, \dots, n.
+\]
+Then:
+\begin{equation}\label{eq:matvec}
+\mathbf{A}\,\mathrm{vec}(W) = \mathrm{vec}\!\left(K(H + \lambda W)\right).
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+We compute the action of $\mathbf{A}$ using the identity $\mathrm{vec}(AXB) = (B^T \otimes A)\,\mathrm{vec}(X)$.
+
+\textit{Regularization term.} $(I_r \otimes K)\,\mathrm{vec}(W) = \mathrm{vec}(KWI_r) = \mathrm{vec}(KW) = \mathrm{vec}(P)$.
+
+\textit{Data term.} For a single term $C_i \otimes (k_ik_i^T)$:
+\[
+(C_i \otimes k_ik_i^T)\,\mathrm{vec}(W) = \mathrm{vec}(k_ik_i^T W C_i^T) = \mathrm{vec}(k_ik_i^T W C_i),
+\]
+using $C_i = C_i^T$ (since $C_i = \tilde{Z}_i^T\tilde{Z}_i$ is symmetric). Now:
+\[
+k_ik_i^T W = k_i\,(k_i^T W) = k_i\,(K_{i,:}\,W) = k_i\,P_{i,:},
+\]
+so $k_ik_i^T W C_i = k_i\,(P_{i,:}\,C_i) = k_i\,H_{i,:}$ (an $n \times r$ rank-1 matrix).
+
+Summing over $i$:
+\[
+\sum_{i=1}^n k_ik_i^T W C_i = \sum_{i=1}^n k_i H_{i,:}.
+\]
+The $(a,b)$ entry of $\sum_i k_i H_{i,:}$ is $\sum_i (k_i)_a H_{i,b} = \sum_i K_{ai} H_{i,b} = (KH)_{ab}$, so $\sum_i k_iH_{i,:} = KH$.
+
+Combining:
+\[
+\mathbf{A}\,\mathrm{vec}(W) = \mathrm{vec}(KH) + \lambda\,\mathrm{vec}(KW) = \mathrm{vec}(K(H + \lambda W)).
+\]
+\end{proof}
+
+\begin{proposition}[Cost of one matrix-vector product]
+Given precomputed $\{C_i\}_{i=1}^n$, computing $\mathbf{A}\,\mathrm{vec}(W)$ costs $O(n^2 r + nr^2)$ flops.
+\end{proposition}
+\begin{proof}
+Step 1 ($P = KW$): $n^2 r$ multiplications. Step 2 ($H_{i,:} = P_{i,:}C_i$ for all $i$): each row-times-matrix is $O(r^2)$, total $O(nr^2)$. Step 3 ($K(H+\lambda W)$): $n^2 r$ multiplications. Total: $O(n^2r + nr^2)$.
+\end{proof}
+
+The right-hand side $\mathbf{b} = \mathrm{vec}(KB)$ requires one matrix product $KB$ at cost $O(n^2 r)$.
+
+%=========================================================
+\section{Direct Symmetric Solver}\label{sec:direct}
+%=========================================================
+
+Although the full system is $nr \times nr$, the structure~\eqref{eq:A-reform} enables a direct solve without ever forming $\mathbf{A}$ explicitly (which would cost $O(n^2r^2)$ storage). Nevertheless, the cheapest direct route uses the Cholesky factorization of the assembled $\mathbf{A}$.
+
+\subsection{Assembling $\mathbf{A}$}
+
+From~\eqref{eq:A-reform}, the $(j,\ell,j',\ell')$ block entry of $\mathbf{A}$ (where $j,j'\in[r]$ and $\ell,\ell'\in[n]$) is:
+\[
+\mathbf{A}_{(j-1)n+\ell,\,(j'-1)n+\ell'} = (C_i)_{jj'} K_{\ell i}\big|_{\text{wrong}} \ldots
+\]
+More cleanly, partition $\mathbf{A}$ into $r \times r$ blocks of size $n \times n$:
+\[
+\mathbf{A}_{[j],[j']} = \sum_{i=1}^n (C_i)_{jj'}\,k_i k_i^T + \lambda\,\delta_{jj'}\,K, \quad j,j'\in[r].
+\]
+Each $n\times n$ block requires $O(n^2)$ to compute given the $C_i$ and $k_i$; there are $r^2$ blocks, so assembly costs $O(n^3 r^2 / n + n^2 r^2) = O(n^2 r^2)$. The full Cholesky on the $nr\times nr$ SPD matrix then costs $O(n^3r^3)$.
+
+\medskip
+
+\begin{algorithm}[H]
+\caption{Direct Symmetric Solver for RKHS-CP Mode-$k$ Subproblem}
+\label{alg:direct}
+\begin{algorithmic}[1]
+\Require Kernel $K \in \mathbb{R}^{n\times n}$ (SPD), Khatri--Rao factor $Z \in \mathbb{R}^{M\times r}$, MTTKRP $B = TZ \in \mathbb{R}^{n\times r}$, observed set $\Omega$ with $|\Omega|=q$, regularization $\lambda > 0$
+\Ensure Weight matrix $W \in \mathbb{R}^{n\times r}$ solving system~\eqref{eq:main-system}
+\Statex
+\State \textbf{// Preprocessing: compute row Gram matrices}
+\For{$i = 1$ to $n$}
+    \State Gather $\tilde{Z}_i \leftarrow Z[\Omega_i, :] \in \mathbb{R}^{|\Omega_i|\times r}$ \Comment{submatrix of $Z$ at observed columns of row $i$}
+    \State $C_i \leftarrow \tilde{Z}_i^T \tilde{Z}_i \in \mathbb{R}^{r\times r}$ \Comment{$O(|\Omega_i|\,r^2)$}
+\EndFor
+\Comment{Total preprocessing: $O(qr^2)$}
+\Statex
+\State \textbf{// Assemble $\mathbf{A} \in \mathbb{R}^{nr\times nr}$ block by block}
+\State $\mathbf{A} \leftarrow \lambda\,(I_r \otimes K)$ \Comment{initialize with regularization, $O(n^2r)$}
+\For{$i = 1$ to $n$}
+    \State $k_i \leftarrow K_{i,:}^T \in \mathbb{R}^n$ \Comment{$i$-th column of $K$}
+    \For{$j = 1$ to $r$}
+        \For{$j' = 1$ to $r$}
+            \State $\mathbf{A}_{[j],[j']} \mathrel{+}= (C_i)_{jj'}\,k_i k_i^T$ \Comment{rank-1 update to $(j,j')$ block}
+        \EndFor
+    \EndFor
+\EndFor
+\Comment{Total assembly: $O(n^2r^2)$}
+\Statex
+\State \textbf{// Compute right-hand side}
+\State $\mathbf{b} \leftarrow \mathrm{vec}(KB) \in \mathbb{R}^{nr}$ \Comment{$O(n^2r)$}
+\Statex
+\State \textbf{// Cholesky factorization and solve}
+\State $L \leftarrow \mathrm{chol}(\mathbf{A})$ \Comment{$\mathbf{A} = LL^T$, cost $O(n^3r^3)$}
+\State Solve $LL^T\,\mathrm{vec}(W) = \mathbf{b}$ by forward/back substitution \Comment{$O(n^2r^2)$}
+\State Reshape solution to $W \in \mathbb{R}^{n\times r}$
+\Statex
+\Ensure $\mathrm{vec}(W)$ solves~\eqref{eq:main-system}; return $A_k \leftarrow KW$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Complexity of direct solver.} The dominant cost is $O(n^3r^3)$ for Cholesky. Assembly is $O(n^2r^2)$, preprocessing is $O(qr^2)$. Since $q \ll N = nM$ and $n, r$ are small, this is feasible when $nr$ is moderate.
+
+%=========================================================
+\section{Preconditioned Conjugate Gradient Solver}\label{sec:pcg}
+%=========================================================
+
+When $nr$ is large (e.g., $n$ in the hundreds and $r$ in the tens), the $O(n^3r^3)$ direct solve is prohibitive. We instead apply Preconditioned Conjugate Gradient (PCG) using the efficient matrix-vector product from Section~\ref{sec:matvec}.
+
+\subsection{Preconditioner Design}\label{sec:precond}
+
+A good preconditioner should (a) approximate $\mathbf{A}$ well, and (b) be cheap to apply (solve against).
+
+\paragraph{Proposed preconditioner.} Define the mean Gram matrix:
+\[
+\hat{C} = \frac{1}{n}\sum_{i=1}^n C_i \in \mathbb{R}^{r\times r}.
+\]
+Set:
+\begin{equation}\label{eq:precond}
+\mathbf{M} = (\hat{C} + \lambda I_r) \otimes K.
+\end{equation}
+
+\begin{remark}
+Heuristically, $\sum_i C_i \otimes k_ik_i^T \approx \hat{C} \otimes \sum_i k_ik_i^T$; if $K$'s rows were orthonormal, $\sum_i k_ik_i^T = K^2$. The preconditioner $(\hat{C}+\lambda I_r)\otimes K$ approximates $\mathbf{A}$ with a Kronecker-structured matrix that is trivially invertible.
+\end{remark}
+
+\paragraph{Applying $\mathbf{M}^{-1}$.} Using $\mathrm{vec}(KXD) = (D^T\otimes K)\mathrm{vec}(X)$:
+\[
+\mathbf{M}\,\mathrm{vec}(W) = \mathrm{vec}(KW(\hat{C}+\lambda I_r)).
+\]
+To solve $\mathbf{M}\,\mathrm{vec}(X) = \mathrm{vec}(V)$ for $X$, equivalently solve $KX(\hat{C}+\lambda I_r) = V$. With precomputed Cholesky $K = LL^T$ and eigendecomposition $\hat{C}+\lambda I_r = Q\Lambda Q^T$:
+\[
+X = K^{-1} V ((\hat{C}+\lambda I_r)^{-1}) = (L^{-T}L^{-1}) V Q\Lambda^{-1}Q^T.
+\]
+This costs $O(n^2 r + nr^2)$ per application after $O(n^3 + r^3)$ one-time setup.
+
+\subsection{PCG Algorithm}
+
+\begin{algorithm}[H]
+\caption{Preconditioned CG for RKHS-CP Mode-$k$ Subproblem}
+\label{alg:pcg}
+\begin{algorithmic}[1]
+\Require $K \in \mathbb{R}^{n\times n}$ (SPD), $Z \in \mathbb{R}^{M\times r}$, $B = TZ \in \mathbb{R}^{n\times r}$, $\Omega$ with $|\Omega|=q$, $\lambda>0$, tolerance $\epsilon>0$, max iterations $t_{\max}$
+\Ensure Approximate solution $W \in \mathbb{R}^{n\times r}$ to~\eqref{eq:main-system}
+\Statex
+\State \textbf{// Preprocessing (done once)}
+\For{$i = 1$ to $n$}
+    \State $\tilde{Z}_i \leftarrow Z[\Omega_i, :]$, $\quad C_i \leftarrow \tilde{Z}_i^T\tilde{Z}_i$ \Comment{$O(qr^2)$ total}
+\EndFor
+\State $\hat{C} \leftarrow \frac{1}{n}\sum_{i=1}^n C_i$ \Comment{$O(nr^2)$}
+\State $L \leftarrow \mathrm{chol}(K)$ \Comment{$K = LL^T$, $O(n^3)$}
+\State $Q, \Lambda \leftarrow \mathrm{eig}(\hat{C} + \lambda I_r)$ \Comment{$(\hat{C}+\lambda I_r) = Q\Lambda Q^T$, $O(r^3)$}
+\State $\mathbf{b} \leftarrow \mathrm{vec}(KB)$ \Comment{$O(n^2r)$}
+\Statex
+\State \textbf{// Initialize PCG}
+\State $W \leftarrow 0 \in \mathbb{R}^{n\times r}$ \Comment{initial guess}
+\State $r_0 \leftarrow \mathbf{b} - \mathbf{A}\,\mathrm{vec}(W)$ \Comment{initial residual via Alg.~\ref{alg:matvec}, $O(n^2r+nr^2)$}
+\State $z_0 \leftarrow \mathbf{M}^{-1} r_0$ \Comment{preconditioner solve, $O(n^2r+nr^2)$}
+\State $p_0 \leftarrow z_0$, $\quad \rho_0 \leftarrow r_0^T z_0$
+\Statex
+\For{$t = 0, 1, 2, \dots, t_{\max}-1$}
+    \If{$\|r_t\|_2 \leq \epsilon\,\|\mathbf{b}\|_2$} \textbf{break} \EndIf
+    \State $v \leftarrow \mathbf{A}\,p_t$ \Comment{matrix-vector product via Alg.~\ref{alg:matvec}, $O(n^2r+nr^2)$}
+    \State $\alpha_t \leftarrow \rho_t / (p_t^T v)$ \Comment{step length}
+    \State $\mathrm{vec}(W) \leftarrow \mathrm{vec}(W) + \alpha_t\,p_t$ \Comment{update solution}
+    \State $r_{t+1} \leftarrow r_t - \alpha_t\,v$ \Comment{update residual}
+    \State $z_{t+1} \leftarrow \mathbf{M}^{-1} r_{t+1}$ \Comment{preconditioner solve}
+    \State $\rho_{t+1} \leftarrow r_{t+1}^T z_{t+1}$
+    \State $\beta_t \leftarrow \rho_{t+1}/\rho_t$
+    \State $p_{t+1} \leftarrow z_{t+1} + \beta_t\,p_t$ \Comment{update search direction}
+\EndFor
+\Statex
+\Ensure Reshape $\mathrm{vec}(W)$ to $W \in \mathbb{R}^{n\times r}$; return $A_k \leftarrow KW$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Matrix-Vector Product: $\mathrm{vec}(W) \mapsto \mathbf{A}\,\mathrm{vec}(W)$}
+\label{alg:matvec}
+\begin{algorithmic}[1]
+\Require $W \in \mathbb{R}^{n\times r}$, precomputed $\{C_i\}_{i=1}^n$, kernel $K$, scalar $\lambda$
+\Ensure $y = \mathbf{A}\,\mathrm{vec}(W) \in \mathbb{R}^{nr}$
+\State $P \leftarrow KW \in \mathbb{R}^{n\times r}$ \Comment{$O(n^2r)$}
+\For{$i = 1$ to $n$}
+    \State $H_{i,:} \leftarrow P_{i,:}\,C_i \in \mathbb{R}^{1\times r}$ \Comment{$O(r^2)$ per row, $O(nr^2)$ total}
+\EndFor
+\State $y \leftarrow \mathrm{vec}(K(H + \lambda W))$ \Comment{$O(n^2r)$}
+\Ensure $y = \mathbf{A}\,\mathrm{vec}(W)$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Preconditioner Application: $\mathrm{vec}(V) \mapsto \mathbf{M}^{-1}\,\mathrm{vec}(V)$}
+\label{alg:precond}
+\begin{algorithmic}[1]
+\Require $V \in \mathbb{R}^{n\times r}$ (reshaped from input), precomputed $L$ (Cholesky of $K$), $Q, \Lambda$ (eigendecomp of $\hat{C}+\lambda I_r$)
+\Ensure $X \in \mathbb{R}^{n\times r}$ such that $\mathbf{M}\,\mathrm{vec}(X) = \mathrm{vec}(V)$
+\State $Y \leftarrow L^{-1} V$ \Comment{forward substitution, $O(n^2 r)$}
+\State $X \leftarrow L^{-T} Y$ \Comment{back substitution: $K^{-1}V$, $O(n^2r)$}
+\State $X \leftarrow X Q$ \Comment{$O(nr^2)$: transform to eigenbasis}
+\State $X_{:,j} \leftarrow X_{:,j} / \Lambda_{jj}$ for $j = 1,\dots,r$ \Comment{diagonal scaling, $O(nr)$}
+\State $X \leftarrow X Q^T$ \Comment{$O(nr^2)$: transform back}
+\Ensure $\mathrm{vec}(X) = \mathbf{M}^{-1}\,\mathrm{vec}(V)$
+\end{algorithmic}
+\end{algorithm}
+
+%=========================================================
+\section{Complexity Analysis}\label{sec:complexity}
+%=========================================================
+
+\subsection{Preprocessing (once per ALS outer iteration)}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Step & Operation & Cost \\
+\hline
+Row Gram matrices & $C_i = \tilde{Z}_i^T\tilde{Z}_i$ for all $i$ & $O(qr^2)$ \\
+Mean Gram matrix & $\hat{C} = \frac{1}{n}\sum_i C_i$ & $O(nr^2)$ \\
+Cholesky of $K$ & $K = LL^T$ & $O(n^3)$ \\
+Eigendecomp of $\hat{C}+\lambda I_r$ & $Q\Lambda Q^T$ & $O(r^3)$ \\
+Right-hand side & $\mathbf{b} = \mathrm{vec}(KB)$ & $O(n^2r)$ \\
+\hline
+Total preprocessing & & $O(n^3 + qr^2)$ \\
+\hline
+\end{tabular}
+\end{center}
+
+Since $q \ll N = nM$ and $r \ll n$, the dominant term is $O(n^3)$, which is the cost of factoring the $n\times n$ kernel matrix.
+
+\subsection{Per-Iteration Cost (PCG)}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Step & Operation & Cost \\
+\hline
+Matrix-vector product $\mathbf{A}p$ & Alg.~\ref{alg:matvec} & $O(n^2r + nr^2)$ \\
+Preconditioner solve $\mathbf{M}^{-1}r$ & Alg.~\ref{alg:precond} & $O(n^2r + nr^2)$ \\
+Vector updates & $\alpha$, $\beta$, $p$, $r$ updates & $O(nr)$ \\
+\hline
+Total per iteration & & $O(n^2r + nr^2)$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Number of PCG Iterations}
+
+PCG convergence is governed by the condition number $\kappa(\mathbf{M}^{-1}\mathbf{A})$.
+
+\begin{theorem}[Convergence of PCG]\label{thm:pcg-conv}
+After $t$ iterations of PCG with preconditioner $\mathbf{M}$, the $\mathbf{A}$-norm error satisfies:
+\[
+\|\mathrm{vec}(W^{(t)}) - \mathrm{vec}(W^*)\|_{\mathbf{A}} \leq 2\left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa}+1}\right)^t \|\mathrm{vec}(W^{(0)}) - \mathrm{vec}(W^*)\|_{\mathbf{A}},
+\]
+where $\kappa = \kappa(\mathbf{M}^{-1}\mathbf{A}) = \lambda_{\max}(\mathbf{M}^{-1}\mathbf{A})/\lambda_{\min}(\mathbf{M}^{-1}\mathbf{A})$.
+\end{theorem}
+
+To reach $\|\cdot\|_{\mathbf{A}} \leq \epsilon\,\|\mathrm{vec}(W^{(0)}) - W^*\|_{\mathbf{A}}$, we need $t = O(\sqrt{\kappa}\,\log(1/\epsilon))$ iterations.
+
+\begin{proposition}[Condition number bound]
+When $C_i \approx \hat{C}$ for all $i$ (approximately uniform observation density per row), we have $\kappa(\mathbf{M}^{-1}\mathbf{A}) = O(1)$, giving $O(\log(1/\epsilon))$ iterations.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+When $C_i = \hat{C}$ for all $i$, $\mathbf{A} = (\hat{C} + \lambda I_r)\otimes K = \mathbf{M}$, so $\kappa = 1$. In general, $\kappa$ depends on how much the row observation densities $|\Omega_i|/|\Omega_j|$ vary across $i$.
+\end{proof}
+
+\subsection{Total Complexity}
+
+\begin{theorem}[Overall complexity of PCG solver]
+The total cost of the PCG mode-$k$ solve to relative accuracy $\epsilon$ is:
+\[
+O\!\left(n^3 + qr^2 + t_\epsilon\,(n^2r + nr^2)\right),
+\]
+where $t_\epsilon = O(\sqrt{\kappa}\,\log(1/\epsilon))$ is the number of PCG iterations and $\kappa = \kappa(\mathbf{M}^{-1}\mathbf{A})$.
+\end{theorem}
+
+\paragraph{Comparison with direct solver.}
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Method & Setup & Solve \\
+\hline
+Cholesky (direct) & $O(n^2r^2)$ assembly & $O(n^3r^3)$ \\
+PCG (iterative) & $O(n^3 + qr^2)$ & $O(t_\epsilon(n^2r + nr^2))$ \\
+\hline
+\end{tabular}
+\end{center}
+
+For $r \ll n$ and moderate $t_\epsilon$, PCG is substantially cheaper. Notably, neither method involves any computation of order $N = nM$ or $M$: all operations are in terms of $n$, $r$, $q$, and $d$ (through the $O(qr)$ MTTKRP step for $B$).
+
+\subsection{Avoiding Large-Scale Computations}
+
+We verify that no step requires $O(N)$ or $O(M)$ work:
+\begin{itemize}
+\item \textit{Preprocessing:} $\tilde{Z}_i$ uses $|\Omega_i|$ rows of $Z$; summing $\sum_i |\Omega_i| = q \ll N$.
+\item \textit{MTTKRP ($B = TZ$):} Only $q$ nonzero entries contribute, so $O(qr)$.
+\item \textit{Matrix-vector product:} Uses only $K \in \mathbb{R}^{n\times n}$ and $\{C_i\} \subset \mathbb{R}^{r\times r}$; $Z$ is accessed only during preprocessing.
+\item \textit{Preconditioner:} Uses Cholesky of $K$ ($n\times n$) and eigendecomp of $\hat{C}+\lambda I_r$ ($r\times r$).
+\end{itemize}
+
+%=========================================================
+\section{Summary}\label{sec:summary}
+%=========================================================
+
+We have derived efficient algorithms for the RKHS-constrained CP decomposition mode-$k$ subproblem. The central insight is the row-grouped decomposition (Lemma~\ref{lem:row-group}):
+\[
+\mathbf{A} = \sum_{i=1}^n C_i \otimes (k_ik_i^T) + \lambda(I_r \otimes K),
+\]
+where $\tilde{Z}_i \in \mathbb{R}^{|\Omega_i|\times r}$ and $C_i = \tilde{Z}_i^T\tilde{Z}_i$ are computed at total cost $O(qr^2)$, and where $\tilde{K}_i = K[i,:] = k_i^T$ is a single row of $K$. Proposition~\ref{prop:matvec} then gives a matrix-vector product formula $\mathbf{A}\,\mathrm{vec}(W) = \mathrm{vec}(K(H+\lambda W))$ costing $O(n^2r + nr^2)$ per application.
+
+The direct solver (Algorithm~\ref{alg:direct}) assembles and Cholesky-factors $\mathbf{A}$ in $O(n^3r^3)$, suitable for small $nr$. The PCG solver (Algorithms~\ref{alg:pcg}--\ref{alg:precond}) with Kronecker preconditioner $\mathbf{M} = (\hat{C}+\lambda I_r)\otimes K$ achieves total cost $O(n^3 + qr^2 + t_\epsilon(n^2r+nr^2))$, which is far more efficient when $r$ is moderate and the condition number $\kappa(\mathbf{M}^{-1}\mathbf{A})$ is bounded.
+
+\end{document}
