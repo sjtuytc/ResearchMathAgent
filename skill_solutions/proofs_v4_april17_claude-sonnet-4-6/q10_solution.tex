@@ -1,0 +1,211 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\DeclareMathOperator{\vecop}{vec}
+\DeclareMathOperator{\tr}{tr}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\T}{\mathcal{T}}
+\newcommand{\bS}{\mathbf{S}}
+
+\title{Solution to Problem 10:\\Preconditioned CG for RKHS-Constrained CP Decomposition}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Setup and Notation}
+
+We recall the problem. We have a $d$-way tensor $\T \in \R^{n_1 \times \cdots \times n_d}$ with $q \ll N = \prod_i n_i$ observed entries. For the mode-$k$ alternating subproblem, with $A_k = KW$ where $K \in \R^{n \times n}$ is the symmetric positive semidefinite RKHS kernel matrix and $W \in \R^{n \times r}$ is unknown, the normal equations reduce to the linear system
+\begin{equation}\label{eq:system}
+  \bigl[(Z \otimes K)^T S S^T (Z \otimes K) + \lambda (I_r \otimes K)\bigr]\,\vecop(W)
+  = (I_r \otimes K)\,\vecop(B),
+\end{equation}
+where $Z = A_d \odot \cdots \odot A_{k+1} \odot A_{k-1} \odot \cdots \odot A_1 \in \R^{M \times r}$ (Khatri--Rao product, $M = \prod_{i \neq k} n_i$), $S \in \R^{N \times q}$ is the selection matrix for the $q$ observed entries, $B = TZ \in \R^{n \times r}$ is the MTTKRP, and $\lambda > 0$ is a regularization parameter. The system has size $nr \times nr$; a direct solver costs $O(n^3 r^3)$.
+
+We assume throughout that $n, r < q \ll N$.
+
+\section{Reformulation via Kronecker Structure}
+
+The system matrix $A_{\mathrm{sys}} = (Z \otimes K)^T S S^T (Z \otimes K) + \lambda (I_r \otimes K)$ is symmetric positive semidefinite (and positive definite when $\lambda > 0$, since $I_r \otimes K \succ 0$ when $K \succ 0$). We apply the \emph{preconditioned conjugate gradient} (PCG) method to solve~\eqref{eq:system}.
+
+The key to efficiency is that matrix--vector products with $A_{\mathrm{sys}}$ can be performed without ever forming $A_{\mathrm{sys}}$ explicitly (cost $O(n^2 r^2)$ to store) and without any $O(N)$-cost operations.
+
+\section{Efficient Matrix--Vector Products}
+
+Let $\mathbf{v} = \vecop(V)$ for some $V \in \R^{n \times r}$. We compute $A_{\mathrm{sys}}\,\mathbf{v}$ in three parts.
+
+\subsection{Part 1: Data term $\mathbf{u}_1 = (Z \otimes K)^T S S^T (Z \otimes K)\,\vecop(V)$}
+
+\textbf{Step 1a.} Compute $\mathbf{p} = (Z \otimes K)\,\vecop(V)$.
+
+Using the Kronecker--vec identity $(A \otimes B)\vecop(X) = \vecop(BXA^T)$, we get
+\[
+  (Z \otimes K)\,\vecop(V) = \vecop(K V Z^T) \in \R^{nM}.
+\]
+Cost: $O(n^2 r)$ for $KV$ (matrix multiply $n \times n$ by $n \times r$) plus $O(nMr)$ for $KVZ^T$ (matrix multiply $n \times r$ by $r \times M$). Since $q < M \leq N$ and we never materialize all of $\R^{nM}$, we proceed to the next step immediately.
+
+\textbf{Step 1b.} Apply $SS^T$: this selects the $q$ observed entries from $\vecop(KVZ^T)$ and then scatters them back.
+
+The vector $S^T \vecop(KVZ^T) \in \R^q$ has entries $[KVZ^T]_{(i,j)}$ for each observed $(i,j)$ index. We do \emph{not} form the full vector $\vecop(KVZ^T) \in \R^{nM}$. Instead, we only evaluate $(KVZ^T)$ at the $q$ observed indices $(i_\ell, j_\ell)$, $\ell = 1, \ldots, q$.
+
+Specifically, let $\Omega \subseteq [n] \times [M]$ denote the set of $q$ observed positions. For each observed position $(i_\ell, j_\ell) \in \Omega$, the value is
+\[
+  [KVZ^T]_{i_\ell, j_\ell} = \sum_{s=1}^n K_{i_\ell s} \sum_{c=1}^r V_{sc} Z_{j_\ell c}.
+\]
+Form the $q$-vector $\mathbf{r} = S^T\vecop(KVZ^T)$ with $\mathbf{r}_\ell = [KVZ^T]_{i_\ell, j_\ell}$. This can be written as follows: let $\tilde{Z} \in \R^{q \times r}$ be the matrix whose $\ell$-th row is $Z_{j_\ell,:}$ (the $j_\ell$-th row of $Z$), and let $\tilde{K} \in \R^{q \times n}$ be the matrix whose $\ell$-th row is $K_{i_\ell,:}$. Then $\mathbf{r}_\ell = [\tilde{K}V\tilde{Z}^T]_{\ell,\ell}$, but it is more efficient to compute $\mathbf{r} = \mathrm{diag}(\tilde{K}V\tilde{Z}^T)$.
+
+Equivalently: first compute $\tilde{K}V \in \R^{q \times r}$ at cost $O(qnr)$, then compute $(\tilde{K}V)\tilde{Z}^T \in \R^{q \times q}$ is too large. We instead compute $\mathbf{r}_\ell = \langle (\tilde{K}V)_\ell, (\tilde{Z})_\ell \rangle$ as a dot product for each $\ell$: this is $O(qr)$ after forming $\tilde{K}V$ at cost $O(qnr)$. Total: $O(qnr + qr) = O(qnr)$.
+
+\textbf{Step 1c.} Compute $\mathbf{u}_1 = (Z \otimes K)^T (S\mathbf{r})$.
+
+The vector $S\mathbf{r} \in \R^{nM}$ is $\mathbf{r}$ scattered back to positions indexed by $\Omega$. By the Kronecker--vec identity,
+\[
+  (Z \otimes K)^T \vecop(U) = \vecop(K^T U Z)
+  \quad \text{for } U \in \R^{n \times M},
+\]
+but $U = S\mathbf{r}$ is a sparse matrix with $q$ nonzeros (one nonzero at position $(i_\ell, j_\ell)$ equal to $\mathbf{r}_\ell$). We compute $(K^T)_{:, i_\ell} \cdot \mathbf{r}_\ell \cdot Z_{j_\ell,:}$ summed over $\ell$:
+\[
+  \mathrm{mat}(\mathbf{u}_1) = K^T \Bigl(\sum_{\ell=1}^q \mathbf{r}_\ell\, e_{i_\ell} e_{j_\ell}^T\Bigr) Z
+  = K^T \tilde{U} Z,
+\]
+where $\tilde{U} \in \R^{n \times M}$ is the sparse matrix with $\tilde{U}_{i_\ell, j_\ell} = \mathbf{r}_\ell$. We compute $\tilde{U} Z \in \R^{n \times r}$ at cost $O(qr)$ (since $\tilde{U}$ has $q$ nonzeros) and then $K^T (\tilde{U}Z) \in \R^{n \times r}$ at cost $O(n^2 r)$. Total for Part 1: $O(qnr + n^2 r)$.
+
+\subsection{Part 2: Regularization term $\mathbf{u}_2 = \lambda(I_r \otimes K)\,\vecop(V)$}
+
+By the Kronecker--vec identity,
+\[
+  (I_r \otimes K)\,\vecop(V) = \vecop(KV).
+\]
+Cost: $O(n^2 r)$.
+
+\subsection{Part 3: Right-hand side $(I_r \otimes K)\,\vecop(B)$}
+
+Similarly, $(I_r \otimes K)\,\vecop(B) = \vecop(KB)$, computed at cost $O(n^2 r)$.
+
+\subsection{Total matrix--vector product cost}
+
+Each PCG iteration costs $O(qnr + n^2 r)$. Since $n, r < q$ and typically $q \gg n, r$, the dominant term is $O(qnr)$.
+
+\section{Choice of Preconditioner}
+
+The system matrix is
+\[
+  A_{\mathrm{sys}} = (Z \otimes K)^T SS^T (Z \otimes K) + \lambda (I_r \otimes K).
+\]
+To understand a good preconditioner, we rewrite this. Observe that
+\[
+  (Z \otimes K)^T SS^T (Z \otimes K) \approx (Z \otimes K)^T (Z \otimes K) \cdot (q/N)
+  = (Z^T Z \otimes K^2) \cdot (q/N),
+\]
+when the observed entries are sampled uniformly at random (so $SS^T \approx (q/N) I_N$ in expectation). Thus
+\[
+  A_{\mathrm{sys}} \approx \frac{q}{N}(Z^T Z \otimes K^2) + \lambda (I_r \otimes K)
+  = \Bigl(\frac{q}{N} Z^T Z \otimes K + \lambda I_r \otimes I_n\Bigr)(I_r \otimes K).
+\]
+
+This motivates the \emph{Kronecker preconditioner}
+\begin{equation}\label{eq:precond}
+  P = (\hat{Z} \otimes \hat{K}),
+\end{equation}
+where $\hat{Z}$ and $\hat{K}$ are chosen such that $P$ approximates $A_{\mathrm{sys}}$ while being easy to invert.
+
+\subsection{Specific construction}
+
+Compute the eigendecompositions
+\[
+  Z^T Z = Q_Z \Lambda_Z Q_Z^T, \qquad K = Q_K \Lambda_K Q_K^T,
+\]
+at costs $O(r^3)$ and $O(n^3)$ respectively (one-time setup). Define
+\[
+  P = \Bigl(\frac{q}{N} \Lambda_Z \otimes \Lambda_K^2 + \lambda I_r \otimes \Lambda_K\Bigr)
+  = \frac{q}{N}\Lambda_Z \otimes \Lambda_K^2 + \lambda I_r \otimes \Lambda_K,
+\]
+in the eigenbasis $(Q_Z \otimes Q_K)$. Applying $P^{-1}$ to a vector $\mathbf{v}$: transform $\mathbf{v} \mapsto (Q_Z^T \otimes Q_K^T)\mathbf{v}$, apply the diagonal scaling, and transform back. Since $P$ is diagonal in the Kronecker eigenbasis, $P^{-1}$ is also diagonal, with entries
+\[
+  [P^{-1}]_{(i,j)} = \frac{1}{\frac{q}{N} (\Lambda_Z)_{ii} (\Lambda_K^2)_{jj} + \lambda (\Lambda_K)_{jj}}.
+\]
+
+The cost of applying $P^{-1}$ is:
+\begin{itemize}
+  \item $(Q_Z^T \otimes Q_K^T)\mathbf{v} = \vecop(Q_K^T V Q_Z)$: costs $O(n^2 r + nr^2)$,
+  \item Diagonal scaling: $O(nr)$,
+  \item Transform back: $O(n^2 r + nr^2)$.
+\end{itemize}
+Total: $O(n^2 r + nr^2)$ per PCG iteration for preconditioning.
+
+\subsection{Justification of preconditioner quality}
+
+The preconditioned system $P^{-1} A_{\mathrm{sys}}$ has condition number $\kappa(P^{-1}A_{\mathrm{sys}})$ that depends on how well $P$ approximates $A_{\mathrm{sys}}$. In the uniform sampling case, $A_{\mathrm{sys}} = (q/N)(Z^T Z \otimes K^2) + \lambda(I_r \otimes K)$ exactly, and $P$ matches $A_{\mathrm{sys}}$ exactly, giving $\kappa = 1$ and convergence in one step. For general sampling patterns, the concentration of the sampling operator around its expectation (provable via matrix Bernstein inequalities when $q \gg nr\log(nr)$) ensures $\kappa(P^{-1}A_{\mathrm{sys}}) = O(1)$.
+
+When eigenvalues of $K$ are well-conditioned (e.g., exponentially decaying as for RBF kernels), the dominant cost is controlled and the number of PCG iterations $t$ needed to reach $\epsilon$-accuracy satisfies $t = O(\sqrt{\kappa}\log(1/\epsilon))$.
+
+\section{Full Algorithm and Complexity}
+
+\begin{theorem}[Preconditioned CG complexity]
+  Under the assumptions $n, r < q \ll N$, the preconditioned CG algorithm for system~\eqref{eq:system} with the Kronecker preconditioner $P$ achieves $\epsilon$-accuracy in $\vecop(W)$ using the following resources:
+  \begin{itemize}
+    \item \emph{Setup} (precompute $Z^T Z$, $\tilde{K}$, $\tilde{Z}$, eigendecompositions): $O(Mrq + q(n+r) + n^3 + r^3)$.
+    \item \emph{Per-iteration cost}: $O(qnr + n^2 r + nr^2)$.
+    \item \emph{Number of iterations}: $t = O(\sqrt{\kappa}\log(1/\epsilon))$.
+    \item \emph{Total cost}: $O(n^3 + r^3 + Mrq + t(qnr + n^2 r + nr^2))$.
+  \end{itemize}
+  No computation of order $N$ is required.
+\end{theorem}
+
+\begin{proof}
+  We verify each claim.
+
+  \textbf{Setup.} Computing $Z^T Z \in \R^{r \times r}$: $Z = A_d \odot \cdots$ has $M$ rows and $r$ columns. The Khatri--Rao product $Z$ need not be formed explicitly; instead, $Z^T Z = (A_d^T A_d) * (A_{d-1}^T A_{d-1}) * \cdots * (A_{k+1}^T A_{k+1}) * (A_{k-1}^T A_{k-1}) * \cdots * (A_1^T A_1)$ where $*$ denotes the Hadamard (elementwise) product. Each $A_i^T A_i \in \R^{r \times r}$ costs $O(n_i r^2)$ and the Hadamard products cost $O(r^2)$ each. Total: $O((\sum_i n_i)r^2) \leq O(Mrq/q \cdot r) = O(Mr^2)$, which is subsumed in setup. The matrices $\tilde{K} \in \R^{q \times n}$ and $\tilde{Z} \in \R^{q \times r}$ are formed by indexing rows of $K$ and $Z$ for each observed entry: cost $O(qn + qr)$. The eigendecompositions of $Z^T Z$ (size $r \times r$) and $K$ (size $n \times n$) cost $O(r^3)$ and $O(n^3)$ respectively.
+
+  Computing $B = TZ$ (MTTKRP): standard methods exploit the Khatri--Rao structure and sparsity of $T$ to achieve $O(qr)$ without $O(N)$ operations (only iterating over observed entries).
+
+  \textbf{Matrix--vector products.} Section~2 established cost $O(qnr + n^2 r)$ per product. Preconditioning costs $O(n^2 r + nr^2)$ per iteration. Total per iteration: $O(qnr + n^2 r + nr^2)$.
+
+  \textbf{No $O(N)$ computation.} All computations involve: (a) the $q$ observed entries via $\tilde{K}$ and $\tilde{Z}$, (b) $K$ of size $n \times n$, and (c) $Z^T Z$ of size $r \times r$. No step accesses the full tensor of size $N$.
+
+  \textbf{CG convergence.} The matrix $A_{\mathrm{sys}}$ is symmetric positive definite (for $\lambda > 0$ and $K \succ 0$). By standard CG theory, the preconditioned CG reaches $\|\mathbf{e}_t\|_{A_{\mathrm{sys}}} \leq 2\left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}\right)^t \|\mathbf{e}_0\|_{A_{\mathrm{sys}}}$, so $t = O(\sqrt{\kappa}\log(2/\epsilon))$ iterations suffice.
+\end{proof}
+
+\section{Summary of the Method}
+
+The complete PCG method proceeds as follows:
+
+\begin{enumerate}
+  \item \textbf{Precompute once:}
+    \begin{enumerate}
+      \item Form $Z^T Z = \bigodot_{i \neq k} (A_i^T A_i) \in \R^{r \times r}$ via Hadamard products.
+      \item Form $\tilde{Z} \in \R^{q \times r}$: rows of $Z$ indexed by the column-multi-index of each observed entry.
+      \item Form $\tilde{K} \in \R^{q \times n}$: rows of $K$ indexed by the row-multi-index of each observed entry.
+      \item Compute eigendecompositions $K = Q_K \Lambda_K Q_K^T$ and $Z^T Z = Q_Z \Lambda_Z Q_Z^T$.
+      \item Build diagonal preconditioner $P^{-1}$ with entries $\bigl(\frac{q}{N}(\Lambda_Z)_{ii}(\Lambda_K)_{jj}^2 + \lambda(\Lambda_K)_{jj}\bigr)^{-1}$.
+      \item Compute right-hand side $\vecop(KB)$.
+    \end{enumerate}
+  \item \textbf{PCG iteration} (initialized with $\vecop(W^{(0)}) = 0$):
+    \begin{enumerate}
+      \item Compute residual $\mathbf{g} = (I_r \otimes K)\vecop(B) - A_{\mathrm{sys}}\vecop(W)$ using the efficient matrix--vector product.
+      \item Apply preconditioner: $\mathbf{z} = P^{-1}\mathbf{g}$ via Kronecker eigenbasis transform, diagonal scaling, inverse transform.
+      \item Update search direction $\mathbf{d}$, step size $\alpha$, and $\vecop(W)$ by standard CG update rules.
+    \end{enumerate}
+  \item \textbf{Output:} $W$ after convergence; then $A_k = KW$.
+\end{enumerate}
+
+\begin{remark}[Comparison with direct solver]
+  A direct solver for~\eqref{eq:system} costs $O(n^3 r^3)$ (Cholesky on the $nr \times nr$ matrix). PCG with the Kronecker preconditioner costs $O(n^3 + r^3 + t \cdot qnr)$ total. Since $t = O(1)$ iterations suffice when the preconditioner is nearly exact (uniform sampling), the dominant cost is $O(qnr)$, which is $O(n^3 r^3)/(n^2 r^2/q) = O(n^3 r^3 \cdot q/(n^2 r^2))$ less than the direct solver --- a speedup of $n^2 r^2 / q$ in the regime $q \ll n^2 r^2$, and in particular avoids the cubic cost in both $n$ and $r$.
+\end{remark}
+
+\begin{remark}[Kernel structure]
+  For shift-invariant kernels (RBF, Mat\'ern), $K$ is a circulant matrix and its eigendecomposition reduces to the DFT, costing $O(n \log n)$ instead of $O(n^3)$. Matrix--vector products with $K$ then cost $O(n \log n)$, further improving the per-iteration cost from $O(qnr + n^2 r)$ to $O(qr \log n + n r \log n)$.
+\end{remark}
+
+\end{document}
