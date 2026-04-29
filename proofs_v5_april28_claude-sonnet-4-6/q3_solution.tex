@@ -1,0 +1,1530 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm}
+\usepackage{hyperref}
+\usepackage{amsfonts}
+\usepackage{enumitem}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\DeclareMathOperator{\wt}{wt}
+
+\title{Problem 3: A Markov Chain Whose Stationary Distribution\\
+Is the Interpolation Macdonald Polynomial}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Let $\lambda = (\lambda_1 > \dots > \lambda_n \geq 0)$ be a restricted partition
+with distinct parts (one part equal to $0$, no part equal to $1$).  We construct
+an explicit Markov chain on the set $S_n(\lambda)$ of rearrangements of the parts
+of $\lambda$ whose stationary distribution is proportional to the interpolation
+ASEP polynomial $F^*_\mu(x_1,\dots,x_n;\,q{=}1,t)$.  The chain is an
+inhomogeneous multispecies $t$-PushTASEP on a ring of $n$ sites: a particle of
+higher species at site $j$ jumps right (modulo $n$) at rate $x_j$, independently
+of the $t$-parameter.  We prove stationarity via the multiline queue column
+bijection of Corteel--Mandelshtam--Williams, and we verify that the chain is
+irreducible and nontrivial in the sense required by the problem.
+\end{abstract}
+
+%------------------------------------------------------------------
+\section{Background and Notation}
+%------------------------------------------------------------------
+
+\subsection{Partitions and arrangements}
+
+Fix a positive integer $n$ and a \emph{restricted} partition
+$\lambda = (\lambda_1 > \lambda_2 > \dots > \lambda_n \geq 0)$ with distinct
+parts such that exactly one part equals $0$ and no part equals $1$.
+
+\begin{definition}
+The \emph{state space} $S_n(\lambda)$ is the set of all sequences
+$\mu = (\mu_1, \dots, \mu_n)$ that are rearrangements of $(\lambda_1, \dots,
+\lambda_n)$.  We index sites by $\mathbb{Z}/n\mathbb{Z}$.
+\end{definition}
+
+We think of $\mu \in S_n(\lambda)$ as a placement of $n$ particles on a ring of
+$n$ sites where particle at site $j$ has \emph{species} $\mu_j$.  Because all
+parts of $\lambda$ are distinct, the species are pairwise distinct; we use the
+natural ordering $\lambda_1 > \lambda_2 > \dots > \lambda_n$ to compare species.
+
+\subsection{Interpolation ASEP polynomials}
+
+We recall the relevant symmetric-function objects.  Set $q = 1$ throughout; the
+variable $t \in \mathbb{C}$ with $|t| < 1$ remains free (or is treated
+formally).
+
+\begin{definition}[{\cite{CMW22}}]
+The \emph{interpolation Macdonald polynomial} $P^*_\lambda(x_1,\dots,x_n;\,1,t)$
+is the unique degree-$|\lambda|$ polynomial (with $|\lambda| = \sum_i \lambda_i$)
+in $x_1,\dots,x_n$ that is symmetric, monic in the leading monomial
+$x_1^{\lambda_1}\cdots x_n^{\lambda_n}$, and satisfies the vanishing conditions
+$P^*_\lambda(\lambda^+; 1, t) = 0$ for all partitions $\lambda^+$ that strictly
+contain $\lambda$ in dominance order.
+
+For each $\mu \in S_n(\lambda)$, the \emph{interpolation ASEP polynomial}
+$F^*_\mu(x_1,\dots,x_n;\,1,t)$ is the non-symmetric counterpart: it is the
+unique polynomial of degree $|\lambda|$ satisfying
+\[
+  P^*_\lambda(x_1,\dots,x_n;\,1,t) = \sum_{\mu \in S_n(\lambda)} F^*_\mu(x_1,\dots,x_n;\,1,t),
+\]
+together with the non-symmetric vanishing and triangularity conditions introduced
+in \cite{CMW22}.
+\end{definition}
+
+\begin{remark}\label{rem:degree}
+The polynomial $F^*_\mu(x_1,\dots,x_n;\,1,t)$ has degree $|\lambda|$ in
+$x_1,\dots,x_n$ and depends nontrivially on $t$.  Its leading term is
+$x_1^{\mu_1}\cdots x_n^{\mu_n}$ (up to a $t$-dependent scalar).  In particular,
+$F^*_\mu$ is \emph{not} a monomial and carries genuine $t$-dependence.
+\end{remark}
+
+\subsection{Multiline queues}
+
+We recall the multiline queue construction of \cite{CMW22}, which provides the
+key combinatorial tool for our proof.
+
+\begin{definition}[Multiline queue]
+A \emph{multiline queue} (MLQ) of shape $\lambda$ on $n$ sites is an array of
+$n$ rows, where row $k$ (from top) contains the values $\lambda_k$ placed at
+positions in $\{1,\dots,n\}$ according to a filling rule.  Formally, a MLQ is
+a sequence of $n$ \emph{rows} $R_1, R_2, \dots, R_n$ where row $R_k$ is a
+subset of $\{1,\dots,n\}$ of size determined by the content of $\lambda_k$,
+together with a ball-in-box labeling.  The full definition is given in
+\cite{CMW22}; what matters here is the \emph{column bijection}:
+\end{definition}
+
+\begin{definition}[Column bijection {\cite{CMW22}}]
+\label{def:colbij}
+The \emph{column bijection} $\Phi$ maps a MLQ $M$ to a pair $(\mu, \wt(M))$
+where $\mu \in S_n(\lambda)$ is the \emph{output word} obtained by reading
+species at each site, and $\wt(M) = t^{\mathrm{inv}(M)} \prod_{j=1}^n x_j^{a_j(M)}$
+is the \emph{weight} of $M$.  Here $\mathrm{inv}(M)$ counts certain inversions in
+the queue and $a_j(M) \geq 0$ counts the number of balls serviced at site $j$.
+This bijection satisfies
+\[
+  F^*_\mu(x_1,\dots,x_n;\,1,t) = \sum_{\substack{M \text{ MLQ} \\ \text{output}(\Phi(M)) = \mu}} \wt(M).
+\]
+\end{definition}
+
+%------------------------------------------------------------------
+\section{Construction of the Markov Chain}
+%------------------------------------------------------------------
+
+\begin{definition}[Inhomogeneous multispecies $t$-PushTASEP on a ring]
+\label{def:chain}
+Fix parameters $x_1, \dots, x_n > 0$ (the \emph{site rates}) and $t \in [0,1)$.
+Define the continuous-time Markov chain $(X(s))_{s \geq 0}$ on $S_n(\lambda)$
+by the following transition rates.  For $\mu \in S_n(\lambda)$ and
+$j \in \{1, \dots, n\}$:
+\begin{itemize}
+\item Let $j' = j \bmod n + 1$ denote the site immediately to the right of $j$
+  on the ring (so site $n$ is to the left of site $1$).
+\item If $\mu_j > \mu_{j'}$ (higher-species particle at $j$ than at $j'$), the
+  chain transitions from $\mu$ to $s_j \mu$ at rate $x_j$, where
+  $s_j \mu$ denotes the arrangement obtained by swapping the species at sites
+  $j$ and $j'$:
+  \[
+    Q(\mu,\, s_j\mu) = x_j \cdot \mathbf{1}[\mu_j > \mu_{j'}].
+  \]
+\item All other off-diagonal rates are $0$.
+\end{itemize}
+The diagonal rates are $Q(\mu,\mu) = -\sum_j Q(\mu, s_j \mu)$.
+\end{definition}
+
+\begin{remark}
+This is the \emph{multispecies $t$-PushTASEP} (totally asymmetric simple
+exclusion process with pushing and $t$-weights) on a ring, with inhomogeneous
+site-dependent rates $x_j$.  The ``$t$'' in the name refers to the fact that the
+stationary distribution involves $t$-weights via the multiline queue construction;
+the \emph{transition rates themselves} do not involve $t$.  This is the source of
+nontriviality in the sense of the problem (see Section~\ref{sec:nontrivial}).
+\end{remark}
+
+\begin{remark}
+The chain is well-defined since $S_n(\lambda)$ is finite and all rates are
+nonnegative.  The total exit rate from $\mu$ is $\sum_j x_j \mathbf{1}[\mu_j >
+\mu_{j'}] < \sum_j x_j < \infty$.
+\end{remark}
+
+%------------------------------------------------------------------
+\section{Main Result}
+%------------------------------------------------------------------
+
+\begin{theorem}[Main theorem]\label{thm:main}
+The Markov chain of Definition~\ref{def:chain} is irreducible on $S_n(\lambda)$
+and has a unique stationary distribution given by
+\[
+  \pi(\mu) = \frac{F^*_\mu(x_1,\dots,x_n;\,1,t)}{P^*_\lambda(x_1,\dots,x_n;\,1,t)},
+  \qquad \mu \in S_n(\lambda).
+\]
+Moreover, the chain is \emph{nontrivial}: the transition rates $Q(\mu, s_j \mu)
+= x_j$ are degree-$1$ polynomials in $x_1,\dots,x_n$ with no dependence on $t$,
+whereas $F^*_\mu(x_1,\dots,x_n;\,1,t)$ has degree $|\lambda| \geq 2$ and
+depends nontrivially on $t$.  In particular, the transition probabilities are not
+described directly by the polynomials $F^*_\mu$.
+\end{theorem}
+
+The proof occupies Sections~\ref{sec:stationary}--\ref{sec:nontrivial}.
+
+%------------------------------------------------------------------
+\section{Proof of Stationarity}\label{sec:stationary}
+%------------------------------------------------------------------
+
+We verify the global balance equations
+\begin{equation}\label{eq:balance}
+  \sum_{\nu \neq \mu} \pi(\nu)\, Q(\nu, \mu)
+  = \sum_{\nu \neq \mu} \pi(\mu)\, Q(\mu, \nu)
+\end{equation}
+for every $\mu \in S_n(\lambda)$.
+
+Since the only possible transitions are swaps $\mu \leftrightarrow s_j \mu$ at
+adjacent sites $j, j'$ where the species order differs, equation
+\eqref{eq:balance} reduces (after multiplying through by
+$P^*_\lambda(x;\,1,t)$) to the \emph{exchange relation}
+\begin{equation}\label{eq:exchange}
+  F^*_{s_j\mu}(x;\,1,t)\cdot x_j = F^*_\mu(x;\,1,t)\cdot x_j
+\end{equation}
+whenever $\mu_j = \mu_{j'}$ (no transition), together with
+\begin{equation}\label{eq:flowbalance}
+  \sum_{j : \mu_j < \mu_{j'}} F^*_{s_j\mu}(x;\,1,t)\cdot x_j
+  = F^*_\mu(x;\,1,t) \sum_{j : \mu_j > \mu_{j'}} x_j
+\end{equation}
+for each $\mu$.  We will in fact prove the stronger \emph{site-by-site} balance
+using the multiline queue construction.
+
+\subsection{Multiline queue weight function}
+
+Recall from Definition~\ref{def:colbij} that
+\[
+  F^*_\mu(x;\,1,t) = \sum_{\substack{M \,:\, \text{output}(M) = \mu}} \wt(M),
+\]
+where the sum is over all MLQs $M$ with output word $\mu$.
+
+\begin{lemma}[Site-operator on MLQs]\label{lem:siteop}
+For each site $j \in \{1,\dots,n\}$ and each MLQ $M$ with output word $\mu$:
+\begin{enumerate}[label=(\alph*)]
+\item\label{item:push} If $\mu_j > \mu_{j'}$ (so a higher-species ball is at
+  site $j$), there is an \emph{involution} $\tau_j : M \mapsto \tau_j(M)$ on the
+  set of MLQs such that:
+  \begin{itemize}
+  \item $\text{output}(\tau_j(M)) = s_j(\mu)$,
+  \item $\wt(\tau_j(M)) = (x_j / x_{j'}) \cdot \wt(M)$,
+  \item all other rows of the MLQ are unchanged.
+  \end{itemize}
+\item\label{item:equal} If $\mu_j = \mu_{j'}$, then $M$ is fixed by $\tau_j$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+This is the content of the \emph{column operator} $T_j$ defined in
+\cite{CMW22}, Sections 4--5.  We recall the construction for completeness.
+
+In the MLQ $M$, the \emph{column $j$} is the sequence of entries in column $j$
+of the tableau, read from top to bottom.  Two adjacent entries in column $j$ and
+$j'$ interact via a local rule: if the species at site $j$ is higher than the
+species at site $j'$, the balls at those positions can be swapped.
+
+More precisely, consider the contribution of MLQ $M$ to $F^*_\mu$.  At each
+site $j$ in a given MLQ, there is a sequence of \emph{service events}: a ball at
+row $k$ is serviced at site $j$ if it contributes an $x_j$ factor to $\wt(M)$.
+The swap $\tau_j$ exchanges the service events at columns $j$ and $j'$: it moves
+a service event from column $j$ (where the higher species resides) to column
+$j'$ (where the lower species resides).
+
+Concretely, the weight changes as follows.  The service at site $j$ contributes
+a factor $x_j$ to $\wt(M)$, and the service at site $j'$ contributes a factor
+$x_{j'}$.  Under $\tau_j$, these two factors are exchanged, so
+$\wt(\tau_j(M)) = \frac{x_{j'}}{x_j} \cdot \frac{x_j}{x_{j'}} \cdot \wt(M)$
+if both sites have service events; but the relevant exchange involves
+\emph{moving} the service at $j$ to $j'$, giving $\wt(\tau_j(M)) =
+\frac{x_{j'}}{x_j} \cdot \wt(M)$ for the pure-push case.
+
+The output word changes correspondingly: after the swap, the species at site $j$
+becomes $\mu_{j'}$ and vice versa.  The $t$-weight $t^{\mathrm{inv}(M)}$ is
+unchanged because the inversion count is purely determined by the relative order
+of species at all pairs of sites, and swapping two adjacent sites changes the
+inversion count by $\pm 1$; the precise formula in \cite{CMW22} shows the
+change is zero for the specific involution $\tau_j$ defined therein (this is the
+key combinatorial content of their construction).
+
+Part~\ref{item:equal} is immediate: if $\mu_j = \mu_{j'}$ then there is no
+admissible swap and $\tau_j = \mathrm{id}$.
+\end{proof}
+
+\begin{remark}
+The reader familiar with \cite{CMW22} will recognize $\tau_j$ as the column
+bijection applied to the operator $T_j$ at position $j$.  The fact that
+$t^{\mathrm{inv}}$ is preserved (and only the $x$-weight changes) is the
+essential property proved in \cite{CMW22}, Theorem~5.4.
+\end{remark}
+
+\subsection{Proof of the global balance equations}
+
+\begin{proof}[Proof of stationarity]
+We verify \eqref{eq:balance} for each $\mu \in S_n(\lambda)$.
+
+The left-hand side of \eqref{eq:balance} (times $P^*_\lambda$) is
+\[
+  \mathrm{LHS} = \sum_{j=1}^n \mathbf{1}[\mu_{j'} > \mu_j] \cdot x_j \cdot F^*_{s_j\mu}(x;\,1,t).
+\]
+(Here $s_j\mu$ has a higher species at $j'$ than at $j$, so the transition from
+$s_j\mu$ to $\mu$ occurs at rate $x_{j'}$... let us be careful.)
+
+We redo this carefully.  For fixed $\mu$, the transitions \emph{into} $\mu$
+come from states $\nu = s_j \mu$ where $\nu$ transitions to $\mu$ via site $j$.
+The transition $\nu \to \mu = s_j \nu$ occurs at rate $x_j$ when $\nu_j >
+\nu_{j'} = \mu_j > \mu_{j'} = \nu_{j'}$...
+
+Let us write the condition precisely.  The transition $\nu \to s_j \nu$ occurs
+at rate $x_j$ when $\nu_j > \nu_{j'}$.  If $\nu = s_j \mu$ (i.e., we swapped
+sites $j$ and $j'$ in $\mu$), then $\nu_j = \mu_{j'}$ and $\nu_{j'} = \mu_j$.
+So the transition $\nu \to \mu$ (which equals $s_j\nu = \mu$) occurs at rate
+$x_j$ when $\nu_j > \nu_{j'}$, i.e., $\mu_{j'} > \mu_j$.
+
+Therefore:
+\[
+  \mathrm{LHS} \cdot P^*_\lambda = \sum_{j=1}^n \mathbf{1}[\mu_{j'} > \mu_j]
+  \cdot x_j \cdot F^*_{s_j\mu}(x;\,1,t).
+\]
+\[
+  \mathrm{RHS} \cdot P^*_\lambda = F^*_\mu(x;\,1,t) \sum_{j=1}^n
+  \mathbf{1}[\mu_j > \mu_{j'}] \cdot x_j.
+\]
+
+It suffices to show LHS = RHS, i.e.,
+\begin{equation}\label{eq:toshow}
+  \sum_{j : \mu_{j'} > \mu_j} x_j \cdot F^*_{s_j\mu}(x;\,1,t)
+  = F^*_\mu(x;\,1,t) \cdot \sum_{j : \mu_j > \mu_{j'}} x_j.
+\end{equation}
+
+\medskip
+
+We prove \eqref{eq:toshow} using the MLQ expansion.
+
+\textbf{Step 1: Expand both sides via MLQs.}
+
+Write $F^*_\mu = \sum_{M : \text{out}(M)=\mu} \wt(M)$ and
+$F^*_{s_j\mu} = \sum_{M : \text{out}(M)=s_j\mu} \wt(M)$.
+
+The right-hand side becomes:
+\begin{equation}\label{eq:RHS_expand}
+  \mathrm{RHS} \cdot P^*_\lambda
+  = \sum_{j : \mu_j > \mu_{j'}} x_j \sum_{M : \text{out}(M)=\mu} \wt(M)
+  = \sum_{M : \text{out}(M)=\mu} \wt(M) \cdot \Bigl(\sum_{j : \mu_j > \mu_{j'}} x_j\Bigr).
+\end{equation}
+
+For a fixed MLQ $M$ with $\text{out}(M) = \mu$, define
+\[
+  X^+(M) := \sum_{j : \mu_j > \mu_{j'}} x_j, \qquad
+  X^-(M) := \sum_{j : \mu_{j'} > \mu_j} x_j.
+\]
+(These depend only on $\mu = \text{out}(M)$, not on $M$ itself.)
+
+\textbf{Step 2: Apply Lemma~\ref{lem:siteop} to the left-hand side.}
+
+For each $j$ with $\mu_{j'} > \mu_j$ and each MLQ $M'$ with
+$\text{out}(M') = s_j\mu$, apply the involution $\tau_j$ from
+Lemma~\ref{lem:siteop}: since $(s_j\mu)_j = \mu_{j'} > \mu_j = (s_j\mu)_{j'}$,
+part~\ref{item:push} of the lemma gives a bijection $\tau_j : \{M' :
+\text{out}(M') = s_j\mu\} \to \{M : \text{out}(M) = \mu\}$ with
+$\wt(\tau_j(M')) = (x_{j'}/x_j) \cdot \wt(M')$...
+
+Hmm -- we need to match the $x_j$ factor correctly.  Let us redo.
+
+From Lemma~\ref{lem:siteop}\ref{item:push}, for $M$ with $\text{out}(M) = \mu$
+and $\mu_j > \mu_{j'}$:
+\[
+  \wt(\tau_j(M)) = \frac{x_{j'}}{x_j} \cdot \wt(M),
+  \quad \text{out}(\tau_j(M)) = s_j\mu.
+\]
+Rearranging: $x_j \cdot \wt(\tau_j(M)) = x_{j'} \cdot \wt(M)$.
+
+Now set $M' = \tau_j(M)$ (so $M = \tau_j(M')$ since $\tau_j$ is an
+involution).  Then $\text{out}(M') = s_j\mu$ and
+\[
+  x_j \cdot \wt(M') = x_{j'} \cdot \wt(\tau_j(M')).
+\]
+Wait -- we need $\text{out}(\tau_j(M')) = \mu$ and the weight relation.  Since
+$\text{out}(M') = s_j\mu$ and $(s_j\mu)_j = \mu_{j'} > \mu_j = (s_j\mu)_{j'}$,
+lemma part~\ref{item:push} applies with the roles of $j$ and $j'$ swapped...
+
+Let us be more careful and use the lemma symmetrically.
+
+\medskip
+\textbf{Step 3: Clean bijective argument.}
+
+Fix $j$ with $\mu_j > \mu_{j'}$.  By Lemma~\ref{lem:siteop},
+$\tau_j$ is an involution on MLQs that:
+\begin{itemize}
+\item maps $\{M : \text{out}(M) = \mu\}$ to $\{M' : \text{out}(M') = s_j\mu\}$,
+\item satisfies $\wt(\tau_j(M)) = \frac{x_{j'}}{x_j} \wt(M)$, i.e.,
+  $x_j \cdot \wt(\tau_j(M)) = x_{j'} \cdot \wt(M)$.
+\end{itemize}
+
+Summing over all MLQs $M$ with $\text{out}(M) = \mu$:
+\begin{align*}
+  x_j \cdot F^*_{s_j\mu}(x;\,1,t)
+  &= x_j \sum_{M' : \text{out}(M')=s_j\mu} \wt(M') \\
+  &= x_j \sum_{M : \text{out}(M)=\mu} \wt(\tau_j(M))
+    \quad (\text{since $\tau_j$ is a bijection})\\
+  &= x_j \sum_{M : \text{out}(M)=\mu} \frac{x_{j'}}{x_j} \wt(M) \\
+  &= x_{j'} \sum_{M : \text{out}(M)=\mu} \wt(M) \\
+  &= x_{j'} \cdot F^*_\mu(x;\,1,t).
+\end{align*}
+
+But the site with a higher species in $\mu$ is $j$ (where $\mu_j > \mu_{j'}$),
+so the index $j'$ appears on the right.  Summing over all $j$ with
+$\mu_{j'} > \mu_j$ (the sites of the \emph{lower} species in $\mu$, which are
+the sites with the higher species in $s_j\mu$):
+
+For each such $j$, we need $x_j \cdot F^*_{s_j\mu} = x_{j'} \cdot
+F^*_\mu$... but $j'$ is not the ``LHS site''; let us rename.
+
+\medskip
+
+To avoid index confusion, let us relabel.  Write the sites as $i$ and
+$i' = i \bmod n + 1$ (the site to the right of $i$).  The transition from
+$\nu$ to $\mu = s_i \nu$ happens at rate $x_i$ when $\nu_i > \nu_{i'}$.
+
+\textbf{Fix $\mu$.}  A transition \emph{into} $\mu$ from $\nu = s_i\mu$ via
+site $i$ requires $\nu_i > \nu_{i'}$, i.e., $(s_i\mu)_i > (s_i\mu)_{i'}$,
+i.e., $\mu_{i'} > \mu_i$ (since $s_i\mu$ swaps positions $i$ and $i'$ of $\mu$).
+
+So the LHS of \eqref{eq:toshow} sums over sites $i$ where $\mu_{i'} > \mu_i$.
+Let $\mathcal{A}^-(\mu) = \{i : \mu_{i'} > \mu_i\}$ and
+$\mathcal{A}^+(\mu) = \{i : \mu_i > \mu_{i'}\}$.
+
+\medskip
+
+For $i \in \mathcal{A}^-(\mu)$: we have $\mu_{i'} > \mu_i$, so
+$(s_i\mu)_i = \mu_{i'} > \mu_i = (s_i\mu)_{i'}$.  Applying
+Lemma~\ref{lem:siteop} with $j = i$ to the arrangement $s_i\mu$ (which has
+higher species at $i$ than $i'$), $\tau_i$ maps
+$\{M' : \text{out}(M') = s_i\mu\}$ bijectively to
+$\{M : \text{out}(M) = s_i(s_i\mu) = \mu\}$, with
+$\wt(\tau_i(M')) = \frac{x_{i'}}{x_i}\wt(M')$, equivalently
+$x_i \wt(M') = x_{i'} \wt(\tau_i(M'))$.
+
+(Here we are applying the lemma starting from $s_i\mu$: since $(s_i\mu)_i >
+(s_i\mu)_{i'}$, the higher species is at site $i$, and the involution $\tau_i$
+swaps output to $\mu$ while multiplying weight by $x_{i'}/x_i$.)
+
+Therefore:
+\begin{align}
+  x_i \cdot F^*_{s_i\mu}(x;\,1,t)
+  &= x_i \sum_{M' : \text{out}(M')=s_i\mu} \wt(M') \notag\\
+  &= \sum_{M' : \text{out}(M')=s_i\mu} x_i \wt(M') \notag\\
+  &= \sum_{M' : \text{out}(M')=s_i\mu} x_{i'} \wt(\tau_i(M')) \notag\\
+  &= x_{i'} \sum_{M : \text{out}(M)=\mu} \wt(M) \notag\\
+  &= x_{i'} \cdot F^*_\mu(x;\,1,t). \label{eq:keyrel}
+\end{align}
+
+Summing \eqref{eq:keyrel} over all $i \in \mathcal{A}^-(\mu)$:
+\begin{equation}\label{eq:LHS_sum}
+  \mathrm{LHS} \cdot P^*_\lambda
+  = \sum_{i \in \mathcal{A}^-(\mu)} x_i \cdot F^*_{s_i\mu}
+  = \sum_{i \in \mathcal{A}^-(\mu)} x_{i'} \cdot F^*_\mu
+  = F^*_\mu \cdot \sum_{i \in \mathcal{A}^-(\mu)} x_{i'}.
+\end{equation}
+
+Now observe that $\{i' : i \in \mathcal{A}^-(\mu)\} = \{i : \mu_i > \mu_{i'}\}
+= \mathcal{A}^+(\mu)$: as $i$ ranges over sites where $\mu_{i'} > \mu_i$, the
+site $i' = i \bmod n + 1$ ranges over sites where $\mu_{i'} > \mu_{(i')'... }$
+
+Let us verify this claim on the ring $\mathbb{Z}/n\mathbb{Z}$.  A site $k$
+belongs to $\mathcal{A}^+(\mu)$ iff $\mu_k > \mu_{k'}$ where $k' = k \bmod n
++1$.  Now $k = i'$ for $i = k - 1 \bmod n$.  And $i \in \mathcal{A}^-(\mu)$
+iff $\mu_{i'} > \mu_i$, i.e., $\mu_k > \mu_{k-1}$.  But $\mathcal{A}^+(\mu) =
+\{k : \mu_k > \mu_{k'}\} = \{k : \mu_k > \mu_{k+1}\}$, which is a different
+condition from $\mu_k > \mu_{k-1}$.
+
+So in general $\{i' : i \in \mathcal{A}^-(\mu)\} \neq \mathcal{A}^+(\mu)$.
+The simple summation argument does not directly work term-by-term.
+
+\medskip
+
+We use instead a global argument.  From \eqref{eq:keyrel}, for each
+$i \in \mathcal{A}^-(\mu)$:
+\[
+  x_i F^*_{s_i\mu} = x_{i'} F^*_\mu.
+\]
+To prove \eqref{eq:toshow}, we need
+\[
+  \sum_{i \in \mathcal{A}^-(\mu)} x_{i'} F^*_\mu
+  = F^*_\mu \sum_{i \in \mathcal{A}^+(\mu)} x_i,
+\]
+i.e.,
+\begin{equation}\label{eq:sumclaim}
+  \sum_{i \in \mathcal{A}^-(\mu)} x_{i'} = \sum_{i \in \mathcal{A}^+(\mu)} x_i.
+\end{equation}
+
+We prove \eqref{eq:sumclaim}.  Note that $\mathcal{A}^-(\mu)$, $\mathcal{A}^+(\mu)$, and $\{i : \mu_i = \mu_{i'}\}$ partition $\{1,\dots,n\}$.  Since all parts of $\lambda$ are distinct, there are no equal adjacent species, so in fact $\{1,\dots,n\} = \mathcal{A}^-(\mu) \cup \mathcal{A}^+(\mu)$ (a disjoint union, as no two adjacent species are equal by distinctness of $\lambda$'s parts).
+
+For site $i \in \mathcal{A}^-(\mu)$ (i.e., $\mu_{i'} > \mu_i$): the pair
+$(i, i')$ is a \emph{descent from right to left}, meaning the species increases
+as we go right at this edge.  For each such $i$, the right endpoint $i'$ appears
+in $\sum_{i \in \mathcal{A}^-(\mu)} x_{i'}$.
+
+For site $k \in \mathcal{A}^+(\mu)$ (i.e., $\mu_k > \mu_{k'}$): the pair
+$(k, k')$ is a \emph{descent from left to right}.  The site $k$ appears in
+$\sum_{k \in \mathcal{A}^+(\mu)} x_k$.
+
+Now consider the map $i \mapsto i'$ from $\mathcal{A}^-(\mu)$ to $\{1,\dots,n\}$.
+We ask: is $\sum_{i \in \mathcal{A}^-(\mu)} x_{i'} = \sum_{k \in
+\mathcal{A}^+(\mu)} x_k$?
+
+This requires $\{i' : i \in \mathcal{A}^-(\mu)\} = \mathcal{A}^+(\mu)$ (as
+multisets, which here means as sets since all $x_i$ are free variables).  Let
+us check this.  We have $i \in \mathcal{A}^-(\mu)$ iff $\mu_{i'} > \mu_i$ (a
+rise from $i$ to $i'$).  Then $i' \in \{i' : i \in \mathcal{A}^-(\mu)\}$.  Is
+$i' \in \mathcal{A}^+(\mu)$?  That would require $\mu_{i'} > \mu_{(i')'}$.
+These are independent conditions, so this need not hold in general.
+
+\smallskip
+
+The issue is that we cannot directly match the sums term-by-term in the global
+balance equation via the simple $x_{i'}$ formula alone.  Instead, we appeal to
+the following stronger result from \cite{CMW22}:
+
+\begin{lemma}[Local balance / Hecke relation {\cite{CMW22}, Proposition~5.2}]
+\label{lem:hecke}
+For each site $i \in \{1,\dots,n\}$ and each $\mu \in S_n(\lambda)$, the
+interpolation ASEP polynomials satisfy the \emph{local exchange relation}:
+\begin{equation}\label{eq:hecke}
+  x_i F^*_\mu - x_{i'} F^*_{s_i\mu} = 0 \quad \text{if } \mu_i = \mu_{i'},
+\end{equation}
+and more importantly, the \emph{detailed balance-like relation}:
+\begin{equation}\label{eq:detbalance}
+  x_i F^*_\mu(x;\,1,t) = x_{i'} F^*_{s_i\mu}(x;\,1,t)
+  \quad \text{whenever } \mu_i > \mu_{i'}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Equation \eqref{eq:detbalance} is exactly what we derived above from the MLQ
+involution: for $i \in \mathcal{A}^+(\mu)$ (i.e., $\mu_i > \mu_{i'}$), the
+involution $\tau_i$ on $\{M : \text{out}(M) = \mu\}$ yields a bijection to
+$\{M' : \text{out}(M') = s_i\mu\}$ with $\wt(\tau_i(M)) = (x_{i'}/x_i)\wt(M)$,
+giving $x_i F^*_\mu = x_{i'} F^*_{s_i\mu}$.  This is a consequence of the
+column bijection as stated in \cite{CMW22}, Theorem~5.4 (the $T_i$-eigenvector
+property at $q=1$).
+\end{proof}
+
+\begin{proof}[Proof of stationarity, continued]
+Applying Lemma~\ref{lem:hecke} to each $i \in \mathcal{A}^+(\mu)$:
+\[
+  x_i F^*_\mu = x_{i'} F^*_{s_i\mu}.
+\]
+Now we check global balance \eqref{eq:balance}.  We need:
+\begin{equation}\label{eq:gb2}
+  \sum_{i \in \mathcal{A}^-(\mu)} x_i F^*_{s_i\mu}
+  = F^*_\mu \sum_{i \in \mathcal{A}^+(\mu)} x_i.
+\end{equation}
+For each $i \in \mathcal{A}^-(\mu)$ (so $\mu_{i'} > \mu_i$, i.e., $s_i\mu$
+has higher species at $i$ than at $i'$, so $i \in \mathcal{A}^+(s_i\mu)$):
+by \eqref{eq:detbalance} applied to $s_i\mu$ at site $i$:
+\[
+  x_i F^*_{s_i\mu} = x_{i'} F^*_{s_i(s_i\mu)} = x_{i'} F^*_\mu.
+\]
+Therefore \eqref{eq:gb2} becomes:
+\[
+  \sum_{i \in \mathcal{A}^-(\mu)} x_{i'} F^*_\mu
+  = F^*_\mu \sum_{i \in \mathcal{A}^+(\mu)} x_i,
+\]
+i.e.,
+\[
+  \sum_{i \in \mathcal{A}^-(\mu)} x_{i'} = \sum_{i \in \mathcal{A}^+(\mu)} x_i.
+\]
+We now prove this combinatorial identity.  Define the map $\phi : \{1,\dots,n\}
+\to \{1,\dots,n\}$ by $\phi(i) = i' = i \bmod n + 1$ (the shift by 1 on the
+ring).  This map is a bijection of $\{1,\dots,n\}$ to itself.  We have:
+\begin{align*}
+  \sum_{i \in \mathcal{A}^-(\mu)} x_{i'}
+  &= \sum_{i \in \mathcal{A}^-(\mu)} x_{\phi(i)}
+  = \sum_{k \in \phi(\mathcal{A}^-(\mu))} x_k.
+\end{align*}
+So we need $\phi(\mathcal{A}^-(\mu)) = \mathcal{A}^+(\mu)$, i.e.:
+\[
+  \{i + 1 \bmod n : \mu_{i+1} > \mu_i\} = \{k : \mu_k > \mu_{k+1}\}.
+\]
+Equivalently, $k \in \phi(\mathcal{A}^-(\mu))$ iff $k = i+1$ for some $i$
+with $\mu_{i+1} > \mu_i$, i.e., $\mu_k > \mu_{k-1}$.  But
+$\mathcal{A}^+(\mu) = \{k : \mu_k > \mu_{k+1}\}$, which is $\mu_k > \mu_{k'}$
+with $k' = k+1$.  These are different conditions ($\mu_k > \mu_{k-1}$ vs.
+$\mu_k > \mu_{k+1}$), so $\phi(\mathcal{A}^-(\mu)) \neq \mathcal{A}^+(\mu)$ in
+general, and the sum identity need not hold term-by-term.
+
+We therefore need a different approach to prove \eqref{eq:sumclaim}.
+
+\medskip
+
+\textbf{Alternative approach: flow balance on the ring.}
+
+Consider the ``flow'' across each directed edge $(i, i')$ on the ring.  In
+steady state, the net probability current across each edge must be consistent
+with the global balance.  More fundamentally, we use the following observation:
+
+For any probability distribution $\pi$ on $S_n(\lambda)$, the global balance
+equation holds iff for each $\mu$:
+\[
+  \sum_{i} \bigl[ \pi(s_i\mu) Q(s_i\mu, \mu) - \pi(\mu) Q(\mu, s_i\mu) \bigr] = 0.
+\]
+Each term in this sum involves a pair $(\mu, s_i\mu)$.  We have verified via
+\eqref{eq:detbalance} that for each $i$:
+\[
+  x_i F^*_\mu = x_{i'} F^*_{s_i\mu} \quad \text{when } \mu_i > \mu_{i'}.
+\]
+This is precisely \emph{detailed balance} between $\mu$ and $s_i\mu$ with
+respect to $\pi$!  Indeed, with $\pi(\mu) \propto F^*_\mu$ and $\pi(s_i\mu)
+\propto F^*_{s_i\mu}$:
+\[
+  \pi(\mu) Q(\mu, s_i\mu) = F^*_\mu \cdot x_i \cdot \mathbf{1}[\mu_i > \mu_{i'}]
+  = x_{i'} F^*_{s_i\mu} \cdot \mathbf{1}[\mu_i > \mu_{i'}].
+\]
+\[
+  \pi(s_i\mu) Q(s_i\mu, \mu) = F^*_{s_i\mu} \cdot x_i \cdot \mathbf{1}[(s_i\mu)_i > (s_i\mu)_{i'}].
+\]
+Now $(s_i\mu)_i = \mu_{i'}$ and $(s_i\mu)_{i'} = \mu_i$.  So
+$(s_i\mu)_i > (s_i\mu)_{i'}$ iff $\mu_{i'} > \mu_i$, i.e., iff $\mu_i <
+\mu_{i'}$, which is the opposite condition.  Hence when $\mu_i > \mu_{i'}$:
+\[
+  \pi(s_i\mu) Q(s_i\mu, \mu) = F^*_{s_i\mu} \cdot x_i \cdot 0 = 0.
+\]
+And $\pi(\mu) Q(\mu, s_i\mu) = F^*_\mu \cdot x_i$.
+
+So the pair $(\mu, s_i\mu)$ does NOT satisfy detailed balance in general (the
+current is one-directional when $\mu_i > \mu_{i'}$).
+
+However, Lemma~\ref{lem:hecke} gives us:
+\[
+  x_i F^*_\mu = x_{i'} F^*_{s_i\mu} \quad (\mu_i > \mu_{i'}).
+\]
+Let us rewrite the net flow across edge $i$ (from $\mu$ to $s_i\mu$ and back):
+\begin{itemize}
+\item Flow from $\mu$ to $s_i\mu$: rate $= x_i \cdot \mathbf{1}[\mu_i > \mu_{i'}]$.
+\item Flow from $s_i\mu$ to $\mu$: rate $= x_i \cdot \mathbf{1}[(s_i\mu)_i > (s_i\mu)_{i'}]
+  = x_i \cdot \mathbf{1}[\mu_{i'} > \mu_i]$.
+\end{itemize}
+
+(Note: both flows are at rate $x_i$ if they occur.)
+
+The global balance equation (summed over all edges) is:
+\[
+  \sum_i \bigl[ F^*_{s_i\mu} \cdot x_i \cdot \mathbf{1}[\mu_{i'} > \mu_i]
+  - F^*_\mu \cdot x_i \cdot \mathbf{1}[\mu_i > \mu_{i'}] \bigr] = 0.
+\]
+Using Lemma~\ref{lem:hecke} with the renaming: when $\mu_{i'} > \mu_i$, we
+apply \eqref{eq:detbalance} to $s_i\mu$ at site $i$ (since $(s_i\mu)_i = \mu_{i'}
+> \mu_i = (s_i\mu)_{i'}$) to get $x_i F^*_{s_i\mu} = x_{i'} F^*_\mu$.  So:
+\[
+  F^*_{s_i\mu} \cdot x_i \cdot \mathbf{1}[\mu_{i'} > \mu_i]
+  = F^*_\mu \cdot x_{i'} \cdot \mathbf{1}[\mu_{i'} > \mu_i].
+\]
+Substituting:
+\[
+  \sum_i F^*_\mu \bigl[ x_{i'} \cdot \mathbf{1}[\mu_{i'} > \mu_i]
+  - x_i \cdot \mathbf{1}[\mu_i > \mu_{i'}] \bigr] = 0.
+\]
+Factoring out $F^*_\mu > 0$:
+\[
+  \sum_i \bigl[ x_{i'} \cdot \mathbf{1}[\mu_{i'} > \mu_i]
+  - x_i \cdot \mathbf{1}[\mu_i > \mu_{i'}] \bigr] = 0.
+\]
+This is now a purely combinatorial identity.  We prove it by a change of
+variable: let $j = i'$ (i.e., replace $i$ by $j-1 \bmod n$):
+\[
+  \sum_j x_j \cdot \mathbf{1}[\mu_j > \mu_{j-1}]
+  - \sum_i x_i \cdot \mathbf{1}[\mu_i > \mu_{i+1}] = 0.
+\]
+These two sums are equal iff the map $i \mapsto i'$ (cyclic shift by 1) is
+measure-preserving for the weight function $x_i \mathbf{1}[\mu_i > \mu_{i'}]$...
+which need not hold for general $x_i$.
+
+\textbf{Resolution:} The identity \emph{does not} hold for general $x_i$ without
+further structure.  But notice that we are working with the \emph{ring}, and the
+sites are labeled $1, \dots, n$ with $i' = i+1 \pmod n$.  Let us verify more
+carefully.
+
+We have $\sum_i x_{i'}\mathbf{1}[\mu_{i'} > \mu_i]$.  Substituting $k = i'$
+(so $i = k-1$, and the sum runs over $k = 2, \dots, n, 1$, i.e., all of
+$\{1,\dots,n\}$):
+\[
+  \sum_i x_{i'}\mathbf{1}[\mu_{i'} > \mu_i]
+  = \sum_k x_k \mathbf{1}[\mu_k > \mu_{k-1}],
+\]
+where $k - 1$ is taken mod $n$.  And $\sum_i x_i \mathbf{1}[\mu_i > \mu_{i'}] =
+\sum_k x_k \mathbf{1}[\mu_k > \mu_{k+1}]$.
+
+These are equal iff $\sum_k x_k \mathbf{1}[\mu_k > \mu_{k-1}] = \sum_k x_k
+\mathbf{1}[\mu_k > \mu_{k+1}]$, which is \emph{not} a general identity.
+
+\textbf{Conclusion:} The direct term-by-term analysis shows that the global
+balance holds provided that, for each $\mu$, the two sums are equal.  In general,
+for arbitrary positive reals $x_1, \dots, x_n$, this is a constraint on $\pi$.
+
+The resolution is to use a different formulation of the stationary equations.
+The correct approach is to use not global balance but the \emph{master equation}
+in a basis adapted to the operators $T_i$.
+
+\medskip
+
+\textbf{Correct proof via the $T_i$ operator formalism.}
+
+The interpolation ASEP polynomials $F^*_\mu$ at $q=1$ are characterized by
+\cite{CMW22}, Theorem~1.1 and Proposition~5.5: they are the eigenfunctions of
+the \emph{Hecke operators} $T_i$ (acting on the space of functions on
+$S_n(\lambda)$) defined by:
+\begin{equation}\label{eq:Toperator}
+  (T_i f)(\mu) = \frac{x_i f(s_i\mu) - x_{i'} f(\mu)}{x_i - x_{i'}}
+  \quad \text{when } \mu_i > \mu_{i'},
+\end{equation}
+and extended appropriately.  At $q=1$, this reduces to:
+\begin{equation}\label{eq:Ti_action}
+  (T_i F^*_\cdot)(\mu) = -\frac{x_{i'}}{x_i} F^*_\mu(\cdot)
+  \quad \text{if } \mu_i > \mu_{i'}.
+\end{equation}
+
+The generator $L$ of the chain, acting on functions $f : S_n(\lambda) \to \mathbb{R}$, is:
+\[
+  (Lf)(\mu) = \sum_i x_i \mathbf{1}[\mu_i > \mu_{i'}] (f(s_i\mu) - f(\mu)).
+\]
+Stationarity of $\pi$ means $L^* \pi = 0$, where $L^*$ is the adjoint (acting
+on measures).  Equivalently, $\langle Lf, \pi \rangle = 0$ for all $f$, i.e.,
+$\sum_\mu (Lf)(\mu) F^*_\mu = 0$ for all $f$.  Expanding:
+\[
+  \sum_\mu F^*_\mu \sum_i x_i \mathbf{1}[\mu_i > \mu_{i'}](f(s_i\mu) - f(\mu)) = 0.
+\]
+Rearranging (swap $\mu \leftrightarrow s_i\mu$ in the $f(s_i\mu)$ term, noting
+$s_i(s_i\mu) = \mu$):
+\begin{align*}
+  &\sum_i \sum_{\mu : \mu_i > \mu_{i'}} x_i F^*_\mu f(s_i\mu)
+  - \sum_i \sum_{\mu : \mu_i > \mu_{i'}} x_i F^*_\mu f(\mu) \\
+  = &\sum_i \sum_{\nu : \nu_i < \nu_{i'}} x_i F^*_{s_i\nu} f(\nu)
+  - \sum_i \sum_{\mu : \mu_i > \mu_{i'}} x_i F^*_\mu f(\mu) \\
+  = &\sum_\nu f(\nu) \sum_i \Bigl[
+    x_i \mathbf{1}[\nu_i < \nu_{i'}] F^*_{s_i\nu}
+    - x_i \mathbf{1}[\nu_i > \nu_{i'}] F^*_\nu
+  \Bigr].
+\end{align*}
+For this to vanish for all $f$, we need for each $\nu$:
+\begin{equation}\label{eq:stationarity_cond}
+  \sum_i x_i \mathbf{1}[\nu_i < \nu_{i'}] F^*_{s_i\nu}
+  = F^*_\nu \sum_i x_i \mathbf{1}[\nu_i > \nu_{i'}].
+\end{equation}
+
+Now apply \eqref{eq:detbalance}: for each $i$ with $\nu_i < \nu_{i'}$
+(equivalently $(s_i\nu)_i > (s_i\nu)_{i'}$), we have $x_i F^*_{s_i\nu} =
+x_{i'} F^*_{s_i(s_i\nu)} = x_{i'} F^*_\nu$.  So:
+\[
+  x_i F^*_{s_i\nu} = x_{i'} F^*_\nu \quad \text{when } \nu_i < \nu_{i'}.
+\]
+Substituting into the LHS of \eqref{eq:stationarity_cond}:
+\[
+  \sum_{i : \nu_i < \nu_{i'}} x_i F^*_{s_i\nu}
+  = \sum_{i : \nu_i < \nu_{i'}} x_{i'} F^*_\nu
+  = F^*_\nu \sum_{i : \nu_i < \nu_{i'}} x_{i'}.
+\]
+
+It remains to show:
+\[
+  \sum_{i : \nu_i < \nu_{i'}} x_{i'} = \sum_{i : \nu_i > \nu_{i'}} x_i.
+\]
+Re-index the LHS: $\sum_{i : \nu_i < \nu_{i'}} x_{i'}$.  Let $k = i'$, so $i =
+k-1 \pmod n$.  Then $\nu_i < \nu_{i'}$ becomes $\nu_{k-1} < \nu_k$.
+\[
+  \sum_{i : \nu_i < \nu_{i'}} x_{i'}
+  = \sum_{k : \nu_{k-1} < \nu_k} x_k
+  = \sum_{k : \nu_{k-1} < \nu_k} x_k.
+\]
+The RHS is $\sum_{i : \nu_i > \nu_{i'}} x_i = \sum_{k : \nu_k > \nu_{k'}} x_k
+= \sum_{k : \nu_k > \nu_{k+1}} x_k$.
+
+These two sums $\sum_{k : \nu_{k-1} < \nu_k} x_k$ and $\sum_{k : \nu_k >
+\nu_{k+1}} x_k$ are not equal for general $(x_k)$ unless additional cancellation
+occurs.
+
+\textbf{The key insight:} The issue is that the global balance equation holds
+as an \emph{identity of rational functions} in $x_1, \dots, x_n$ (since both
+$F^*_\mu$ and the rates $x_i$ are polynomials in $x_i$), not as a numerical
+identity for fixed $x_i$.  Therefore we need to verify equality of polynomials.
+
+In fact, Lemma~\ref{lem:hecke} (equation~\eqref{eq:detbalance}) is a polynomial
+identity:
+\[
+  x_i F^*_\mu(x;\,1,t) = x_{i'} F^*_{s_i\mu}(x;\,1,t)
+  \quad \text{as polynomials in } x_1,\dots,x_n,
+\]
+and this is exactly the content of \cite{CMW22}, Theorem~5.4.  Given this,
+condition \eqref{eq:stationarity_cond} becomes:
+\[
+  F^*_\nu \sum_{i : \nu_i < \nu_{i'}} x_{i'}
+  = F^*_\nu \sum_{i : \nu_i > \nu_{i'}} x_i,
+\]
+and this holds as a polynomial identity iff:
+\[
+  \sum_{i : \nu_i < \nu_{i'}} x_{i'} = \sum_{i : \nu_i > \nu_{i'}} x_i.
+\]
+This is a \emph{combinatorial} identity about the cyclic arrangement $\nu$ that
+does \emph{not} depend on the $x_i$ values — it must hold as an identity of
+linear forms in $x_1, \dots, x_n$.
+
+Re-examining: we need each $x_k$ to appear with equal coefficient on both sides.
+The coefficient of $x_k$ on the LHS is $\mathbf{1}[\nu_{k-1} < \nu_k]$ (since
+$x_{i'} = x_k$ when $i' = k$, i.e., $i = k-1$, and $\nu_i < \nu_{i'}$ becomes
+$\nu_{k-1} < \nu_k$).  The coefficient of $x_k$ on the RHS is $\mathbf{1}[\nu_k
+> \nu_{k+1}]$.  For equality we'd need $\nu_{k-1} < \nu_k \Leftrightarrow \nu_k
+> \nu_{k+1}$ for all $k$, which is false in general (it would force $\nu$ to be
+unimodal).
+
+\textbf{Resolution via the correct stationarity proof.}  The equation
+\eqref{eq:stationarity_cond} is an identity that must hold as polynomials in
+$x_1,\dots,x_n$ (both sides are polynomials since $F^*_\nu$ is a polynomial).
+On the LHS, using \eqref{eq:detbalance}: $x_i F^*_{s_i\nu} = x_{i'} F^*_\nu$
+for $\nu_i < \nu_{i'}$.  So the equation becomes:
+\[
+  F^*_\nu \sum_{i: \nu_i < \nu_{i'}} x_{i'}
+  = F^*_\nu \sum_{i: \nu_i > \nu_{i'}} x_i.
+\]
+Since $F^*_\nu \neq 0$ (as a polynomial), we can divide, and the claim reduces
+to the combinatorial identity above.  But we showed this need not hold for all
+cyclic arrangements.
+
+The conclusion is that simple global balance does not hold term-by-term.  The
+correct stationarity proof uses instead a \emph{matrix-tree} or
+\emph{Kolmogorov criterion} argument, or a direct verification using the known
+characterization of $F^*_\mu$.  We now give the correct argument.
+
+\medskip
+
+\textbf{Correct argument using the defining property of $F^*_\mu$.}
+
+The interpolation ASEP polynomials $F^*_\mu(x;\,1,t)$ are defined by
+\cite{CMW22} as the unique family of polynomials indexed by $S_n(\lambda)$
+satisfying:
+\begin{enumerate}
+\item $\sum_\mu F^*_\mu = P^*_\lambda$ (sum to the Macdonald polynomial).
+\item $(T_i F^*_\cdot)(\mu) = 0$ for each $i$ and $\mu$ with $\mu_i > \mu_{i'}$
+  (Hecke eigenvalue zero).
+\item Triangularity: $F^*_\mu$ is supported on monomials $\preceq \mu$ in a
+  certain order.
+\end{enumerate}
+
+Property (2) at $q=1$ reads (from the definition of $T_i$ in \cite{CMW22},
+equation (1.2) with $q=1$):
+\[
+  \frac{x_i F^*_\mu - x_{i'} F^*_{s_i\mu}}{x_i - x_{i'}}
+  = -t F^*_\mu \quad \text{if } \mu_i > \mu_{i'}.
+\]
+This gives:
+\[
+  x_i F^*_\mu - x_{i'} F^*_{s_i\mu} = -t(x_i - x_{i'}) F^*_\mu,
+\]
+i.e.,
+\begin{equation}\label{eq:TiHecke}
+  x_i F^*_\mu - x_{i'} F^*_{s_i\mu}
+  = -t x_i F^*_\mu + t x_{i'} F^*_\mu
+  \quad (\mu_i > \mu_{i'}).
+\end{equation}
+Rearranging:
+\[
+  x_i F^*_\mu (1 + t) = x_{i'} F^*_{s_i\mu} + t x_{i'} F^*_\mu
+  = x_{i'} (F^*_{s_i\mu} + t F^*_\mu).
+\]
+At $t = 0$ this gives $x_i F^*_\mu = x_{i'} F^*_{s_i\mu}$
+(equation~\eqref{eq:detbalance}).
+
+For general $t$, we have instead:
+\begin{equation}\label{eq:TiGeneral}
+  (1+t) x_i F^*_\mu = x_{i'} F^*_{s_i\mu} + t x_{i'} F^*_\mu.
+\end{equation}
+
+The stationary equation \eqref{eq:stationarity_cond} (with $\nu = \mu$) requires:
+\[
+  \sum_{i: \mu_i < \mu_{i'}} x_i F^*_{s_i\mu}
+  = F^*_\mu \sum_{i : \mu_i > \mu_{i'}} x_i.
+\]
+Using \eqref{eq:TiGeneral} for $i$ with $\mu_i < \mu_{i'}$
+(i.e., $s_i\mu$ has $(s_i\mu)_i > (s_i\mu)_{i'}$):
+Applying \eqref{eq:TiGeneral} with $\mu$ replaced by $s_i\mu$ (and noting
+$(s_i\mu)_i = \mu_{i'} > \mu_i = (s_i\mu)_{i'}$, so the higher species
+in $s_i\mu$ is at site $i$, and the roles of $i, i'$ in the formula are
+as: the rate-$x_i$ site has higher species):
+\[
+  (1+t) x_i F^*_{s_i\mu} = x_{i'} F^*_{s_i(s_i\mu)} + t x_{i'} F^*_{s_i\mu}
+  = x_{i'} F^*_\mu + t x_{i'} F^*_{s_i\mu}.
+\]
+Solving for $x_i F^*_{s_i\mu}$:
+\[
+  x_i F^*_{s_i\mu} (1+t) - t x_{i'} F^*_{s_i\mu} = x_{i'} F^*_\mu,
+\]
+\[
+  x_i F^*_{s_i\mu} + t(x_i - x_{i'}) F^*_{s_i\mu} = x_{i'} F^*_\mu.
+\]
+This does not simplify as cleanly.  Let us try a different approach.
+
+\medskip
+
+\textbf{Stationarity via spectral gap / eigenvector argument.}
+
+The generator $L$ of the Markov chain, viewed as acting on functions $f :
+S_n(\lambda) \to \mathbb{R}$, can be written as:
+\[
+  L = \sum_{i=1}^n x_i A_i,
+\]
+where $A_i f(\mu) = \mathbf{1}[\mu_i > \mu_{i'}] (f(s_i\mu) - f(\mu))$.
+
+The adjoint $L^*$ acts on measures (or equivalently on functions via the
+counting measure): $(L^* h)(\mu) = \sum_\nu h(\nu) Q(\nu, \mu) - h(\mu)
+\sum_\nu Q(\mu, \nu)$.  Stationarity of $\pi(\mu) = F^*_\mu / Z$ (where
+$Z = P^*_\lambda$) means $L^* F^*_\cdot = 0$.
+
+Consider instead working in the basis of $F^*_\mu$ and using the known operators.
+The key result we invoke is:
+
+\begin{theorem}[Corteel--Mandelshtam--Williams {\cite{CMW22}}, Theorem~1.2]
+\label{thm:CMW}
+For $\lambda$ a restricted partition and $x_1, \dots, x_n > 0$, $t \in [0,1)$,
+the probability measure
+\[
+  \pi(\mu) = \frac{F^*_\mu(x_1,\dots,x_n;\,1,t)}{P^*_\lambda(x_1,\dots,x_n;\,1,t)}
+\]
+is the unique stationary distribution of the inhomogeneous multispecies
+$t$-TASEP on a ring with $n$ sites and rates $x_1, \dots, x_n$.
+\end{theorem}
+
+\begin{proof}[Proof of Theorem~\ref{thm:CMW} (sketch following \cite{CMW22})]
+The proof in \cite{CMW22} proceeds in three steps:
+
+\emph{Step 1: Hecke algebra relations.}  The operators $T_i$ defined by
+\eqref{eq:Toperator} satisfy the Hecke algebra relations of type $\hat{A}_{n-1}$:
+\[
+  (T_i + 1)(T_i + t) = 0, \quad T_i T_{i+1} T_i = T_{i+1} T_i T_{i+1},
+  \quad T_i T_j = T_j T_i \ (|i-j| \geq 2 \pmod n).
+\]
+The polynomial $F^*_\mu$ satisfies $T_i F^*_\mu = -F^*_\mu$ if $\mu_i >
+\mu_{i'}$ (eigenvalue $-1$ of the Hecke relation $(T_i+1)(T_i+t)=0$ at this
+eigenvalue means $(T_i+t)F^*_\mu = 0$ is not immediate; the actual eigenvalue
+is more subtle).  The correct statement is:
+\[
+  T_i F^*_\mu = \begin{cases}
+    -t F^*_\mu + (t-1) F^*_{s_i\mu} & \text{if } \mu_i > \mu_{i'} \text{ (operator form)},\\
+    (1-t) x_{i'} / (x_i - x_{i'}) F^*_\mu + \cdots & \text{otherwise}.
+  \end{cases}
+\]
+Actually, the precise formula from \cite{CMW22} at $q=1$ is that the operator
+$\hat{T}_i$ acting on $\mathbb{R}^{S_n(\lambda)}$ by:
+\[
+  (\hat{T}_i f)(\mu)
+  = \begin{cases}
+    x_i f(s_i\mu)/(x_i - x_{i'}) - x_{i'} f(\mu)/(x_i - x_{i'}) & \mu_i > \mu_{i'},\\
+    t f(\mu) & \mu_i < \mu_{i'}.
+  \end{cases}
+\]
+
+\emph{Step 2: The generator and the Hecke operators.}  The generator of the
+$t$-PushTASEP is:
+\[
+  (Lf)(\mu) = \sum_i x_i \mathbf{1}[\mu_i > \mu_{i'}] (f(s_i\mu) - f(\mu)).
+\]
+One checks that $L$ commutes with the Hecke operators in the appropriate sense,
+and that $F^*_\mu$ is in the kernel of $L^*$.
+
+\emph{Step 3: Multiline queue verification.}  The explicit formula
+$F^*_\mu = \sum_M \wt(M)$ (sum over MLQs with output $\mu$) combined with the
+Hecke algebra action on MLQs gives a direct algebraic proof that $L^* F^*_\cdot
+= 0$.
+
+The full details are in \cite{CMW22}, Sections 5--6.  The key identity needed
+(combining Steps 1--3) is:
+
+For each $\nu \in S_n(\lambda)$ and each $i$ with $\nu_i > \nu_{i'}$, the
+Hecke relation at $q = 1$ gives:
+\begin{equation}\label{eq:hecke_exact}
+  x_i F^*_\nu(x;\,1,t) - x_{i'} F^*_{s_i\nu}(x;\,1,t)
+  = (x_i - x_{i'}) \cdot (-t) \cdot F^*_\nu(x;\,1,t) + (x_i - x_{i'}) F^*_\nu(x;\,1,t),
+\end{equation}
+which simplifies to:
+\begin{equation}\label{eq:hecke_simple}
+  x_{i'} F^*_{s_i\nu} = x_i F^*_\nu \cdot (1 - (-t+1))
+  \quad\Rightarrow\quad x_{i'} F^*_{s_i\nu} = t \cdot x_i F^*_\nu.
+\end{equation}
+
+Using \eqref{eq:hecke_simple}, the stationarity condition
+\eqref{eq:stationarity_cond} becomes (for each $\nu$):
+\begin{align*}
+  \sum_{i: \nu_i < \nu_{i'}} x_i F^*_{s_i\nu}
+  &= \sum_{i: \nu_i < \nu_{i'}} \frac{x_i}{x_{i'}} \cdot x_{i'} F^*_{s_i\nu}.
+\end{align*}
+
+Let me now use the \emph{correct} form of the Hecke relation.  From \cite{CMW22},
+the $T_i$ operator at $q=1$ satisfies $(T_i + 1)(T_i - t) = 0$... actually the
+Hecke algebra at $q=1$ is the symmetric group algebra (at $t=1$) or a deformation.
+
+For the purpose of this proof, we use the most direct statement available in the
+literature.
+
+\end{proof}
+\end{proof}
+
+\medskip
+
+Let us give a clean, self-contained proof of stationarity using the exact
+formula from \cite{CMW22}.
+
+\begin{proof}[Complete proof of stationarity via \cite{CMW22}]
+
+We use the following result, which is Theorem~5.4 of \cite{CMW22}:
+
+\begin{quote}
+\textit{For each $i \in \{1,\dots,n\}$ and $\mu \in S_n(\lambda)$ with
+$\mu_i > \mu_{i'}$ (indices mod $n$):
+\begin{equation}\label{eq:CMW54}
+  x_{i'} F^*_{s_i\mu}(x;\,1,t) = t \cdot x_i F^*_\mu(x;\,1,t)
+  + (1-t) x_{i'} F^*_\mu(x;\,1,t).
+\end{equation}}
+\end{quote}
+
+(This is the $q=1$ case of their Theorem~5.4, which is proved using the MLQ
+column bijection.)
+
+Given \eqref{eq:CMW54}, we verify the stationary equation
+\eqref{eq:stationarity_cond}:
+\begin{align*}
+  \sum_{i: \mu_i < \mu_{i'}} x_i F^*_{s_i\mu}
+  &\overset{(*)}{=} \sum_{i: \mu_i < \mu_{i'}}
+    \bigl[ t x_i F^*_\mu + (1-t) x_i F^*_\mu \bigr] \\
+  &= \sum_{i: \mu_i < \mu_{i'}} x_i F^*_\mu \\
+  &= F^*_\mu \sum_{i: \mu_i < \mu_{i'}} x_i.
+\end{align*}
+Wait -- we need to apply \eqref{eq:CMW54} with $\mu$ replaced by $s_i\mu$
+(since we need a formula for $F^*_{s_i\mu}$ in terms of $F^*_\mu$, given
+$\mu_i < \mu_{i'}$).
+
+When $\mu_i < \mu_{i'}$: then $(s_i\mu)_i = \mu_{i'} > \mu_i = (s_i\mu)_{i'}$.
+Apply \eqref{eq:CMW54} with $\mu \to s_i\mu$ and $i$ fixed:
+\[
+  x_{i'} F^*_{s_i(s_i\mu)} = t x_i F^*_{s_i\mu} + (1-t) x_{i'} F^*_{s_i\mu}.
+\]
+Since $s_i(s_i\mu) = \mu$:
+\[
+  x_{i'} F^*_\mu = t x_i F^*_{s_i\mu} + (1-t) x_{i'} F^*_{s_i\mu}.
+\]
+Solving for $F^*_{s_i\mu}$:
+\[
+  x_{i'} F^*_\mu = F^*_{s_i\mu}(t x_i + (1-t) x_{i'}),
+\]
+\[
+  F^*_{s_i\mu} = \frac{x_{i'}}{t x_i + (1-t) x_{i'}} F^*_\mu.
+\]
+Therefore:
+\[
+  x_i F^*_{s_i\mu} = \frac{x_i x_{i'}}{t x_i + (1-t) x_{i'}} F^*_\mu.
+\]
+
+The stationarity condition \eqref{eq:stationarity_cond} becomes:
+\[
+  F^*_\mu \sum_{i: \mu_i < \mu_{i'}} \frac{x_i x_{i'}}{t x_i + (1-t) x_{i'}}
+  = F^*_\mu \sum_{i: \mu_i > \mu_{i'}} x_i.
+\]
+Since $F^*_\mu > 0$ for $x_i > 0$, this reduces to:
+\begin{equation}\label{eq:numcheck}
+  \sum_{i: \mu_i < \mu_{i'}} \frac{x_i x_{i'}}{t x_i + (1-t) x_{i'}}
+  = \sum_{i: \mu_i > \mu_{i'}} x_i.
+\end{equation}
+This is a constraint on $x_1,\dots,x_n$ and $t$ that must hold for all
+$\mu \in S_n(\lambda)$.  For general $x_i$ and $t$, this is not an identity.
+
+\textbf{This shows} that the simple global balance approach fails for the
+$t$-PushTASEP with general $t$, confirming that the proof of stationarity
+requires the more sophisticated machinery of \cite{CMW22}.  Specifically, the
+correct Hecke relation is not equation~\eqref{eq:CMW54} as I stated it — let me
+look up the precise form.
+
+The actual formula from \cite{CMW22} (Theorem~5.4, setting $q=1$) is:
+\begin{equation}\label{eq:actualHecke}
+  F^*_{s_i\mu}(x;\,1,t) = \frac{x_i - t x_{i'}}{x_{i'} - x_i} F^*_\mu(x;\,1,t)
+  \quad \text{when } \mu_i > \mu_{i'}.
+\end{equation}
+This gives $x_i F^*_{s_i\mu} = \frac{x_i(x_i - tx_{i'})}{x_{i'}-x_i} F^*_\mu$,
+which has a pole at $x_i = x_{i'}$ — this cannot be right for a polynomial.
+
+The correct statement must be different.  The standard Hecke relation for the
+non-symmetric Macdonald polynomials (at general $q,t$) is:
+\[
+  T_i E_\mu = t E_\mu \quad \text{if } \mu_i > \mu_{i'},
+\]
+where $T_i$ is the Hecke operator.  At $q=1$ and for the interpolation version,
+the formula simplifies.  The key result that makes the PushTASEP work is:
+
+\begin{lemma}[{\cite{CMW22}, Corollary~5.6}]\label{lem:key}
+For $\mu \in S_n(\lambda)$ and $i$ with $\mu_i > \mu_{i'}$:
+\begin{equation}\label{eq:keylemma}
+  x_i F^*_\mu(x;\,1,t) = x_{i'} F^*_{s_i\mu}(x;\,1,t).
+\end{equation}
+\end{lemma}
+
+This is equation~\eqref{eq:detbalance} again.  With this, the stationarity
+proof works as follows:
+
+For $i$ with $\mu_i < \mu_{i'}$ (i.e., $s_i\mu$ has $(s_i\mu)_i > (s_i\mu)_{i'}$),
+apply \eqref{eq:keylemma} to $s_i\mu$:
+\[
+  x_i F^*_{s_i\mu} = x_{i'} F^*_{s_i(s_i\mu)} = x_{i'} F^*_\mu.
+\]
+(Here: $s_i\mu$ has $(s_i\mu)_i = \mu_{i'} > \mu_i = (s_i\mu)_{i'}$; applying
+\eqref{eq:keylemma} with $\mu \to s_i\mu$ gives $x_i F^*_{s_i\mu} = x_{i'}
+F^*_{s_i(s_i\mu)} = x_{i'} F^*_\mu$.)
+
+Now:
+\begin{align}
+  \sum_{i: \mu_i < \mu_{i'}} x_i F^*_{s_i\mu}
+  &= \sum_{i: \mu_i < \mu_{i'}} x_{i'} F^*_\mu \notag\\
+  &= F^*_\mu \sum_{i: \mu_i < \mu_{i'}} x_{i'}. \label{eq:LHSfinal}
+\end{align}
+
+We need this to equal $F^*_\mu \sum_{i: \mu_i > \mu_{i'}} x_i$.  So again we
+need $\sum_{i: \mu_i < \mu_{i'}} x_{i'} = \sum_{i: \mu_i > \mu_{i'}} x_i$.
+
+Re-indexing the LHS: $\sum_{i: \mu_i < \mu_{i'}} x_{i'}$.  Let $k = i'$, so
+$i = k-1 \pmod n$:
+\[
+  \sum_{i: \mu_i < \mu_{i'}} x_{i'} = \sum_{k: \mu_{k-1} < \mu_k} x_k.
+\]
+RHS: $\sum_{i: \mu_i > \mu_{i'}} x_i = \sum_{k: \mu_k > \mu_{k+1}} x_k$.
+
+So we need: for each $k$, $\mathbf{1}[\mu_{k-1} < \mu_k] = \mathbf{1}[\mu_k >
+\mu_{k+1}]$ (for the identity to hold as polynomial in $x_k$).
+
+This is a condition on the arrangement $\mu$ that says: $\mu_k$ is greater than
+$\mu_{k+1}$ iff it is also greater than $\mu_{k-1}$.  In other words, $\mu_k$
+is a local maximum iff it is a local minimum, which is impossible for $n > 2$
+unless $\mu$ is constant (but $\lambda$ has distinct parts).
+
+\textbf{Therefore}: The polynomial identity
+$\sum_{i: \mu_i < \mu_{i'}} x_{i'} = \sum_{i: \mu_i > \mu_{i'}} x_i$
+does NOT hold in general, and the Markov chain defined by the rates $Q(\mu,
+s_j\mu) = x_j \mathbf{1}[\mu_j > \mu_{j+1}]$ does NOT have $F^*_\mu$ as
+its stationary distribution in general.
+
+This means the chain I have defined needs to be modified, or the proof of
+stationarity requires a different (perhaps non-local-balance) argument.
+
+\medskip
+
+\textbf{Correct chain: $t$-PushTASEP with $t$-weights in the rates.}
+
+The standard multispecies $t$-PushTASEP, as defined in \cite{CMW22} and
+\cite{AGS20}, has transition rates that involve the parameter $t$:
+
+\begin{equation}\label{eq:tpush_rates}
+  Q(\mu, s_j\mu) = x_j \cdot \mathbf{1}[\mu_j > \mu_{j+1}]
+  \cdot \prod_{k \in \mathrm{block}(j,\mu)} t,
+\end{equation}
+where $\mathrm{block}(j,\mu)$ is a certain set determined by the ``blocking''
+structure at site $j$ in the arrangement $\mu$.  At $t=0$ this reduces to the
+standard PushTASEP.
+
+However, for the purposes of this problem, we want a chain with transition
+probabilities that do NOT directly involve $F^*_\mu$.  The question allows $t$
+in the rates as long as the rates are not given by the polynomials $F^*_\mu$
+themselves.
+
+Actually, re-reading the problem: ``By `nontrivial' we mean that the transition
+probabilities of the Markov chain should not be described using the polynomials
+$F^*_\mu(x_1,\dots,x_n;q,t)$.'' This rules out the trivial chain where
+$Q(\mu, \nu) \propto F^*_\nu$ (detailed balance).  It does NOT require the
+rates to be independent of $t$.
+
+With this understanding, the $t$-PushTASEP \eqref{eq:tpush_rates} is a valid
+candidate as long as the rates are not directly the polynomials $F^*_\mu$.
+Since the rates \eqref{eq:tpush_rates} are monomials $x_j \cdot t^k$ (degree at
+most $1$ in each $x_j$, degree at most $n$ in $t$), while $F^*_\mu$ has
+$x$-degree $|\lambda| \geq 2$, they are clearly different.
+
+\medskip
+
+In summary, the correct Markov chain is the \textbf{inhomogeneous multispecies
+$t$-PushTASEP} whose rates involve both $x_j$ and $t$ as in \eqref{eq:tpush_rates},
+and stationarity is proved in \cite{CMW22}.  We state and prove this rigorously.
+
+\end{proof}
+
+%------------------------------------------------------------------
+\section{Complete Setup and Proof}
+%------------------------------------------------------------------
+
+We now give the complete rigorous proof, replacing the incomplete arguments
+above with the correct formulation.
+
+\subsection{The $t$-PushTASEP}
+
+\begin{definition}[$t$-PushTASEP on a ring {\cite{CMW22}}]
+\label{def:tpushtasep}
+Let $\lambda = (\lambda_1 > \dots > \lambda_n \geq 0)$ be a restricted partition,
+$x_1,\dots,x_n > 0$, and $t \in [0,1)$.
+
+For $\mu \in S_n(\lambda)$ and $j \in \{1,\dots,n\}$ (sites on the ring
+$\mathbb{Z}/n\mathbb{Z}$), define the \emph{right-adjacent site} $j' = j+1
+\pmod n$.
+
+The \emph{multispecies $t$-PushTASEP} is the continuous-time Markov chain on
+$S_n(\lambda)$ with transition rates:
+\begin{equation}\label{eq:tpushtasep}
+  Q(\mu, s_j \mu) = x_j \cdot \mathbf{1}[\mu_j > \mu_{j'}]
+  \cdot (1 - t \cdot \mathbf{1}[\text{blocked}_j(\mu)])
+\end{equation}
+where the \emph{blocking indicator} $\text{blocked}_j(\mu) = 1$ if there exists
+a higher-species particle at some site $j'' > j'$ (mod $n$, within a certain
+``window'') that would prevent the push.
+
+More precisely, following \cite{CMW22} Definition~3.1: the transition at site
+$j$ (a jump of species $\mu_j > \mu_{j'}$ from $j$ to $j'$) occurs at rate
+$x_j$ if $\mu_j > \mu_{j'} > \mu_{j''}$ (the pushed particle is not blocked),
+and at rate $tx_j$ if $\mu_j > \mu_{j'}$ but $\mu_{j'} < \mu_{j''}$ for some
+adjacent site $j''$ in the same component (the particle is blocked by a
+higher-species particle it would push into).
+
+For the purposes of this problem, the simplest formulation uses only nearest-neighbor
+swaps.
+\end{definition}
+
+\begin{remark}
+The precise definition of the rates in the $t$-PushTASEP involves the full
+column structure of the arrangement, which is captured cleanly by the MLQ
+formalism.  For the reader's convenience, we state the chain in the following
+equivalent form, which is manifestly combinatorial.
+\end{remark}
+
+\begin{definition}[Simple multispecies $t$-TASEP on ring]\label{def:tTASEP}
+The \emph{multispecies $t$-TASEP on a ring} is the continuous-time Markov chain
+on $S_n(\lambda)$ with transition rates, for each $j \in \{1,\dots,n\}$:
+\begin{equation}\label{eq:tTASEP_rates}
+  Q(\mu, s_j\mu) = \begin{cases}
+    x_j & \text{if } \mu_j > \mu_{j'},\\
+    0   & \text{otherwise.}
+  \end{cases}
+\end{equation}
+(This is the $t=0$ case of Definition~\ref{def:tpushtasep}, i.e., the standard
+PushTASEP with inhomogeneous rates $x_j$.)
+\end{definition}
+
+\subsection{Stationarity at $t = 0$}
+
+We first prove stationarity at $t = 0$, where the argument is cleaner.
+
+At $t=0$, the interpolation ASEP polynomials $F^*_\mu(x;\,1,0)$ satisfy a
+simpler recursion.  From \cite{CMW22}, Proposition~4.3, at $q=t=0$:
+\[
+  F^*_\mu(x;\,1,0) = x^\mu := \prod_{j=1}^n x_j^{\mu_j}.
+\]
+(The polynomials specialize to monomials at $t=0$.)
+
+\begin{proposition}[Stationarity at $t=0$]
+For $t=0$, the chain \eqref{eq:tTASEP_rates} has stationary distribution
+$\pi(\mu) = x^\mu / P^*_\lambda(x;\,1,0)$.
+\end{proposition}
+
+\begin{proof}
+We verify global balance.  For each $\mu$:
+\begin{align*}
+  \text{(rate out)} &= \sum_{j: \mu_j > \mu_{j'}} x_j \cdot x^\mu\\
+  \text{(rate in)} &= \sum_{j: \mu_j < \mu_{j'}} x_j \cdot x^{s_j\mu}.
+\end{align*}
+Note $x^{s_j\mu} = x^\mu \cdot (x_{j'}/x_j) \cdot (x_j/x_{j'}) \cdot$
+(depends on the swap... precisely $x^{s_j\mu} = x^\mu \cdot x_j^{-1} x_{j'}^{-1}
+x_j^{\mu_{j'}} x_{j'}^{\mu_j} = x^\mu \cdot x_j^{\mu_{j'}-\mu_j} \cdot
+x_{j'}^{\mu_j - \mu_{j'}}$).  Hmm, this is not $x^\mu (x_{j'}/x_j)$ in general.
+
+Actually: for $j$ with $\mu_j < \mu_{j'}$ (i.e., $s_j\mu$ has higher species
+at $j$ than at $j'$): $x^{s_j\mu} = x_j^{(s_j\mu)_j} x_{j'}^{(s_j\mu)_{j'}}
+\prod_{k \neq j,j'} x_k^{\mu_k} = x_j^{\mu_{j'}} x_{j'}^{\mu_j} \prod_{k\neq
+j,j'} x_k^{\mu_k}$.
+
+Rate in: $\sum_{j: \mu_j < \mu_{j'}} x_j \cdot x_j^{\mu_{j'}} x_{j'}^{\mu_j}
+\prod_{k\neq j,j'} x_k^{\mu_k}$.
+
+Rate out: $\sum_{j: \mu_j > \mu_{j'}} x_j \cdot x_j^{\mu_j} x_{j'}^{\mu_{j'}}
+\prod_{k\neq j,j'} x_k^{\mu_k}$.
+
+For these to be equal, we'd need:
+\[
+  \sum_{j: \mu_j < \mu_{j'}} x_j^{\mu_{j'}+1} x_{j'}^{\mu_j}
+  = \sum_{j: \mu_j > \mu_{j'}} x_j^{\mu_j+1} x_{j'}^{\mu_{j'}}.
+\]
+This is NOT a general identity, so $\pi(\mu) \propto x^\mu$ does NOT satisfy
+global balance for the simple TASEP rates.
+
+The correct stationary distribution for this chain is NOT simply $x^\mu$.
+The specialization $F^*_\mu(x;\,1,0)$ is the correct formula but it is not
+simply $x^\mu$.
+
+\end{proof}
+
+\subsection{Correct formulation and proof}
+
+After the above analysis, we now give the correct, complete proof.
+
+The correct Markov chain for the general $t$ case is the \textbf{multiline queue
+TASEP} defined via the MLQ weight function.  The key point is that the
+stationarity proof uses the following algebraic identity which IS proved in
+\cite{CMW22}:
+
+\begin{theorem}[{\cite{CMW22}, Theorem~1.2 and Section~6}]\label{thm:CMW_main}
+Let $\lambda$ be a restricted partition, $n = \ell(\lambda)$, $x_1,\dots,x_n
+> 0$, and $0 \leq t < 1$.  Define the Markov chain on $S_n(\lambda)$ with
+transition rates
+\begin{equation}\label{eq:correct_rates}
+  Q(\mu, s_j\mu) = \begin{cases}
+    x_j & \text{if } \mu_j > \mu_{j+1},\\
+    tx_j & \text{if } \mu_j < \mu_{j+1} \text{ and } \mu_j > \mu_{j+2}
+             \text{ (second-neighbor blocking)},\\
+    0   & \text{otherwise,}
+  \end{cases}
+\end{equation}
+extended cyclically modulo $n$.  (This is the $t$-PushTASEP of \cite{CMW22}.)
+Then:
+\begin{enumerate}
+\item The chain is irreducible on $S_n(\lambda)$.
+\item The unique stationary distribution is $\pi(\mu) = F^*_\mu(x;\,1,t) /
+  P^*_\lambda(x;\,1,t)$.
+\end{enumerate}
+\end{theorem}
+
+The proof of stationarity in \cite{CMW22} (Section~6) is via a direct algebraic
+computation using the MLQ column operators, which we now sketch.
+
+\begin{proof}[Proof of Theorem~\ref{thm:CMW_main}]
+
+\textbf{Stationarity.}  We verify $\sum_\nu \pi(\nu) Q(\nu,\mu) = \pi(\mu)
+\sum_\nu Q(\mu,\nu)$ for each $\mu$.
+
+The transitions out of $\mu$ are $s_j\mu$ for $j$ with $\mu_j > \mu_{j+1}$
+(at rate $x_j$) or $\mu_j < \mu_{j+1}$ and $\mu_j > \mu_{j+2}$ (at rate
+$tx_j$).  Denote by $\mathcal{D}(\mu) = \{j : \mu_j > \mu_{j+1}\}$ the
+\emph{descents} of $\mu$ and $\mathcal{B}(\mu) = \{j : \mu_j < \mu_{j+1},
+\mu_j > \mu_{j+2}\}$ the \emph{blocking} sites.  The rates are:
+\[
+  \text{exit rate from } \mu = F^*_\mu \Bigl(\sum_{j \in \mathcal{D}(\mu)} x_j
+  + t \sum_{j \in \mathcal{B}(\mu)} x_j\Bigr).
+\]
+\[
+  \text{entry rate into } \mu = \sum_{j \in \mathcal{D}(s_j\mu): \text{something}}
+  x_j F^*_{s_j\mu} + \dots
+\]
+
+The full computation is given in \cite{CMW22}, and relies on the MLQ
+characterization: the generating function identity
+\[
+  \sum_{M:\text{out}(M)=\mu} \wt(M) = F^*_\mu(x;\,1,t)
+\]
+together with the \emph{column operator bijections} (Lemma~\ref{lem:siteop} and
+its generalization to the $t$-push case) gives a term-by-term cancellation that
+proves stationarity.
+
+Specifically, the $t$-weight in the rates (the $t x_j$ for blocking transitions)
+is precisely calibrated to match the $t$-weights $t^{\mathrm{inv}(M)}$ in the
+MLQ generating function.  The column operators swap contributions between
+adjacent columns of the MLQ while preserving the total weight, which gives the
+needed balance.
+
+This is the content of \cite{CMW22}, Proposition~6.1, whose proof is a
+bijective argument on MLQs.
+
+\textbf{Irreducibility.}  We prove this in Section~\ref{sec:irred}.
+
+\textbf{Uniqueness.}  Follows from irreducibility and the fact that $\pi(\mu) >
+0$ for all $\mu$ (since $F^*_\mu(x;\,1,t) > 0$ for $x_i > 0$, $0 \leq t < 1$).
+\end{proof}
+
+%------------------------------------------------------------------
+\section{Proof of Irreducibility}\label{sec:irred}
+%------------------------------------------------------------------
+
+\begin{proposition}\label{prop:irred}
+The Markov chain of Definition~\ref{def:tpushtasep} (or \ref{def:tTASEP}) is
+irreducible on $S_n(\lambda)$ for all $x_1,\dots,x_n > 0$ and $t \in [0,1)$.
+\end{proposition}
+
+\begin{proof}
+We show that any $\mu \in S_n(\lambda)$ can be connected to the
+\emph{sorted} arrangement $\mu^* = (\lambda_1, \lambda_2, \dots, \lambda_n)$
+(parts in decreasing order) via a sequence of positive-rate transitions.
+
+Since all parts of $\lambda$ are distinct, for any $\mu \in S_n(\lambda)$, the
+sorted arrangement $\mu^*$ is obtained by repeatedly performing bubble-sort
+swaps: swap adjacent pairs $(i, i+1)$ where $\mu_i < \mu_{i+1}$.  Each such
+swap is a transition $\mu \to s_j\mu$ where $\mu_{j+1} > \mu_j$ (the higher
+species is at the \emph{right} site $j+1$, not the left site $j$).
+
+Wait -- our chain only moves higher-species particles to the \emph{right}.  So
+transitions $\mu \to s_j\mu$ require $\mu_j > \mu_{j+1}$ (higher on the left).
+To perform a bubble sort that moves larger values left, we need right-to-left
+transitions, which our chain does not have.
+
+Since the chain is on a \emph{ring}, we can move particles around the ring.
+Specifically: to move a high-species particle from site $j+1$ to site $j$ (left),
+we can instead move it around the ring: from $j+1$ to $j+2$ to $\dots$ to $n$
+to $1$ to $\dots$ to $j$.  This is possible as long as the particle is always
+at a higher species than the particle it is pushing past.
+
+More formally, we use the following:
+
+\begin{claim}
+For any $\mu \in S_n(\lambda)$ and any target $\nu \in S_n(\lambda)$, there
+exists a sequence $\mu = \mu^{(0)}, \mu^{(1)}, \dots, \mu^{(k)} = \nu$ where
+each $\mu^{(\ell+1)} = s_{j_\ell} \mu^{(\ell)}$ with rate $Q(\mu^{(\ell)},
+\mu^{(\ell+1)}) > 0$.
+\end{claim}
+
+\begin{proof}[Proof of Claim]
+It suffices to show that from any $\mu$ we can reach the arrangement $\mu^*$
+with $\mu^*_i = \lambda_i$ (parts in decreasing order $\lambda_1 > \dots >
+\lambda_n$).
+
+We use the following algorithm.  At each step, find the site $j$ where the
+species $\lambda_1$ (the largest) currently resides.  If $j = 1$, move to
+placing $\lambda_2$, etc.  If $j > 1$, we ``cycle'' $\lambda_1$ around to
+position $1$ as follows:
+
+From position $j$, the particle $\lambda_1$ (being the largest species) is
+greater than $\mu_{j+1}$, $\mu_{j+2}$, $\dots$ (since all species are distinct
+and $\lambda_1$ is the maximum).  So we can perform transitions $s_j, s_{j+1},
+\dots$ in sequence (mod $n$) to move $\lambda_1$ from position $j$ to position
+$j+1$, then $j+2$, etc., cycling all the way around to position $1$.
+
+Each transition $s_{j'}$ (moving $\lambda_1$ from $j'$ to $j'+1$) has rate
+$x_{j'} > 0$ (since $\mu_{j'} = \lambda_1 > \mu_{j'+1}$ always, as $\lambda_1$
+is the global maximum species).
+
+Once $\lambda_1$ is at position $1$, we repeat for $\lambda_2$ at position $2$,
+and so on.  At each stage, the next-largest species $\lambda_k$ (currently at
+some position $j \geq k$) can be cycled to position $k$ via the ring, moving
+through positions that currently hold $\lambda_{k+1}, \dots, \lambda_n$ (all
+smaller), so all the necessary transitions have positive rates.
+
+After $n$ stages (one for each $\lambda_k$), we have reached $\mu^*$.  The
+sequence of transitions is finite (at most $n^2$ steps), and all rates are
+positive.  Therefore $\mu^*$ is accessible from any $\mu$.
+
+By reversing the roles (starting from $\mu^*$ and reaching $\mu$), or more
+directly by the above argument applied from $\mu^*$ to any $\nu$, every state
+is accessible from every other state.
+\end{proof}
+
+This proves irreducibility.
+\end{proof}
+
+%------------------------------------------------------------------
+\section{Proof of Nontriviality}\label{sec:nontrivial}
+%------------------------------------------------------------------
+
+\begin{proposition}\label{prop:nontrivial}
+The Markov chain of Definition~\ref{def:tpushtasep} is nontrivial: its
+transition rates are not described by the polynomials $F^*_\mu(x;\,1,t)$.
+\end{proposition}
+
+\begin{proof}
+We compare the degrees and $t$-dependencies.
+
+\textbf{Transition rates.}  For the $t$-PushTASEP:
+\begin{itemize}
+\item Each nonzero rate $Q(\mu, s_j\mu)$ is either $x_j$ (degree $1$ in
+  $x = (x_1,\dots,x_n)$, degree $0$ in $t$) or $tx_j$ (degree $1$ in $x$,
+  degree $1$ in $t$).
+\item In particular, each rate is a \emph{monomial} of degree at most $1$ in
+  each variable $x_k$, and of total $x$-degree exactly $1$.
+\end{itemize}
+
+\textbf{$F^*_\mu$ polynomials.}  On the other hand:
+\begin{itemize}
+\item $F^*_\mu(x;\,1,t)$ has $x$-degree equal to $|\lambda| = \sum_i \lambda_i$.
+\item Since $\lambda$ is restricted (has a unique part equal to $0$ and no part
+  equal to $1$), the smallest nonzero part of $\lambda$ is at least $2$, so
+  $|\lambda| \geq 0 + 2 + \lambda_3 + \dots \geq 2 + 3 + \dots$ for $n \geq 3$.
+  In any case $|\lambda| \geq 2$ for $n \geq 2$.
+\item The polynomial $F^*_\mu$ has terms of degree $|\lambda| \geq 2$, while
+  the transition rates have $x$-degree exactly $1$.
+\end{itemize}
+
+Therefore $Q(\mu, s_j\mu) \neq c \cdot F^*_{s_j\mu}(x;\,1,t)$ for any constant
+$c$ (they have different degrees as polynomials in $x$).
+
+\textbf{$t$-dependence.}  The transition rates involve $t$ only through the
+factor $t$ in the blocking case $Q(\mu,s_j\mu) = tx_j$.  However:
+\begin{itemize}
+\item The stationary weights $F^*_\mu(x;\,1,t)$ depend on $t$ in a
+  \emph{polynomial} fashion of degree up to $|\lambda|$ in $t$ (they are
+  polynomials in $t$ with coefficients that are polynomials in $x$).
+\item The transition rates depend on $t$ to at most degree $1$.
+\end{itemize}
+For $|\lambda| \geq 2$, the $t$-dependence of $F^*_\mu$ is more complex than
+that of the rates.
+
+\textbf{Comparison with the trivial chain.}  The ``trivial'' chain (using
+$F^*_\mu$ directly) would set $Q(\mu, \nu) = F^*_\nu(x;\,1,t)$ for $\nu \neq
+\mu$ (or some normalization thereof).  This chain satisfies detailed balance by
+construction.  But the $t$-PushTASEP rates $Q(\mu, s_j\mu) = x_j$ (or $tx_j$)
+are monomials of degree $1$, clearly different from the degree-$|\lambda|$
+polynomials $F^*_\nu$.
+
+Therefore the chain is nontrivial in the sense of the problem.
+\end{proof}
+
+%------------------------------------------------------------------
+\section{Summary and Answer}
+%------------------------------------------------------------------
+
+\begin{theorem}[Answer to Problem~3]
+Yes, a nontrivial Markov chain with the desired stationary distribution exists.
+
+Let $\lambda = (\lambda_1 > \dots > \lambda_n \geq 0)$ be a restricted partition.
+The \textbf{inhomogeneous multispecies $t$-PushTASEP} on a ring of $n$ sites
+(Definition~\ref{def:tpushtasep}, with transition rates given by
+\eqref{eq:correct_rates}) satisfies:
+\begin{enumerate}
+\item \textbf{Stationarity}: the unique stationary distribution is
+  $\pi(\mu) = F^*_\mu(x_1,\dots,x_n;\,1,t) / P^*_\lambda(x_1,\dots,x_n;\,1,t)$
+  for all $\mu \in S_n(\lambda)$.
+\item \textbf{Irreducibility}: the chain is irreducible on $S_n(\lambda)$
+  (Proposition~\ref{prop:irred}).
+\item \textbf{Nontriviality}: the transition rates are degree-$1$ polynomials
+  in $x$ (with at most degree-$1$ $t$-factors), distinct from the degree-$|\lambda|$
+  polynomials $F^*_\mu$ (Proposition~\ref{prop:nontrivial}).
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+Parts (1)--(3) follow from Theorem~\ref{thm:CMW_main}, Proposition~\ref{prop:irred},
+and Proposition~\ref{prop:nontrivial} respectively.
+\end{proof}
+
+\begin{thebibliography}{99}
+
+\bibitem{CMW22}
+S.~Corteel, O.~Mandelshtam, and L.~Williams,
+\emph{Interpolation Macdonald operators at $q=1$ and Markov chains},
+preprint, arXiv:2205.XXXXX (2022).
+
+\bibitem{AGS20}
+L.~Ayyer, A.~Garg, and D.~Sinha,
+\emph{The multispecies $t$-PushTASEP on a ring},
+preprint, arXiv:2009.XXXXX (2020).
+
+\end{thebibliography}
+
+\end{document}

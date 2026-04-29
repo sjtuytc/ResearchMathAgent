@@ -18,9 +18,12 @@
 \usepackage{enumitem}
 \usepackage{multirow}
 \usepackage{xspace}
+\usepackage{cleveref}
 \newtheorem{definition}{Definition}
 \newtheorem{example}{Example}
-\newcommand{\modelname}{ResearchMathAgent \xspace}
+\newcommand{\modelname}{\textsc{RMA}\xspace}
+\newcommand{\OpenAI}{\emph{OpenAI}\xspace}
+\newcommand{\GoogleDeepMind}{\emph{Google DeepMind}\xspace}
 
 \title{\modelname: an Agentic System \\ for Research-Level Mathematical Problems}
 
@@ -35,102 +38,151 @@
 \maketitle
 
 \begin{abstract}
-We present \textbf{\modelname}, a framework for evaluating agentic AI systems on open, research-level mathematical problems. Unlike prior benchmarks focused on competition mathematics (e.g., IMO, MATH dataset) or theorem verification in formal proof assistants, our work targets problems at the frontier of active research --- problems for which expert mathematicians do not yet have published proofs.We study the \textbf{First Proof} benchmark, which consists of 10 open problems contributed by leading mathematicians spanning stochastic analysis, representation theory, algebraic combinatorics, spectral graph theory, algebraic topology, lattice theory, symplectic geometry, tensor algebra, and numerical linear algebra. We evaluate two frontier language models (Claude Opus 4.6 and Claude Sonnet 4.6) in an agentic setting augmented with a domain-specific math-research skill, and compare against non-agentic baselines including OpenAI Deep Research and Gemini. Our experiments reveal that (1) agentic systems equipped with structured proof-development skills produce more rigorous and complete mathematical arguments than non-agentic baselines; (2) misinterpretation of problem statements is a common failure mode, particularly for problems with non-standard definitions; and (3) longer context and multi-turn reasoning materially improve solution quality on problems requiring extended calculations. We release the benchmark results, agent code, and all generated solutions to support the community.
+We present the \textbf{R}esearch \textbf{M}ath \textbf{A}gents (\modelname), a framework for evaluating agentic AI systems on open, research-level mathematical problems. Unlike prior benchmarks focused on competition mathematics (e.g., IMO, MATH dataset) or theorem verification in formal proof assistants, our work targets problems at the frontier of active research --- problems for which expert mathematicians do not yet have published proofs.We study the First Proof benchmark, which consists of 10 open problems contributed by leading mathematicians spanning stochastic analysis, representation theory, algebraic combinatorics, spectral graph theory, algebraic topology, lattice theory, symplectic geometry, tensor algebra, and numerical linear algebra. We evaluate two frontier language models (Claude Opus 4.6 and Claude Sonnet 4.6) in an agentic setting augmented with a domain-specific math-research skill, and compare against non-agentic baselines including OpenAI Deep Research and Gemini. Our experiments reveal that (1) agentic systems equipped with structured proof-development skills produce more rigorous and complete mathematical arguments than non-agentic baselines; (2) misinterpretation of problem statements is a common failure mode, particularly for problems with non-standard definitions; and (3) longer context and multi-turn reasoning materially improve solution quality on problems requiring extended calculations. We release the benchmark results, agent code, and all generated solutions to support the community.
 \end{abstract}
 
 \section{Introduction}
+Mathematical reasoning has long been a central challenge for artificial intelligence~\cite{newell1956logic}. Recent advances in large language models (LLMs) have demonstrated strong performance on competition-level mathematics, achieving impressive results on benchmarks such as MATH~\cite{hendrycks2021math} and even International Mathematical Olympiad (IMO) problems~\citep{trinh2024alphageometry,azerbayev2023llemma}. 
+In parallel, integration with formal proof assistants such as the Lean~\cite{Lean4} has enabled machine-verified reasoning with guarantees of correctness~\citep{polu2020gpt,han2022proof}. 
+These developments mark substantial progress toward automated mathematical reasoning.
 
-Mathematical reasoning has long been a central challenge for artificial intelligence.
-Recent years have seen remarkable progress: large language models (LLMs) can now solve many olympiad-level competition problems~\citep{trinh2024alphageometry,azerbayev2023llemma} and, with formal interfaces, verify proofs in interactive theorem provers~\citep{polu2020gpt,han2022proof}.
-Yet competition mathematics and formal verification occupy only one corner of the mathematical universe.
-The most important mathematical progress happens at the \emph{research frontier} — where problems are open, proofs do not yet exist in textbooks, and even the \emph{formulation} of the right approach is non-trivial.
+However, existing advances largely operate in well-scoped settings, with different limitations across these competition benchmarks. The MATH dataset~\citep{hendrycks2021math} focuses on high-school competition problems, where solution strategies are largely drawn from a fixed curriculum and typically involve short, structured derivations. Although multiple reasoning paths may exist, evaluation is primarily tied to the correctness of the final result~\citep{lewkowycz2022solving,openai2024openaio1,lightman2023verify}. Moreover, IMO-style benchmarks~\citep{trinh2024alphageometry,azerbayev2023llemma}, while substantially more challenging, remain constrained by design: problems are carefully selected to be solvable using known techniques and to admit concise, self-contained solutions, usually within one to two pages. This structural constraint fundamentally differs from research-level mathematics, which requires a distinct mode of reasoning that goes beyond standard benchmark settings.
 
-\paragraph{The gap between competition and research math.}
-Competition problems (IMO, Putnam, MATH dataset~\citep{hendrycks2021math}) share several characteristics that make them tractable for current AI systems: they have known answers, their solutions fit within a few pages, they require tools from a well-defined curriculum, and correctness can be automatically verified.
-Research problems, by contrast, may require synthesizing ideas across subfields, noticing subtle definitional distinctions, and constructing proofs of a qualitatively different character.
-Whether AI systems can make genuine progress on such problems is largely unknown.
+Recent work has instead explored evaluating AI systems beyond competition-style benchmarks, with a growing focus on open-ended mathematical discovery. As shown in~\Cref{fig-teaser}, the First Proof~\citep{abouzaid2026first} introduces \textbf{\emph{research-level mathematical problems}} contributed by \textbf{\emph{expert mathematicians}}, aiming to understand the nature of mathematical research in the era of LLMs and to explore solving such problems with AI without humans in the loop. Moreover, in the First Proof benchmark, correctness cannot be reduced to simple answer matching. Instead, solutions must be developed through extended reasoning processes, including formulating intermediate claims, exploring online literature, and constructing coherent and concise proofs. Notably, recent efforts from prestigious institutions have begun to test on this benchmark: \OpenAI has published their solutions to First Proof in their post~\citep{openai_first_proof_2025}, while \GoogleDeepMind has released their solutions to First Proof with the Aletheia system~\citep{trinh2024alphageometry}. These efforts highlight both the promise and the current limitations of AI systems in moving toward open-ended mathematical reasoning. They highlight key limitations of existing approaches, including brittle long-horizon reasoning, susceptibility to hallucination, and lack of reliable self-verification.
 
-\paragraph{Our contribution.}
-We study this question by evaluating agentic AI systems on the \textbf{First Proof} benchmark — a curated collection of 10 open mathematical problems contributed by expert mathematicians (Table~\ref{tab:problems}).
-These problems were selected to represent diverse areas of modern mathematics and varying levels of difficulty, with the common property that, at the time of creation, no published proof existed.
+To address these challenges, we propose the \textbf{R}esearch \textbf{M}ath \textbf{A}gent (\modelname), an \textbf{\emph{agentic framework for research-level mathematics}} that departs from single-pass reasoning by enforcing structured, multi-stage workflows. Our approach integrates literature-aware reasoning, disciplined proof construction, and domain knowledge cheatsheet integration into a unified system. Specifically, \modelname decomposes problem solving into sequential stages, including grounding in relevant mathematical context, hypothesis generation, subgoal decomposition, step-wise derivation, and gap identification. Each stage is explicitly represented and iteratively refined, allowing the system to construct proofs incrementally while maintaining logical consistency. In addition, external tools and verification routines are incorporated to validate intermediate steps, reducing hallucination and enabling more reliable reasoning over long horizons.
 
-Our key contributions are:
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{Benchmark}: We introduce the First Proof benchmark with 10 research-level problems spanning 9 mathematical subfields, each contributed by a leading researcher in that area.
-  \item \textbf{Agentic system}: We design an agent framework based on Claude Code augmented with a structured \emph{math-research skill} that guides the model through proof development, gap identification, and LaTeX write-up.
-  \item \textbf{Evaluation}: We evaluate Claude Opus 4.6 and Claude Sonnet 4.6 under multiple conditions (with and without history clearing between sessions) and compare against non-agentic baselines.
-  \item \textbf{Analysis}: We identify characteristic failure modes of current systems and discuss what capabilities would be needed to reliably solve research-level problems.
-\end{enumerate}
+Building on this foundation, we further introduce a \textbf{\emph{multi-agent, multi-round instantiation}}~\cite{qu2026coral,skydiscover2026} of \modelname, in which complementary roles—such as a proposer that generates candidate arguments and a verifier that critiques and checks correctness—interact through structured feedback loops. This design enables iterative refinement of partial solutions, systematic exploration of alternative strategies, and automatic detection and repair of logical gaps. As a result, the system can progressively improve both correctness and clarity over multiple rounds of interaction. Through rigorous expert evaluation on the First Proof benchmark, we show that this agentic framework significantly outperforms strong baselines, including GPT-5.2 from \OpenAI and Aletheia from \GoogleDeepMind, both in terms of problem-solving success and the quality and interpretability of generated proofs. Moreover, detailed ablation studies reveal that the structured agentic design is particularly effective at mitigating hallucinations, identifying missing steps, and discovering constructive solution strategies in research-level mathematical reasoning.
 
+Our contribution type is \textbf{\emph{use-inspired}}. The proposed is grounded in real-world mathematical research practices and informed by expert feedback. Our \textbf{key contributions} can be summarized as:
+
+
+\begin{itemize}[leftmargin=*]
+
+\item We propose \modelname, an agentic framework for research-level mathematics that integrates literature-aware reasoning, disciplined proof writing, and various tool use, enforcing structured workflows for step-wise derivation, gap identification, and rigorous proof synthesis.
+
+\item We introduce a multi-agent, multi-round instantiation of \modelname that decomposes roles such as proposer and verifier, enabling iterative reasoning, automatic verification, and self-improvement through structured interactions, improving robustness over single-agent approaches.
+
+\item Through rigorous expert verification, our experiments demonstrate that our agentic system outperforms strong proof systems such as GPT-5.2 from \OpenAI~\cite{openai_first_proof_2025} and Aletheia from \GoogleDeepMind~\cite{aletheia}, solving a larger number of problems while producing proofs that are more interpretable and aligned with human mathematical reasoning. Furthermore, systematic ablation studies with expert involvement reveal that the agentic framework is particularly effective at identifying and resolving proof gaps, mitigating hallucinations, and discovering constructive solution strategies.
+\end{itemize}
+
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1.0\linewidth]{figures/teaser.pdf}
+    \caption{A sample math problem in First Proof~\cite{abouzaid2026first} and solution sketch comparisons. Aletheia~\citep{aletheia} has no successful output for this problem. GPT-5.2 from the reasoning team of \OpenAI~\cite{openai_first_proof_2025} derives a looser bound and exhibits minor errors, such as reference hallucinations, as identified in expert evaluations. Ours produces the same tighter bound with mathematicians and passes expert checks.}
+    \label{fig-teaser}
+\end{figure}
+\vspace{-10pt}
 \section{Related Work}
 \label{sec:related}
-
-\paragraph{Math benchmarks: from arithmetic to olympiad.}
+\paragraph{Math benchmarks.}
 Benchmarking mathematical reasoning in AI has progressed through several capability levels.
-Early work focused on arithmetic word problems: GSM8K~\citep{cobbe2021gsm8k} tests grade-school multi-step arithmetic, while SVAMP~\citep{patel2021svamp} and ASDiv~\citep{miao2020asdiv} probe robustness to paraphrasing.
-The MATH dataset~\citep{hendrycks2021math} raised the bar to high-school competition mathematics across seven categories (algebra, counting, geometry, number theory, etc.), and became a standard benchmark for frontier models.
-MINERVA~\citep{lewkowycz2022solving} extended evaluation to undergraduate STEM problems requiring multi-step symbolic reasoning.
-More recently, AMC, AIME, and IMO problems have been used to probe the limits of frontier models~\citep{trinh2024alphageometry,openai2024openaio1}; current systems routinely achieve top-quartile AMC scores and can solve several AIME problems.
-OlympiadBench~\citep{he2024olympiadbench} and OmniMath~\citep{gao2024omnimath} collect bilingual olympiad problems with expert-annotated solutions.
-Despite this progress, all these benchmarks share a key property: answers are known and verifiable in advance.
-Our work is the first to evaluate AI systems on \emph{open} research problems where no published proof exists.
+Early work focused on arithmetic word problems: GSM8K~\citep{cobbe2021gsm8k} tests grade-school multi-step arithmetic, while SVAMP~\citep{patel2021svamp} and ASDiv~\citep{miao2020asdiv} probe robustness to paraphrasing. The popular MATH dataset~\citep{hendrycks2021math} studied high-school competition mathematics. More recently, the International Mathematical Olympiad (IMO) problems and the American Mathematics Competitions (AMC) have been used to probe the limits of frontier models~\citep{trinh2024alphageometry,openai2024openaio1}. OlympiadBench~\citep{he2024olympiadbench} and OmniMath~\citep{gao2024omnimath} collect bilingual Olympiad problems with expert-annotated solutions. However, IMO or AMC problems, \textit{even though extremely hard for humans}, \emph{\textbf{differ from research-level math problems}}: they are known to have \textit{elementary solutions} in the sense of the relevant curriculum, and the solution \textit{fits within one page or two}. FrontierMath~\citep{glazer2024frontiermath} introduced multi-level math problems including open problems, but it hasn't published their datasets. The FirstProof benchmark~\citep{abouzaid2026first} instead targets \emph{open, research-level mathematical problems} contributed by experts. This shifts from solving competition problems to assessing whether AI systems can contribute to mathematical discovery.
 
-\paragraph{Expert-level and research-oriented benchmarks.}
-Recognizing that frontier models were saturating competition benchmarks, FrontierMath~\citep{glazer2024frontiermath} introduced problems requiring graduate-level expertise in specialized subfields (number theory, algebraic geometry, combinatorics), with verification via symbolic computation.
-Models at the time of its introduction (late 2024) solved fewer than 2\% of problems.
-Concurrent with our work, the AI Mathematical Olympiad (AIMO) prize and related challenges have attracted efforts to solve unseen competition problems.
-However, competition problems, even at the hardest olympiad level, differ from research problems: they are known to have elementary solutions (in the sense of the relevant curriculum), the problem poser has a solution in hand, and the solution fits within a few pages.
-Research problems, by contrast, may be open for decades and require synthesizing techniques across subfields.
-Our First Proof benchmark specifically selects problems at the research frontier.
+\paragraph{Neural theorem proving and LLMs for math.}
+Early neural theorem proving explored differentiable reasoning and neural-guided proof search~\citep{rocktaschel2017end,LearningExplanatoryRules}. More recent work integrates language models with formal systems such as Lean, using them as proof search policies~\citep{polu2020gpt} and combining neural guidance with structured search or self-supervision~\citep{han2022proof,lample2022hypertree,jiang2022draft}. These approaches achieve strong performance and offer machine-checked guarantees, but \emph{require formalizing problems, which remains challenging for advanced mathematics}. Parallel efforts study informal reasoning, including program search~\citep{romera2024mathematical}, neuro-symbolic systems~\citep{trinh2024alphageometry}, and proof verification or reward modeling~\citep{collins2024evaluating,frieder2024mathematical,liao2024mario}. Our work instead emphasizes the \emph{\textbf{agentic}} setting, which involves multi-turn reasoning with tool use, targeting research-level problems beyond both formal verification and competition benchmarks. We acknowledge very recent concurrent works such as the Agentic Researcher~\citep{zimmer2026agenticresearcherpracticalguide} and the Agentic Tool~\citep{wolz2026agentic}, but their designs are distinct from us, while we compare solutions in the~\Cref{sec:experiments}.
 
-\paragraph{Neural theorem proving and formal verification.}
-A parallel line of work uses interactive theorem provers (Lean 4, Coq, Isabelle/HOL, Metamath) as verification environments for AI-generated proofs.
-GPT-f~\citep{polu2020gpt} first demonstrated that language models could serve as proof search policies, outperforming classical tactics on Metamath.
-Proof artifact co-training~\citep{han2022proof} improved sample efficiency via a self-supervised curriculum.
-HyperTree Proof Search~\citep{lample2022hypertree} applied Monte Carlo Tree Search with LLM-generated tactics to achieve state-of-the-art on miniF2F.
-Draft, Sketch, and Prove~\citep{jiang2022draft} introduced a two-stage pipeline in which an informal proof is first generated and then translated into formal Isabelle steps, significantly improving success rates on competition problems.
-AlphaProof~\citep{alphaproof2024} combined reinforcement learning with Lean 4 to solve 4 of 6 IMO 2024 problems, reaching a silver-medal standard — a landmark result.
-DeepSeek-Prover~\citep{xin2024deepseekprover} demonstrated that fine-tuned open models could achieve competitive neural theorem proving performance.
-These systems provide rigorous correctness guarantees via machine-checked proofs, but require formalizing problems in a proof language, which demands substantial mathematical expertise and is itself a research challenge for advanced problems.
-Our work operates in the informal proof regime, trading verification rigor for accessibility and broader coverage.
+\paragraph{Reasoning methods and LLM agents.}
+Chain-of-thought prompting improves multi-step reasoning by eliciting intermediate steps~\citep{wei2022chain}, and has been extended to methods such as sampling multiple reasoning paths with majority voting~\citep{wang2022self}, tree-based exploration with backtracking~\citep{yao2023tree}, and training verifiers to score intermediate steps~\citep{lightman2023verify}. In parallel, tool-augmented approaches allow language models to call external programs (e.g., Python interpreters) for precise computation~\citep{chen2022pot,gao2023pal} and to learn when to invoke external tools or APIs~\citep{schick2023toolformer,wu2022autoformalization}. Building on these ideas, \emph{agentic systems} integrate reasoning, tools, and memory in multi-turn interactions, achieving strong performance on complex tasks such as software engineering~\citep{yao2022react,wu2023autogen,yang2024sweagent,wang2024openhands}. Our approach follows this trend, using structured, domain-specific workflows to support research mathematical reasoning.
 
-\paragraph{LLMs for mathematical research and discovery.}
-Beyond benchmarks, several works have explored LLMs as tools for mathematical discovery.
-FunSearch~\citep{romera2024mathematical} uses an evolutionary search loop with LLM-generated programs to discover new combinatorial constructions, finding improved bounds on the cap set problem and bin packing.
-AlphaGeometry~\citep{trinh2024alphageometry} combines a language model with a symbolic deduction engine to solve olympiad geometry problems without human demonstrations.
-Bubeck et al.~\citep{bubeck2023sparks} provide an extensive qualitative evaluation of GPT-4 on mathematical tasks ranging from novel proofs to open problems, finding impressive but inconsistent performance.
-Several studies have examined LLMs' ability to verify or identify errors in mathematical arguments~\citep{collins2024evaluating,frieder2024mathematical}, finding that models are better at identifying errors in short, elementary proofs than in long, advanced ones.
-Liao et al.~\citep{liao2024mario} propose a process-level reward model for step-by-step mathematical reasoning, improving performance on competition problems.
-Our work differs by focusing on the \emph{agentic} dimension: multi-turn reasoning with tool use, rather than single-turn generation or passive evaluation.
+\section{Methodology}
+\label{sec-methodology}
+\vspace{-7pt}
+The goal of our model is to realize \textbf{\emph{automated}} mathematical research via an agentic system. Given a math research problem, the proposed system will perform literature study, problem analysis, knowledge retrieve and proof construction in an automated way. \modelname is built upon Command Line Interface (CLI) coding agents~\citep{openai_codex,anthropic_claude_code,google_geminicli}, motivated by the insight that coding agents provide a strong foundation for automating mathematical research. 
+Building on coding agents has become a trend in frontier auto-research methods, such as CORAL~\cite{zimmer2026agenticresearcherpracticalguide} and Karpathy's autoresearch project~\cite{karpathy_autoresearch}.
 
-\paragraph{Chain-of-thought and structured reasoning.}
-Chain-of-thought prompting~\citep{wei2022chain} showed that eliciting intermediate reasoning steps substantially improves LLM performance on multi-step problems.
-This has been extended to self-consistency~\citep{wang2022self} (sampling diverse reasoning paths and taking a majority vote), tree-of-thought~\citep{yao2023tree} (exploring a tree of partial solutions with backtracking), and process reward models~\citep{lightman2023verify} (training verifiers to score individual reasoning steps).
-OpenAI's o1 and o3 model series~\citep{openai2024openaio1} internalize extended chain-of-thought via reinforcement learning, achieving strong results on competition mathematics.
-Our math-research skill can be viewed as a structured, domain-specific chain-of-thought that decomposes proof development into expert-guided stages (problem understanding, strategy selection, gap auditing).
+\vspace{-7pt}
+\subsection{Modular Design of \modelname}
+\label{sec-agentic}
+\vspace{-5pt}
+As shown in Figure~\ref{fig:framework}, \modelname incorporates several essential modules. Each module is specified in natural language, while the CLI-based coding agents translate these specifications into executable prompts and tool invocations. We present each module as follows (see~\Cref{app:module} for details):
+\vspace{-7pt}
+\paragraph{Problem Analysis Module.} Understanding and analyzing problems are important for math research~\citep{zhong2026achieving}. We propose a \emph{problem analysis module} as a reusable analysis routine that optionally transforms a raw problem statement into a structured intermediate description capturing its core components~\cite{wei2022chain}. Concretely, the module applies a sequence of operator-triggered prompts executed by a CLI agent, including formalization, decomposition, and constraint extraction. The formalization operator rewrites the problem into an explicit formulation that specifies variables, assumptions, and target statements, reducing ambiguity in the original description. The decomposition operator breaks the problem into a set of coherent subgoals that guide step-wise reasoning. The constraint extraction operator identifies both explicit conditions and implicit assumptions required for correctness. The problem analysis module is invoked adaptively when the problem exhibits ambiguity, implicit structure, or long-horizon dependencies; for simpler or well-structured problems, it can be bypassed to avoid unnecessary overhead. When applied, the resulting description serves as the foundation for subsequent reasoning modules, improving stability and consistency in the subsequent reasoning.
+\vspace{-7pt}
 
-\paragraph{Tool-augmented and program-aided reasoning.}
-Program-aided language models (PAL~\citep{gao2023pal}) and PoT~\citep{chen2022pot} delegate computation to a Python interpreter, improving arithmetic accuracy.
-Toolformer~\citep{schick2023toolformer} trains models to decide when and how to call external APIs.
-For mathematics specifically, tool use enables symbolic computation (via SymPy, Mathematica, or Wolfram Alpha), exact arithmetic, and proof assistant calls~\citep{wu2022autoformalization}.
-Our agent uses the file system as its primary tool — persistent state across turns — rather than external mathematical computation, which keeps the system domain-agnostic.
+\paragraph{Literature Search Module.}
+Prior work demonstrates the importance and hardness to retrieve knowledge for theorem proving in formal proof settings~\cite{yang2023leandojo}. In our system, we implement a literature search module as a retrieval routine tailored to research-level mathematical problems. The module first generates a list of candidate papers to study \emph{prior to retrieving them online}; this design prevents information leakage from existing solutions during the retrieval process. Instead of relying on keyword matching, the module leverages the structured problem representation produced by the problem analysis module, using components such as underlying objects, target properties, and equivalent formulations to construct queries for retrieving relevant prior work. To handle variability in mathematical writing across preprint platforms (e.g., arXiv~\citep{arxiv}) and published sources (e.g., MathSciNet~\cite{mathscinet} or zbMATH~\cite{Deb_2024}), the module expands queries with alternative formulations (e.g., equivalent definitions, dual problems, continuous vs. discrete views, and notation variants) to retrieve relevant work expressed under different terminology and presentation styles.
+\vspace{-7pt}
+\paragraph{Literature Understanding Module.}
+Retrieved literature from the literature search module is processed in three steps: 
+(1) \emph{Extraction}—the module identifies candidate lemmas, techniques, and intermediate results, focusing on statements with explicit assumptions and conclusions as well as common proof patterns (e.g., induction, analytical arguments); 
+(2) \emph{Filtering}—it retains only candidates whose assumptions and targets align with the current problem representation, ensuring compatibility with the problem’s variables, conditions, and objectives; 
+(3) \emph{Organization}—the retained results are structured into a summary that groups relevant lemmas and techniques by their roles (e.g., supporting subgoals) and highlights their potential applicability in the current setting.
+\vspace{-7pt}
+\paragraph{Knowledge Bank Module.}
+Recent works such as Agentic Reasoning~\citep{wu2025agentic} and Reasoning Bank~\citep{ouyang2025reasoningbank} highlight the significance of structured tools and external knowledge modules. We construct a Knowledge Bank Module in a \emph{cheat-sheet style}, consisting of concise, reusable entries that contain short canonical results, inequalities, and equations rather than long-form exposition. These entries are curated from widely used textbooks, monographs, and canonical references \citep{dym2004principles, boyd2004convex, mitzenmacher2017probability}, and are organized with explicit assumptions and applicability conditions. Typical entries include standard tools such as concentration inequalities, spectral and matrix inequalities, and combinatorial identities, each represented as a compact formula or theorem statement. During reasoning, the system retrieves and instantiates relevant entries based on the current problem structure, verifying their conditions before application. This design enables the direct reuse of standard arguments without re-deriving them, improving efficiency while supporting structured and reliable multi-step reasoning.
 
-\paragraph{Agentic systems for complex tasks.}
-Agent frameworks that combine LLMs with tools, memory, and multi-turn interaction have shown large gains over single-turn prompting on complex engineering tasks.
-SWE-agent~\citep{yang2024sweagent} introduces an agent-computer interface for software engineering, substantially outperforming single-turn GPT-4 on SWE-bench.
-OpenHands~\citep{wang2024openhands} extends this to a wider class of computer tasks.
-ReAct~\citep{yao2022react} interleaves reasoning traces and environment actions, enabling agents to self-correct.
-AutoGen~\citep{wu2023autogen} and similar frameworks enable multi-agent debate and collaboration.
-Our work applies the same agentic paradigm to mathematical research, showing that structured multi-turn reasoning with a domain-specific skill significantly outperforms single-turn baselines on research-level problems.
+\vspace{-7pt}
+\paragraph{Proof Commandment Module.}
+This module enforces a set of rules to mitigate common failure modes of LLMs~\citep{ji2023towards,zimmer2026agenticresearcherpracticalguide} in research-level mathematical reasoning. The rules are operationalized through structured prompting templates, intermediate verification checks, and rejection-based refinement: candidate proofs that violate any rule are flagged and regenerated until all constraints are satisfied. Specifically, we enforce: 
+(1) \emph{Grounding}—every nontrivial claim must be supported by established results, retrieved literature, or verifiable derivations; 
+(2) \emph{Faithfulness}—the system must adhere to the original problem statement, with checks against unintended simplifications; 
+(3) \emph{Gap-free reasoning}—each inference must be explicitly justified via step-wise validation; 
+(4) \emph{Constructiveness}—when required, explicit constructions or algorithms must be provided, rejecting purely existential arguments; 
+(5) \emph{Format correctness}—the final proof must be clean and compilable with LaTex, using standard theorem environments, numbered equations, and consistent cross-references.
 
-\paragraph{AI-assisted scientific discovery.}
-More broadly, our work connects to the growing literature on AI for science~\citep{wang2023scientific,jumper2021alphafold}.
-AlphaFold~\citep{jumper2021alphafold} demonstrated that AI can make qualitatively new scientific discoveries; our work explores whether a similar leap is possible in pure mathematics.
-Unlike natural sciences where AI can interface with experimental data, mathematics is purely deductive — correctness is an all-or-nothing property — making it a particularly clean testbed for AI reasoning capabilities.
+\vspace{-7pt}
+\paragraph{Fair Comparison Module.}
+This module ensures that \modelname does not access or exploit existing solutions (e.g., First Proof~\citep{abouzaid2026first} and follow-up works~\citep{openai_first_proof_2025,aletheia}), enabling fair and controlled evaluation. Specifically, we enforce: 
+(1) \emph{Literature filtering}—outputs from the literature search module are screened to exclude any sources containing known solutions or attempts, before the model actually retrieve the actual literature; 
+(2) \emph{Context isolation}—the interaction history is reset before each experiment to prevent information leakage across runs; 
+(3) \emph{Sandboxed execution}—the CLI agent operates in a controlled environment to ensure reproducibility and prevent unintended external access.
+
+\vspace{-7pt}
+\paragraph{Workflow Design Module.}
+Workflow is an essential methodology in agentic systems~\citep{zhangaflow,anthropic_claude_code,openai_codex}. In our framework, a workflow is a structured procedure consisting of ordered operations. Rather than being a fixed or hard-coded routine, each workflow is implemented as an executable procedure carried out by a CLI-based coding agent~\cite{anthropic_claude_code}. Following common CLI agent conventions~\citep{anthropic_claude_code}, the agent selects and invokes workflows based on the task context. In our work, we employ a \emph{unified proof workflow} that orchestrates the previously introduced modules within a single structured procedure. Specifically, the workflow first invokes the \emph{literature search module}, with the \emph{fair comparison module} enforcing filtering constraints to prevent exposure to existing solutions. The retrieved materials are then processed by the \emph{literature understanding module} to extract relevant techniques and results. In parallel, the workflow queries the \emph{knowledge bank module} to obtain standard lemmas and reusable tools, verifying their applicability in the current setting. Finally, the workflow constructs the proof under the guidance of the \emph{proof commandment module}, which enforces grounding, faithfulness, gap-free reasoning, constructiveness, and format correctness throughout the generation process.
+\vspace{-7pt}
+\subsection{The Multi-Agent and Multi-Round Instantiation}
+Research needs iterations and collaborations~\citep{qu2026coral}. Building upon this insight, we incorporate multi-agent and multi-round techniques into \modelname. Concretely, we instantiate multiple agents as role-specialized executions of the same underlying model (e.g., proposer and verifier), each operating under distinct prompts and objectives while sharing a structured working memory. This memory stores the problem specification, retrieved literature summaries, selected knowledge bank entries, and intermediate proof states, ensuring that all agents operate on a consistent and up-to-date context. Collaboration is achieved through iterative rounds of interaction: the proposer generates candidate arguments, the verifier critiques them under the proof commandment constraints, and the resulting feedback is written back to memory for refinement in subsequent rounds. This controlled memory sharing and role-based coordination ensure that agents work coherently toward a common objective while enabling systematic error correction and progressive improvement.
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Proposer.} Generates candidate arguments, proof steps, and alternative strategies, drawing on the single-agent workflow above.
+\item \textbf{Verifier.} Critiques the proposer's output, checking for logical consistency, identifying gaps, and flagging hallucinated references or unjustified claims.
+\end{itemize}
+These roles alternate across multiple rounds. In each round, the verifier's feedback is structured and passed back to the proposer, which refines its proof accordingly. This loop continues until the verifier raises no blocking issues or a maximum round budget is reached. The multi-round design enables systematic exploration of alternative strategies when a primary approach stalls, and allows the system to progressively improve both the correctness and the clarity of the proof.
+
+The agent uses the file system to maintain a persistent proof draft across turns.
+This is qualitatively different from single-turn prompting: the agent can write a partial proof, identify a gap, search for relevant lemmas, and revise the draft in subsequent turns.
+In our experiments, agents typically use 10--40 tool calls (file reads/writes) per problem.
+
+The multi-turn structure also allows the agent to invoke the math-research skill multiple times on the same problem — for instance, to first check definitional correctness, then develop the main argument, then audit for gaps.
 
 
-\section{The First Proof Benchmark}
-\label{sec:benchmark}
+
+
+\section{Experiments}
+\label{sec:experiments}
+\subsection{Setups}
+\paragraph{Details of the First Proof benchmark~\cite{abouzaid2026first}}
+
+\subsection{Overview}
+\label{sec:system-overview}
+Our agent is built on top of \textbf{Claude Code}, Anthropic's agentic coding CLI, extended with a domain-specific \emph{math-research skill}.
+The agent operates as a multi-turn reasoning system with access to file system tools (read, write, search), allowing it to iteratively draft, revise, and check proofs stored as LaTeX files.
+
+\subsection{Models evaluated}
+\label{sec:models}
+
+We evaluate:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Claude Opus 4.6} (claude-opus-4-6): the most capable model in Anthropic's Claude 4 family.
+  \item \textbf{Claude Sonnet 4.6} (claude-sonnet-4-6): a faster, smaller model in the same family.
+  \item \textbf{Claude Sonnet 4.6 (clear history)}: Sonnet 4.6 with conversation history cleared between problems, simulating a fresh session per problem.
+\end{itemize}
+
+\subsection{Baselines}
+\label{sec:baselines}
+
+We compare against two non-agentic baselines:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{OpenAI Deep Research}: a retrieval-augmented research assistant that can search the web and synthesize information into a long-form report. It does not use structured proof development steps.
+  \item \textbf{Gemini Deep Research}: Google's analogous research assistant product.
+\end{itemize}
+
+These baselines represent strong, publicly available AI systems for research tasks but lack the structured mathematical workflow of our agent.
+
 
 \subsection{Problem selection}
 \label{sec:selection}
@@ -140,28 +192,6 @@ The problems were selected according to two criteria: (1) the answer is a binary
 The contributors are all recognized experts, including Fields Medalists and members of national academies.
 Table~\ref{tab:problems} lists the problems, their mathematical areas, and contributing researchers.
 
-\begin{table}[t]
-  \caption{The 10 problems of the First Proof benchmark. Each problem was contributed by a leading researcher in the named area.}
-  \label{tab:problems}
-  \centering
-  \small
-  \begin{tabular}{clll}
-    \toprule
-    \# & Area & Topic & Contributor \\
-    \midrule
-    1 & Stochastic Analysis & $\Phi^4_3$ measure equivalence under shift & Hairer (EPFL/Imperial) \\
-    2 & Representation Theory & Whittaker functions \& Rankin--Selberg integrals & Nelson (Princeton) \\
-    3 & Algebraic Combinatorics & Markov chain with Macdonald stationary distribution & Williams (Harvard) \\
-    4 & Spectral Graph Theory & Subharmonicity of $1/\Phi_n$ under finite free convolution & Srivastava (Berkeley) \\
-    5 & Algebraic Topology & Slice filtration for $N_\infty$ operads & Blumberg (Columbia) \\
-    6 & Spectral Graph Theory & $\varepsilon$-light subsets in graphs & Spielman (Yale) \\
-    7 & Lie Groups / Lattices & Uniform lattices with 2-torsion & Weinberger (Chicago) \\
-    8 & Symplectic Geometry & Lagrangian smoothings of polyhedral surfaces & Abouzaid (Columbia) \\
-    9 & Tensor Algebra & Algebraic relations on determinantal tensors & Kileel (UT Austin) \\
-    10 & Numerical Linear Algebra & Preconditioned CG for RKHS-CP decomposition & Kolda \& Ward \\
-    \bottomrule
-  \end{tabular}
-\end{table}
 
 \subsection{Problem format}
 \label{sec:format}
@@ -188,68 +218,6 @@ For this paper, we assess solutions along three dimensions:
 \end{enumerate}
 These are assessed by the authors with expertise in the relevant areas, supplemented by comparison to any available published solutions.
 We note that for most problems no published solution existed at the time of evaluation, making rigorous ground-truth comparison impossible; our evaluation is therefore a best-effort human assessment.
-
-\section{Agentic System Design}
-\label{sec:system}
-
-\subsection{Overview}
-\label{sec:system-overview}
-
-Our agent is built on top of \textbf{Claude Code}~\citep{claudecode2024}, Anthropic's agentic coding CLI, extended with a domain-specific \emph{math-research skill}.
-The agent operates as a multi-turn reasoning system with access to file system tools (read, write, search), allowing it to iteratively draft, revise, and check proofs stored as LaTeX files.
-
-\subsection{Math-research skill}
-\label{sec:skill}
-
-The math-research skill is a structured prompt that guides the agent through the following workflow:
-
-\paragraph{Step 1 — Problem understanding.}
-The agent is instructed to identify all quantifiers, the types of all mathematical objects, boundary/degenerate cases, and the precise form of what must be shown.
-This step is critical for research problems where the definition may be non-standard.
-
-\paragraph{Step 2 — Strategy selection.}
-The agent selects a proof strategy from a taxonomy including: direct proof, contradiction, probabilistic method, algebraic/spectral approach, greedy/algorithmic construction, averaging/pigeonhole, and compactness.
-The skill provides explicit guidance on when each strategy is appropriate.
-
-\paragraph{Step 3 — Proof development.}
-The agent works through the proof step by step, writing each step as a named claim.
-For each claim it checks: are all hypotheses used? Is the inequality in the correct direction? What are the degenerate cases?
-
-\paragraph{Step 4 — Gap identification and repair.}
-The agent is instructed to audit the draft proof for common mathematical errors: circular arguments, missing cases, unjustified bounds, quantifier swaps, misuse of norms, and independence assumptions.
-
-\paragraph{Step 5 — LaTeX write-up.}
-The agent produces a final, clean LaTeX proof using standard theorem environments, numbered equations, and explicit cross-references.
-
-\subsection{Tool use and multi-turn reasoning}
-\label{sec:tools}
-
-The agent uses the file system to maintain a persistent proof draft across turns.
-This is qualitatively different from single-turn prompting: the agent can write a partial proof, identify a gap, search for relevant lemmas, and revise the draft in subsequent turns.
-In our experiments, agents typically use 10--40 tool calls (file reads/writes) per problem.
-
-The multi-turn structure also allows the agent to invoke the math-research skill multiple times on the same problem — for instance, to first check definitional correctness, then develop the main argument, then audit for gaps.
-
-\subsection{Models evaluated}
-\label{sec:models}
-
-We evaluate:
-\begin{itemize}[leftmargin=*]
-  \item \textbf{Claude Opus 4.6} (claude-opus-4-6): the most capable model in Anthropic's Claude 4 family.
-  \item \textbf{Claude Sonnet 4.6} (claude-sonnet-4-6): a faster, smaller model in the same family.
-  \item \textbf{Claude Sonnet 4.6 (clear history)}: Sonnet 4.6 with conversation history cleared between problems, simulating a fresh session per problem.
-\end{itemize}
-
-\subsection{Baselines}
-\label{sec:baselines}
-
-We compare against two non-agentic baselines:
-\begin{itemize}[leftmargin=*]
-  \item \textbf{OpenAI Deep Research}: a retrieval-augmented research assistant that can search the web and synthesize information into a long-form report. It does not use structured proof development steps.
-  \item \textbf{Gemini Deep Research}: Google's analogous research assistant product.
-\end{itemize}
-
-These baselines represent strong, publicly available AI systems for research tasks but lack the structured mathematical workflow of our agent.
 
 \section{Results}
 \label{sec:results}
@@ -383,12 +351,6 @@ Our results suggest that the structured skill (explicit proof steps, gap auditin
 Opus 4.6 and Sonnet 4.6 perform similarly in correctness, while both substantially outperform baselines that lack the structured workflow.
 This is consistent with findings in the software engineering domain~\citep{yang2024sweagent}.
 
-\paragraph{Limitations.}
-Several limitations should be noted.
-First, ground-truth evaluation is difficult: we do not have published proofs for most problems, and our assessment relies on expert judgment.
-Second, our benchmark is small (10 problems), and the results may not generalize across all areas of mathematics.
-Third, we have not quantified the computational cost of each agent run, which varies significantly across problems.
-Finally, evaluation of proof correctness is inherently subjective for incomplete or partially correct proofs; our ratings involve judgment calls.
 
 \section{Conclusion}
 \label{sec:conclusion}
@@ -405,12 +367,37 @@ We thank the contributors of the First Proof benchmark problems: Martin Hairer, 
 We also thank [anonymous reviewers] for feedback.
 \end{ack}
 
-\bibliographystyle{plainnat}
+\bibliographystyle{unsrt}
 \bibliography{references}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newpage
 \appendix
+
+\begin{table}[t]
+  \caption{The 10 problems of the First Proof benchmark.}
+  \label{tab:problems}
+  \centering
+  \small
+  \begin{tabular}{clp{6.5cm}l}
+    \toprule
+    \# & Area & Topic & Contributor \\
+    \midrule
+    1 & Stochastic Analysis & $\Phi^4_3$ measure equivalence under shift & Hairer \\
+    2 & Representation Theory & Whittaker functions \& Rankin--Selberg integrals & Nelson \\
+    3 & Algebraic Combinatorics & Markov chain with Macdonald stationary distribution & Williams \\
+    4 & Spectral Graph Theory & Subharmonicity of $1/\Phi_n$ under finite free convolution & Srivastava \\
+    5 & Algebraic Topology & Slice filtration for $N_\infty$ operads & Blumberg \\
+    6 & Spectral Graph Theory & $\varepsilon$-light subsets in graphs & Spielman \\
+    7 & Lie Groups / Lattices & Uniform lattices with 2-torsion & Weinberger \\
+    8 & Symplectic Geometry & Lagrangian smoothings of polyhedral surfaces & Abouzaid \\
+    9 & Tensor Algebra & Algebraic relations on determinantal tensors & Kileel \\
+    10 & Numerical Linear Algebra & Preconditioned CG for RKHS-CP decomposition & Kolda \& Ward \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\section{Module Details}
+\label{app:module}
 
 \section{Problem Statements}
 \label{app:problems}
@@ -449,8 +436,16 @@ This matches the constant reported by Spielman as the intended solution.
 \section{Skill Prompt}
 \label{app:skill}
 
-The math-research skill prompt (Section~\ref{sec:skill}) is stored in \texttt{skills/math-research/SKILL.md} and installed project-locally at \texttt{.claude/skills/math-research/SKILL.md}.
+The math-research skill prompt is stored in \texttt{skills/math-research/SKILL.md} and installed project-locally at \texttt{.claude/skills/math-research/SKILL.md}.
 The skill provides a structured 5-step workflow (problem understanding, strategy selection, proof development, gap identification, LaTeX write-up) together with a reference sheet of key mathematical tools organized by area (spectral theory, probabilistic method, combinatorics, analysis).
+
+\section{Limitations}
+\label{app-limitations}
+Several limitations should be noted.
+First, ground-truth evaluation is difficult: we do not have published proofs for most problems, and our assessment relies on expert judgment.
+Second, our benchmark is small (10 problems), and the results may not generalize across all areas of mathematics.
+Third, we have not quantified the computational cost of each agent run, which varies significantly across problems.
+Finally, evaluation of proof correctness is inherently subjective for incomplete or partially correct proofs; our ratings involve judgment calls.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
