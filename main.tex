@@ -90,6 +90,8 @@ Chain-of-thought prompting improves multi-step reasoning by eliciting intermedia
 \section{Methodology}
 \label{sec-methodology}
 \vspace{-7pt}
+\subsection{Agentic System Background}
+\vspace{-7pt}
 The goal of our model is to realize \textbf{\emph{automated}} mathematical research via an agentic system. Given a math research problem, the proposed system will perform literature study, problem analysis, knowledge retrieve and proof construction in an automated way. \modelname is built upon Command Line Interface (CLI) coding agents~\citep{openai_codex,anthropic_claude_code,google_geminicli}, motivated by the insight that coding agents provide a strong foundation for automating mathematical research. 
 Building on coding agents has become a trend in frontier auto-research methods, such as CORAL~\cite{zimmer2026agenticresearcherpracticalguide} and Karpathy's autoresearch project~\cite{karpathy_autoresearch}.
 
@@ -135,22 +137,31 @@ This module ensures that \modelname does not access or exploit existing solution
 Workflow is an essential methodology in agentic systems~\citep{zhangaflow,anthropic_claude_code,openai_codex}. In our framework, a workflow is a structured procedure consisting of ordered operations. Rather than being a fixed or hard-coded routine, each workflow is implemented as an executable procedure carried out by a CLI-based coding agent~\cite{anthropic_claude_code}. Following common CLI agent conventions~\citep{anthropic_claude_code}, the agent selects and invokes workflows based on the task context. In our work, we employ a \emph{unified proof workflow} that orchestrates the previously introduced modules within a single structured procedure. Specifically, the workflow first invokes the \emph{literature search module}, with the \emph{fair comparison module} enforcing filtering constraints to prevent exposure to existing solutions. The retrieved materials are then processed by the \emph{literature understanding module} to extract relevant techniques and results. In parallel, the workflow queries the \emph{knowledge bank module} to obtain standard lemmas and reusable tools, verifying their applicability in the current setting. Finally, the workflow constructs the proof under the guidance of the \emph{proof commandment module}, which enforces grounding, faithfulness, gap-free reasoning, constructiveness, and format correctness throughout the generation process.
 \vspace{-7pt}
 \subsection{The Multi-Agent and Multi-Round Instantiation}
-Research needs iterations and collaborations~\citep{qu2026coral}. Building upon this insight, we incorporate multi-agent and multi-round techniques into \modelname. Concretely, we instantiate multiple agents as role-specialized executions of the same underlying model (e.g., proposer and verifier), each operating under distinct prompts and objectives while sharing a structured working memory. This memory stores the problem specification, retrieved literature summaries, selected knowledge bank entries, and intermediate proof states, ensuring that all agents operate on a consistent and up-to-date context. Collaboration is achieved through iterative rounds of interaction: the proposer generates candidate arguments, the verifier critiques them under the proof commandment constraints, and the resulting feedback is written back to memory for refinement in subsequent rounds. This controlled memory sharing and role-based coordination ensure that agents work coherently toward a common objective while enabling systematic error correction and progressive improvement.
+Research is inherently iterative and collaborative~\citep{qu2026coral}. In research-level mathematics, solutions typically emerge through repeated refinement and verification rather than single-pass reasoning. We incorporate multi-agent and multi-round techniques into \modelname to support this process, enabling iterative improvement of candidate proofs through coordinated interactions.
 
-\begin{itemize}[leftmargin=*]
-\item \textbf{Proposer.} Generates candidate arguments, proof steps, and alternative strategies, drawing on the single-agent workflow above.
-\item \textbf{Verifier.} Critiques the proposer's output, checking for logical consistency, identifying gaps, and flagging hallucinated references or unjustified claims.
-\end{itemize}
-These roles alternate across multiple rounds. In each round, the verifier's feedback is structured and passed back to the proposer, which refines its proof accordingly. This loop continues until the verifier raises no blocking issues or a maximum round budget is reached. The multi-round design enables systematic exploration of alternative strategies when a primary approach stalls, and allows the system to progressively improve both the correctness and the clarity of the proof.
+\paragraph{Multi-agent formulation.}
+We instantiate role-specialized agents as executions of the same underlying model. In our default setting, we use \emph{one proposer and one verifier} per problem, interacting over multiple rounds. All agents operate on a structured shared memory that maintains: 
+(1) \emph{problem state}—the formal problem description and assumptions; 
+(2) \emph{literature context}—summaries produced by the literature search and literature understanding modules; 
+(3) \emph{knowledge entries}—retrieved items from the knowledge bank module; 
+(4) \emph{proof state}—the current draft proof; 
+(5) \emph{feedback state}—structured critiques accumulated across rounds.
 
-The agent uses the file system to maintain a persistent proof draft across turns.
+\paragraph{Memory operations.}
+Agents access memory through restricted read/write rules. The proposer reads the full memory and writes only to the \emph{proof state}. The verifier reads the \emph{proof state} and writes only to the \emph{feedback state}. The remaining components are read-only after initialization. Memory updates are applied sequentially at the end of each round, avoiding concurrent write conflicts.
+
+\paragraph{Role design.}
+(1) \textbf{Proposer}—generates candidate proof steps and updates the proof state using the unified workflow; 
+(2) \textbf{Verifier}—evaluates the current proof under the proof commandment constraints and records issues as structured feedback.
+
+\paragraph{Multi-round interaction.}
+At each round, the proposer produces a candidate proof conditioned on the current memory, and the verifier returns feedback based on the proof state. The feedback is appended to memory and used by the proposer in the next round. The process repeats for a fixed number of rounds or until no blocking issues remain.
+
+\paragraph{Implementation note.}
+The proof state is maintained as a file-backed draft, allowing incremental updates across rounds.
 This is qualitatively different from single-turn prompting: the agent can write a partial proof, identify a gap, search for relevant lemmas, and revise the draft in subsequent turns.
 In our experiments, agents typically use 10--40 tool calls (file reads/writes) per problem.
-
-The multi-turn structure also allows the agent to invoke the math-research skill multiple times on the same problem — for instance, to first check definitional correctness, then develop the main argument, then audit for gaps.
-
-
-
+The multi-turn structure also allows the agent to invoke the math-research skill multiple times on the same problem --- for instance, to first check definitional correctness, then develop the main argument, then audit for gaps.
 
 \section{Experiments}
 \label{sec:experiments}
