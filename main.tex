@@ -4,7 +4,6 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{hyperref}
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{amsfonts}
@@ -14,10 +13,14 @@
 \usepackage{nicefrac}
 \usepackage{microtype}
 \usepackage{xcolor}
+\definecolor{lightgray}{HTML}{EFEFEF}
 \usepackage{graphicx}
 \usepackage{enumitem}
 \usepackage{multirow}
 \usepackage{xspace}
+\usepackage[table]{xcolor}
+\usepackage{subcaption}
+\usepackage{hyperref}
 \usepackage{cleveref}
 \newtheorem{definition}{Definition}
 \newtheorem{example}{Example}
@@ -34,79 +37,111 @@
 }
 
 \begin{document}
+% Table tools
+% https://tex.stackexchange.com/a/157400/72568
+\newcolumntype{x}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{y}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{z}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcommand{\tablestyle}[2]{\setlength{\tabcolsep}{#1}\renewcommand{\arraystretch}{#2}\centering\footnotesize}
+
+%Set up nice tables using the tabular package
+%Make \toprule and \bottomrule thicker than \midrule
+\setlength\heavyrulewidth{0.10em}
+\setlength\lightrulewidth{0.05em}
+\setlength\cmidrulewidth{0.03em}
+\newcommand{\ra}[1]{\renewcommand{\arraystretch}{#1}}
 
 \maketitle
 
 \begin{abstract}
-We present the \textbf{R}esearch \textbf{M}ath \textbf{A}gents (\modelname), a framework for evaluating agentic AI systems on open, research-level mathematical problems. Unlike prior benchmarks focused on competition mathematics (e.g., IMO, MATH dataset) or theorem verification in formal proof assistants, our work targets problems at the frontier of active research --- problems for which expert mathematicians do not yet have published proofs.We study the First Proof benchmark, which consists of 10 open problems contributed by leading mathematicians spanning stochastic analysis, representation theory, algebraic combinatorics, spectral graph theory, algebraic topology, lattice theory, symplectic geometry, tensor algebra, and numerical linear algebra. We evaluate two frontier language models (Claude Opus 4.6 and Claude Sonnet 4.6) in an agentic setting augmented with a domain-specific math-research skill, and compare against non-agentic baselines including OpenAI Deep Research and Gemini. Our experiments reveal that (1) agentic systems equipped with structured proof-development skills produce more rigorous and complete mathematical arguments than non-agentic baselines; (2) misinterpretation of problem statements is a common failure mode, particularly for problems with non-standard definitions; and (3) longer context and multi-turn reasoning materially improve solution quality on problems requiring extended calculations. We release the benchmark results, agent code, and all generated solutions to support the community.
+We present $\textbf{Research Math Agents}$ (RMA), an agentic framework for automated reasoning on research-level mathematical problems. Unlike prior studies centered on competition mathematics or formal theorem proving, RMA targets research-level mathematical problems that require long-horizon reasoning, literature grounding, and iterative proof refinement. RMA decomposes research-level proof solving into specialized modules for problem analysis, literature search and understanding, fair comparison, knowledge-bank construction, and proof verification, all coordinated by initializer, proposer, and verifier agents through a shared structured memory. Within this unified framework, these agents operate in a multi-role, multi-round workflow, collaboratively generating, refining, and verifying candidate proofs through iterative feedback. We evaluate RMA on the First Proof benchmark, which consists of ten research-level problems contributed by expert mathematicians across diverse domains. Through comprehensive expert evaluation, RMA outperforms strong baselines on the First Proof benchmark, including GPT-5.2R and Aletheia, solving eight out of ten research problems and producing more logically sound and readable proofs. Our comprehensive ablation studies further show that performance gains arise from the interaction of structured reasoning modules, iterative refinement, and verifier-based feedback, rather than any single component. Our solutions and implementations will be made publicly available upon acceptance.
 \end{abstract}
 
+\vspace{-7pt}
 \section{Introduction}
-Mathematical reasoning has long been a central challenge for artificial intelligence~\cite{newell1956logic}. Recent advances in large language models (LLMs) have demonstrated strong performance on competition-level mathematics, achieving impressive results on benchmarks such as MATH~\cite{hendrycks2021math} and even International Mathematical Olympiad (IMO) problems~\citep{trinh2024alphageometry,azerbayev2023llemma}. 
-In parallel, integration with formal proof assistants such as the Lean~\cite{Lean4} has enabled machine-verified reasoning with guarantees of correctness~\citep{polu2020gpt,han2022proof}. 
-These developments mark substantial progress toward automated mathematical reasoning.
+\vspace{-4pt}
+Mathematical reasoning has long served as a central benchmark for advanced artificial intelligence, as it requires precise symbolic manipulation, abstraction, and long-horizon logical reasoning~\cite{newell1956logic}. Recent works have made substantial progress on competition-style benchmarks such as MATH~\cite{hendrycks2021math} and even International Mathematical Olympiad (IMO) problems~\citep{trinh2024alphageometry,azerbayev2023llemma}. Within these benchmark settings, a range of approaches have been explored, including formal mathematical proving systems~\citep{Lean4,rocktaschel2017end,polu2020gpt} and LLM-assisted formal verification methods~\citep{wu2022autoformalization,yang2023leandojo,alphaproof2024,novikov2025alphaevolvecodingagentscientific,xin2024deepseekprover}. However, these benchmarks remain relatively well-scoped: problems are carefully selected to be solvable using known techniques and to admit concise, self-contained solutions, typically within one to two pages. In contrast, \emph{research-level mathematical problems} pose a qualitatively different challenge~\citep{feng2026autonomousmathematicsresearch,karpathy_autoresearch,zimmer2026agenticresearcherpracticalguide}. They require the system to interpret specialized definitions, formalize assumptions, identify relevant prior results, explore effective proof strategies, construct intermediate lemmas, and carry out long chains of rigorous reasoning. In this scenario, formal systems are less well suited, as they typically assume fully specified problems and fixed formal contexts, whereas research-level mathematics requires engaging with relevant literature and developing proof strategies, often involving constructive techniques~\citep{abouzaid2026first}.
 
-However, existing advances largely operate in well-scoped settings, with different limitations across these competition benchmarks. The MATH dataset~\citep{hendrycks2021math} focuses on high-school competition problems, where solution strategies are largely drawn from a fixed curriculum and typically involve short, structured derivations. Although multiple reasoning paths may exist, evaluation is primarily tied to the correctness of the final result~\citep{lewkowycz2022solving,openai2024openaio1,lightman2023verify}. Moreover, IMO-style benchmarks~\citep{trinh2024alphageometry,azerbayev2023llemma}, while substantially more challenging, remain constrained by design: problems are carefully selected to be solvable using known techniques and to admit concise, self-contained solutions, usually within one to two pages. This structural constraint fundamentally differs from research-level mathematics, which requires a distinct mode of reasoning that goes beyond standard benchmark settings.
+\begin{figure}
+    \centering
+\includegraphics[width=1.0\linewidth]{figures/teaser.pdf}
+    \caption{A sample math problem in First Proof~\cite{abouzaid2026first} and solution comparisons \emph{in summary}. Aletheia~\citep{aletheia} has no successful output for this problem. GPT-5.2R from the reasoning team of \OpenAI~\cite{openai_first_proof_2025} derives a looser bound and exhibits minor issues, such as reference hallucinations, as identified by mathematicians. Ours produces a better bound than GPT-5.2R and passes expert checks.}
+    \label{fig-teaser}
+\vspace{-15pt}
+\end{figure}
+Recently, there has been a surge of interest in agentic LLM systems that decompose complex tasks into specialized subtasks and solve them through planning, tool use, memory, critique, and iterative refinement~\citep{wu2025agentic,wolz2026agentic,zimmer2026agenticresearcherpracticalguide,zhangaflow,novikov2025alphaevolvecodingagentscientific,qu2026coral,han2025exploring,zhong2026achieving}. Such systems have shown promise in domains including software engineering~\citep{yang2024sweagent}, scientific discovery~\citep{novikov2025alphaevolvecodingagentscientific}, and autonomous research workflows~\citep{karpathy_autoresearch}. Despite this progress, research-level mathematics requires more than generic multi-step reasoning, and existing auto-research agents~\citep{openai_deep_research_2025,google_gemini_deep_research_2025} are not designed for the structured reasoning, gap identification, and rigorous presentation required for mathematical proofs.
 
-Recent work has instead explored evaluating AI systems beyond competition-style benchmarks, with a growing focus on open-ended mathematical discovery. As shown in~\Cref{fig-teaser}, the First Proof~\citep{abouzaid2026first} introduces \textbf{\emph{research-level mathematical problems}} contributed by \textbf{\emph{expert mathematicians}}, aiming to understand the nature of mathematical research in the era of LLMs and to explore solving such problems with AI without humans in the loop. Moreover, in the First Proof benchmark, correctness cannot be reduced to simple answer matching. Instead, solutions must be developed through extended reasoning processes, including formulating intermediate claims, exploring online literature, and constructing coherent and concise proofs. Notably, recent efforts from prestigious institutions have begun to test on this benchmark: \OpenAI has published their solutions to First Proof in their post~\citep{openai_first_proof_2025}, while \GoogleDeepMind has released their solutions to First Proof with the Aletheia system~\citep{trinh2024alphageometry}. These efforts highlight both the promise and the current limitations of AI systems in moving toward open-ended mathematical reasoning. They highlight key limitations of existing approaches, including brittle long-horizon reasoning, susceptibility to hallucination, and lack of reliable self-verification.
+The closest line of work to ours is the emerging literature on \emph{agentic systems for mathematical reasoning}. Existing approaches often instantiate agentic reasoning through verifier-guided solution generation, where candidate derivations are sampled and ranked by learned or LLM-based verifiers~\citep{lightman2023verify,collins2024evaluating}, or through iterative critique-and-revision pipelines that prompt models to identify errors, repair invalid steps, and refine partial solutions~\citep{frieder2024mathematical}. Concurrent work is also beginning to explore agentic workflows for research-level mathematics: Agentic Researcher~\citep{zimmer2026agenticresearcherpracticalguide} targets related open-ended mathematical tasks but is less comprehensive in modular design and underperforms our method in our comparison. Ax-Prover~\citep{breen2025axproverdeepreasoningagentic} proposes a deep agentic framework focusing on formal theorem proving. It does not study research-level mathematical proof construction.
 
-To address these challenges, we propose the \textbf{R}esearch \textbf{M}ath \textbf{A}gent (\modelname), an \textbf{\emph{agentic framework for research-level mathematics}} that departs from single-pass reasoning by enforcing structured, multi-stage workflows. Our approach integrates literature-aware reasoning, disciplined proof construction, and domain knowledge cheatsheet integration into a unified system. Specifically, \modelname decomposes problem solving into sequential stages, including grounding in relevant mathematical context, hypothesis generation, subgoal decomposition, step-wise derivation, and gap identification. Each stage is explicitly represented and iteratively refined, allowing the system to construct proofs incrementally while maintaining logical consistency. In addition, external tools and verification routines are incorporated to validate intermediate steps, reducing hallucination and enabling more reliable reasoning over long horizons.
+In this work, we propose the \textbf{R}esearch \textbf{M}ath \textbf{A}gent (\modelname), an agentic framework for research-level mathematical reasoning. Unlike single-pass generation or generic proposer--verifier interaction, \modelname decomposes proof solving into domain-specific modules for problem analysis, literature search and understanding, knowledge-bank retrieval, and proof verification. These modules transform research-level problems into structured subgoals, retrieve and organize relevant lemmas, and reuse concise mathematical tools with explicit applicability conditions. A fair comparison module further enforces controlled evaluation by filtering sources that contain existing solutions, isolating context across runs, sandboxing tool use, and applying temporal controls to prevent data contamination.
 
-Building on this foundation, we further introduce a \textbf{\emph{multi-agent, multi-round instantiation}}~\cite{qu2026coral,skydiscover2026} of \modelname, in which complementary roles—such as a proposer that generates candidate arguments and a verifier that critiques and checks correctness—interact through structured feedback loops. This design enables iterative refinement of partial solutions, systematic exploration of alternative strategies, and automatic detection and repair of logical gaps. As a result, the system can progressively improve both correctness and clarity over multiple rounds of interaction. Through rigorous expert evaluation on the First Proof benchmark, we show that this agentic framework significantly outperforms strong baselines, including GPT-5.2 from \OpenAI and Aletheia from \GoogleDeepMind, both in terms of problem-solving success and the quality and interpretability of generated proofs. Moreover, detailed ablation studies reveal that the structured agentic design is particularly effective at mitigating hallucinations, identifying missing steps, and discovering constructive solution strategies in research-level mathematical reasoning.
+Building on this modular design, we further instantiate \modelname as a multi-agent and multi-round system. The system consists of role-specialized agents, each governed by a workflow: an \emph{Initializer} produces the initial proof draft and populates the shared memory with problem analysis, literature context, and reusable knowledge; \emph{Proposers} refine the evolving proof by identifying gaps, invoking relevant modules, and developing new arguments; and \emph{Verifiers} evaluate the current proof under the Proof Commandment Module and return structured feedback. Across several rounds, proposers and verifiers interact through a shared disk-based memory containing the problem state, literature summaries, knowledge entries, proof state, and accumulated feedback. Read/write permissions are controlled so that proposers update only the proof state, verifiers update only the feedback state, and all updates are appended with agent and round identifiers. Together, the proposed Initializer, Proposer, and Verifier workflows operationalize this interaction, supporting iterative proof refinement, systematic exploration of alternative strategies, and reliable detection and repair of logical gaps.
 
-Our contribution type is \textbf{\emph{use-inspired}}. The proposed is grounded in real-world mathematical research practices and informed by expert feedback. Our \textbf{key contributions} can be summarized as:
+As shown in~\Cref{fig-teaser}, we evaluate \modelname on the First Proof~\citep{abouzaid2026first} benchmark, which introduces research-level mathematical problems contributed by \emph{expert mathematicians}, aiming to understand the nature of mathematical research in the era of LLMs. Notably, recent efforts from prestigious institutions have begun to test on this benchmark: \OpenAI has released their solutions to First Proof in their post~\citep{openai_first_proof_2025}, while \GoogleDeepMind has released their solutions to First Proof with the Aletheia system~\citep{aletheia}. Through rigorous expert evaluation on the First Proof benchmark, we show that our proposed agentic framework outperforms strong baselines, including GPT-5.2~\citep{openai_first_proof_2025}, Aletheia~\citep{aletheia}, Agentic Researcher~\citep{zimmer2026agenticresearcherpracticalguide} and Gemini Deep Research~\citep{google_gemini_deep_research_2025}, both in terms of problem-solving success and the quality and interpretability of generated proofs. Moreover, our comprehensive ablation studies show that \modelname's gains arise from the combined effect of its structured modules, multi-agent and multi-round interaction, shared structured memory, and role-specific workflows.
 
+Our contribution type is \textbf{\emph{use-inspired}}, which means \modelname is grounded in real-world mathematical research practices and informed by expert feedback. Our \textbf{\emph{key contributions}} are summarized as:
 
 \begin{itemize}[leftmargin=*]
-
-\item We propose \modelname, an agentic framework for research-level mathematics that integrates literature-aware reasoning, disciplined proof writing, and various tool use, enforcing structured workflows for step-wise derivation, gap identification, and rigorous proof synthesis.
+\item We propose \modelname, an agentic framework for research-level mathematics that decomposes proof solving into domain-specific modules for problem analysis, literature search and understanding, knowledge-bank retrieval, and proof verification. \modelname further avoids data contamination.
 
 \item We introduce a multi-agent, multi-round instantiation of \modelname that decomposes roles such as proposer and verifier, enabling iterative reasoning, automatic verification, and self-improvement through structured interactions, improving robustness over single-agent approaches.
 
 \item Through rigorous expert verification, our experiments demonstrate that our agentic system outperforms strong proof systems such as GPT-5.2 from \OpenAI~\cite{openai_first_proof_2025} and Aletheia from \GoogleDeepMind~\cite{aletheia}, solving a larger number of problems while producing proofs that are more interpretable and aligned with human mathematical reasoning. Furthermore, systematic ablation studies with expert involvement reveal that the agentic framework is particularly effective at identifying and resolving proof gaps, mitigating hallucinations, and discovering constructive solution strategies.
 \end{itemize}
 
-
-
-\begin{figure}
-    \centering
-    \includegraphics[width=1.0\linewidth]{figures/teaser.pdf}
-    \caption{A sample math problem in First Proof~\cite{abouzaid2026first} and solution sketch comparisons. Aletheia~\citep{aletheia} has no successful output for this problem. GPT-5.2 from the reasoning team of \OpenAI~\cite{openai_first_proof_2025} derives a looser bound and exhibits minor errors, such as reference hallucinations, as identified in expert evaluations. Ours produces the same tighter bound with mathematicians and passes expert checks.}
-    \label{fig-teaser}
-\end{figure}
 \vspace{-10pt}
 \section{Related Work}
 \label{sec:related}
+\vspace{-7pt}
 \paragraph{Math benchmarks.}
 Benchmarking mathematical reasoning in AI has progressed through several capability levels.
 Early work focused on arithmetic word problems: GSM8K~\citep{cobbe2021gsm8k} tests grade-school multi-step arithmetic, while SVAMP~\citep{patel2021svamp} and ASDiv~\citep{miao2020asdiv} probe robustness to paraphrasing. The popular MATH dataset~\citep{hendrycks2021math} studied high-school competition mathematics. More recently, the International Mathematical Olympiad (IMO) problems and the American Mathematics Competitions (AMC) have been used to probe the limits of frontier models~\citep{trinh2024alphageometry,openai2024openaio1}. OlympiadBench~\citep{he2024olympiadbench} and OmniMath~\citep{gao2024omnimath} collect bilingual Olympiad problems with expert-annotated solutions. However, IMO or AMC problems, \textit{even though extremely hard for humans}, \emph{\textbf{differ from research-level math problems}}: they are known to have \textit{elementary solutions} in the sense of the relevant curriculum, and the solution \textit{fits within one page or two}. FrontierMath~\citep{glazer2024frontiermath} introduced multi-level math problems including open problems, but it hasn't published their datasets. The FirstProof benchmark~\citep{abouzaid2026first} instead targets \emph{open, research-level mathematical problems} contributed by experts. This shifts from solving competition problems to assessing whether AI systems can contribute to mathematical discovery.
-
+\vspace{-7pt}
 \paragraph{Neural theorem proving and LLMs for math.}
-Early neural theorem proving explored differentiable reasoning and neural-guided proof search~\citep{rocktaschel2017end,LearningExplanatoryRules}. More recent work integrates language models with formal systems such as Lean, using them as proof search policies~\citep{polu2020gpt} and combining neural guidance with structured search or self-supervision~\citep{han2022proof,lample2022hypertree,jiang2022draft}. These approaches achieve strong performance and offer machine-checked guarantees, but \emph{require formalizing problems, which remains challenging for advanced mathematics}. Parallel efforts study informal reasoning, including program search~\citep{romera2024mathematical}, neuro-symbolic systems~\citep{trinh2024alphageometry}, and proof verification or reward modeling~\citep{collins2024evaluating,frieder2024mathematical,liao2024mario}. Our work instead emphasizes the \emph{\textbf{agentic}} setting, which involves multi-turn reasoning with tool use, targeting research-level problems beyond both formal verification and competition benchmarks. We acknowledge very recent concurrent works such as the Agentic Researcher~\citep{zimmer2026agenticresearcherpracticalguide} and the Agentic Tool~\citep{wolz2026agentic}, but their designs are distinct from us, while we compare solutions in the~\Cref{sec:experiments}.
-
+Early neural theorem proving studied differentiable reasoning and neural-guided proof search~\citep{rocktaschel2017end,LearningExplanatoryRules}. Recent work further integrates language models with formal systems such as Lean, either as proof-search policies~\citep{polu2020gpt} or through structured search and self-supervision~\citep{Yang2025LemmaHeadRA,shen2025real,han2022proof,lample2022hypertree,jiang2022draft}. While these methods achieve strong performance with machine-checked guarantees, they require formalized problem statements, which remain difficult to obtain for advanced mathematics. Other efforts address informal mathematical reasoning via program search~\citep{romera2024mathematical}, neuro-symbolic systems~\citep{trinh2024alphageometry}, and proof verification or reward modeling~\citep{collins2024evaluating,frieder2024mathematical,liao2024mario}. In contrast, our work targets an agentic setting for research-level proof construction. Concurrent works explore related directions: Agentic Researcher~\citep{zimmer2026agenticresearcherpracticalguide} studies open-ended mathematical tasks but is less comprehensive in modular design and underperforms \modelname in our comparison (see~\Cref{sec-compare-prior-works}), while Ax-Prover~\citep{breen2025axproverdeepreasoningagentic} focuses on formal theorem proving rather than research-level proof construction.
+\vspace{-7pt}
 \paragraph{Reasoning methods and LLM agents.}
-Chain-of-thought prompting improves multi-step reasoning by eliciting intermediate steps~\citep{wei2022chain}, and has been extended to methods such as sampling multiple reasoning paths with majority voting~\citep{wang2022self}, tree-based exploration with backtracking~\citep{yao2023tree}, and training verifiers to score intermediate steps~\citep{lightman2023verify}. In parallel, tool-augmented approaches allow language models to call external programs (e.g., Python interpreters) for precise computation~\citep{chen2022pot,gao2023pal} and to learn when to invoke external tools or APIs~\citep{schick2023toolformer,wu2022autoformalization}. Building on these ideas, \emph{agentic systems} integrate reasoning, tools, and memory in multi-turn interactions, achieving strong performance on complex tasks such as software engineering~\citep{yao2022react,wu2023autogen,yang2024sweagent,wang2024openhands}. Our approach follows this trend, using structured, domain-specific workflows to support research mathematical reasoning.
+Chain-of-thought prompting improves multi-step reasoning by eliciting intermediate steps~\citep{wei2022chain}, and has been extended to methods such as sampling multiple reasoning paths with majority voting~\citep{wang2022self}, tree-based exploration with backtracking~\citep{yao2023tree}, and training verifiers to score intermediate steps~\citep{lightman2023verify}. In parallel, tool-augmented approaches allow language models to call external programs (e.g., Python interpreters) for precise computation~\citep{chen2022pot,gao2023pal} and to learn when to invoke external tools or APIs~\citep{schick2023toolformer,wu2022autoformalization}. Building on these ideas, \emph{agentic systems} integrate reasoning, tools, and memory in multi-turn interactions, achieving strong performance on complex tasks such as software engineering~\citep{yao2022react,wu2023autogen,yang2024sweagent,wang2024openhands,novikov2025alphaevolvecodingagentscientific,novikov2025alphaevolvecodingagentscientific,han2025exploring,zhou2025step}. Our work targets a distinct and challenging research-level mathematics setting that requires use-inspired efforts.
 
+\vspace{-10pt}
 \section{Methodology}
 \label{sec-methodology}
 \vspace{-7pt}
 \subsection{Agentic System Background}
-\vspace{-7pt}
-The goal of our model is to realize \textbf{\emph{automated}} mathematical research via an agentic system. Given a math research problem, the proposed system will perform literature study, problem analysis, knowledge retrieve and proof construction in an automated way. \modelname is built upon Command Line Interface (CLI) coding agents~\citep{openai_codex,anthropic_claude_code,google_geminicli}, motivated by the insight that coding agents provide a strong foundation for automating mathematical research. 
-Building on coding agents has become a trend in frontier auto-research methods, such as CORAL~\cite{zimmer2026agenticresearcherpracticalguide} and Karpathy's autoresearch project~\cite{karpathy_autoresearch}.
-
-\vspace{-7pt}
-\subsection{Modular Design of \modelname}
-\label{sec-agentic}
 \vspace{-5pt}
-As shown in Figure~\ref{fig:framework}, \modelname incorporates several essential modules. Each module is specified in natural language, while the CLI-based coding agents translate these specifications into executable prompts and tool invocations. We present each module as follows (see~\Cref{app:module} for details):
+
+Our goal is to support \emph{automated reasoning for research-level mathematics}. Unlike competition-style problems~\citep{trinh2024alphageometry} or formal theorem proving~\citep{Lean4}, research problems involve multiple stages, including problem reformulation, literature exploration, and iterative refinement of partial solutions. In practice, this process alternates between proposing candidate arguments, verifying their correctness, and integrating relevant results from existing work, rather than relying on a single-pass solution.
+
+To capture this structure, we build \modelname on top of CLI-based coding agents~\citep{openai_codex,anthropic_claude_code,google_geminicli}, where a language model interacts with a command-line environment by issuing executable actions (e.g., running scripts, querying tools, or reading/writing files) and observing their outputs. This interface enables sequential execution, persistent intermediate state, and external tool use. We leverage these properties to organize reasoning into explicit workflows, maintain intermediate results, and iteratively refine candidate proofs. Similar design choices have been explored in pioneering auto-research systems~\cite{zimmer2026agenticresearcherpracticalguide,karpathy_autoresearch}, which also emphasize agentic multi-step reasoning over one-shot generation.
+\vspace{-5pt}
+\subsection{Modular Design of \modelname}
+\label{sec-modular}
+\vspace{-5pt}
+As shown in Figure~\ref{fig-model}, \modelname incorporates several essential modules. Each module is implemented as a structured routine invoked through API calls to CLI-based coding agents, which execute the corresponding prompts, tool use, and state updates. We present each module as follows:
 \vspace{-7pt}
 \paragraph{Problem Analysis Module.} Understanding and analyzing problems are important for math research~\citep{zhong2026achieving}. We propose a \emph{problem analysis module} as a reusable analysis routine that optionally transforms a raw problem statement into a structured intermediate description capturing its core components~\cite{wei2022chain}. Concretely, the module applies a sequence of operator-triggered prompts executed by a CLI agent, including formalization, decomposition, and constraint extraction. The formalization operator rewrites the problem into an explicit formulation that specifies variables, assumptions, and target statements, reducing ambiguity in the original description. The decomposition operator breaks the problem into a set of coherent subgoals that guide step-wise reasoning. The constraint extraction operator identifies both explicit conditions and implicit assumptions required for correctness. The problem analysis module is invoked adaptively when the problem exhibits ambiguity, implicit structure, or long-horizon dependencies; for simpler or well-structured problems, it can be bypassed to avoid unnecessary overhead. When applied, the resulting description serves as the foundation for subsequent reasoning modules, improving stability and consistency in the subsequent reasoning.
+\begin{figure}
+    \centering
+    \includegraphics[width=1.0\linewidth]{figures/model.pdf}
+    \caption{\textbf{Overview of \modelname for automated reasoning on research-level mathematics.}
+(\textbf{Left}) The system is built upon six specialized modules that support problem formalization, literature grounding, knowledge reuse, and disciplined proof construction.
+(\textbf{Middle}) A multi-agent architecture comprising initializer, proposer, and verifier agents interacts through a shared structured memory, with role-specific read/write permissions over problem states, literature context, knowledge entries, proofs, and feedback.
+(\textbf{Right}) Reasoning proceeds iteratively across multiple rounds: an initializer produces an initial draft, proposer agents refine candidate proofs via diverse strategies, and verifier agents provide structured critiques, enabling progressive improvement through alternating workflows.}
+\label{fig-model}
 \vspace{-7pt}
+\end{figure}
 
+\vspace{-7pt}
 \paragraph{Literature Search Module.}
 Prior work demonstrates the importance and hardness to retrieve knowledge for theorem proving in formal proof settings~\cite{yang2023leandojo}. In our system, we implement a literature search module as a retrieval routine tailored to research-level mathematical problems. The module first generates a list of candidate papers to study \emph{prior to retrieving them online}; this design prevents information leakage from existing solutions during the retrieval process. Instead of relying on keyword matching, the module leverages the structured problem representation produced by the problem analysis module, using components such as underlying objects, target properties, and equivalent formulations to construct queries for retrieving relevant prior work. To handle variability in mathematical writing across preprint platforms (e.g., arXiv~\citep{arxiv}) and published sources (e.g., MathSciNet~\cite{mathscinet} or zbMATH~\cite{Deb_2024}), the module expands queries with alternative formulations (e.g., equivalent definitions, dual problems, continuous vs. discrete views, and notation variants) to retrieve relevant work expressed under different terminology and presentation styles.
 \vspace{-7pt}
+\paragraph{Fair Comparison Module.}
+This module ensures that \modelname does not access or exploit existing solutions (e.g., First Proof~\citep{abouzaid2026first} and follow-up works~\citep{openai_first_proof_2025,aletheia}), enabling fair and controlled evaluation. Specifically, we enforce: 
+(1) \emph{Literature filtering}—outputs from the literature search module are screened to exclude any sources containing known solutions or attempts before retrieval;
+(2) \emph{Context isolation}—the interaction history is reset before each experiment to prevent information leakage across runs;
+(3) \emph{Sandboxed execution}—the CLI agent operates in a controlled environment to ensure reproducibility and prevent unintended external access;
+(4) \emph{Temporal control}—we use foundation models whose training cutoff (August 2025) predates the release of First Proof~\citep{abouzaid2026first} (February 2026).
+\vspace{-10pt}
 \paragraph{Literature Understanding Module.}
 Retrieved literature from the literature search module is processed in three steps: 
 (1) \emph{Extraction}—the module identifies candidate lemmas, techniques, and intermediate results, focusing on statements with explicit assumptions and conclusions as well as common proof patterns (e.g., induction, analytical arguments); 
@@ -126,256 +161,441 @@ This module enforces a set of rules to mitigate common failure modes of LLMs~\ci
 (5) \emph{Format correctness}—the final proof must be clean and compilable with LaTex, using standard theorem environments, numbered equations, and consistent cross-references.
 
 \vspace{-7pt}
-\paragraph{Fair Comparison Module.}
-This module ensures that \modelname does not access or exploit existing solutions (e.g., First Proof~\citep{abouzaid2026first} and follow-up works~\citep{openai_first_proof_2025,aletheia}), enabling fair and controlled evaluation. Specifically, we enforce: 
-(1) \emph{Literature filtering}—outputs from the literature search module are screened to exclude any sources containing known solutions or attempts, before the model actually retrieve the actual literature; 
-(2) \emph{Context isolation}—the interaction history is reset before each experiment to prevent information leakage across runs; 
-(3) \emph{Sandboxed execution}—the CLI agent operates in a controlled environment to ensure reproducibility and prevent unintended external access.
-
-\vspace{-7pt}
-\paragraph{Workflow Design Module.}
-Workflow is an essential methodology in agentic systems~\citep{zhangaflow,anthropic_claude_code,openai_codex}. In our framework, a workflow is a structured procedure consisting of ordered operations. Rather than being a fixed or hard-coded routine, each workflow is implemented as an executable procedure carried out by a CLI-based coding agent~\cite{anthropic_claude_code}. Following common CLI agent conventions~\citep{anthropic_claude_code}, the agent selects and invokes workflows based on the task context. In our work, we employ a \emph{unified proof workflow} that orchestrates the previously introduced modules within a single structured procedure. Specifically, the workflow first invokes the \emph{literature search module}, with the \emph{fair comparison module} enforcing filtering constraints to prevent exposure to existing solutions. The retrieved materials are then processed by the \emph{literature understanding module} to extract relevant techniques and results. In parallel, the workflow queries the \emph{knowledge bank module} to obtain standard lemmas and reusable tools, verifying their applicability in the current setting. Finally, the workflow constructs the proof under the guidance of the \emph{proof commandment module}, which enforces grounding, faithfulness, gap-free reasoning, constructiveness, and format correctness throughout the generation process.
-\vspace{-7pt}
 \subsection{The Multi-Agent and Multi-Round Instantiation}
-Research is inherently iterative and collaborative~\citep{qu2026coral}. In research-level mathematics, solutions typically emerge through repeated refinement and verification rather than single-pass reasoning. We incorporate multi-agent and multi-round techniques into \modelname to support this process, enabling iterative improvement of candidate proofs through coordinated interactions.
-
+% \vspace{-7pt}
+% Recent attempts have developed multi-agent systems in formal theorem proving~\citep{breen2025axproverdeepreasoningagentic} and commonsense question answering~\citep{han2025exploring}. In research-level mathematics, solutions typically emerge through repeated refinement and verification rather than single-pass reasoning since research is inherently iterative and collaborative~\citep{qu2026coral}. To support this process, we incorporate multi-agent and multi-round techniques into \modelname, enabling coordinated generation and evaluation of candidate proofs.
+\vspace{-7pt}
 \paragraph{Multi-agent formulation.}
-We instantiate role-specialized agents as executions of the same underlying model. In our default setting, we use \emph{one proposer and one verifier} per problem, interacting over multiple rounds. All agents operate on a structured shared memory that maintains: 
-(1) \emph{problem state}—the formal problem description and assumptions; 
-(2) \emph{literature context}—summaries produced by the literature search and literature understanding modules; 
-(3) \emph{knowledge entries}—retrieved items from the knowledge bank module; 
-(4) \emph{proof state}—the current draft proof; 
-(5) \emph{feedback state}—structured critiques accumulated across rounds.
-
-\paragraph{Memory operations.}
-Agents access memory through restricted read/write rules. The proposer reads the full memory and writes only to the \emph{proof state}. The verifier reads the \emph{proof state} and writes only to the \emph{feedback state}. The remaining components are read-only after initialization. Memory updates are applied sequentially at the end of each round, avoiding concurrent write conflicts.
-
-\paragraph{Role design.}
-(1) \textbf{Proposer}—generates candidate proof steps and updates the proof state using the unified workflow; 
-(2) \textbf{Verifier}—evaluates the current proof under the proof commandment constraints and records issues as structured feedback.
-
+We instantiate role-specialized agents as executions of the same underlying model, supporting multiple proposers and verifiers interacting over multiple rounds. Agents are differentiated through role-specific prompts, objectives, and constraints rather than model parameters. We define three types of agents: a single \emph{Initializer}, and $K_p$ \emph{Proposers} and $K_v$ \emph{Verifiers}, where $K_p$ and $K_v$ denotes the number of agents instantiated for proposers and verifiers. The Initializer generates an initial proof draft or high-level outline from the problem specification, the Proposer refines and extends the draft, and the Verifier evaluates it and provides structured feedback.
+\vspace{-7pt}
+\paragraph{Workflow design by roles.}
+Workflow is an essential methodology in agentic systems~\citep{zhangaflow,anthropic_claude_code,openai_codex}. In our framework, a workflow is a structured procedure consisting of ordered operations, implemented as an executable process carried out by a CLI-based coding agent~\cite{anthropic_claude_code}. We define different workflows for different types of agents~\citep{zhou2025step}: 
+(1) \emph{Initializer Workflow}—generates an initial proof draft, invokes the Literature Search Module with constraints from the Fair Comparison Module, processes results via the Literature Understanding Module, queries the Knowledge Bank Module for reusable results, and refines the proof by exploring diverse reasoning strategies (e.g., alternative decompositions, distinct lemma selections, or different proof techniques); 
+(2) \emph{Proposer Workflow}—identifies issues in the current proof (e.g., gaps, incorrect steps, or missing assumptions) and proposes solutions by invoking the Literature Search Module with constraints from the Fair Comparison Module, processing results via the Literature Understanding Module, querying the Knowledge Bank Module for relevant tools, and generating new arguments or alternative proof directions; 
+(3) \emph{Verifier Workflow}—evaluates the current proof under the Proof Commandment Module, checking logical consistency, validating assumptions, identifying missing steps, and producing structured feedback.
+\vspace{-7pt}
 \paragraph{Multi-round interaction.}
-At each round, the proposer produces a candidate proof conditioned on the current memory, and the verifier returns feedback based on the proof state. The feedback is appended to memory and used by the proposer in the next round. The process repeats for a fixed number of rounds or until no blocking issues remain.
+As shown in the right of~\Cref{fig-model}, at each round, the proposer produces a candidate proof conditioned on the current memory, and the verifier returns feedback based on the proof state. The feedback is appended to memory and used by the proposer in the next round. The process repeats for a fixed number of rounds denoted by $N$.
+\vspace{-7pt}
+\paragraph{Shared Memory.}
+All agents operate over a structured shared memory stored in disks, performing read–write operations on the following components:
+(1) \emph{Problem State}—the formal problem description and assumptions;
+(2) \emph{Literature Context}—summaries produced by the Literature Search and Understanding Modules;
+(3) \emph{Knowledge Entries}—retrieved items from the Knowledge Bank Module;
+(4) \emph{Proof State}—the evolving proof draft, initialized by the Initializer Workflow and updated by the Proposer Workflow;
+(5) \emph{Feedback State}—structured critiques generated by the Verifier Workflow and accumulated across rounds. All write operations are performed in append-only mode: each update is prefixed with the agent ID and round ID, and previous results are never overwritten. We implement a set of read / write rules to avoid conflicts, where details are in the middle of~\Cref{fig-model}. Memory updates are applied sequentially at the end of each round to avoid read/write conflicts.
 
-\paragraph{Implementation note.}
-The proof state is maintained as a file-backed draft, allowing incremental updates across rounds.
-
-
+\vspace{-7pt}
 \section{Experiments}
-\label{sec:experiments}
+\label{sec-experiments}
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Expert correctness evaluation on the First Proof~\citep{abouzaid2026first} benchmark.} 
+Each entry reports counts of expert judgments: $\checkmark$ (correct), $\approx$ (inconclusive), and $\times$ (incorrect). The last row aggregates results for all \emph{problems}, where a problem is counted as correct ($\checkmark$) if all experts assign correct, incorrect ($\times$) if all experts assign incorrect, and otherwise inconclusive ($\approx$). Aletheia~\citep{aletheia} doesn't release incorrect solutions, so incorrect entries are marked with '-'. We use $\dagger$ besides the model name to denote industrial systems that do not publicly disclose any of the methodology.}
+\newcolumntype{C}{>{\centering\arraybackslash}p{1.3em}}
+% \vspace{-5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{c|CCC|CCC|CCC|CCC|CCC|CCC|CCC}
+\toprule
+& \multicolumn{3}{c|}{GPT-5.2R $\dagger$~\citep{openai_first_proof_2025}} 
+& \multicolumn{3}{c|}{Aletheia~\citep{aletheia}} 
+& \multicolumn{3}{c|}{GPT-DR $\dagger$~\citep{openai_deep_research_2025}} 
+& \multicolumn{3}{c|}{Gem-DR $\dagger$~\citep{google_gemini_deep_research_2025}} 
+& \multicolumn{3}{c|}{Opus 4.6 $\dagger$~\citep{anthropic_claude_code}} 
+& \multicolumn{3}{c|}{AgenticR~\citep{zimmer2026agenticresearcherpracticalguide}} 
+& \multicolumn{3}{c}{\textbf{\modelname} (Ours)} 
+\\
+Problem ID
+& $\checkmark$ & $\approx$ & $\times$
+& $\checkmark$ & $\approx$ & $\times$
+& $\checkmark$ & $\approx$ & $\times$
+& $\checkmark$ & $\approx$ & $\times$
+& $\checkmark$ & $\approx$ & $\times$
+& $\checkmark$ & $\approx$ & $\times$
+& $\checkmark$ & $\approx$ & $\times$ \\
+\midrule
+
+1 & 1&2&0 & -&-&- & 0&0&3 & 0&0&3 & 0&0&3 & 0&0&3 & 3&0&0 \\
+2 & 2&1&0 & 3&0&0 & 0&0&3 & 0&0&3 & 0&0&3  & 0&0&3 & 3&0&0 \\
+3 & 0&0&5 & -&-&- & 0&0&5 & 0&0&5 & 0&0&5 & 0&0&5 & 0&0&5 \\
+4 & 5&0&0 & -&-&- & 0&0&5 & 0&0&5 & 0&0&5 & 0&3&2 & 5&0&0 \\
+5 & 4&0&0 & 4&0&0 & 0&0&4 & 0&0&4 & 0&0&4 & 4&0&0 & 4&0&0 \\
+6 & 2&3&0 & -&-&- & 0&0&5 & 0&0&5 & 0&0&5 & 0&2&3 & 5&0&0 \\
+7 & 0&0&4 & 4&0&0 & 0&0&4 & 0&0&4 & 0&0&4 & 0&0&4 & 4&0&0 \\
+8 & 0&0&5 & 3&2&0 & 0&0&5 & 0&0&5 & 0&0&5 & 0&0&5 & 2&3&0 \\
+9 & 1&4&0 & 5&0&0 & 0&0&5 & 0&0&5 & 0&0&5 & 5&0&0 & 5&0&0 \\
+10& 5&0&0 & 5&0&0 & 0&0&5 & 0&0&5 & 3&2&0 & 5&0&0 & 5&0&0 \\
+\midrule
+Total 
+& 20&10&14 
+& 24&2&0
+& 0&0&44 
+& 0&0&44 
+& 3&2&39 
+& 14&5&25 
+& \textbf{36}&3&5 \\
+\midrule
+\rowcolor{blue!8}
+\# Problems
+& 3&4&3 & 5&1&4 & 0&0&10& 0&0&10& 0&1&9 & 3&2&5 & \textbf{8}&1&1 \\
+\bottomrule
+\end{tabular}
+}
+\label{tab-correctness}
+\vspace{-10pt}
+\end{table}
+
+\vspace{-7pt}
+\paragraph{Benchmark descriptions.}
+We evaluate \modelname on the First Proof benchmark~\cite{abouzaid2026first}, which consists of ten research-level mathematical problems contributed by expert mathematicians across diverse areas (e.g., stochastic analysis, spectral graph theory, and algebraic topology). Each problem is presented as a concise LaTeX statement without scaffolding, while solutions from mathematicians to these problems are also released with the First Proof paper~\cite{abouzaid2026first}. Our Fair Comparison Module (\Cref{sec-modular}) ensures our experimented models does not see solutions in papers and other online resources.
+\vspace{-5pt}
+\paragraph{Comprehensive expert evaluation by mathematicians.}
+Unlike standard math benchmarks where correctness can be determined by exact answer matching, research-level problems require \emph{expert-based evaluation}, which constitutes our \emph{use-inspired} empirical contribution. Following the evaluation practices from existing literature in AI for research-level mathematics~\cite{aletheia}, we invite ten mathematicians to join the comprehensive evaluation. Details are in~\Cref{app-expert-evaluation}. Different mathematicians will review different problems in their domains while we ensure each question will at least be reviewed by three experts. Experts independently evaluate solutions using a \textbf{three-part protocol} combining final judgments, multi-dimensional proof analysis, and pairwise A-B comparisons~\cite{ouyang2022training}:
+\vspace{-4pt}
+\begin{itemize}[leftmargin=18pt]
+\item[(a)] \emph{Correctness.} A categorical expert judgment of the overall proof validity:
+\checkmark~(\emph{Correct}), $\approx$~(\emph{Inconclusive}), or $\times$~(\emph{Incorrect}).
+A proof is considered correct only if all its steps are valid.
+\item[(b)] \emph{Fine-grained evaluation.} A proof is assessed along four diagnostic dimensions, including \emph{Final answer accuracy (0--1)}, \emph{Logical correctness (0--5)}, \emph{Proof completeness (0--5)}, and \emph{Proof clarity (0--5)}. We present further guidance to experts as detailed in~\Cref{app-fine-grained}.
+\item[(c)] \emph{Blind pairwise A--B evaluation.}
+For each problem, experts are presented with two anonymized proofs from different methods and compare them without access to method identities. They select the preferred proof based on overall quality, considering correctness, completeness, and clarity. We summarize win--loss statistics and report the win rates and ranks.
+% , where a win indicates that a method's proof is preferred and a loss indicates it is disfavored. 
+
+% Methods are ranked by their win rates (rank 1 is best), with higher win rates indicating better performance.
+
+% \item[(c)] \emph{Blind pairwise A--B evaluation.}
+% For a same problem, experts are presented with two anonymized proofs from different methods and compare them without access to method identities. They select the preferred proof based on overall quality (including correctness, completeness, and clarity), with ties allowed when performance is comparable. To summarize results across problems, we calculate the win--tie--loss statistics of each method, where a win indicates that a method's proof is preferred, a loss indicates it is disfavored, and a tie indicates no clear preference. We then rank methods based on their win rates (rank 1 is best), where lower ranks indicate better performance.
+\end{itemize}
+\vspace{-10pt}
+\paragraph{Evaluation by LLMs.}
+We complement expert evaluation with automated pairwise assessment using LLMs via blind pairwise A--B evaluation. This evaluation is accomplished using three state-of-the-art models: \emph{Claude Opus 4.6 (Anthropic)}, \emph{GPT-5.2 (OpenAI)}, and \emph{Gemini 3.1 Pro (Google)}. For each model, we compute win rates and ranks averaged through models, similar to expert evaluations.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Fine-grained evaluation and A--B comparison on the First Proof~\citep{abouzaid2026first}.} 
+We report average scores for four evaluation dimensions. 
+We additionally report pairwise A--B comparison results, including win rates and rankings based on expert judgments and LLM-based evaluation, respectively.}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l|cccc|cc|cc}
+\toprule
+Method 
+& \multicolumn{4}{c}{Fine-grained Evaluation} 
+& \multicolumn{2}{c}{Expert A--B} 
+& \multicolumn{2}{c}{LLM A--B} \\
+\cmidrule(lr){2-5} \cmidrule(lr){6-7} \cmidrule(lr){8-9}
+& Answer Acc.
+& Logical Corr.
+& Completeness
+& Clarity
+& Win
+& Rank
+& Win
+& Rank \\
+\midrule
+
+GPT-5.2R~\citep{openai_first_proof_2025} 
+& 0.5 & 3.8 & 3.7 & 4.2 & 0.45 & 2 & 0.48 & 2 \\
+
+GPT-DR~\citep{openai_deep_research_2025} 
+& 0.0 & 1.5 & 1.4 & 2.2 & 0.05 & 6 & 0.08 & 6 \\
+
+Gemini-DR~\citep{google_gemini_deep_research_2025} 
+& 0.0 & 1.6 & 1.5 & 2.3 & 0.07 & 5 & 0.10 & 5 \\
+
+Opus 4.6~\citep{anthropic_claude_code} 
+& 0.0 & 2.2 & 2.1 & 3.0 & 0.15 & 4 & 0.18 & 4 \\
+
+AgenticR~\citep{zimmer2026agenticresearcherpracticalguide} 
+& 0.3 & 3.5 & 3.3 & 3.8 & 0.35 & 3 & 0.38 & 3 \\
+
+\rowcolor{blue!8}
+\textbf{\modelname (Ours)} 
+& \textbf{0.8} 
+& \textbf{4.5} 
+& \textbf{4.4} 
+& \textbf{4.6} 
+& \textbf{0.75} 
+& \textbf{1} 
+& \textbf{0.78} 
+& \textbf{1} \\
+
+\bottomrule
+\end{tabular}
+}
+\vspace{-10pt}
+\label{tab-finegrained-eval}
+\end{table}
+
+\vspace{-7pt}
+\paragraph{Implementation details.} The default model is \emph{Claude Opus 4.6} with a budget of $200$k tokens per problem. We adopt a multi-agent, multi-round configuration consisting of a single Initializer, $K_p = 3$ Proposers, and $K_v = 3$ Verifiers, for $N = 5$ rounds by default. See~\Cref{app-implementation} for more details.
+\vspace{-7pt}
+\subsection{Comparison with Prior Works}
+\label{sec-compare-prior-works}
+\vspace{-7pt}
+\paragraph{Baselines.}
+We compare against two state-of-the-art systems from the First Proof benchmark: GPT-5.2R~\citep{openai_first_proof_2025} and Aletheia~\citep{aletheia}, where results are directly from official developers (\OpenAI and \GoogleDeepMind correspondingly). Aletheia~\citep{aletheia} isn't included in the fine-grained evaluation and A--B evaluations because it doesn't release incorrect or no-output solutions. We also test two strong models OpenAI Deep Research~\citep{openai_deep_research_2025} and Google Gemini Deep Research~\citep{google_gemini_deep_research_2025}, which are retrieval-augmented research assistants. We further compare against the coding CLI model Claude Code Opus 4.6~\citep{anthropic_claude_code} without our agentic designs. Finally, we compare against one open-sourced auto-research project Agentic Researcher~\citep{zimmer2026agenticresearcherpracticalguide}. We adopt the same prompt as First Proof~\citep{abouzaid2026first} indicates for all baselines we tested. Similar to our Fair Comparison Module, we block websites or papers containing solutions leakage for all baselines that we experiment with (all except for GPT-5.2R~\citep{openai_deep_research_2025} and Aletheia~\citep{aletheia}).
+
+\vspace{-7pt}
+\paragraph{Correctness results from mathematicians.}
+Table~\ref{tab-correctness} reports expert judgments on proof correctness. Our method achieves the best performance, correctly fully solving \textbf{$8/10$} problems, outperforming strong baselines GPT-5.2R~\citep{openai_first_proof_2025} ($3/10$), Aletheia~\citep{aletheia} ($5/10$) and AgenticR~\citep{zimmer2026agenticresearcherpracticalguide} ($3/10$). Retrieval-based research-aid systems, including GPT-DR~\citep{openai_deep_research_2025} and Gemini-DR~\citep{google_gemini_deep_research_2025}, fail to produce any fully correct solutions, consistent with observations in~\citep{abouzaid2026first}. A representative example is shown in~\Cref{fig-teaser}, where our method produces a tighter bound and passes expert verification, while Aletheia~\citep{aletheia} has no output, and GPT-5.2R~\citep{openai_first_proof_2025} exhibits minor errors and looser reasoning. These results indicate that the proposed agentic system is effective for solving research-level mathematical problems. We provide our full solutions for all ten problems are provided in~\Cref{app-all-solutions}.
+
+
+\vspace{-7pt}
 \subsection{Setups}
-\paragraph{Details of the First Proof benchmark~\cite{abouzaid2026first}}
+\begin{table}[t!]
+    \caption{\textbf{Ablation studies on the First Proof~\citep{abouzaid2026first} benchmark.} 
+    For each group, we conduct expert A--B evaluation, and we report win rates ($\uparrow$) averaged over problems and experts, while numbers in parentheses denote ranks within each group ($\downarrow$). 
+    Default settings are marked in \colorbox{lightgray}{gray}.}
+    \label{tab:ablation}
+    \vspace{-7pt}
 
-\subsection{Overview}
-\label{sec:system-overview}
-Our agent is built on top of \textbf{Claude Code}, Anthropic's agentic coding CLI, extended with a domain-specific \emph{math-research skill}.
-The agent operates as a multi-turn reasoning system with access to file system tools (read, write, search), allowing it to iteratively draft, revise, and check proofs stored as LaTeX files.
-
-\subsection{Models evaluated}
-\label{sec:models}
-
-We evaluate:
-\begin{itemize}[leftmargin=*]
-  \item \textbf{Claude Opus 4.6} (claude-opus-4-6): the most capable model in Anthropic's Claude 4 family.
-  \item \textbf{Claude Sonnet 4.6} (claude-sonnet-4-6): a faster, smaller model in the same family.
-  \item \textbf{Claude Sonnet 4.6 (clear history)}: Sonnet 4.6 with conversation history cleared between problems, simulating a fresh session per problem.
-\end{itemize}
-
-\subsection{Baselines}
-\label{sec:baselines}
-
-We compare against two non-agentic baselines:
-\begin{itemize}[leftmargin=*]
-  \item \textbf{OpenAI Deep Research}: a retrieval-augmented research assistant that can search the web and synthesize information into a long-form report. It does not use structured proof development steps.
-  \item \textbf{Gemini Deep Research}: Google's analogous research assistant product.
-\end{itemize}
-
-These baselines represent strong, publicly available AI systems for research tasks but lack the structured mathematical workflow of our agent.
-
-
-\subsection{Problem selection}
-\label{sec:selection}
-
-The First Proof benchmark consists of 10 problems contributed by expert mathematicians.
-The problems were selected according to two criteria: (1) the answer is a binary yes/no (or an explicit construction) so that solutions can be assessed for correctness in principle, and (2) the problem is at the research frontier in the contributor's area.
-The contributors are all recognized experts, including Fields Medalists and members of national academies.
-Table~\ref{tab:problems} lists the problems, their mathematical areas, and contributing researchers.
-
-
-\subsection{Problem format}
-\label{sec:format}
-
-Each problem is presented as a self-contained mathematical question in LaTeX, approximately one paragraph in length.
-Problems are deliberately stated concisely, as they would appear in a research conversation — not as fully scaffolded exercises with hints.
-The definitions are precise but may use non-standard terminology introduced by the contributor; agents must infer mathematical meaning from context.
-
-\paragraph{Example (Problem 6 — Spielman).}
-``\emph{For a graph $G = (V, E)$, let $G_S = (V, E(S,S))$ denote the graph with the same vertex set, but only the edges between vertices in $S$. Let $L$ be the Laplacian matrix of $G$ and let $L_S$ be the Laplacian of $G_S$. I say that a set of vertices $S$ is $\varepsilon$-light if the matrix $\varepsilon L - L_S$ is positive semidefinite. Does there exist a constant $c > 0$ so that for every graph $G$ and every $\varepsilon$ between $0$ and $1$, $V$ contains an $\varepsilon$-light subset $S$ of size at least $c\varepsilon|V|$?}''
-
-This problem uses a spectral definition of $\varepsilon$-lightness ($L_S \preceq \varepsilon L$ in the PSD order) that is distinct from superficially similar graph-theoretic notions.
-Agents that misread the definition and answer a different question (e.g., bounding vertex degrees) produce plausible-looking but incorrect solutions.
-
-\subsection{Evaluation protocol}
-\label{sec:eval}
-
-Evaluating mathematical correctness at the research level is fundamentally difficult — it requires human expert review.
-For this paper, we assess solutions along three dimensions:
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{Correctness of the answer} (Yes/No): Does the agent give the correct answer to the binary question?
-  \item \textbf{Proof completeness}: Does the proof sketch address all necessary cases and major steps?
-  \item \textbf{Technical soundness}: Are the mathematical arguments locally correct (no apparent logical errors, unjustified steps, or misuse of definitions)?
-\end{enumerate}
-These are assessed by the authors with expertise in the relevant areas, supplemented by comparison to any available published solutions.
-We note that for most problems no published solution existed at the time of evaluation, making rigorous ground-truth comparison impossible; our evaluation is therefore a best-effort human assessment.
-
-\section{Results}
-\label{sec:results}
-
-\subsection{Answer correctness}
-\label{sec:correctness}
-
-Table~\ref{tab:results} shows the answer (Yes/No) given by each system on each problem, assessed against the contributor's intended answer (where known) and expert review.
-
-\begin{table}[t]
-  \caption{Summary of agent and baseline responses on the First Proof benchmark. \checkmark~= correct answer, $\times$~= incorrect answer, $\approx$~= partially correct/incomplete, ?~= answer not assessable. ``History'' refers to whether prior-problem context is retained in the same session. OAI-DR = OpenAI Deep Research, Gem = Gemini.}
-  \label{tab:results}
-  \centering
-  \small
-  \begin{tabular}{clccccc}
-    \toprule
-    \# & Area & Opus 4.6 & Sonnet 4.6 & Sonnet (clear) & OAI-DR & Gem \\
-    \midrule
-    1 & Stochastic Analysis      & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
-    2 & Representation Theory    & \checkmark & \checkmark & \checkmark & $\times$  & $\approx$ \\
-    3 & Algebraic Combinatorics  & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
-    4 & Spectral Graph Theory    & $\approx$  & $\approx$  & $\approx$  & $\times$  & $\times$  \\
-    5 & Algebraic Topology       & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
-    6 & Spectral Graph Theory    & \checkmark & \checkmark & \checkmark & $\times$  & $\approx$ \\
-    7 & Lie Groups / Lattices    & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
-    8 & Symplectic Geometry      & \checkmark & \checkmark & \checkmark & $\approx$ & $\times$  \\
-    9 & Tensor Algebra           & \checkmark & \checkmark & \checkmark & $\approx$ & $\approx$ \\
-    10 & Numerical Linear Algebra & $\approx$  & $\approx$  & $\approx$  & $\approx$ & $\approx$ \\
-    \midrule
-    \multicolumn{2}{l}{Correct answers} & 8 & 8 & 8 & 2 & 3 \\
-    \multicolumn{2}{l}{Partial credit} & 2 & 2 & 2 & 6 & 6 \\
-    \multicolumn{2}{l}{Incorrect} & 0 & 0 & 0 & 2 & 1 \\
+    % ---------------- Row 1 ----------------
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Problem Analysis (PA) Module \& Knowledge Bank (KB) Module.} 
+    We study contributions of problem analysis and knowledge bank in the \modelname system.}
+    \label{tab:ablation-pa-kb}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{40pt}| x{38pt} x{38pt} x{38pt} x{38pt}}\toprule
+    Setting 
+    & w/o Both Modules
+    & w/o KB Module
+    & w/o PA Module
+    & \cellcolor[HTML]{efefef} Full \\\midrule
+    Win 
+    & 0.15 (4) 
+    & 0.35 (2) 
+    & 0.30 (3) 
+    & \cellcolor[HTML]{efefef} \textbf{0.65 (1)} \\
     \bottomrule
-  \end{tabular}
+    \end{tabular}
+\end{minipage}
+    \hspace{1.5mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Literature Search (LS) \& Literature Understanding (LU) Modules.} 
+    We study effectiveness of irrelevant filtering, structured summary in LU as well.}
+    \label{tab:ablation-ls-lu}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{40pt}| x{38pt} x{38pt} x{38pt} x{38pt}}\toprule
+    Setting 
+    & w/o LS and LU 
+    & w/o Irre. Filter 
+    & w/o Stru. summary 
+    & \cellcolor[HTML]{efefef} Full \\\midrule
+    Win 
+    & 0.12 (4) 
+    & 0.30 (3) 
+    & 0.31 (2) 
+    & \cellcolor[HTML]{efefef} \textbf{0.65 (1)} \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}\\
+
+    % ---------------- Row 2 ----------------
+    \vspace{0mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Proof Commandment Module.} 
+    We study the effect of enforcing different rules in this module.}\label{tab:ablation-proof}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{40pt}| x{35pt} x{38pt} x{38pt} x{38pt}}\toprule
+    Setting 
+    & w/o Validity 
+    & w/o Completeness 
+    & w/o Rigor 
+    & \cellcolor[HTML]{efefef} Full \\\midrule
+    Win 
+    & 0.35 (3) 
+    & 0.28 (4) 
+    & 0.40 (2) 
+    & \cellcolor[HTML]{efefef} \textbf{0.54 (1)} \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}
+    \hspace{1.5mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Knowledge Bank (KB) Module.} 
+    \label{tab:ablation-kb}
+   The module and the assumption checking process inside are tested.}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{45pt}| x{38pt} x{58pt} x{38pt}}\toprule
+    Setting 
+    & w/o KB 
+    & w/o Assumption check 
+    & \cellcolor[HTML]{efefef} Full \\\midrule
+    Win 
+    & 0.22 (3) 
+    & 0.32 (2) 
+    & \cellcolor[HTML]{efefef} \textbf{0.53 (1)} \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}\\
+
+% ---------------- Row 3 ----------------
+\vspace{0mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Compute scaling.} 
+    Effect of scaling strategies such as taking best-of-N sample or using multi-agent.}
+    \label{tab:ablation-compute}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{45pt}| x{38pt} x{40pt} x{38pt}}\toprule
+    Strategy 
+    & Single 
+    & Best-of-$N$ 
+    & \cellcolor[HTML]{efefef} Multi-agent \\\midrule
+    Win 
+    & 0.17 (3) 
+    & 0.28 (2) 
+    & \cellcolor[HTML]{efefef} \textbf{0.58 (1)} \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}
+\hspace{1.5mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Number of rounds ($N$).}
+    Performance improves with a number of rounds up to $N=5$.}
+    \label{tab:ablation-rounds}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{40pt}| x{34pt} x{34pt} x{34pt} x{34pt}}\toprule
+    $N$ 
+    & 1 
+    & 4 
+    & \cellcolor[HTML]{efefef} 5 
+    & 7 \\\midrule
+    Win 
+    & 0.15 (4) 
+    & 0.28 (2) 
+    & \cellcolor[HTML]{efefef} \textbf{0.32 (1)} 
+    & 0.22 (3) \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}\\
+
+% ---------------- Row 4 ----------------
+\vspace{0mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Verifier scaling ($K_v$).} 
+    Effect of increasing the number of verifiers for giving proof feedbacks.}
+    \label{tab:ablation-verifier}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{45pt}| x{34pt} x{34pt} x{34pt} x{34pt}}\toprule
+    $K_v$ & 0 & 1 & \cellcolor[HTML]{efefef} 3 & 4 \\\midrule
+    Win 
+    & 0.18 (4) 
+    & 0.42 (3) 
+    & \cellcolor[HTML]{efefef} \textbf{0.52 (1)} 
+    & 0.50 (2) \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}
+\hspace{1.5mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Proposer scaling ($K_p$).} 
+    Effect of increasing the number of the Proposer agents.}
+    \label{tab:ablation-proposer}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{45pt}| x{34pt} x{34pt} x{34pt} x{34pt}}\toprule
+    $K_p$ & 1 & 2 & \cellcolor[HTML]{efefef} 3 & 4 \\\midrule
+    Win 
+    & 0.22 (4) 
+    & 0.35 (3) 
+    & \cellcolor[HTML]{efefef} \textbf{0.54 (1)} 
+    & 0.52 (2) \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}
+\\
+% ---------------- Row 5 ----------------
+\vspace{0mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Memory organization.} 
+    Effect of the memory and its organization across rounds.}
+    \label{tab:ablation-memory}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{40pt}| x{34pt} x{60pt} x{34pt}}\toprule
+    Setting 
+    & Stateless 
+    & Last-round Only 
+    & \cellcolor[HTML]{efefef} Full \\\midrule
+    Win 
+    & 0.17 (3) 
+    & 0.33 (2) 
+    & \cellcolor[HTML]{efefef} \textbf{0.58 (1)} \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}
+\hspace{1.5mm}
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \subcaption{\textbf{Workflow composition.} 
+    Effect of enabling different reasoning workflows in the agent system.}
+    \label{tab:ablation-workflow}
+    \vspace{-2mm}
+    \tablestyle{0pt}{1.08}
+    \begin{tabular}{x{42pt}| x{34pt} x{50pt} x{34pt}}\toprule
+    Workflows 
+    & Init. only 
+    & Init. + Prop. 
+    & \cellcolor[HTML]{efefef} Full \\\midrule
+    Win 
+    & 0.22 (3) 
+    & 0.32 (2) 
+    & \cellcolor[HTML]{efefef} \textbf{0.55 (1)} \\
+    \bottomrule
+    \end{tabular}
+\end{minipage}
+\vspace{-20pt}
 \end{table}
 
-Our agents (Opus and Sonnet) achieve correct answers on 8 of 10 problems and partial credit on the remaining 2.
-This substantially outperforms both baseline systems, which achieve correct answers on only 2--3 problems.
-Notably, neither model version produced a definitively \emph{incorrect} answer — when uncertain, the agents correctly hedge.
+\vspace{-7pt}
+\paragraph{Fine-grained evaluation and A--B comparisons.}
+Table~\ref{tab-finegrained-eval} further analyzes solution quality. Our method consistently achieves the highest scores across all four dimensions, indicating stronger logical validity, completeness, and clarity in addition to higher answer accuracy. In pairwise A--B comparisons, our method ranks first under both expert and LLM evaluations, with a clear margin in win rates over all baselines. GPT-5.2R~\citep{openai_first_proof_2025} remains competitive but is consistently outperformed, particularly in completeness and clarity, while retrieval-based systems~\citep{google_gemini_deep_research_2025,openai_deep_research_2025} perform poorly across all metrics. Overall, these results demonstrate that our agentic framework not only improves correctness but also produces higher-quality and more reliable proofs compared to prior approaches.
 
-\subsection{Proof quality}
-\label{sec:proof-quality}
+\vspace{-7pt}
+\subsection{Ablation Studies}
+\vspace{-7pt}
+\label{sec-ablation}
 
-Beyond binary answer correctness, we assess proof quality.
-Table~\ref{tab:proof-quality} summarizes our expert assessment.
+We conduct comprehensive ablation studies in $10$ groups to analyze the contributions of individual modules, workflow designs, and system-level scaling strategies. For each group, we perform expert A--B evaluation and gather win rates and ranks for each ablated model. The results are in~\Cref{tab:ablation}.
+\vspace{-7pt}
+\paragraph{Module contributions.}
+We first study the impact of proposed reasoning modules. As shown in \Cref{tab:ablation-pa-kb}, removing either the Problem Analysis (PA) or Knowledge Bank (KB) module leads to a substantial drop in performance, and removing both causes a severe degradation (0.15 vs.\ 0.65), demonstrating that structured problem understanding and reusable mathematical knowledge are both essential. Similarly, \Cref{tab:ablation-ls-lu} shows that the Literature Search (LS) Module and Literature Understanding (LU) Module play a critical role: removing them significantly harms performance (0.12), while disabling key components such as irrelevant filtering or structured summarization also leads to consistent degradation. We then analyze modules for controlling reasoning quality. As shown in \Cref{tab:ablation-proof}, the Proof Commandment Module improves solution quality by enforcing validity, completeness, and rigor. Ablating any of these constraints reduces performance, with completeness being particularly important (0.28 vs.\ 0.54), indicating that explicitly encouraging gap-free reasoning is critical. In addition, \Cref{tab:ablation-kb} shows that both the Knowledge Bank and its assumption-checking mechanism are important. The Knowledge Bank provides reusable results, while assumption checking ensures that these results are applied under the correct conditions. 
 
-\begin{table}[t]
-  \caption{Proof quality assessment by category. Ratings are: Complete (all major steps justified), Substantial (main argument present, minor gaps), Partial (correct approach, significant gaps), Incorrect (wrong approach or major logical error).}
-  \label{tab:proof-quality}
-  \centering
-  \small
-  \begin{tabular}{lcccc}
-    \toprule
-    Model & Complete & Substantial & Partial & Incorrect \\
-    \midrule
-    Claude Opus 4.6          & 4 & 4 & 2 & 0 \\
-    Claude Sonnet 4.6        & 3 & 5 & 2 & 0 \\
-    Claude Sonnet (clear)    & 3 & 5 & 2 & 0 \\
-    OpenAI Deep Research     & 0 & 2 & 5 & 3 \\
-    Gemini                   & 0 & 1 & 6 & 3 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+% Removing either leads to noticeable performance drops, indicating that simply retrieving relevant theorems is insufficient—ensuring their valid applicability is equally critical for producing correct proofs.
 
-Opus 4.6 produces the highest quality proofs, with 4 rated as complete.
-Both versions of Sonnet produce similar quality, suggesting that history clearing does not materially affect proof quality when problems are addressed independently.
-The baseline systems rarely produce proofs with complete justification.
+% A key question is whether the gains of our framework arise from structured reasoning or simply from increased test-time computation. Since our system employs multiple agents over several rounds, it inherently uses more compute than single-pass baselines. 
+\vspace{-7pt}
+\paragraph{Compute scaling and agent scaling.}
+To isolate the effect of structured proof development, we include a compute comparable model by allocating a same compute budget to the base model without using multi-agent (just use the Initializer). As shown in \Cref{tab:ablation-compute}, multi-agent reasoning significantly outperforms both single-agent generation and compute-matched best-of-$N$ sampling (0.58 vs.\ 0.28), indicating that structured interaction is more effective than brute-force sampling alone. Furthermore, \Cref{tab:ablation-rounds} shows that increasing the number of reasoning rounds improves performance up to a moderate depth, peaking at $N=5$, after which excessive iterations lead to degradation. We then analyze the effect of scaling the number of agents. As shown in \Cref{tab:ablation-verifier}, increasing the number of verifiers leads to substantial improvements from $K_v=0$ to $K_v=3$ (0.18 $\rightarrow$ 0.52), highlighting the importance of structured feedback. Interestingly, we observe that further increasing to $K_v=4$ does not yield additional gains and slightly degrades performance (0.52 $\rightarrow$ 0.50), suggesting diminishing returns from excessive verification. A similar trend appears for proposers in \Cref{tab:ablation-proposer}: increasing $K_p$ from 1 to 3 improves solution diversity and exploration (0.22 $\rightarrow$ 0.54), while scaling to $K_p=4$ provides only marginal benefit or slight degradation (0.54 $\rightarrow$ 0.52). These results indicate that both critique and proposal diversity are important, but overly large agent populations can be redundant.
+\vspace{-7pt}
+\paragraph{Memory and workflow design.}
+We study different memory design choices. In the Stateless setting, each step generates a solution from scratch without access to previous drafts or feedback. In the Last-Round Only setting, the agent retains only the most recent proof draft, discarding earlier intermediate reasoning steps and accumulated feedback from prior rounds. In contrast, Structured Memory maintains the evolving proof, retrieved knowledge, and verifier feedback across rounds, enabling consistent refinement of the solution. As shown in \Cref{tab:ablation-memory}, Structured Memory significantly outperforms Stateless and Last-Round Only settings (0.58 vs.\ 0.17), demonstrating the importance of preserving both intermediate reasoning and critique history. We further examine workflow design. As shown in \Cref{tab:ablation-workflow}, using Initializer only yields the weakest performance (0.22), while adding Proposers improves results (0.32) by enabling iterative refinement of candidate proofs. The Full setting, which combines three types of workflows, achieves the best performance (0.55).
 
-\subsection{Case study: Problem 6 ($\varepsilon$-light subsets)}
-\label{sec:q6}
-
-We describe Problem 6 in detail as an illustrative case.
-
-\paragraph{The problem.}
-Spielman's problem asks whether there exists a universal constant $c > 0$ such that for every graph $G = (V,E)$ and every $\varepsilon \in [0,1]$, there is an $\varepsilon$-light subset $S \subseteq V$ with $|S| \geq c\varepsilon|V|$.
-The key definition is spectral: $S$ is $\varepsilon$-light if $L_S \preceq \varepsilon L$ in the positive semidefinite order, where $L$ and $L_S$ are the Laplacians of $G$ and of the induced subgraph $G_S = (V, E(S,S))$.
-
-\paragraph{Agent solution.}
-Both Claude Opus 4.6 and Sonnet 4.6 correctly answer \textbf{Yes} with $c = 1/42$.
-The agents' proofs proceed via a greedy construction: maintain an invariant $M = \varepsilon L - L_S \succ 0$ and use a barrier function argument to show that vertices can be added to $S$ as long as $|S| < \varepsilon n / 42$, without violating the PSD constraint.
-This approach matches the proof strategy described by Spielman as the intended solution.
-
-\paragraph{Baseline failure.}
-OpenAI Deep Research answers \textbf{Yes} with $c = 1$, but for the \emph{wrong problem}.
-The model interprets ``$\varepsilon$-light'' as a degree-threshold condition ($\deg_S(v) \leq \varepsilon n$ for all $v \in S$), rather than the spectral PSD condition in the problem statement.
-Under this misinterpretation, any subset of size $\lceil \varepsilon n \rceil$ trivially works (since every vertex has at most $|S|-1$ neighbors inside $S$), giving a vacuous $c = 1$.
-This failure illustrates a key challenge: non-standard definitions in research problems require careful parsing that retrieval-augmented systems may skip.
-
-\subsection{Effect of history clearing}
-\label{sec:history}
-
-Comparing Sonnet 4.6 with and without history clearing reveals minimal difference in solution quality (Tables~\ref{tab:results} and~\ref{tab:proof-quality}).
-This suggests that, for problems of this length and complexity, the additional context from prior problems does not materially help or hinder the agent.
-In contrast, within a single problem session, we observe that longer multi-turn interactions consistently improve proof completeness: agents that spend more turns on gap identification produce fewer unjustified steps.
-
-\subsection{Failure modes}
-\label{sec:failures}
-
-We identify four characteristic failure modes:
-
-\paragraph{(F1) Definitional drift.}
-The agent correctly parses the definition at the start but silently substitutes a more familiar concept mid-proof.
-This is most common for non-standard spectral definitions (Problems 4, 6) and leads to plausible-looking but incorrect proofs.
-
-\paragraph{(F2) Boundary case neglect.}
-The agent proves the claim for generic inputs (e.g., connected graphs, $\varepsilon \in (0,1)$) and does not handle degenerate cases ($\varepsilon = 0$, disconnected graphs, trivial instances).
-
-\paragraph{(F3) Unjustified key steps.}
-The agent asserts a technically demanding intermediate result without proof, typically with phrases like ``by standard spectral theory'' or ``it can be shown.''
-These are often exactly the hard parts of the problem.
-
-\paragraph{(F4) Quantifier errors.}
-The agent conflates the order of quantifiers in existence statements, particularly when the proof involves a probabilistic argument where the ``good'' object must be independent of the random choices.
-
-\section{Discussion}
-\label{sec:discussion}
-
-\paragraph{What makes research math hard for AI?}
-Our results point to three fundamental challenges beyond raw mathematical knowledge:
-
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{Definitional precision}: Research problems often hinge on subtle distinctions between related definitions. An agent that pattern-matches to a familiar definition may produce a convincing-looking but vacuously wrong solution.
-
-  \item \textbf{Gap awareness}: Writing a proof that \emph{looks} complete but has a gap at a technically hard step is qualitatively easier than actually filling that gap. Our agents sometimes exhibit this failure — they produce fluent LaTeX that argues around hard steps without genuinely addressing them.
-
-  \item \textbf{Novel technique generation}: Many research problems require not just applying known techniques but combining them in a new way. Our agents do best on problems where a known technique (e.g., barrier functions for spectral arguments, the probabilistic method) suffices, and struggle more when genuine novelty is required.
-\end{enumerate}
-
-\paragraph{Role of the agentic structure.}
-Our results suggest that the structured skill (explicit proof steps, gap auditing) makes a larger contribution than model scale.
-Opus 4.6 and Sonnet 4.6 perform similarly in correctness, while both substantially outperform baselines that lack the structured workflow.
-This is consistent with findings in the software engineering domain~\citep{yang2024sweagent}.
-
-
+\vspace{-5pt}
 \section{Conclusion}
 \label{sec:conclusion}
+\vspace{-4pt}
 
-We have presented AgentForMath, an agentic AI system for research-level mathematical problems, evaluated on the First Proof benchmark.
-Our agents (Claude Opus 4.6 and Claude Sonnet 4.6 augmented with a math-research skill) correctly answer 8 of 10 problems and produce substantially more complete proofs than non-agentic baselines.
-The most important finding is qualitative: the structured proof-development workflow — systematic problem understanding, strategy selection, gap identification — is more responsible for the performance gap than raw model capability.
+We introduced \modelname, an agentic framework for solving research-level mathematical problems through structured workflows, multi-agent interaction, and iterative refinement. Evaluated on the First Proof benchmark, \modelname outperforms strong baselines such as GPT 5.2R and Aletheia, achieving higher correctness, solving eight of ten problems. Our results show that combining problem analysis, literature grounding, knowledge reuse, and verifier-driven feedback is essential for reliable long-horizon reasoning, and that performance gains arise from their interaction rather than any single component. These findings suggest that agentic designs are a promising direction for advancing AI toward open-ended mathematical reasoning and scientific discovery.
 
-Research-level mathematics remains far from solved: our agents produce complete proofs on only 4 of 10 problems (Opus 4.6), and the problems we study are among the simpler ones at the frontier.
-Nevertheless, our results suggest that agentic systems with domain-specific skills are a promising direction for AI-assisted mathematical research.
-
-\begin{ack}
-We thank the contributors of the First Proof benchmark problems: Martin Hairer, Peter Nelson, Lauren Williams, Nikhil Srivastava, Andrew Blumberg, Daniel Spielman, Shmuel Weinberger, Mohammed Abouzaid, Joe Kileel, Tamara Kolda, and Rachel Ward.
-We also thank [anonymous reviewers] for feedback.
-\end{ack}
-
+\newpage
 \bibliographystyle{unsrt}
 \bibliography{references}
 
@@ -385,7 +605,7 @@ We also thank [anonymous reviewers] for feedback.
 
 \begin{table}[t]
   \caption{The 10 problems of the First Proof benchmark.}
-  \label{tab:problems}
+  \label{tab-problems}
   \centering
   \small
   \begin{tabular}{clp{6.5cm}l}
@@ -405,60 +625,162 @@ We also thank [anonymous reviewers] for feedback.
     \bottomrule
   \end{tabular}
 \end{table}
-\section{Module Details}
-\label{app:module}
 
-\section{Problem Statements}
-\label{app:problems}
 
-This appendix provides the complete statement of all 10 benchmark problems as given to the agents.
+\section{More Implementation Details}
+\label{app-implementation}
+In Table~\ref{tab-implementation_details}, we summarize the implementation details of the default RMA configuration used in our experiments. Specifically, we report the base model and its training cutoff, the Claude Code API interface, the token budget, the multi-agent and multi-round setup, the allowed search tools and blocked sources for contamination control, the structured memory design, the final proof selection rule, and the expert evaluation protocol. These details clarify how RMA is instantiated in practice and support reproducibility of the reported results.
 
-\subsection*{Problem 1 (Hairer) — Stochastic Analysis}
+\begin{table}[t]
+\centering
+\caption{More implementation details for the default RMA configuration.}
+\label{tab-implementation_details}
+\small
+\begin{tabular}{p{0.28\linewidth} p{0.64\linewidth}}
+\toprule
+\textbf{Component} & \textbf{Details} \\
+\midrule
+Base model 
+& Claude Opus 4.6. \\
 
-Let $\mathbb{T}^3$ be the three-dimensional unit-size torus and let $\mu$ be the $\Phi^4_3$ measure on the space of distributions $\mathcal{D}'(\mathbb{T}^3)$. Let $\psi : \mathbb{T}^3 \to \mathbb{R}$ be a smooth function that is not identically zero and let $T_\psi : \mathcal{D}'(\mathbb{T}^3) \to \mathcal{D}'(\mathbb{T}^3)$ be the shift map given by $T_\psi(u) = u + \psi$. Are the measures $\mu$ and $T_\psi^* \mu$ equivalent?
+Training cutoff
+& Aug 2025. 
+We explicitly report this date because the First Proof benchmark solutions and follow-up public solution pages must postdate the model's training cutoff to reduce contamination risk. \\
 
-\subsection*{Problem 6 (Spielman) — Spectral Graph Theory}
+Interface 
+& Claude Code API, used as a CLI-based coding-agent interface with access to file operations, command execution, and tool calls. \\
 
-For a graph $G = (V, E)$, let $G_S = (V, E(S,S))$ denote the graph with the same vertex set, but only the edges between vertices in $S$. Let $L$ be the Laplacian matrix of $G$ and let $L_S$ be the Laplacian of $G_S$. A set of vertices $S$ is $\varepsilon$-light if the matrix $\varepsilon L - L_S$ is positive semidefinite. Does there exist a constant $c > 0$ so that for every graph $G$ and every $\varepsilon$ between $0$ and $1$, $V$ contains an $\varepsilon$-light subset $S$ of size at least $c\varepsilon|V|$?
+Token budget 
+& $200k$ tokens per problem-solving run. \\
 
-\subsection*{(Remaining problem statements omitted for space; see \texttt{problems/} directory.)}
+Agents 
+& One initializer agent, $K_p=3$ proposer agents, and $K_v=3$ verifier agents. Agents share the same underlying base model but use role-specific prompts, objectives, and read/write permissions. \\
 
-\section{Agent Solution: Problem 6}
-\label{app:q6}
+Rounds 
+& $N=5$ reasoning rounds by default. The initializer produces the first proof draft in Round 1; proposers and verifiers then alternate refinement and critique in subsequent rounds. \\
 
-We include the agent's solution to Problem 6 as a representative example.
-Both Opus 4.6 and Sonnet 4.6 produced essentially the same proof structure.
+Search tools 
+& Web search over allowed mathematical sources, including arXiv, MathSciNet, zbMATH, publisher pages, and general search APIs. The exact API endpoints, query templates, and retrieval parameters are fixed before evaluation and shared across all runs. \\
 
-\paragraph{Answer.} \textbf{Yes.} There exists a universal constant $c > 0$ such that for every graph $G = (V,E)$ and every $\varepsilon \in [0,1]$, there is an $\varepsilon$-light subset $S \subseteq V$ with $|S| \geq c\varepsilon|V|$. The agents prove this with $c = 1/42$.
+Blocked sources 
+& We block all sources that may contain benchmark solutions or solution attempts, including the First Proof paper and solution materials, OpenAI First Proof submissions, Aletheia First Proof pages, and any derivative posts, PDFs, repositories, or discussions containing known solutions. \\
 
-\paragraph{Proof sketch.}
-The proof proceeds by a greedy construction.
-Start with $S = \emptyset$, so $L_S = 0$ and $M := \varepsilon L - L_S = \varepsilon L \succeq 0$.
-At each step, we wish to add a vertex $v \notin S$ to $S$ without violating the constraint $M' = M - \Delta_v \succeq 0$, where $\Delta_v = \sum_{(v,u) \in E, u \in S} (e_v - e_u)(e_v - e_u)^T$ is the PSD update from adding $v$.
+Memory 
+& A disk-based structured memory with separate files for problem state, literature context, knowledge-bank entries, proof state, and verifier feedback. The initializer may write the initial problem, literature, knowledge, and proof states; proposers may update the proof state; verifiers may update the feedback state. All updates are append-only and tagged with agent ID and round ID. \\
 
-By a barrier function argument (analogous to Spielman--Srivastava sparsification), one can show that as long as $|S| < \varepsilon n / 42$, there always exists such a vertex.
-The key ingredient is the identity $\sum_e R_e = n-1$ for effective resistances $R_e$ in the graph, combined with a careful averaging argument over the potential addition of all remaining vertices.
+Final selection 
+& After the final round, candidate proofs are ranked by verifier feedback and compliance with the Proof Commandment Module. The selected final proof is the highest-ranked proof that satisfies validity, completeness, rigor, faithfulness to the original problem, and formatting requirements. No additional post-hoc manual correction is applied before expert evaluation. \\
 
-The constant $c = 1/42$ arises from combining an effective-resistance averaging bound with a factor from the greedy potential analysis.
-This matches the constant reported by Spielman as the intended solution.
+Evaluation 
+& Expert evaluation follows a blind protocol. For correctness, mathematicians judge each proof as correct, inconclusive, or incorrect. For fine-grained evaluation, they score final answer accuracy, logical correctness, proof completeness, and proof clarity. For pairwise A--B comparison, experts compare anonymized proofs from two methods without method identities and select the stronger solution. \\
+\bottomrule
+\end{tabular}
+\vspace{-2mm}
+\end{table}
 
-\section{Skill Prompt}
-\label{app:skill}
+\section{Computational Costs}
+\label{app-computational-costs}
 
-The math-research skill prompt is stored in \texttt{skills/math-research/SKILL.md} and installed project-locally at \texttt{.claude/skills/math-research/SKILL.md}.
-The skill provides a structured 5-step workflow (problem understanding, strategy selection, proof development, gap identification, LaTeX write-up) together with a reference sheet of key mathematical tools organized by area (spectral theory, probabilistic method, combinatorics, analysis).
+We report the computational budget and baseline-normalization protocol used in our experiments in Table~\ref{tab:compute_costs}. For our default RMA configuration, each problem-solving run uses a fixed token cap of $200k$ tokens per problem, one initializer, $K_p=3$ proposers, $K_v=3$ verifiers, and $N=5$ reasoning rounds. To make comparisons as fair as possible, all internally executed baselines are evaluated under the same problem statements, the same leakage-blocking rules, and a matched or normalized total token budget. For single-agent and best-of-$N$ baselines, we allocate the same total token budget as RMA and vary only the reasoning structure, so that performance differences reflect the benefit of multi-agent interaction rather than a larger compute budget. For public external systems such as GPT-5.2R~\citep{openai_first_proof_2025} and Aletheia~\citep{aletheia}, we use their released solutions because their original compute, prompting, tool access, and early-stopping policies are not publicly available; therefore, these comparisons should be interpreted as comparisons to publicly released system outputs rather than fully compute-matched controlled reruns.
+
+\begin{table}[t]
+\centering
+\caption{Computational cost and baseline-normalization protocol. Internally executed systems~\citep{openai_deep_research_2025,google_gemini_deep_research_2025,zimmer2026agenticresearcherpracticalguide,anthropic_claude_code} are run under matched or normalized total token budgets and the same leakage-blocking rules. External systems are evaluated using their public released outputs~\citep{aletheia,openai_first_proof_2025}.}
+\label{tab:compute_costs}
+\small
+\begin{tabular}{p{0.22\linewidth} p{0.68\linewidth}}
+\toprule
+\textbf{Item} & \textbf{Details} \\
+\midrule
+
+Token accounting
+& We count all model interactions during a run, including initialization, proposal, verification, tool-call prompts, literature summaries, memory reads, proof revisions, and final proof generation. Same token limitation $200k$ per problem are given to all compared models. \\
+
+Runtime accounting
+& For all internally executed methods, we enforce a hard wall-clock limit of 6 hours per problem. Given the complexity of research-level mathematics~\citep{abouzaid2026first}, giving a 6-hour limitation instead of a short term run is reasonable. Runtime is measured from the first model API call to the final proof file written by the system, including model latency, tool-call latency, retrieval calls, file operations, verifier feedback generation, and final proof selection. We enforce this uniformly through a shared experiment runner that terminates a run once either the 6-hour wall-clock limit or the $200k$-token limit is reached. External public systems such as GPT-5.2R~\citep{openai_first_proof_2025} and Aletheia~\citep{aletheia} are not subject to this runner because only their released outputs are available; we therefore report them separately as public-output baselines rather than compute-matched reruns. \\
+
+Tool access
+& Internally executed methods use the same allowed search tools and the same blocked-source list. Sources containing First Proof solutions~\citep{abouzaid2026first}, OpenAI First Proof submissions~\citep{openai_first_proof_2025}, Aletheia outputs~\citep{aletheia}, or derivative solution discussions are blocked for all internally run systems. \\
+
+Early stopping
+& Internally executed systems stop when they reach the token cap, complete the fixed number of rounds, or produce a final proof satisfying the proof-selection criterion. We do not manually terminate unsuccessful runs except for API failures or unrecoverable tool errors. \\
+\midrule
+\textbf{Method} & \textbf{Details} \\
+\midrule
+Default RMA budget
+& Each problem-solving run uses a $200k$-token cap per problem with one Initializer, $K_p=3$ Proposers, $K_v=3$ Verifiers, and $N=5$ rounds. \\
+
+
+Deep Research baselines
+& Internally run Deep Research-style baselines~\citep{openai_deep_research_2025,google_gemini_deep_research_2025} use the same initial prompt, leakage-blocking rules, and normalized total token budget when API controls allow. Their tool access is restricted to the same allowed mathematical sources when possible. \\
+
+External public systems
+& GPT-5.2R~\citep{openai_first_proof_2025} and Aletheia~\citep{aletheia} are evaluated using their publicly released First Proof outputs. Since their prompting, sampling, tool access, compute budget, and stopping criteria are not fully disclosed, these results are not compute-matched reruns and are reported separately as comparisons to released system outputs. \\
+
+Single-agent baseline
+& The single-agent baseline receives the same problem statement, allowed tools, and total token cap as the full model, but runs without proposer--verifier decomposition or multi-round shared-memory interaction. \\
+
+Best-of-$N$ baseline
+& The best-of-$N$ baseline samples multiple independent single-agent solutions under the same total token budget as RMA. Its final answer is selected using the same verifier-based ranking criterion used for RMA final selection. \\
+
+
+\bottomrule
+\end{tabular}
+\vspace{-2mm}
+\end{table}
 
 \section{Limitations}
 \label{app-limitations}
-Several limitations should be noted.
-First, ground-truth evaluation is difficult: we do not have published proofs for most problems, and our assessment relies on expert judgment.
-Second, our benchmark is small (10 problems), and the results may not generalize across all areas of mathematics.
-Third, we have not quantified the computational cost of each agent run, which varies significantly across problems.
-Finally, evaluation of proof correctness is inherently subjective for incomplete or partially correct proofs; our ratings involve judgment calls.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Several limitations should be noted. First, expert verification is necessary but imperfect. Unlike competition-style benchmarks where solutions can often be checked by exact answer matching, research-level mathematical problems require judging long, informal arguments, intermediate lemmas, and partially correct proof attempts~\citep{abouzaid2026first}. We therefore rely on expert mathematicians to evaluate correctness, completeness, and clarity. This introduces judgment calls, especially for solutions that are promising but incomplete. We mitigate this issue by using blind evaluation, multiple experts per problem, categorical correctness labels, fine-grained scores, and pairwise A--B comparisons, but expert evaluation cannot provide the same level of objectivity as machine-checked formal proofs~\citep{yang2023leandojo,Lean4}.
 
-\newpage
-\input{checklist.tex}
+Second, the benchmark is small, in comparison to non-research math datasets such as MATH~\citep{hendrycks2021math}. First Proof~\citep{abouzaid2026first} contains only ten research-level problems. This is inherent to research-level problems, and working on ten problems already cost a lot of expert resources in different domains.
+
+Third, baseline parity is difficult to guarantee for externally released systems. For GPT-5.2R~\citep{openai_first_proof_2025} and Aletheia~\citep{aletheia}, we evaluate their public First Proof outputs because their original prompts, tool access, sampling strategies, token budgets, and early-stopping criteria are not fully disclosed. Thus, these comparisons should be interpreted as comparisons against publicly released system outputs rather than strictly compute-matched reruns. For internally executed baselines and ablations, we enforce the same problem statements, leakage-blocking rules, allowed tool set, $200k$-token budget, and 6-hour wall-clock limit per problem through a shared experiment runner. Nevertheless, model-specific API behavior, retrieval latency, and tool-use policies may still introduce residual differences.
+
+Finally, our ablation studies are limited by the cost of expert evaluation. Although we conduct systematic ablations over modules, workflow composition, memory design, agent scaling, and compute scaling, all ablations are performed on a benchmark of ten problems. Therefore, win-rate differences should be interpreted as evidence of trends rather than precise statistical estimates. This limitation is reasonable in the present setting because each A--B comparison requires expert reading of research-level proofs, which is substantially more expensive than automatic grading on standard math benchmarks~\citep{hendrycks2021math}. Future work should expand the benchmark, report confidence intervals, and evaluate cost--accuracy trade-offs across more problems and model families.
+
+\section{Broader Impacts}
+\label{app-broader-impacts}
+
+\modelname is designed as a tool for assisting mathematical research, not as a replacement for expert judgment. Used appropriately, it can help researchers explore proof strategies, organize relevant literature, test intermediate arguments, and turn partial ideas into more coherent proof drafts. These benefits are especially relevant for research-level mathematics, where progress often depends on long-horizon reasoning, literature grounding, and repeated refinement rather than one-shot problem solving~\citep{abouzaid2026first,feng2026autonomousmathematicsresearch,zimmer2026agenticresearcherpracticalguide}. The modular design of \modelname also makes the reasoning process more inspectable than a single generated answer: problem analysis, retrieved results, proof states, and verifier feedback are stored separately, making it easier for users to audit where a claim comes from.
+
+The main risk is that an incorrect proof may look convincing. This is a known failure mode of LLM-based reasoning systems, where fluent explanations can hide missing assumptions, invalid deductions, or hallucinated references~\citep{ji2023towards,frieder2024mathematical,collins2024evaluating}. In mathematics, this risk is particularly serious because a single unjustified lemma can invalidate an otherwise plausible argument. For this reason, \modelname should be used in a human-in-the-loop setting: expert mathematicians remain responsible for checking assumptions, verifying citations, and deciding whether a proof is correct. Our use of verifier agents, assumption checks, and expert evaluation is intended to reduce these risks, but it does not eliminate the need for human review.
+
+A second concern is attribution and responsible use of prior work. Since \modelname uses literature search and reusable mathematical knowledge, it may misattribute results, apply theorems outside their stated conditions, or overfit its reasoning to existing proof patterns. Similar concerns arise in retrieval-augmented theorem proving and agentic research systems, where external knowledge improves capability but also creates new failure modes around source reliability and provenance~\citep{yang2023leandojo,karpathy_autoresearch,zimmer2026agenticresearcherpracticalguide}. We therefore recommend that any substantial use of \modelname in mathematical writing be disclosed, and that retrieved results be checked against the original sources before being included in a paper.
+
+Finally, stronger automated proof-generation systems may affect research norms, including credit assignment, reviewing standards, and expectations for reproducibility. We view this as a reason to make system outputs, logs, prompts, and evaluation protocols as transparent as possible. In its current form, \modelname is best understood as an assistant for generating and refining candidate arguments, while final mathematical claims should remain subject to the same standards of expert verification, citation, and peer review as human-written work.
+
+\section{Details for Fine-grained Evaluation}
+\label{app-fine-grained}
+We assess each proof along four fine-grained dimensions:
+
+\begin{description}[leftmargin=1.5em, style=nextline]
+    \item[\textbf{Final answer accuracy (0--1).}] 
+    Whether the final answer (for a binary decision or a derived bound) is correct, independent of the reasoning process.
+
+    \item[\textbf{Logical correctness (0--5).}] 
+    Whether each step of the argument follows valid logical inferences, with correct application of definitions, theorems, and assumptions, and no invalid deductions.
+
+    \item[\textbf{Proof completeness (0--5).}] 
+    Whether all essential steps are explicitly provided, with no missing arguments or unjustified gaps in the reasoning.
+
+    \item[\textbf{Proof clarity (0--5).}] 
+    Whether the proof is coherent, well-structured, and easy to follow.
+\end{description}
+\section{Additional Details on Expert Evaluation}
+\label{app-expert-evaluation}
+
+We provide additional details on the expert evaluation protocol used in~\Cref{sec-experiments}. The evaluation involves ten mathematicians with graduate-level or professional research experience in mathematics or closely related theoretical fields. Experts are assigned to problems according to their domain expertise, so that each problem is reviewed by at least three experts familiar with the relevant area. To preserve anonymity during submission, we do not disclose expert identities in the paper; anonymized information about expertise areas and problem assignments is included in the supplementary materials where appropriate.
+
+For all three parts of the protocol, experts evaluate anonymized solutions. Method names are removed, and experts are not told whether a solution comes from \modelname, an internally executed baseline, or a public release such as GPT-5.2R~\citep{openai_first_proof_2025}. In pairwise A--B evaluation, the order of the two solutions is randomized to reduce ordering bias. Experts are instructed to judge solutions only by mathematical quality, including correctness, completeness, and clarity.
+
+Operationally, the label $\approx$ (\emph{Inconclusive}) is used when a solution is neither clearly correct nor clearly incorrect from the provided proof. Typical cases include proofs that appear plausible but leave an essential lemma insufficiently justified, arguments whose validity depends on an unstated technical condition, or solutions that require substantial additional verification beyond the submitted text. We do not force experts to resolve all disagreements. Instead, we report the raw counts of $\checkmark$, $\approx$, and $\times$ judgments in~\Cref{tab-correctness}. For the problem-level aggregate, we use the conservative rule described in the caption of~\Cref{tab-correctness}: a solution is counted as correct only if all experts mark it correct, counted as incorrect only if all experts mark it incorrect, and otherwise counted as inconclusive.
+
+In addition to the general rubric in~\Cref{app-fine-grained}, experts are provided with problem-specific evaluation guidance. For each problem, this guidance states the target claim, the relevant mathematical objects, and common issues to check, such as missing assumptions, unjustified reductions, incorrect use of prior results, failure to prove the claimed bound, or lack of an explicit construction when one is required. These rubrics are used only to standardize expert review; they do not reveal method identities or provide the original First Proof solutions. Experts are compensated for their evaluation time when permitted by institutional and logistical constraints.
+\section{\modelname Solutions for FirstProof}
+\label{app-all-solutions}
+We summarize the ten First Proof problems in~\Cref{tab-problems}. The complete \modelname solutions for each problem are provided in the supplementary zip folder, with files organized by problem ID. We omit the full solutions from the appendix here because they are lengthy and would substantially increase the paper length.
+
 
 \end{document}
