@@ -1,0 +1,195 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{booktabs}
+\usepackage[numbers,sort&compress]{natbib}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\titleformat{\section}{\large\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
+\setlist[itemize]{leftmargin=1.2em, itemsep=2pt, topsep=2pt}
+\setlist[enumerate]{leftmargin=1.4em, itemsep=2pt, topsep=2pt}
+
+\begin{document}
+
+\begin{center}
+    {\Large \textbf{Agentic AI for Research-Level Mathematical Reasoning}}\\[6pt]
+    \textbf{PI:} Yongxin Chen, Associate Professor, Institute for Robotics and Intelligent Machines, Georgia Tech \\
+    \textbf{Cash funding needed:} \$70,000 \qquad
+    \textbf{AWS Promotional Credits needed:} \$50,000\\
+\end{center}
+
+\section*{Abstract}
+
+Research-level mathematical reasoning remains a major frontier for agentic AI. Unlike competition-style math benchmarks, research problems require interpreting specialized definitions, identifying relevant literature, constructing intermediate lemmas, verifying long proof chains, and iteratively refining incomplete arguments. We propose to develop Research Math Agents (RMA), an agentic AI framework for literature-grounded, verifier-guided mathematical research. RMA decomposes proof solving into specialized modules for problem analysis, literature search and understanding, reusable knowledge retrieval, fair-comparison control, and proof verification. These modules are coordinated by role-specialized initializer, proposer, and verifier agents through a shared structured memory, enabling multi-round proof refinement and systematic gap repair. This proposal will develop RMA as an open-source, auditable, and scalable agentic reasoning platform for research-level mathematics. We will evaluate the resulting system on the First Proof benchmark, which contains ten expert-contributed research-level mathematical problems~\citep{abouzaid2026first}. Unlike standard math benchmarks, these problems require literature grounding, long-horizon proof construction, and expert judgment. The project will therefore build an end-to-end pipeline that combines structured problem analysis, literature search and understanding, reusable mathematical knowledge, shared memory, proposer--verifier interaction, and human-in-the-loop evaluation. Our goal is to test whether these agentic mechanisms can improve the correctness, completeness, and interpretability of generated proof attempts while reducing common failure modes such as hallucinated references, missing assumptions, and unresolved proof gaps.
+
+\noindent\textbf{Keywords:} Agentic AI, AI for math, mathematical reasoning, research-level mathematics, multi-agent systems, verifier-guided reasoning, literature-grounded AI, long-horizon reasoning.
+
+\section*{Introduction}
+
+Mathematics is a central testbed for advanced AI because it requires abstraction, symbolic reasoning, and precise long-horizon inference~\citep{newell1956logic}. Recent systems have made progress on arithmetic, high-school competition mathematics, and Olympiad-style reasoning~\citep{hendrycks2021math,trinh2024alphageometry}. Formal theorem proving and LLM-assisted verification further provide machine-checkable guarantees in settings where problems and contexts are already formalized~\citep{Lean4,polu2020gpt,yang2023leandojo}. However, these settings differ substantially from research-level mathematical work. Research problems are often concise but highly specialized; they require reformulating assumptions, searching for relevant prior results, identifying useful lemmas, and building rigorous arguments over many steps. In contrast to formal proof benchmarks, informal research-level mathematics requires a system to engage with literature, make strategic choices, and iteratively repair proof gaps~\citep{abouzaid2026first,aletheia}.
+
+In this proposal, we aim to develop \emph{Research Math Agents (RMA)}, an agentic framework for research-level mathematical reasoning. The proposed framework will target problems that require long-horizon reasoning, literature grounding, and iterative proof refinement. We plan to study whether decomposing proof construction into specialized modules---including problem analysis, literature search, literature understanding, knowledge retrieval, fair-comparison control, and proof verification---can improve the reliability and interpretability of mathematical reasoning systems. These modules will be coordinated through role-specialized initializer, proposer, and verifier agents operating over shared structured memory.
+
+The broader goal of this project is to study whether agentic AI systems can support difficult forms of long-horizon reasoning where correctness depends on many interconnected steps. In research-level mathematics, a single missing assumption, invalid lemma, or hallucinated reference can invalidate an entire proof~\citep{ji2023towards,frieder2024mathematical}. This project therefore focuses on agentic mechanisms such as iterative refinement, tool use, shared memory, literature grounding, and verifier feedback. We also aim to study a practical human--AI workflow for mathematical research, where AI systems assist with proposing and refining arguments while expert mathematicians remain responsible for final validation.
+
+\textbf{This work connects closely to our prior research.} Our recent work on proactive agents for text-to-CAD generation studies how agentic systems can identify ambiguities and improve reliability in complex structured-generation tasks~\citep{yuan2026clarifydrawproactiveagents}. Our work on Laplacian multi-scale flow matching and diffusion-based generative modeling develops scalable methods for structured generation and sampling~\citep{zhao2026laplacian,zhang2021diffusionnormalizingflow}. We have also studied long-horizon decision making through Generative Skill Chaining, which composes diffusion-based skill models for multi-step planning~\citep{mishra2023generative}. These experiences provide a strong foundation for the proposed study of literature-grounded, verifier-guided agents for research-level mathematical reasoning.
+
+\textbf{This project directly advances the CFP themes} of multi-agent collaboration, AI-enhanced human productivity, retrieval-grounded agentic systems, and agentic AI for scientific discovery, using research-level mathematics as a rigorous setting where long-horizon correctness and auditability can be measured.
+\vspace{-7pt}
+\section*{Methods}
+\vspace{-7pt}
+\subsection*{1. Modular problem-solving architecture}
+\vspace{-7pt}
+RMA will decompose mathematical research problems into a sequence of specialized reasoning modules. The Problem Analysis Module formalizes the raw problem statement, extracts variables and assumptions, and decomposes the target claim into subgoals. The Literature Search Module retrieves relevant prior work using structured queries derived from the problem representation. The Literature Understanding Module extracts candidate lemmas, proof techniques, and reusable intermediate claims from retrieved sources. The Knowledge Bank Module provides compact, reusable mathematical entries such as inequalities, spectral bounds, concentration tools, and combinatorial identities, drawing on standard mathematical references and reusable reasoning-bank ideas~\citep{boyd2004convex,mitzenmacher2017probability,ouyang2025reasoningbank}. The Proof Commandment Module enforces grounding, faithfulness to the original problem, gap-free reasoning, constructiveness, and clean mathematical presentation. A core objective of this project is to make each module auditable. Each module will have explicit inputs, outputs, prompt templates, allowed tools, and memory read/write permissions. This will allow researchers to inspect how an agent reaches a proof attempt and where specific claims originate.
+\vspace{-10pt}
+\subsection*{2. Multi-agent and multi-round proof refinement}
+\vspace{-7pt}
+We will instantiate RMA using role-specialized agents: a single Initializer, multiple Proposers, and multiple Verifiers. The Initializer generates an initial proof draft and populates the shared memory with problem analysis, literature context, and relevant knowledge entries. Proposers identify issues in the evolving proof, propose new arguments, and refine candidate solutions. Verifiers evaluate the current proof, check logical consistency, validate assumptions, identify missing steps, and write structured feedback. The agents will interact over multiple rounds. At each round, proposers update candidate proofs based on accumulated memory and verifier feedback. Verifiers then critique the updated proof and append feedback to memory. We will study how the number of proposers, verifiers, and reasoning rounds affects proof quality and costs.
+\vspace{-7pt}
+\subsection*{3. Shared structured memory for long-horizon reasoning}
+\vspace{-7pt}
+A central challenge in research-level mathematics is maintaining coherent state over long reasoning trajectories. We will implement a disk-based structured memory with separate files for problem state, literature context, knowledge entries, proof state, and feedback state. All writes will be append-only and tagged with agent ID and round ID, enabling traceability and reducing accidental overwriting. The implementation will use CLI-based coding-agent interfaces that support file operations, command execution, and external tool calls~\citep{openai_codex,anthropic_claude_code,google_geminicli}. We will investigate three memory designs: stateless generation, last-round-only memory, and full structured memory. Preliminary ablations show that structured memory substantially improves performance over weaker memory variants, suggesting that persistent proof and critique history is essential for long-horizon mathematical reasoning.
+\vspace{-7pt}
+\subsection*{4. Fair comparison and contamination control}
+\vspace{-7pt}
+Research-level benchmarks are especially vulnerable to data contamination because public solutions, discussion posts, and derivative materials may appear online. We will develop a fair-comparison layer that blocks known solution sources, isolates context across runs, logs retrieved URLs, and applies temporal controls. This is particularly important for First Proof because both public benchmark materials and public solution outputs are available from external systems~\citep{abouzaid2026first,openai_first_proof_2025,aletheia}. In this project, we will expand these controls by maintaining a benchmark-specific blocked-source registry, recording retrieval traces, and auditing sampled retrieval outputs. This will make the evaluation more suitable for future reproducible agentic AI research.
+\vspace{-7pt}
+\subsection*{5. Expert and automated evaluation}
+\vspace{-7pt}
+Because research-level mathematical proofs cannot be reliably graded by exact answer matching, we will use expert evaluation as the primary metric. Following evaluation practices in human-preference and expert-based assessment~\citep{ouyang2022training,aletheia}, experts will assess each solution using three complementary criteria: categorical correctness, fine-grained proof quality, and blind pairwise A--B comparison. Fine-grained dimensions will include final answer accuracy, logical correctness, proof completeness, and clarity. We will also develop automated evaluation tools to assist, but not replace, human experts. These tools will include verifier-agent diagnostics, consistency checks across proof versions, and LLM-based blind pairwise comparison. The goal is to reduce expert burden while preserving the rigor required for mathematical research.
+\vspace{-10pt}
+\section*{Expected Results}
+\vspace{-10pt}
+We expect this project to produce a reproducible agentic AI framework for research-level mathematical reasoning, together with systematic empirical evidence about which agentic components matter most.
+
+\textbf{Milestone 1: Reproducible RMA system implementation, months 1--3.} We will implement the modular RMA architecture with explicit prompt templates, tool interfaces, structured memory, and role-specific workflows. The deliverable will be an internal prototype capable of running initializer, proposer, and verifier agents over multiple rounds.
+
+\textbf{Milestone 2: Literature-grounded reasoning and contamination-control infrastructure, months 3--5.} We will implement controlled retrieval, blocked-source filtering, URL logging, and literature-understanding modules. The deliverable will be a reproducible retrieval pipeline for research-level math benchmarks.
+
+\textbf{Milestone 3: Evaluation on First Proof and extended benchmark problems, months 5--8.} We will evaluate RMA on the First Proof benchmark and additional research-style mathematical problems when available. Our preliminary system solves eight out of ten First Proof problems and achieves the highest expert-evaluated quality among evaluated systems. We will reproduce and strengthen this evaluation with improved logging, expert agreement analysis, and cost accounting.
+
+\textbf{Milestone 4: Ablation and scaling study, months 8--10.} We will study the effect of problem analysis, literature search, knowledge-bank retrieval, proof verification, memory organization, number of rounds, number of proposers, and number of verifiers. Preliminary ablations show that removing problem analysis, literature understanding, structured memory, or verifier feedback substantially reduces performance. The deliverable will be a systematic report on design principles for agentic mathematical reasoning.
+
+\textbf{Milestone 5: Public release and publication, months 10--12.} We will release code, prompts, logs where appropriate, and technical documentation. We will submit a full research paper to a major AI venue and present findings to the broader agentic AI and mathematical reasoning communities.
+
+Expected outputs include: (1) an open-source RMA framework; (2) prompt templates and workflow specifications; (3) structured-memory and retrieval-audit tools; (4) expert-evaluated results on research-level mathematics; (5) a technical report or conference submission; and (6) reusable lessons for agentic AI systems that require long-horizon reasoning and human verification.
+
+\vspace{-4pt}
+\section*{Funds Needed}
+\vspace{-4pt}
+We request \textbf{\$70,000 in cash funding} and \textbf{\$50,000 in AWS Promotional Credits}.
+
+\vspace{-4pt}
+\paragraph{Cash funding.}
+\vspace{-4pt}
+% The cash request will support graduate-student system development and expert evaluation, with $\$70{,}000=\$50{,}000+\$20{,}000$. We request \textbf{\$50,000} for direct research support for this project, including implementation of the RMA framework ($\$20,000$), experiment execution ($\$20,000$), open-source release ($\$5,000$), and technical documentation ($\$5,000$). 
+The cash request will support graduate student assistant and expert evaluation, with $\$70{,}000=\$50{,}000+\$20{,}000$. We request \textbf{\$50,000} to support a graduate student to lead this research effort, including implementation of the RMA framework, experiment execution, open-source release, and technical documentation. 
+We request \textbf{\$20,000} for expert evaluation of research-level proof attempts, estimated as $10 \times 3 \times \$667 \approx \$20{,}000$: 10 problems, 3 expert reviewers per problem, and approximately \$667 per review.
+
+\vspace{-6pt}
+\paragraph{AWS Promotional Credits.}
+The AWS request will support model access, agent execution, storage, and experiment monitoring, with $\$50{,}000=\$30{,}000+\$12{,}000+\$4{,}000+\$2{,}000+\$2{,}000$. We allocate \textbf{\$30,000} to Amazon Bedrock for foundation-model access and agent-orchestration experiments, \textbf{\$12,000} to Amazon EC2 for multi-agent reasoning pipelines and evaluation jobs, \textbf{\$4,000} to Amazon S3 for structured memory traces, proof drafts, retrieval logs, and experiment artifacts, \textbf{\$2,000} to Amazon CloudWatch for monitoring, and \textbf{\$2,000} to AWS Lambda for lightweight retrieval filtering and automated evaluation triggers. These credits will support systematic experimentation across problems, system variants, and repeated runs. A core evaluation with $10 \times 7 \times 3 = 210$ multi-agent reasoning runs covers 10 problems, 7 system settings, and 3 repeated runs, before additional debugging and retrieval-audit experiments.
+
+\vspace{-4pt}
+\vspace{-4pt}
+\section*{Additional Information}
+\vspace{-4pt}
+
+\paragraph{Difference from existing work and innovation.}
+Existing AI-for-math research has primarily focused on competition-style problem solving~\citep{hendrycks2021math,trinh2024alphageometry}, formal theorem proving with machine-checkable verification~\citep{Lean4,polu2020gpt,yang2023leandojo}, or evaluating the mathematical reasoning quality of large language models~\citep{frieder2024mathematical}. This project instead targets research-level informal mathematics, as represented by First Proof, where success requires literature grounding, long-horizon proof construction, iterative gap repair, and expert evaluation~\citep{abouzaid2026first,aletheia}. RMA is innovative in combining modular mathematical reasoning tools with role-specialized initializer, proposer, and verifier agents operating over shared structured memory. Rather than treating proof generation as a single-pass response, the project studies an auditable agentic workflow that records retrieved literature, evolving proof states, and verifier feedback across rounds. This framework offers a new way to investigate how agentic AI can support rigorous research-level scientific reasoning.
+
+\vspace{-6pt}
+\paragraph{Planned open-source contributions.}
+We plan to release: (1) the RMA codebase for research-level mathematical reasoning; (2) prompt templates and workflow specifications for problem analysis, literature search, literature understanding, knowledge retrieval, proposer refinement, and verifier feedback; (3) structured-memory utilities for maintaining problem state, literature context, proof state, and critique history; (4) contamination-control and retrieval-audit tools, including blocked-source filtering and retrieval trace logging; and (5) evaluation utilities for expert assessment, blind pairwise comparison, and ablation studies.
+
+\vspace{-6pt}
+\paragraph{AWS ML tools.} We will use Amazon Bedrock for foundation-model inference and agent-orchestration experiments; Amazon SageMaker for experiment management, batch evaluation, and reproducible analysis pipelines; and Amazon S3 to store structured memory traces, retrieval logs, proof drafts, and evaluation artifacts. Supporting services will include Amazon CloudWatch for monitoring and AWS Lambda for lightweight retrieval filtering and automated evaluation triggers.
+
+\section*{Appendix A --- References}
+\bibliographystyle{plainnat}
+\bibliography{references}
+\newpage
+\section*{Appendix B --- One-Page CV of PI}
+
+\begin{center}
+    {\large \textbf{Yongxin Chen}}\\[-1pt]
+    Associate Professor, School of Aerospace Engineering \\
+    Machine Learning Center and Institute for Robotics and Intelligent Machines \\
+    Georgia Institute of Technology, Atlanta, GA, USA \\
+    \href{mailto:yongchen@gatech.edu}{yongchen@gatech.edu}
+    \qquad
+    \href{https://yongxin.ae.gatech.edu/}{https://yongxin.ae.gatech.edu/}
+\end{center}
+
+\vspace{-6pt}
+
+\noindent\textbf{Professional Appointments}
+\begin{itemize}
+    \item \textbf{Associate Professor}, School of Aerospace Engineering, Machine Learning Center, and Institute for Robotics and Intelligent Machines, Georgia Institute of Technology, 2023--Present.
+    \item \textbf{Assistant Professor}, School of Aerospace Engineering, Machine Learning Center, and Institute for Robotics and Intelligent Machines, Georgia Institute of Technology, 2018--2023.
+    \item \textbf{Assistant Professor}, Department of Electrical and Computer Engineering, Iowa State University, 2017--2018.
+    \item \textbf{Research Fellow}, Memorial Sloan Kettering Cancer Center, New York, 2016--2017.
+\end{itemize}
+
+\vspace{-4pt}
+
+\noindent\textbf{Education}
+\begin{itemize}
+    \item \textbf{Ph.D. in Mechanical Engineering}, University of Minnesota, 2016.\\
+    Thesis: \emph{Modeling and Control of Collective Dynamics: From Schr\"odinger Bridges to Optimal Mass Transport}. Advisor: Prof. Tryphon T. Georgiou. Minor: Mathematics.
+    \item \textbf{B.S. in Mechanical Engineering}, Shanghai Jiao Tong University, 2011.
+\end{itemize}
+
+\vspace{-4pt}
+
+\noindent\textbf{Research Areas}
+\vspace{-4pt}
+\begin{itemize}
+    \item Control theory, optimal transport, stochastic systems, machine learning, robotics, optimization, and AI for autonomous decision-making.
+\end{itemize}
+
+\vspace{-4pt}
+
+\noindent\textbf{Selected Publications}
+\vspace{-4pt}
+\begin{itemize}
+\item
+B. Yuan, Z. Zhao, P. Molodyk, B. Hu, and Y. Chen.
+``Clarify Before You Draw: Proactive Agents for Robust Text-to-CAD Generation,'' 
+{\em International Conference on Machine Learning}, 2026.
+    \item Z. Zhao, P. Molodyk, H. Xue, and Y. Chen.
+    ``Laplacian Multi-scale Flow Matching for Generative Modeling,'' 
+    {\em International Conference on Learning Representations}, 2026.
+    \item
+    Z. Zhao, X. Gong, B. Liu, Z. Song, J. Zhang, S. Wu, Y. Chen, and H. Zhang.
+    ``CETCam: Camera-Controllable Video Generation via Consistent and Extensible Tokenization,'' 
+    {\em IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 2026.
+    \item
+	U. Mishra, S. Xue, Y. Chen, and D. Xu.
+	``Generative Skill Chaining: Long-Horizon Skill Planning with Diffusion Models,'' {\em 2023 Conference on Robot Learning\/}, 2023.
+      \item
+    Q. Zhang, Y. Chen. ``Diffusion normalizing flow,'' {\em 2021 Conference on Neural Information Processing Systems\/}, 2021.
+ \item
+   Q. Zhang, Y. Chen.
+   ``Fast sampling of diffusion models with exponential integrator,'' {\em Eleventh International Conference on Learning Representations\/}, 2023.
+\end{itemize}
+
+\newpage
+\section*{Appendix C --- Prior Amazon Funding}
+
+Not applicable. The PI and project team members have not received cash funding or AWS Promotional Credits from Amazon within the past three years.
+
+\end{document}
