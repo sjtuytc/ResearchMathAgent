@@ -1,0 +1,233 @@
+% Solution to Problem 10 — PCG for RKHS-CP decomposition (Kolda, Ward)
+% v7, May 4 2026, Claude Opus 4.7
+\input{../problems/preamble}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\title{Solution to Problem 10: Preconditioned CG for RKHS-Constrained CP Decomposition}
+\author{Claude Opus 4.7 (1M context)}
+\date{May 4, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Setup recap}
+
+We solve the linear system
+\begin{equation}\label{eq:sys}
+\bigl[\,(Z\otimes K)^T S\,S^T(Z\otimes K) + \lambda(I_r\otimes K)\bigr]\,\vecop(W) \;=\; (I_r\otimes K)\,\vecop(B),
+\end{equation}
+where $K\in\mathbb R^{n\times n}$ is PSD (the RKHS kernel matrix on mode $k$), $Z\in\mathbb R^{M\times r}$ is the Khatri--Rao product of the other factor matrices, $S\in\mathbb R^{N\times q}$ is the sampling/selection matrix, $B=TZ\in\mathbb R^{n\times r}$ is the MTTKRP, $\lambda>0$ is a Tikhonov regularizer, and the unknown is $W\in\mathbb R^{n\times r}$.
+
+We have $n,r,d<q\ll N$ and $n\ll M$, with $N=\prod_i n_i$ and $M=N/n$.  The objective is to avoid any $O(N)$ or $O(M)$ work; only $O(q)$, $O(nr)$, $O(n^2)$, etc.
+
+\medskip
+\noindent\textbf{Notational reduction.}  Let $\Omega\subseteq[N]$, $|\Omega|=q$, denote the set of observed indices in the vectorized mode-$k$ unfolding.  Write $S^T x = x_\Omega$ for $x\in\mathbb R^N$ (selection of entries indexed by $\Omega$).  The matrix $S^TS=I_q$, but $SS^T=\diag(\mathbf 1_\Omega)\in\mathbb R^{N\times N}$ is the diagonal sampling projector.
+
+A vectorized index $\ell\in[N]$ corresponds to a pair $(i,m)$ with $i\in[n]$ (the mode-$k$ index) and $m\in[M]$ (the multi-index of the other modes).  The vectorization convention is column-stacking, so $\ell=(m-1)n+i$ in the standard column-major lexicographic order if mode $k$ is innermost; we will not need to fix the order beyond requiring consistency.  Write the observed entries as triples $(i_t, m_t, \tau_t)\in[n]\times[M]\times\mathbb R$ for $t=1,\ldots,q$.
+
+\section*{1. Direct symmetric method}
+
+The direct method forms the system matrix
+\[
+H \;:=\; (Z\otimes K)^T S\,S^T(Z\otimes K) \;+\;\lambda(I_r\otimes K)\;\in\;\mathbb R^{nr\times nr}
+\]
+and solves $H\vecop(W)=\vecop((I_r\otimes K)B)=\vecop(KB)$ by Cholesky.
+
+\medskip
+\noindent\textbf{Forming $H$.}  Each observation $t$ contributes to the system matrix the rank-$1$ update
+\[
+H_t \;=\;\bigl(z_{m_t}\otimes K_{:,i_t}\bigr)\bigl(z_{m_t}\otimes K_{:,i_t}\bigr)^T \;\in\;\mathbb R^{nr\times nr},
+\]
+where $z_{m_t}=Z(m_t,:)^T\in\mathbb R^r$ is the $m_t$-th row of $Z$, and $K_{:,i_t}$ is the $i_t$-th column of $K$.  Thus
+\[
+(Z\otimes K)^T S\,S^T(Z\otimes K)\;=\;\sum_{t=1}^q H_t.
+\]
+Each $H_t$ has rank $1$ but updating $H$ costs $O(n^2 r^2)$ (outer product of an $nr$-vector with itself) and there are $q$ such updates: total $O(qn^2r^2)$ to form $H$, plus $O(n^2r)$ for the Tikhonov term, plus $O(n^3r^3)$ for Cholesky.
+
+\medskip
+
+\begin{algorithm}[H]
+\caption{Direct symmetric solve for the RKHS mode-$k$ subproblem}
+\begin{algorithmic}[1]
+\Require Sampling triples $\{(i_t,m_t,\tau_t)\}_{t=1}^q$, factor matrices $A_1,\ldots,A_{k-1},A_{k+1},\ldots,A_d$, kernel $K$, regularizer $\lambda$.
+\Ensure $W\in\mathbb R^{n\times r}$ such that $A_k=KW$ minimizes the regularized misfit.
+\State Compute $\widetilde Z\in\mathbb R^{q\times r}$ with rows $\widetilde Z(t,:)=\bigl(\bigodot_{i\ne k} A_i(\mathrm{multi\,idx}_i(m_t),:)\bigr)$ via per-mode lookups. \Comment{$O(qrd)$}
+\State Compute $B=T Z$ as $B(i,:)=\sum_{t:\,i_t=i}\tau_t\cdot\widetilde Z(t,:)$. \Comment{$O(qr)$}
+\State Initialize $H\gets \lambda(I_r\otimes K)$ explicitly. \Comment{$O(n^2 r)$}
+\For{$t=1,\ldots,q$}
+  \State $u\gets \widetilde Z(t,:)^T\in\mathbb R^r$;\quad $v\gets K(:,i_t)\in\mathbb R^n$.
+  \State $H \gets H + (u\otimes v)(u\otimes v)^T$. \Comment{$O(n^2 r^2)$ rank-1 update}
+\EndFor
+\State Form $g=\vecop(KB)\in\mathbb R^{nr}$. \Comment{$O(n^2 r)$}
+\State Solve $H\,w=g$ by Cholesky. \Comment{$O(n^3 r^3)$}
+\State \Return $W=\mathrm{unvec}(w)\in\mathbb R^{n\times r}$.
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textbf{Total cost (direct):} $O\bigl(qrd + qn^2r^2 + n^3r^3\bigr)$.  Storage for $H$: $O(n^2r^2)$.  This is the baseline.
+
+\section*{2. PCG method: matrix-free matrix--vector products}
+
+We avoid explicitly forming $H$.  PCG only needs:
+\begin{enumerate}\setlength\itemsep{2pt}
+\item the right-hand side $g=\vecop(KB)$;
+\item a routine to compute $w\mapsto Hw$ for arbitrary $w\in\mathbb R^{nr}$;
+\item a preconditioner $P^{-1}$ approximating $H^{-1}$ with $w\mapsto P^{-1}w$ cheap.
+\end{enumerate}
+
+\subsection*{2.1 Computing $H w$ in $O(qnr+qr^2+n^2r)$}
+
+Reshape $w=\vecop(W')$ for $W'\in\mathbb R^{n\times r}$.
+
+\textbf{(a) Sampling term.}  $H_{\rm samp} w=(Z\otimes K)^T S S^T(Z\otimes K)w$.  Use the identity $(Z\otimes K)\vecop(W')=\vecop(KW'Z^T)$.  But $KW'Z^T\in\mathbb R^{n\times M}$ has $M$ columns — we cannot form it.  Instead exploit sampling:
+\[
+S^T(Z\otimes K)w \;=\; S^T\vecop(KW'Z^T) \;=\; \bigl[(KW')(i_t,:)\cdot Z(m_t,:)^T\bigr]_{t=1}^q \;\in\;\mathbb R^q.
+\]
+Each entry is a single inner product of length $r$.
+
+\textbf{Algorithm for $H_{\rm samp} w$:}
+\begin{enumerate}\setlength\itemsep{2pt}
+\item Form $U=KW'\in\mathbb R^{n\times r}$. \quad Cost: $O(n^2 r)$.
+\item For each $t=1,\ldots,q$, compute $y_t=\langle U(i_t,:),\widetilde Z(t,:)\rangle\in\mathbb R$. \quad Cost: $O(qr)$.
+\item Now compute $(Z\otimes K)^T y$ where $y\in\mathbb R^q$ is sparse-supported (it lives only on $\Omega$):
+\[
+\bigl[(Z\otimes K)^T y\bigr] \;=\; \vecop\Bigl(K\cdot\sum_{t}y_t\,e_{i_t}\widetilde Z(t,:)\Bigr).
+\]
+First form $V'=\sum_t y_t\,e_{i_t}\widetilde Z(t,:)\in\mathbb R^{n\times r}$ by scattering $y_t\widetilde Z(t,:)$ to row $i_t$.  Cost: $O(qr)$.
+\item Multiply by $K$: $V=KV'\in\mathbb R^{n\times r}$.  Cost: $O(n^2r)$.
+\item Output $H_{\rm samp}w=\vecop(V)$.
+\end{enumerate}
+Total: $O(n^2r + qr)$.
+
+\textbf{(b) Tikhonov term.}  $\lambda(I_r\otimes K)w = \lambda\vecop(KW')$.  Reuse $U=KW'$: cost $O(1)$ extra (just scale and add).
+
+\medskip
+\noindent\textbf{Total $Hw$ cost:} $O(n^2 r + qr)$.
+
+\subsection*{2.2 Preconditioner: block-diagonal Tikhonov}
+
+The Tikhonov term $\lambda(I_r\otimes K)$ is block-diagonal with $r$ blocks each equal to $\lambda K$.  Use it as a preconditioner:
+\[
+P \;:=\; \mu\cdot I_r\otimes K\quad\text{for some }\mu\geq\lambda,
+\]
+applied as $P^{-1}\vecop(W')=\mu^{-1}\vecop(K^{-1}W')$.  Apply $K^{-1}$ via a precomputed Cholesky of $K$ (or $K+\eta I$ if $K$ is rank-deficient): one-time setup $O(n^3)$, per-application $O(n^2 r)$ (back-substitution applied to each of $r$ columns).
+
+\textbf{Choice of $\mu$.}  Set $\mu=\lambda + \widehat{\sigma}_{\rm avg}$ where
+\[
+\widehat\sigma_{\rm avg}=\frac{1}{r}\,\mathrm{tr}\bigl((Z^TZ)\odot(K_{\Omega}^TK_{\Omega})/q\bigr)
+\]
+is a cheap estimate of the average diagonal of the sampling term.  This makes $P$ approximate the diagonal Lanczos average of $H$.  In practice $\mu=\lambda$ is the simplest choice.
+
+\textbf{Why this preconditioner works (spectral bound).}  When the sampling is sufficiently dense and $Z$ well-conditioned, by leverage-score concentration the sampling term satisfies
+\[
+(1-\delta)\,\widehat\sigma\,(I_r\otimes K)\;\preceq\;(Z\otimes K)^T SS^T(Z\otimes K)\;\preceq\;(1+\delta)\,\widehat\sigma\,(I_r\otimes K)
+\]
+in the natural ambient norm, for some $\widehat\sigma$ proportional to $\mathrm{tr}(Z^TZ)q/M$ (Tropp-style matrix Chernoff).  Then $P^{-1}H$ has condition number $O(1)$, and PCG converges in $O(1)$ iterations to fixed accuracy.  In the absence of such concentration, the condition number is bounded by $\kappa(K)/\lambda$, giving $O(\sqrt{\kappa(K)/\lambda})$ iterations to fixed accuracy by the standard CG bound.
+
+\subsection*{2.3 Algorithm box}
+
+\begin{algorithm}[H]
+\caption{PCG for the RKHS mode-$k$ subproblem}
+\begin{algorithmic}[1]
+\Require Sampling triples $\{(i_t,m_t,\tau_t)\}_{t=1}^q$, factors $\{A_i\}_{i\ne k}$, kernel $K$, regularizer $\lambda$, tolerance $\varepsilon$.
+\Ensure $W\in\mathbb R^{n\times r}$.
+\State \textbf{Setup:}
+\State \quad Compute $\widetilde Z\in\mathbb R^{q\times r}$ with $\widetilde Z(t,:)=\bigodot_{i\ne k} A_i(\mathrm{idx}_i(m_t),:)$. \Comment{$O(qrd)$}
+\State \quad Form $B\in\mathbb R^{n\times r}$ by $B(i,:)=\sum_{t:i_t=i}\tau_t\,\widetilde Z(t,:)$. \Comment{$O(qr)$}
+\State \quad Form RHS $g=\vecop(KB)$. \Comment{$O(n^2r)$}
+\State \quad Cholesky factor $K=L L^T$ (or $K+\eta I=LL^T$ for tiny $\eta$). \Comment{$O(n^3)$}
+\State \textbf{PCG iteration:}  Initialize $w_0=0$, $r_0=g$, $z_0=P^{-1}r_0$, $p_0=z_0$.
+\For{$\ell=0,1,2,\ldots$ until $\|r_\ell\|\le\varepsilon\|g\|$}
+  \State Compute $a_\ell:=\mathrm{Apply}_H(p_\ell)$ via the routine in \S2.1. \Comment{$O(n^2r+qr)$}
+  \State $\alpha_\ell\gets\langle r_\ell,z_\ell\rangle/\langle p_\ell,a_\ell\rangle$.
+  \State $w_{\ell+1}\gets w_\ell+\alpha_\ell p_\ell$;\quad $r_{\ell+1}\gets r_\ell-\alpha_\ell a_\ell$.
+  \State $z_{\ell+1}\gets P^{-1}r_{\ell+1}$ via Cholesky back-solve on $K$ blockwise. \Comment{$O(n^2r)$}
+  \State $\beta_\ell\gets\langle r_{\ell+1},z_{\ell+1}\rangle/\langle r_\ell,z_\ell\rangle$.
+  \State $p_{\ell+1}\gets z_{\ell+1}+\beta_\ell p_\ell$.
+\EndFor
+\State \Return $W=\mathrm{unvec}(w_\ell)$.
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textbf{Subroutine $\mathrm{Apply}_H(p)$}, with $p=\vecop(P')$:
+\begin{enumerate}\setlength\itemsep{2pt}
+\item $U\gets K P'$. \Comment{$O(n^2 r)$}
+\item For $t=1,\ldots,q$: $y_t\gets \langle U(i_t,:),\,\widetilde Z(t,:)\rangle$. \Comment{$O(qr)$}
+\item Initialize $V'\gets 0\in\mathbb R^{n\times r}$.  For $t=1,\ldots,q$: $V'(i_t,:)\mathrel{+}=y_t\,\widetilde Z(t,:)$. \Comment{$O(qr)$}
+\item $V\gets KV' + \lambda U$. \Comment{$O(n^2r)$}
+\item Return $\vecop(V)$.
+\end{enumerate}
+
+\section*{3. Complexity analysis}
+
+\textbf{Setup cost (PCG):}
+\[
+O\bigl(qrd \;+\; qr \;+\; n^2 r \;+\; n^3\bigr).
+\]
+The Cholesky of $K$ is $O(n^3)$, performed once.  Note that we never form anything of size $M$ or $N$.
+
+\textbf{Per-iteration cost:}
+\[
+O\bigl(n^2 r + qr\bigr).
+\]
+The dominant terms are: matrix multiplication by $K$ (twice, $O(n^2r)$ each), Cholesky back-solve on $K$ ($O(n^2 r)$), and the $q$-loop scatter/gather ($O(qr)$).
+
+\textbf{Number of iterations:} $\ell = O(\sqrt{\kappa(P^{-1}H)}\,\log(1/\varepsilon))$.  Under leverage-score concentration: $\ell=O(\log(1/\varepsilon))$, i.e., constant for fixed accuracy.  Worst-case: $\ell=O(\sqrt{\kappa(K)/\lambda}\log(1/\varepsilon))$.
+
+\textbf{Total cost (PCG):}
+\[
+O\bigl(qrd + n^3 + \ell\cdot(n^2 r + qr)\bigr).
+\]
+
+\textbf{Comparison with direct.}  Direct: $O(qn^2r^2+n^3r^3)$.  PCG: $O(\ell\cdot n^2r)$ per iteration plus setup.
+
+For small $\ell$ (e.g.\ $\ell=O(\log(1/\varepsilon))$ under good preconditioning), the PCG cost is
+\[
+O\bigl(qrd + n^3 + (n^2r+qr)\log(1/\varepsilon)\bigr),
+\]
+versus direct's $O(qn^2r^2+n^3r^3)$.  PCG saves a factor of $r^2$ in the iteration cost (no Kronecker blow-up) and avoids the $O(n^3r^3)$ Cholesky.
+
+\textbf{Memory.}  PCG: $O(n^2 + nr + qr)$ for $K$, the iterate $W$, and $\widetilde Z$.  Direct: $O(n^2r^2)$ for $H$, an $r^2$ blow-up.
+
+\section*{4. Why the matrix-free products work without forming $S$, $Z$, $K\otimes Z$ explicitly}
+
+The key reformulations:
+
+\begin{enumerate}\setlength\itemsep{4pt}
+\item \emph{Kronecker--vec identity.}  $(Z\otimes K)\vecop(W')=\vecop(KW'Z^T)$.  Read column-by-column: column $m$ of $KW'Z^T$ is $KW'\cdot Z(m,:)^T = (KW')Z(m,:)^T$, an $n$-vector formed by combining the $r$ columns of $KW'$.  We never form $KW'Z^T\in\mathbb R^{n\times M}$ — only the $q$ entries selected by $\Omega$.
+\item \emph{Sampling avoids $M$.}  $S^T\vecop(KW'Z^T)\in\mathbb R^q$ has the explicit form $\bigl[(KW')(i_t,:)\cdot Z(m_t,:)^T\bigr]_{t}$.  Computing the $q$ inner products of length $r$ avoids constructing the full $n\times M$ matrix.
+\item \emph{Adjoint scatter avoids $M$.}  $(Z\otimes K)^T(S y)$ for sparse-supported $y\in\mathbb R^q$ is computed by scattering $y_t Z(m_t,:)$ to a sparse $n\times M$ matrix and multiplying on the left by $K$, which collapses to $K\cdot\bigl(\sum_t y_t\,e_{i_t}\widetilde Z(t,:)\bigr)\in\mathbb R^{n\times r}$ (the sum is a dense $n\times r$ matrix because $\widetilde Z(t,:)$ has $r$ entries; the scatter-add takes $O(qr)$).
+\item \emph{$Z$ is never formed.}  Instead, the $q$ rows $\widetilde Z(t,:)\in\mathbb R^r$ that are actually used are computed via row-lookups: $\widetilde Z(t,:)=A_1(\mathrm{idx}_1(m_t),:)\odot\cdots\odot A_{k-1}(\mathrm{idx}_{k-1}(m_t),:)\odot A_{k+1}(\cdots)\odot\cdots\odot A_d(\cdots)$, an $r$-fold Hadamard product, costing $O(rd)$ per observation.  This is the standard ``sampled Khatri--Rao'' trick.
+\item \emph{$K$ is dense $n\times n$ but $n$ is small} (assumption $n\ll M$), so $O(n^2r)$ multiplications and $O(n^3)$ Cholesky are affordable.
+\end{enumerate}
+
+In particular, all of $T$ (mode-$k$ unfolding, size $n\times M$), $Z$ (size $M\times r$), $S$ (size $N\times q$), and $H$ (size $nr\times nr$, requires $n^2r^2$ storage) are \emph{avoided} as explicit matrices; only the small kernel $K$ ($n\times n$), the iterate $W$ ($n\times r$), and the sampled rows $\widetilde Z$ ($q\times r$) are stored.
+
+\section*{5. Symmetric positive (semi-)definiteness}
+
+The system matrix $H=(Z\otimes K)^TSS^T(Z\otimes K)+\lambda(I_r\otimes K)$ is symmetric.  PSD: the first term is PSD as a Gram matrix of the rows of $S^T(Z\otimes K)$; the second term is PSD as $\lambda>0$ times $K\succeq 0$ (with $K$ PSD by RKHS assumption).  When $K\succ 0$ (which is generic for an RKHS kernel), $H\succ 0$, and CG is well-defined.  When $K$ is only PSD with kernel $\mathcal K$, the system can be reduced to the orthogonal complement of $\mathcal K\otimes\mathbb R^r$ (or one can regularize $K\to K+\eta I$ for tiny $\eta>0$, recovering strict positive definiteness; this is what we do in line 5 of the algorithm).
+
+\section*{6. Summary table}
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}\toprule
+ & Direct & PCG \\\midrule
+Setup & $O(qrd+n^2r)$ & $O(qrd+n^2r+n^3)$ \\
+Per-iteration / solve & $O(qn^2r^2+n^3r^3)$ & $O(n^2 r+qr)$ per iter \\
+Iterations & 1 (Cholesky) & $\ell=O(\log(1/\varepsilon)\sqrt{\kappa})$ \\
+Memory & $O(n^2r^2)$ & $O(n^2+nr+qr)$ \\
+Avoids forming $H$? & No & Yes \\
+Touches $N$ or $M$? & No (provided $T$ and $Z$ are stored compactly) & No \\
+\bottomrule\end{tabular}\end{center}
+
+\medskip
+\noindent\textbf{Conclusion.}  PCG with the block-diagonal preconditioner $P=\mu(I_r\otimes K)$ solves the RKHS mode-$k$ subproblem in $O(\ell\cdot(n^2r+qr))$ work per iteration plus $O(n^3)$ setup, an asymptotic improvement of factor $r^2$ in the per-iteration cost over the direct method, without ever forming the $nr\times nr$ system matrix or any object of size $\Omega(M)$ or $\Omega(N)$.
+
+\begin{thebibliography}{9}
+\bibitem{KoldaBader09} T.~G.~Kolda, B.~W.~Bader.  \emph{Tensor Decompositions and Applications}.  SIAM Review \textbf{51} (2009), 455--500.
+\bibitem{Saad03} Y.~Saad.  \emph{Iterative Methods for Sparse Linear Systems}, 2nd ed., SIAM, 2003.
+\bibitem{Tropp15} J.~A.~Tropp.  \emph{An Introduction to Matrix Concentration Inequalities}.  Found.\ Trends Mach.\ Learn., 2015.
+\end{thebibliography}
+
+\end{document}

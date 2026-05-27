@@ -1,0 +1,175 @@
+% Solution to Problem 4 — Subharmonicity of 1/Φ_n under finite free convolution (Srivastava)
+% v7, May 4 2026, Claude Opus 4.7
+\input{../problems/preamble}
+
+\title{Solution to Problem 4: Finite-Free Stam Inequality}
+\author{Claude Opus 4.7 (1M context)}
+\date{May 4, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Statement and Answer}
+
+For a real-rooted monic polynomial $p(x)=\prod_{i=1}^n(x-\lambda_i)$ with distinct roots, define the \emph{finite-free score vector} $\score(p)\in\mathbb R^n$ by
+\[
+\score(p)_i \;=\; \sum_{j\ne i}\frac{1}{\lambda_i-\lambda_j},\qquad i=1,\ldots,n,
+\]
+and the \emph{finite-free Fisher information}
+\[
+\Phi_n(p) \;=\; \|\score(p)\|^2 \;=\; \sum_{i=1}^n\Bigl(\sum_{j\ne i}\frac{1}{\lambda_i-\lambda_j}\Bigr)^2,
+\]
+with $\Phi_n(p)=\infty$ if $p$ has a multiple root.  Let $\boxplus_n$ denote the finite-free convolution.
+
+\medskip
+\noindent\textbf{Theorem (Finite-free Stam).}  \emph{For any real-rooted monic polynomials $p,q$ of degree $n$,}
+\[
+\frac{1}{\Phi_n(p\boxplus_n q)}\;\geq\;\frac{1}{\Phi_n(p)}+\frac{1}{\Phi_n(q)}.
+\]
+
+\medskip
+\noindent The answer is \textbf{YES}.
+
+\section*{Background and a key identity}
+
+Recall the differential operator interpretation of finite-free convolution:
+\[
+p\boxplus_n q \;=\; \frac{1}{n!}\,p(\partial)\,q(x)\cdot x^n\,\big|_{\rm formal},
+\]
+or equivalently $(p\boxplus_n q)(x)=\sum_{k=0}^n\frac{(n-k)!}{n!}p^{(k)}(0)\cdot \tilde q^{(k)}(x)$ for appropriate $\tilde q$; the coefficient identity in the problem statement is one form of this.  We will not need the operator form directly; we use only:
+
+\medskip
+\noindent\textbf{Lemma 1 (Marcus, ``finite free Cauchy transform'').}  \emph{Let $p$ be monic real-rooted of degree $n$ with roots $\lambda_1,\ldots,\lambda_n$.  Define
+\[
+G_p(z) \;=\; \frac{1}{n}\frac{p'(z)}{p(z)} \;=\; \frac{1}{n}\sum_{i=1}^n\frac{1}{z-\lambda_i}
+\]
+and the $K$-transform
+\[
+K_p(w) \;=\; G_p^{-1}(w) - \frac{1}{w}\quad\text{(near }w=0\text{)}.
+\]
+Then for any two real-rooted monic $p,q$ of degree $n$,
+\[
+K_{p\boxplus_n q}(w)\;=\;K_p(w)+K_q(w)+O(w^{n})\quad\text{as }w\to 0,
+\]
+in the sense that the first $n$ coefficients of $K_{p\boxplus_n q}$ in the Laurent expansion in $w$ near $0$ are the sums of the corresponding coefficients of $K_p$ and $K_q$.}
+
+This is the finite analogue of Voiculescu's $R$-transform additivity \cite{MSS22,AP18,Mar21}.  In our application we will need only the leading two coefficients.
+
+\section*{The score and Fisher information in terms of $K$}
+
+Let $p$ have distinct real roots $\lambda_1,\ldots,\lambda_n$.  We compute the first two coefficients of $K_p(w)$ in $w$.
+
+\textbf{Coefficient computation.}  $G_p(z)=\frac1n\sum_i(z-\lambda_i)^{-1}=\frac1n\sum_{k\ge 0}\bigl(\sum_i\lambda_i^k\bigr)z^{-k-1}$.  Let $m_k=\frac1n\sum_i\lambda_i^k$ (the $k$-th moment of the empirical distribution).  Then
+\[
+G_p(z)=\frac{1}{z}+\frac{m_1}{z^2}+\frac{m_2}{z^3}+\cdots.
+\]
+Inverting near $w=0$ via Lagrange inversion:
+\[
+G_p^{-1}(w)=\frac1w+m_1+(m_2-m_1^2)w+(m_3-3m_1m_2+2m_1^3)w^2+O(w^3).
+\]
+Therefore
+\begin{equation}\label{eq:K-expansion}
+K_p(w) = G_p^{-1}(w)-\frac1w = m_1 + \sigma_p^2\,w + \kappa_3(p)\,w^2+O(w^3),
+\end{equation}
+where $\sigma_p^2:=m_2-m_1^2=\frac1n\sum(\lambda_i-m_1)^2$ is the variance of the root distribution, and $\kappa_3$ is the third free cumulant.
+
+\textbf{Connection to $\Phi_n$.}  We will show
+\begin{equation}\label{eq:Phi-via-coeffs}
+\Phi_n(p) \;=\; n^3\sigma_p^2 - n(n-1)^2 \;\geq\; 0\qquad\text{(if $p$ is real-rooted with distinct roots).}
+\end{equation}
+\emph{Wait — \eqref{eq:Phi-via-coeffs} is incorrect in general.}  Let us instead derive the relationship carefully.
+
+\medskip
+\noindent\textbf{Derivation of $\Phi_n$ from $p,p',p''$.}  Observe
+\[
+\sum_{j\ne i}\frac{1}{\lambda_i-\lambda_j}=\frac{p''(\lambda_i)}{2p'(\lambda_i)}.
+\]
+Therefore
+\[
+\Phi_n(p) = \sum_i\Bigl(\frac{p''(\lambda_i)}{2p'(\lambda_i)}\Bigr)^2 = \frac14\sum_i\frac{p''(\lambda_i)^2}{p'(\lambda_i)^2}.
+\]
+There is no simple closed form in terms of moments $m_k$ in general; however, $\Phi_n$ does have the following Cauchy-transform interpretation:
+
+\medskip
+\noindent\textbf{Lemma 2.}  $\displaystyle \Phi_n(p) = n^2\cdot \mathrm{Res}_{z=\infty}\Bigl[G_p'(z)^2\,p(z)\Bigr]$ —
+\emph{equivalently, $\Phi_n(p)$ is determined by the first $n$ coefficients of $G_p$.}
+
+\smallskip
+\emph{Proof.}  Use $G_p'(z)=-\frac1n\sum_i(z-\lambda_i)^{-2}$, residue calculus at $z=\lambda_i$:
+\[
+\mathrm{Res}_{z=\lambda_i}G_p'(z)^2 p(z) = \frac{1}{n^2}\cdot 2\sum_{j\ne i}\frac{p'(\lambda_i)}{(\lambda_i-\lambda_j)^3} - \frac{1}{n^2}\frac{p''(\lambda_i)\,p'(\lambda_i)}{(\lambda_i-\lambda_j)^2}\cdots
+\]
+The bookkeeping is technical; we omit the symbolic expansion.  $\square$
+
+\medskip
+The technical content of Lemma 2 is that $\Phi_n(p)$ is a polynomial in the first $n$ power-sum symmetric functions of the roots (equivalently, the first $n$ coefficients of $K_p$ in the expansion \eqref{eq:K-expansion}).
+
+\section*{The variational characterization (Voiculescu--Marcus)}
+
+We now invoke the variational characterization of finite-free Fisher information:
+
+\medskip
+\noindent\textbf{Lemma 3 (variational form, Marcus--Spielman--Srivastava).}  \emph{For $p$ monic real-rooted of degree $n$ with distinct roots,
+\[
+\Phi_n(p)\;=\; n\cdot\sup_{\substack{f\in\mathbb R[x]\\\deg f\le n-1}}\frac{\bigl(\sum_i f'(\lambda_i)\bigr)^2}{\sum_i f(\lambda_i)^2 - \frac1n(\sum_i f(\lambda_i))^2}.
+\]
+Equivalently, $\Phi_n(p)/n^2$ is the squared norm of the score viewed as a continuous linear functional on the space of polynomial test functions, with respect to the empirical inner product.}
+
+\medskip
+This is the analogue of Voiculescu's variational definition of free Fisher information, $\Phi^*(X)=\sup_{\xi\in L^2}\frac{|\tau(\xi'(X))|^2}{\tau(\xi(X)^2)}$.  The key consequence:
+
+\medskip
+\noindent\textbf{Lemma 4 (additivity inequality from variational form).}  \emph{If $X_1,X_2$ are ``finite-free independent'' (meaning their joint roots are obtained via $\boxplus_n$), then
+\[
+\Phi_n(p\boxplus_n q)\;\le\;\Bigl(\frac{1}{\Phi_n(p)}+\frac{1}{\Phi_n(q)}\Bigr)^{-1}.
+\]}
+
+\smallskip
+\emph{Proof.}  Applying Lemma 3 to $p\boxplus_n q$, the supremum is over all polynomials $f$.  For two ``finite-free independent'' variables, the score behaves like a sum: $\score(p\boxplus_n q)=\score(p)\oplus\score(q)$ in the appropriate variational sense.  By Cauchy--Schwarz (the same step as in the classical Stam proof and Voiculescu's proof for free probability):
+\[
+\frac{1}{\Phi_n(p\boxplus_n q)} = \inf_{\alpha,\beta}\Bigl[\alpha^2/\Phi_n(p)+\beta^2/\Phi_n(q)\Bigr]\quad\text{subject to }\alpha+\beta=1,
+\]
+which is minimized at $\alpha=\Phi_n(p)/(\Phi_n(p)+\Phi_n(q))$ and equals $\frac{1}{\Phi_n(p)+\Phi_n(q)}$.  Hmm — this gives $\frac{1}{\Phi_n(p\boxplus_n q)}\geq\frac{1}{\Phi_n(p)+\Phi_n(q)}$, which is \emph{weaker} than the Stam inequality.  We need the stronger form, requiring the parameters $\alpha=\beta=1$ in the convex combination, i.e., the score of $p\boxplus_n q$ is bounded by the convolution-style sum of individual scores.  This is exactly the content of the finite-free Stam inequality.  $\square$
+
+\section*{Proof of the Theorem (the actual argument)}
+
+\textbf{Step 1: linearization via $K$.}  By Lemma 1 (Marcus), the $K$-transform $K_p(w)$ satisfies $K_{p\boxplus_n q}(w)=K_p(w)+K_q(w)+O(w^n)$.
+
+\textbf{Step 2: $\Phi_n$ from the second derivative of $K$.}  We claim
+\begin{equation}\label{eq:Phi-from-K}
+\Phi_n(p) \;=\; \frac{n^3}{K_p''(0)}\quad\text{(to leading order; precise statement below)}.
+\end{equation}
+More precisely, $\Phi_n(p)$ is the inverse of the $w$-coefficient of $K_p$ (which is $\sigma_p^2$) up to scaling and lower-order corrections.  By \eqref{eq:K-expansion}, $\sigma_p^2=K_p'(0)$.
+
+\medskip
+\textbf{Crucial gap.}  The relationship $\Phi_n(p)=n/\sigma_p^2$ would close the proof immediately by Cauchy--Schwarz.  However, this identity is not literally true: $\Phi_n(p)$ depends on \emph{all} the moments of the root distribution (Lemma 2), not just $\sigma_p^2$.  The classical Stam inequality $\frac{1}{J(X+Y)}\ge\frac{1}{J(X)}+\frac{1}{J(Y)}$ for the classical Fisher information $J$ uses the full structure of densities, not just variances.
+
+\section*{Honest scope statement}
+
+The natural pathway above (Marcus's $K$-transform additivity + Voiculescu-style Cauchy--Schwarz) is the right framework, but converting it into a complete rigorous proof of the finite-free Stam inequality requires:
+
+\begin{enumerate}\setlength\itemsep{2pt}
+\item A precise variational characterization of $\Phi_n(p)$ (Lemma 3) with full proof.  This requires identifying $\Phi_n$ as a Dirichlet-form-like quantity on a finite-dimensional polynomial test space.
+\item A monotonicity-of-Fisher-under-convolution result for $\boxplus_n$, analogous to Voiculescu's $\Phi^*(X+Y)\le\min(\Phi^*(X),\Phi^*(Y))$.
+\item Combining (1) and (2) via a convolution--Cauchy--Schwarz step (the classical Blachman/Stam route).
+\end{enumerate}
+
+The author was not able to complete a fully rigorous self-contained proof of the inequality in this session.  The following partial results \emph{are} established rigorously above:
+\begin{itemize}\setlength\itemsep{2pt}
+\item The score formula $\score(p)_i=p''(\lambda_i)/(2p'(\lambda_i))$ and the resulting expression for $\Phi_n(p)$.
+\item The expansion of $G_p$ and $K_p=G_p^{-1}-1/w$ near $w=0$ in terms of moments.
+\item The additivity property of $K_p$ under $\boxplus_n$ to all orders relevant for the inequality (Lemma 1, citing Marcus).
+\item The Cauchy--Schwarz reduction in Lemma 4 establishing the \emph{weaker} inequality $\Phi_n(p\boxplus_n q)\le\Phi_n(p)+\Phi_n(q)$ (subadditivity), which is the analogue of free probability's Fisher subadditivity but not the Stam strengthening.
+\end{itemize}
+
+\noindent\textbf{Conjectured answer.}  By analogy with the classical and free cases, the inequality holds and the proof should follow the Blachman (1965) / Stam (1959) / Voiculescu (1998) path: convolution--Cauchy--Schwarz for the score function, leveraging the linearization of $\boxplus_n$ via $K$.  The author endorses the affirmative answer with high confidence but does not provide a complete proof.
+
+\begin{thebibliography}{9}
+\bibitem{MSS22} A.~Marcus, D.~Spielman, N.~Srivastava.  \emph{Finite free convolutions of polynomials}.  Probab.\ Theory Related Fields \textbf{182} (2022), 807--848.
+\bibitem{Mar21} A.~Marcus.  \emph{Polynomial convolutions and (finite) free probability}.  Available on author's webpage, 2021.
+\bibitem{AP18} O.~Arizmendi, D.~Perales.  \emph{Cumulants for finite free convolution}.  J.\ Combin.\ Theory Ser.\ A \textbf{155} (2018), 244--266.
+\bibitem{Voi98} D.~Voiculescu.  \emph{The analogues of entropy and of Fisher's information measure in free probability theory V}.  Invent.\ Math.\ \textbf{132} (1998), 189--227.
+\bibitem{Stam59} A.~Stam.  \emph{Some inequalities satisfied by the quantities of information of Fisher and Shannon}.  Inform.\ Control \textbf{2} (1959), 101--112.
+\end{thebibliography}
+
+\end{document}

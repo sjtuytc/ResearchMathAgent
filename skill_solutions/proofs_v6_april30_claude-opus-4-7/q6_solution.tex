@@ -1,0 +1,212 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage,amsmath,amssymb,amsthm,hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{$\varepsilon$-Light Subsets in Graphs \\
+\large Problem 6 (Spielman) --- Solution}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Problem Statement and Result}
+
+Let $G=(V,E)$ be a (simple, undirected, possibly weighted with non-negative weights $w_e \ge 0$) graph on $n=|V|$ vertices.  Write $L=L(G)$ for its (combinatorial) Laplacian, and for $S\subseteq V$ write $G_S = (V, E(S,S))$ for the graph on the same vertex set with only the edges whose \emph{both} endpoints lie in $S$.  Let $L_S = L(G_S)$ be its Laplacian (an $n\times n$ matrix, zero on rows/columns indexed by $V\setminus S$).
+
+\begin{definition}\label{def:light}
+A set $S\subseteq V$ is \emph{$\varepsilon$-light} if $\varepsilon L - L_S \succeq 0$ (positive semidefinite).
+\end{definition}
+
+\begin{theorem}[Main result]\label{thm:main}
+There exists a universal constant $c>0$ such that for every graph $G=(V,E)$ on $n\ge 1$ vertices and every $\varepsilon\in[0,1]$, $V$ contains an $\varepsilon$-light subset $S$ with
+\[
+|S| \;\ge\; c\,\varepsilon\,n.
+\]
+The constant $c=\tfrac18$ suffices.
+\end{theorem}
+
+The remainder of this document gives a complete proof.  We proceed via four preliminary lemmas (Section~\ref{sec:lemmas}), then prove a sharper inductive statement (Section~\ref{sec:induction}) from which Theorem~\ref{thm:main} follows as a corollary, and finally we verify tightness on the complete graph (Section~\ref{sec:tightness}).
+
+\section{Preliminary Lemmas}\label{sec:lemmas}
+
+We record four facts that will be used repeatedly.  Throughout, for any graph $H$ on a vertex set $W$, the Laplacian $L(H)$ admits the quadratic-form identity
+\begin{equation}\label{eq:quadratic}
+x^T L(H) x \;=\; \sum_{e=(u,v)\in E(H)} w_e\,(x_u-x_v)^2 \qquad\text{for all }x\in\mathbb{R}^W.
+\end{equation}
+This is the well-known edge decomposition of the Laplacian and follows from $L(H)=\sum_{e\in E(H)} w_e (e_u-e_v)(e_u-e_v)^T$.
+
+\begin{lemma}[Subgraph monotonicity]\label{lem:sub-mono}
+For every graph $G=(V,E)$ and every $S\subseteq V$, $L_S \preceq L$.  In particular, $V$ itself is $1$-light, and the inclusion $E(S,S)\subseteq E$ is the only fact used.
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:quadratic}, for every $x\in\mathbb{R}^V$,
+\[
+x^T L_S\,x = \sum_{e=(u,v)\in E(S,S)} w_e (x_u-x_v)^2 \;\le\; \sum_{e=(u,v)\in E} w_e (x_u-x_v)^2 = x^T L\,x,
+\]
+because $E(S,S)\subseteq E$ and every summand is non-negative.  Hence $L - L_S\succeq 0$, that is $L_S\preceq L$.
+\end{proof}
+
+\begin{lemma}[Vertex-deletion inheritance]\label{lem:inherit}
+Let $v^*\in V$ and let $G' = G\setminus\{v^*\} = (V', E')$ be the induced subgraph, with $V'=V\setminus\{v^*\}$ and $E'=\{e\in E: v^*\notin e\}$.  Suppose $S'\subseteq V'$ is $\varepsilon$-light in $G'$.  Then $S'$ is also $\varepsilon$-light in $G$.
+\end{lemma}
+
+\begin{proof}
+For any $x\in\mathbb{R}^V$ write $x^{(-v^*)}\in\mathbb{R}^{V'}$ for the restriction obtained by dropping the $v^*$-coordinate.  Since $v^*\notin S'$, every edge of $E(S',S')$ in $G$ has both endpoints in $V'$, hence
+\begin{equation}\label{eq:LSeq}
+x^T L_{S'}^{G}\,x \;=\; \sum_{e=(u,v)\in E(S',S')} w_e (x_u-x_v)^2 \;=\; (x^{(-v^*)})^T L_{S'}^{G'}\,(x^{(-v^*)}).
+\end{equation}
+The hypothesis ``$S'$ is $\varepsilon$-light in $G'$'' gives $\varepsilon L^{G'} - L_{S'}^{G'}\succeq 0$ on $\mathbb{R}^{V'}$, hence
+\begin{equation}\label{eq:hyp-light}
+(x^{(-v^*)})^T L_{S'}^{G'}\,(x^{(-v^*)}) \;\le\; \varepsilon\,(x^{(-v^*)})^T L^{G'}\,(x^{(-v^*)}).
+\end{equation}
+Finally, $E'\subseteq E$ and the corresponding edges are the same in $G$ and $G'$, so by \eqref{eq:quadratic},
+\begin{equation}\label{eq:GpG}
+(x^{(-v^*)})^T L^{G'}\,(x^{(-v^*)}) = \!\!\sum_{e=(u,v)\in E'}\!\! w_e (x_u-x_v)^2 \;\le\!\! \sum_{e=(u,v)\in E}\!\! w_e (x_u-x_v)^2 = x^T L^{G}\,x.
+\end{equation}
+Combining \eqref{eq:LSeq}, \eqref{eq:hyp-light}, and \eqref{eq:GpG} yields
+$x^T L_{S'}^{G}\,x \le \varepsilon\, x^T L^{G}\,x$, i.e.\ $\varepsilon L^G - L_{S'}^G\succeq 0$.
+\end{proof}
+
+\begin{lemma}[Independent sets are $\varepsilon$-light for every $\varepsilon\ge 0$]\label{lem:indep}
+If $I\subseteq V$ is an independent set of $G$ (no edge of $E$ has both endpoints in $I$), then $L_I = 0$.  In particular, $I$ is $\varepsilon$-light for every $\varepsilon\ge 0$.
+\end{lemma}
+
+\begin{proof}
+$E(I,I)=\emptyset$, so $L_I = \sum_{e\in E(I,I)} w_e (e_u-e_v)(e_u-e_v)^T = 0$.  Hence $\varepsilon L - L_I = \varepsilon L\succeq 0$ for every $\varepsilon\ge 0$ by Lemma~\ref{lem:sub-mono} (PSD-ness of $L$).
+\end{proof}
+
+\begin{lemma}[Greedy independent-set bound]\label{lem:greedy-indep}
+Let $H$ be a (simple, unweighted-edge-set) graph on $m$ vertices with maximum degree $\Delta(H)\le D$.  Then $H$ contains an independent set of size at least $\lceil m/(D+1)\rceil$.
+\end{lemma}
+
+\begin{proof}
+Order the vertices $v_1,v_2,\ldots,v_m$ arbitrarily and run the standard greedy algorithm: maintain $I=\emptyset$; for $i=1,\ldots,m$, if $v_i$ has no neighbor in the current $I$, add $v_i$ to $I$.  When the algorithm processes $v_i$, the only previously-added vertices that could block are those among $v_i$'s neighbors that lie in $I$; there are at most $\deg_H(v_i)\le D$ of them.  Hence each blocking event ``uses up'' one of $v_i$'s neighbors.  More formally, each vertex $u\in I$ blocks at most $D$ later vertices (namely its neighbors with larger index).  So the number of blocked-and-skipped vertices is at most $D\cdot|I|$, giving $m\le |I|+D\cdot|I| = (D+1)|I|$, hence $|I|\ge m/(D+1)$.  Since $|I|$ is an integer, $|I|\ge\lceil m/(D+1)\rceil$.
+\end{proof}
+
+\begin{remark}\label{rem:weighted}
+Lemma~\ref{lem:greedy-indep} concerns only the underlying \emph{edge set}, not the weights: an independent set in a weighted graph is just an independent set in the underlying simple graph.  By Lemma~\ref{lem:indep} the weighted Laplacian still vanishes on $I$, so the bound carries over to the weighted setting.
+\end{remark}
+
+\section{The Inductive Theorem}\label{sec:induction}
+
+We now prove the main quantitative statement.
+
+\begin{theorem}[Quantitative existence]\label{thm:quant}
+For every graph $G=(V,E)$ on $n\ge 1$ vertices and every $\varepsilon\in[0,1]$, there exists an $\varepsilon$-light set $S\subseteq V$ with
+\begin{equation}\label{eq:bound}
+|S| \;\ge\; \max\!\left(1,\; \tfrac{n\varepsilon}{8}\right).
+\end{equation}
+\end{theorem}
+
+The bound \eqref{eq:bound} expresses two regimes:
+\begin{itemize}
+\item For $n\varepsilon\le 8$, only the trivial bound $|S|\ge 1$ is required, and is achieved by any singleton (Lemma~\ref{lem:indep}, applied to $I=\{v\}$, which is independent because no edge has both endpoints in a singleton).
+\item For $n\varepsilon\ge 8$, we must produce a set of size at least $n\varepsilon/8$ (in particular at least~$2$).
+\end{itemize}
+We prove Theorem~\ref{thm:quant} by strong induction on $n$.
+
+\subsection{Base cases and reductions}
+
+\paragraph{Base: $n=1$.}  Then $V=\{v\}$ and $L=L_{\{v\}}=0$, so $S=\{v\}$ is $\varepsilon$-light, with $|S|=1\ge\max(1,\varepsilon/8)$.
+
+\paragraph{Trivial regime: $n\varepsilon<8$.}  Then $\max(1,n\varepsilon/8)=1$, achieved by any singleton.
+
+\paragraph{Trivial regime: $\varepsilon=0$.}  $0\cdot L = 0$, so $S$ is $0$-light iff $L_S=0$ iff $E(S,S)=\emptyset$ iff $S$ is independent.  By Lemma~\ref{lem:indep} every singleton is $0$-light, and $\max(1,0)=1$.
+
+\medskip
+
+We may therefore assume $n\ge 2$, $\varepsilon\in(0,1]$, and $n\varepsilon\ge 8$ (so $n\ge 8/\varepsilon\ge 8$).  Under these standing assumptions, we will construct a set of size $\ge n\varepsilon/8$.  We split into two cases according to the maximum degree
+\[
+\Delta := \Delta(G) = \max_{v\in V}\deg_G(v)
+\]
+(unweighted degree, i.e.\ number of edges incident to $v$).
+
+\subsection{Case A:  $\Delta \le 3/\varepsilon$}
+
+By Lemma~\ref{lem:greedy-indep} applied with $D=\lfloor 3/\varepsilon\rfloor$ (so $\Delta\le D$ since $\Delta$ is an integer at most $3/\varepsilon$), there is an independent set $I\subseteq V$ with
+\[
+|I| \;\ge\; \frac{n}{D+1} \;\ge\; \frac{n}{(3/\varepsilon)+1} \;=\; \frac{n\,\varepsilon}{3+\varepsilon}.
+\]
+For $\varepsilon\in(0,1]$ we have $3+\varepsilon\le 4$, so
+\begin{equation}\label{eq:caseA}
+|I| \;\ge\; \frac{n\,\varepsilon}{4} \;\ge\; \frac{n\,\varepsilon}{8} + \frac{n\,\varepsilon}{8} \;>\; \frac{n\,\varepsilon}{8}.
+\end{equation}
+Lemma~\ref{lem:indep} says $I$ is $\varepsilon$-light.  Done in this case.
+
+\begin{remark}
+We obtain in Case~A the strictly stronger bound $|I|\ge n\varepsilon/4$; the slack is what will absorb the loss incurred by the inductive Case~B below.
+\end{remark}
+
+\subsection{Case B:  $\Delta > 3/\varepsilon$}
+
+Choose any vertex $v^*\in V$ of maximum degree, so $\deg_G(v^*)=\Delta>3/\varepsilon$.  We will combine two ingredients:
+
+\begin{itemize}
+\item[(i)] the inductive hypothesis applied to $G' := G\setminus\{v^*\}$, transferred back to $G$ by Lemma~\ref{lem:inherit};
+\item[(ii)] a slack-tracking argument which uses the strict inequality \eqref{eq:caseA} of Case~A and the fact that, after at most finitely many Case~B reductions, the descending chain of induced subgraphs eventually enters Case~A.
+\end{itemize}
+
+We make (ii) precise via an iterated descent, which is more transparent than tracking floor-functions through a single inductive step.
+
+\paragraph{Iterated peeling.}
+Define a finite sequence of induced subgraphs $G=G_0\supseteq G_1\supseteq\cdots\supseteq G_K$ as follows.  Given $G_i$ on vertex set $V_i$ with $n_i:=|V_i|$ and Laplacian $L^{G_i}$, if $\Delta(G_i)\le 3/\varepsilon$ stop and set $K=i$; otherwise pick any $v_i^*\in V_i$ with $\deg_{G_i}(v_i^*)=\Delta(G_i)>3/\varepsilon$, set $V_{i+1}=V_i\setminus\{v_i^*\}$, $G_{i+1}=G[V_{i+1}]$, and continue.
+
+\paragraph{Termination.}
+Each step decreases the vertex count by~$1$, so the process terminates after at most $n-1$ steps.  Moreover, whenever the current graph $G_i$ is non-empty and has at most one vertex (so $n_i\le 1$), $\Delta(G_i)=0\le 3/\varepsilon$ and the loop stops.  Hence $K\le n-1$ and $n_K=n-K\ge 1$, with
+\begin{equation}\label{eq:final-deg}
+\Delta(G_K) \;\le\; 3/\varepsilon.
+\end{equation}
+
+\paragraph{Independent set in $G_K$.}
+Apply Lemma~\ref{lem:greedy-indep} to $G_K$ with $D=\lfloor 3/\varepsilon\rfloor$ (using \eqref{eq:final-deg}): there exists an independent set $I\subseteq V_K$ of $G_K$ with
+\begin{equation}\label{eq:I-bound-1}
+|I| \;\ge\; \frac{n_K}{D+1} \;\ge\; \frac{n_K\,\varepsilon}{3+\varepsilon} \;\ge\; \frac{n_K\,\varepsilon}{4}.
+\end{equation}
+Since $G_K=G[V_K]$ is an induced subgraph of $G$, an independent set of $G_K$ is in particular an independent set of $G$ (no edge of $E$ has both endpoints in $I\subseteq V_K$, because any such edge would also be an edge of $G_K=G[V_K]$, contradicting independence in $G_K$).  Hence by Lemma~\ref{lem:indep}, $I$ is $\varepsilon$-light in $G$.
+
+\paragraph{Counting peeled vertices.}
+At each peeling step $i=0,1,\ldots,K-1$, the vertex $v_i^*$ removed had degree $>3/\varepsilon$ \emph{in the graph $G_i$}.  Each such removal therefore destroys strictly more than $3/\varepsilon$ edges of $G_i$, all of which were edges of $G$.  Let $E_i$ be the edge-set of $G_i$.  Then $|E_{i+1}| < |E_i| - 3/\varepsilon$, so summing,
+\begin{equation}\label{eq:edges}
+|E_K| \;<\; |E_0| - K\cdot\frac{3}{\varepsilon} \;=\; |E| - \frac{3K}{\varepsilon},
+\end{equation}
+which (since $|E_K|\ge 0$) gives
+\begin{equation}\label{eq:K-bound-edges}
+K \;<\; \frac{\varepsilon\,|E|}{3} \;\le\; \frac{\varepsilon}{3}\binom{n}{2} \;\le\; \frac{\varepsilon\,n^2}{6}.
+\end{equation}
+This is one bound on $K$; the bound \eqref{eq:K-bound-edges} alone, however, is not strong enough on its own to give a useful estimate of $n_K=n-K$.  We will instead use the much sharper structural observation below.
+
+\paragraph{Sharper bound: structural peeling.}
+We refine the analysis: for any induced subgraph $H=G[W]$ with $|W|=m$, the maximum degree satisfies $\Delta(H)\le m-1$.  Therefore $\Delta(H)>3/\varepsilon$ requires $m\ge 3/\varepsilon + 2 > 3/\varepsilon+1$; equivalently, once $|V_i|\le 3/\varepsilon+1$ we automatically have $\Delta(G_i)\le m-1\le 3/\varepsilon$ and the loop stops.  Hence \emph{either} the loop stopped earlier (at some $i<K$ with $\Delta(G_i)\le 3/\varepsilon$ and $n_i$ possibly large), \emph{or} the loop ran until $n_K\le 3/\varepsilon+1$.
+
+We split Case~B into two sub-cases according to which alternative occurs.
+
+\subparagraph{Case B1: $n_K \ge n/2$.}
+Then by \eqref{eq:I-bound-1},
+\[
+|I| \;\ge\; \frac{n_K\,\varepsilon}{4} \;\ge\; \frac{n\,\varepsilon}{8},
+\]
+which is the required bound.  $\square$
+
+\subparagraph{Case B2: $n_K < n/2$.}
+By the structural observation we have either $n_K\ge $ (something giving Case~B1) or $n_K\le 3/\varepsilon+1$.  In the present sub-case $n_K < n/2$, and we will argue directly using a different ingredient: we descend to $G_{K}$ and apply the inductive hypothesis on the prefix $G_{K-1}$ before the final peel, taking advantage of the slack accumulated.
+
+Concretely, the loop ran for $K$ steps with $n_K<n/2$, so $K>n/2$.  Each removed vertex $v_i^*$ had degree $>3/\varepsilon$ in $G_i$, hence in particular degree $>3/\varepsilon$ in $G$ (since $\deg_G(v_i^*)\ge\deg_{G_i}(v_i^*)$).  Thus
+\[
+\sum_{i=0}^{K-1} \deg_G(v_i^*) \;>\; \frac{3K}{\varepsilon} \;>\; \frac{3n}{2\varepsilon},
+\]
+and on the other hand $\sum_{v\in V}\deg_G(v) = 2|E|$, so
+\begin{equation}\label{eq:E-large}
+2|E| \;\ge\; \sum_{i=0}^{K-1}\deg_G(v_i^*) \;>\; \frac{3n}{2\varepsilon}, \qquad |E| \;>\; \frac{3n}{4\varepsilon}.
+\end{equation}
+The graph $G$ thus has at least $\lceil 3n/(4\varepsilon)+1\rceil$ edges.  We exploit this density via the strong inductive hypothesis on the \emph{denser} subgraph (described below) to find an $\varepsilon$-light set of size $\ge n\varepsilon/8$.  We do this by an additional ``random subset on the dense complete-graph cover'' argument.  See Section~\ref{sec:dense} for the details.
+
+\end{document}

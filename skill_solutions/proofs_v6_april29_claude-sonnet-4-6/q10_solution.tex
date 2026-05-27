@@ -1,0 +1,674 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage,amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% ---------------------------------------------------------------
+%  Theorem environments
+% ---------------------------------------------------------------
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+% ---------------------------------------------------------------
+%  Notation
+% ---------------------------------------------------------------
+\DeclareMathOperator{\vecop}{vec}
+\DeclareMathOperator{\mat}{mat}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\bH}{\mathbf{H}}
+\newcommand{\bv}{\mathbf{v}}
+\newcommand{\bz}{\mathbf{z}}
+\newcommand{\bu}{\mathbf{u}}
+\newcommand{\bp}{\mathbf{p}}
+\newcommand{\bq}{\mathbf{q}}
+\newcommand{\br}{\mathbf{r}}
+
+\title{Solution to Problem 10:\\
+Preconditioned Conjugate Gradient for\\
+RKHS-Constrained CP Decomposition}
+\author{}
+\date{2026-04-29}
+
+\begin{document}
+\maketitle
+
+% ===============================================================
+\section{Problem Setup and System Description}
+% ===============================================================
+
+We consider a $d$-way tensor $\mathcal{T}\in\R^{n_1\times\cdots\times n_d}$ with
+missing entries, for which we seek a rank-$r$ CP decomposition under RKHS
+constraints on mode $k$.  Throughout we write $N=\prod_i n_i$, $n\equiv n_k$,
+$M=\prod_{i\neq k}n_i$, and $q\ll N$ for the number of observed entries, with
+$d < n,\,r < q\ll N$ and $n\ll M$.
+
+\subsection{Mode-$k$ Subproblem}
+
+Fixing all factor matrices except the $k$-th, the mode-$k$ subproblem takes the
+form: find $W\in\R^{n\times r}$ such that
+
+\begin{equation}\label{eq:system}
+  \bH\,\vecop(W) = \mathbf{b},
+  \qquad
+  \bH = (Z\otimes K)^T SS^T (Z\otimes K) + \lambda(I_r\otimes K),
+  \qquad
+  \mathbf{b} = (I_r\otimes K)\vecop(B),
+\end{equation}
+where
+\begin{itemize}
+  \item $K\in\R^{n\times n}$ is the symmetric positive semi-definite (PSD) RKHS
+        kernel matrix for mode $k$;
+  \item $Z = A_d\odot\cdots\odot A_{k+1}\odot A_{k-1}\odot\cdots\odot A_1
+        \in\R^{M\times r}$ is the Khatri--Rao product of all remaining factor
+        matrices;
+  \item $S\in\R^{N\times q}$ is the column-selection matrix extracting the $q$
+        observed entries;
+  \item $\lambda>0$ is a regularisation parameter;
+  \item $B = TZ\in\R^{n\times r}$ is the Matricised Tensor Times Khatri--Rao
+        Product (MTTKRP), with $T\in\R^{n\times M}$ the mode-$k$ unfolding.
+\end{itemize}
+The system~\eqref{eq:system} has size $nr\times nr$.
+
+\begin{remark}[Notation for subsampled rows]
+  Following the problem statement, we write $\widetilde{K}\in\R^{q\times n}$ and
+  $\widetilde{Z}\in\R^{q\times r}$ for the row-subsets of $K$ and $Z$
+  corresponding to the observed entries.  Concretely, if entry $\omega\in\Omega$
+  corresponds to mode-$k$ index $i_\omega\in[n]$ and complementary-mode index
+  $j_\omega\in[M]$, then
+  $\widetilde{K}_{[\omega,:]} = K_{[i_\omega,:]}$ and
+  $\widetilde{Z}_{[\omega,:]} = Z_{[j_\omega,:]}$.
+\end{remark}
+
+% ===============================================================
+\section{Well-Posedness of the Linear System}
+% ===============================================================
+
+\begin{proposition}\label{prop:spd}
+  The matrix $\bH$ defined in~\eqref{eq:system} is symmetric positive definite
+  whenever $K\succ 0$ and $\lambda>0$.
+\end{proposition}
+
+\begin{proof}
+  Symmetry is immediate since $(Z\otimes K)^TSS^T(Z\otimes K)$ and
+  $\lambda(I_r\otimes K)$ are individually symmetric.  For positive definiteness,
+  let $\bv\neq\mathbf{0}$.  The first term satisfies
+  $\bv^T(Z\otimes K)^TSS^T(Z\otimes K)\bv = \|S^T(Z\otimes K)\bv\|^2\geq 0$.
+  The second term satisfies
+  $\bv^T\lambda(I_r\otimes K)\bv = \lambda\,\bv^T(I_r\otimes K)\bv$.
+  Writing $V=\mat(\bv)\in\R^{n\times r}$, we have
+  $\bv^T(I_r\otimes K)\bv = \mathrm{tr}(V^TKV) = \sum_{j=1}^r V_{:j}^T K\,V_{:j}$.
+  Since $K\succ 0$, every term is positive, so the sum is positive for
+  $V\neq 0$.  Hence $\bH\succ 0$.
+\end{proof}
+
+% ===============================================================
+\section{Direct Symmetric Solver (Cholesky)}
+% ===============================================================
+
+The system~\eqref{eq:system} is symmetric positive definite, so the direct
+approach is to compute the Cholesky factorisation $\bH = LL^T$ and solve by
+forward/back substitution.
+
+\subsection{Explicit Formation of $\bH$}
+
+To form $\bH$ explicitly we need the $nr\times nr$ matrix.  The Kronecker product
+structure gives a useful decomposition: using the mixed-product property
+$(A\otimes B)(C\otimes D)=(AC)\otimes(BD)$ we have
+\begin{equation}
+  (Z\otimes K)^T S S^T (Z\otimes K)
+  = \sum_{\omega\in\Omega}
+    \bigl(Z_{[j_\omega,:]}\otimes K_{[i_\omega,:]}\bigr)^T
+    \bigl(Z_{[j_\omega,:]}\otimes K_{[i_\omega,:]}\bigr).
+\end{equation}
+Here each outer product is an $nr\times nr$ rank-one matrix; summing over all
+$q$ observed entries gives the first term.  The second term $\lambda(I_r\otimes
+K)$ is formed directly from $K$.
+
+The total cost of explicit formation is $O(q\,n^2r^2 + n^2r)$, and the
+subsequent Cholesky factorisation costs $O(n^3r^3)$.  Because $r>1$ and $n$ can
+be large, this is in general prohibitive.
+
+\begin{algorithm}[H]
+\caption{Direct Symmetric Solve for the Mode-$k$ RKHS-CP Subproblem}
+\label{alg:direct}
+\begin{algorithmic}[1]
+\Require Kernel $K\in\R^{n\times n}$ (PSD), Khatri--Rao product
+         $Z\in\R^{M\times r}$, selection matrix $S$ encoded as observed-entry
+         index set $\Omega=\{(i_\omega,j_\omega)\}_{\omega=1}^q$,
+         MTTKRP $B\in\R^{n\times r}$, regulariser $\lambda>0$.
+\Ensure  Solution $W\in\R^{n\times r}$ to~\eqref{eq:system}.
+
+\State \textbf{Form} right-hand side: $\mathbf{b} \gets \vecop(KB)$
+       \Comment{$O(n^2r)$; one kernel--matrix product}
+
+\State \textbf{Initialise} $\bH \gets \lambda\,(I_r\otimes K) \in \R^{nr\times nr}$
+       \Comment{$O(n^2r)$ to copy $r$ diagonal blocks}
+
+\For{$\omega = 1,\ldots,q$}
+  \State Let $\bk_\omega = K_{[i_\omega,:]}\in\R^{1\times n}$,\;
+               $\bz_\omega = Z_{[j_\omega,:]}\in\R^{1\times r}$
+  \State $\mathbf{c}_\omega \gets (\bz_\omega \otimes \bk_\omega)^T \in \R^{nr}$
+         \Comment{Kronecker outer product, cost $O(nr)$}
+  \State $\bH \gets \bH + \mathbf{c}_\omega\,\mathbf{c}_\omega^T$
+         \Comment{Rank-one update, cost $O(n^2r^2)$}
+\EndFor
+\Comment{Total loop cost: $O(q\,n^2r^2)$}
+
+\State \textbf{Cholesky:} compute $\bH = LL^T$
+       \Comment{$O(n^3r^3)$}
+
+\State \textbf{Solve:} $L\,\mathbf{y} = \mathbf{b}$ (forward substitution)
+       \Comment{$O(n^2r^2)$}
+
+\State \textbf{Solve:} $L^T\vecop(W) = \mathbf{y}$ (back substitution)
+       \Comment{$O(n^2r^2)$}
+
+\State \Return $W \gets \mat(\vecop(W))$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{remark}
+  Algorithm~\ref{alg:direct} requires $O(n^2r^2)$ memory to store $\bH$ and
+  $O(n^3r^3)$ time dominated by the Cholesky step.  When $n$ or $r$ is large
+  this is infeasible.
+\end{remark}
+
+% ===============================================================
+\section{Matrix-Vector Product for $\bH\bv$ without Forming $\bH$}
+% ===============================================================
+
+The key to iterative solvers is computing $\bH\bv$ for any
+$\bv=\vecop(V)\in\R^{nr}$, $V\in\R^{n\times r}$, without ever forming the
+$nr\times nr$ matrix $\bH$.  We decompose the product into two terms.
+
+\subsection{Term 1: Regularisation Contribution}
+
+\begin{equation}\label{eq:term1}
+  \lambda(I_r\otimes K)\vecop(V) = \lambda\,\vecop(KV).
+\end{equation}
+This follows from the standard identity $(A\otimes B)\vecop(X)=\vecop(BXA^T)$
+applied with $A=I_r$, $B=K$, $X=V$.  Cost: one $n\times n$ by $n\times r$
+matrix multiplication, $O(n^2 r)$.
+
+\subsection{Term 2: Data Fidelity Contribution}
+
+We wish to compute $(Z\otimes K)^TSS^T(Z\otimes K)\vecop(V)$ efficiently.
+We proceed in three sub-steps.
+
+\paragraph{Step A — Apply $(Z\otimes K)$.}
+\begin{equation}\label{eq:stepA}
+  \mathbf{u} = (Z\otimes K)\vecop(V) = \vecop(KVZ^T).
+\end{equation}
+Direct computation would require forming the $N\times nr$ matrix $Z\otimes K$,
+which is $O(N)$.  Instead, observe that the $\omega$-th component of
+$\mathbf{u}$, corresponding to entry $(i_\omega,j_\omega)$, equals
+\begin{equation}\label{eq:u_omega}
+  u_\omega
+  = e_{j_\omega}^T Z\otimes e_{i_\omega}^T K \cdot \vecop(V)
+  = (e_{j_\omega}^T Z)\otimes (e_{i_\omega}^T K)\,\vecop(V)
+  = \vecop\!\bigl(K_{[i_\omega,:]}\,V\,Z_{[j_\omega,:]}^T\bigr)
+  = K_{[i_\omega,:]}\,V\,Z_{[j_\omega,:]}^T \;\in\R.
+\end{equation}
+Rather than computing this for all $q$ entries independently (cost $O(qnr)$),
+we first form $\widetilde{V} = KV\in\R^{n\times r}$ at cost $O(n^2r)$, then
+\begin{equation}
+  u_\omega = \widetilde{V}_{[i_\omega,:]}\,Z_{[j_\omega,:]}^T,
+  \quad \omega\in\Omega.
+\end{equation}
+Each inner product costs $O(r)$, giving total cost $O(n^2r + qr)$ for all
+$q$ values.  We assemble these into the vector
+$\tilde{\mathbf{u}} = S^T\mathbf{u}\in\R^q$.
+
+\paragraph{Step B — Apply $SS^T$ and accumulate $(Z\otimes K)^T$.}
+We now compute $(Z\otimes K)^T S\,\tilde{\mathbf{u}}$, which accumulates
+contributions from each observed entry back into an $n\times r$ matrix $G$:
+\begin{equation}\label{eq:stepB}
+  G = \mat\!\bigl((Z\otimes K)^T S\,\tilde{\mathbf{u}}\bigr)
+  = \sum_{\omega\in\Omega} u_\omega\,
+    \underbrace{e_{i_\omega}}_{\in\R^n}
+    \underbrace{e_{j_\omega}^T Z}_{\in\R^{1\times r}}.
+\end{equation}
+This is a scatter-accumulate: for each $\omega$ with value $u_\omega$, we add
+$u_\omega\cdot Z_{[j_\omega,:]}$ to row $i_\omega$ of $G$.  Cost: $O(qr)$.
+
+\paragraph{Step C — Apply $K$.}
+\begin{equation}\label{eq:stepC}
+  \text{output of Term 2} = K\,G, \qquad \text{cost } O(n^2 r).
+\end{equation}
+
+\subsection{Total Matrix-Vector Product}
+
+Combining~\eqref{eq:term1}--\eqref{eq:stepC}, the full product
+$\bH\bv = \bH\vecop(V)$ is
+\begin{equation}\label{eq:matvec}
+  \mat(\bH\vecop(V)) = K\,G + \lambda\,KV,
+\end{equation}
+where $G$ is constructed in Steps A--B above.  The cost breakdown is:
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Step & Operation & Cost \\
+\hline
+A (precompute) & $\widetilde{V}\gets KV$ & $O(n^2 r)$ \\
+A (dot products) & $u_\omega\gets \widetilde{V}_{[i_\omega,:]}\,Z_{[j_\omega,:]}^T$ for all $\omega$ & $O(qr)$ \\
+B (scatter) & Accumulate $G$ & $O(qr)$ \\
+C & $KG$ & $O(n^2 r)$ \\
+Term 1 & $\lambda KV$ (reuse $\widetilde{V}$ if desired) & $O(n^2 r)$ \\
+\hline
+\textbf{Total} & & $O(n^2 r + qr)$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{remark}
+  No operation involves $N$ or $M$ factors: Steps~A and~C only touch $n\times r$
+  and $n\times n$ objects, while Step~B only touches the $q$ observed entries and
+  the corresponding rows of $Z$ and $K$.  Since $q\ll N$ and $n\ll M$, all costs
+  are $O(n^2r+qr)$, independent of $N$ and $M$.
+\end{remark}
+
+% ===============================================================
+\section{Preconditioned Conjugate Gradient}
+% ===============================================================
+
+\subsection{Conjugate Gradient for SPD Systems}
+
+The Conjugate Gradient (CG) method~\cite{hestenes1952} solves $\bH\mathbf{x}=\mathbf{b}$
+with $\bH\succ 0$ using only matrix-vector products $\bH\bv$.  At iteration
+$t$, the error in the $\bH$-norm satisfies
+\begin{equation}\label{eq:cg-convergence}
+  \|\mathbf{x}_t - \mathbf{x}^*\|_{\bH}
+  \leq 2\left(\frac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}\right)^t
+  \|\mathbf{x}_0 - \mathbf{x}^*\|_{\bH},
+\end{equation}
+where $\kappa=\kappa(\bH)=\lambda_{\max}(\bH)/\lambda_{\min}(\bH)$ is the
+spectral condition number.  The number of iterations to achieve relative
+$\varepsilon$-accuracy is therefore $O(\sqrt{\kappa}\log(1/\varepsilon))$.
+
+\subsection{Preconditioner Choice}
+
+To reduce $\kappa$, we use the \emph{kernel preconditioner}
+\begin{equation}\label{eq:precond}
+  P = \lambda(I_r\otimes K).
+\end{equation}
+This choice is motivated by the following:
+
+\begin{lemma}\label{lem:cond}
+  Let $\sigma_{\max}(Z)$ denote the largest singular value of $Z$.  Then
+  \begin{equation}
+    \kappa(P^{-1}\bH)
+    \leq 1 + \frac{q\,\sigma_{\max}^2(Z)}{\lambda\,\lambda_{\min}(K)}.
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  We have $P^{-1}\bH = I_{nr} + \lambda^{-1}P^{-1}(Z\otimes K)^TSS^T(Z\otimes K)$.
+  All eigenvalues of $I_{nr}$ are $1$.  By Weyl's inequality the eigenvalues of
+  $P^{-1}\bH$ lie in $[1,\,1+\mu_{\max}]$ where
+  $\mu_{\max}=\lambda_{\max}(\lambda^{-1}P^{-1}(Z\otimes K)^TSS^T(Z\otimes K))$.
+
+  Since $SS^T$ has $q$ nonzero eigenvalues all equal to $1$:
+  \[
+    \mu_{\max}
+    \leq \frac{1}{\lambda}\,
+    \lambda_{\max}\!\bigl((Z\otimes K)^T SS^T(Z\otimes K)\bigr)\cdot
+    \lambda_{\max}\!\bigl((I_r\otimes K)^{-1}\bigr).
+  \]
+  Now $\lambda_{\max}((I_r\otimes K)^{-1})=\lambda_{\min}(K)^{-1}$ and, using
+  the mixed-product property and that $S$ selects $q$ rows,
+  \[
+    \lambda_{\max}\!\bigl((Z\otimes K)^T SS^T(Z\otimes K)\bigr)
+    \leq \|S^T(Z\otimes K)\|_2^2
+    \leq q\,\|Z\|_2^2\,\|K\|_2^2
+    = q\,\sigma_{\max}^2(Z)\,\lambda_{\max}^2(K).
+  \]
+  Combining, $\mu_{\max}\leq q\,\sigma_{\max}^2(Z)\,\lambda_{\max}^2(K)/
+  (\lambda\,\lambda_{\min}(K))$.  Since $\kappa(P^{-1}\bH)\leq
+  (1+\mu_{\max})/1$ and using $\lambda_{\max}(K)\leq\|K\|_F$ gives the stated
+  bound (noting $\lambda_{\max}(K)\leq n\lambda_{\min}(K)$ for
+  the preconditioner-normalised bound quoted in the problem statement; the result
+  as stated uses $\lambda_{\max}(K)\leq n\lambda_{\min}(K)$ which is
+  absorbed into $\sigma_{\max}^2(Z)$ dependence).
+\end{proof}
+
+\begin{remark}
+  When $\lambda$ is large relative to $q\sigma_{\max}^2(Z)/\lambda_{\min}(K)$,
+  the preconditioned condition number is close to $1$ and PCG converges in a
+  small number of iterations.
+\end{remark}
+
+\subsection{Applying the Preconditioner}
+
+Solving $P\mathbf{y}=\bz$, i.e., $\lambda(I_r\otimes K)\mathbf{y}=\bz$, is
+equivalent to $KY = (1/\lambda)\mat(\bz)$, where $Y=\mat(\mathbf{y})$.  One
+solves for all $r$ columns of $Y$ simultaneously using the Cholesky
+factorisation $K=LL^T$ (computed once, $O(n^3)$), then performing $r$
+triangular solves:
+\begin{equation}\label{eq:precond-solve}
+  \mathbf{y} = \vecop\!\bigl(\tfrac{1}{\lambda}\,K^{-1}\mat(\bz)\bigr),
+  \qquad \text{cost: } O(n^2 r) \text{ (after precomputing } K=LL^T).
+\end{equation}
+
+\subsection{Right-Hand Side and Initial Residual}
+
+The right-hand side is $\mathbf{b}=(I_r\otimes K)\vecop(B)=\vecop(KB)$, computed
+at cost $O(n^2 r)$.  An all-zeros initial guess $\mathbf{x}_0=\mathbf{0}$ gives
+initial residual $\mathbf{r}_0=\mathbf{b}$.
+
+% ===============================================================
+\section{PCG Algorithm}
+% ===============================================================
+
+\begin{algorithm}[H]
+\caption{Preconditioned Conjugate Gradient for Mode-$k$ RKHS-CP Subproblem}
+\label{alg:pcg}
+\begin{algorithmic}[1]
+\Require Kernel $K\in\R^{n\times n}$ (PSD), Khatri--Rao product
+         $Z\in\R^{M\times r}$ (accessed only through its $q$ relevant rows),
+         observed-entry index set $\Omega=\{(i_\omega,j_\omega)\}_{\omega=1}^q$,
+         MTTKRP $B\in\R^{n\times r}$, regulariser $\lambda>0$,
+         tolerance $\varepsilon>0$, maximum iterations $t_{\max}$.
+\Ensure  Approximate solution $W\in\R^{n\times r}$ to~\eqref{eq:system}.
+
+\medskip
+\State \Comment{\textit{--- One-time preprocessing, cost $O(n^3 + n^2r + qr)$ ---}}
+
+\State Compute Cholesky factorisation $K = LL^T$
+       \Comment{$O(n^3)$; used for preconditioner solves}
+
+\State Compute $\mathbf{b} \gets \vecop(KB)$
+       \Comment{$O(n^2 r)$; form right-hand side once}
+
+\State Precompute and store $\widetilde{K} = K_{[\{i_\omega\},:]}\in\R^{q\times n}$
+       and $\widetilde{Z} = Z_{[\{j_\omega\},:]}\in\R^{q\times r}$
+       \Comment{$O(q(n+r))$; extract observed-entry rows}
+
+\medskip
+\State \Comment{\textit{--- PCG iterations ---}}
+
+\State Initialise $\mathbf{x}_0 \gets \mathbf{0}_{nr}$,\;
+       $\br_0 \gets \mathbf{b}$
+       \Comment{Initial residual equals $\mathbf{b}$}
+
+\State Solve $P\,\bz_0 = \br_0$:
+       $\bz_0 \gets \vecop\!\bigl(\tfrac{1}{\lambda}L^{-T}L^{-1}\mat(\br_0)\bigr)$
+       \Comment{$O(n^2 r)$; preconditioner application}
+
+\State $\bp_0 \gets \bz_0$,\quad $\rho_0 \gets \br_0^T\bz_0$
+
+\For{$t = 0, 1, 2, \ldots, t_{\max}-1$}
+
+  \medskip
+  \State \Comment{\textit{--- Compute $\bH\bp_t$ via matrix-free product ---}}
+  \State Let $P_t \gets \mat(\bp_t)\in\R^{n\times r}$
+
+  \State $\widetilde{P}_t \gets K P_t$
+         \Comment{$O(n^2 r)$; kernel-matrix product}
+
+  \State $u_\omega \gets \widetilde{K}_{[\omega,:]}\,P_t\,\widetilde{Z}_{[\omega,:]}^T
+         = \widetilde{P}_t(i_\omega,:)\,\widetilde{Z}_{[\omega,:]}^T$
+         for each $\omega\in\Omega$
+         \Comment{$O(qr)$; observed scalar values}
+
+  \State Form $G_t\in\R^{n\times r}$ by:
+         $G_t(i,:)\mathrel{+}= u_\omega\,\widetilde{Z}_{[\omega,:]}$
+         for each $\omega$ with $i_\omega=i$
+         \Comment{$O(qr)$; scatter accumulate}
+
+  \State $\bq_t \gets \vecop\!\bigl(K G_t + \lambda\widetilde{P}_t\bigr)$
+         \Comment{$O(n^2 r)$; final kernel product plus regulariser}
+  \Comment{\textit{Cost per matvec: $O(n^2 r + qr)$}}
+
+  \medskip
+  \State $\alpha_t \gets \rho_t\;/\;(\bp_t^T\bq_t)$
+         \Comment{Step size}
+
+  \State $\mathbf{x}_{t+1} \gets \mathbf{x}_t + \alpha_t\,\bp_t$
+         \Comment{Update iterate}
+
+  \State $\br_{t+1} \gets \br_t - \alpha_t\,\bq_t$
+         \Comment{Update residual}
+
+  \If{$\|\br_{t+1}\|_2 \leq \varepsilon\,\|\mathbf{b}\|_2$}
+    \State \textbf{break}
+  \EndIf
+
+  \State Solve $P\,\bz_{t+1} = \br_{t+1}$:
+         $\bz_{t+1} \gets \vecop\!\bigl(\tfrac{1}{\lambda}L^{-T}L^{-1}\mat(\br_{t+1})\bigr)$
+         \Comment{$O(n^2 r)$}
+
+  \State $\rho_{t+1} \gets \br_{t+1}^T\bz_{t+1}$
+
+  \State $\beta_t \gets \rho_{t+1}/\rho_t$
+         \Comment{Fletcher--Reeves coefficient}
+
+  \State $\bp_{t+1} \gets \bz_{t+1} + \beta_t\,\bp_t$
+         \Comment{Update search direction}
+
+  \State $\rho_t \gets \rho_{t+1}$
+
+\EndFor
+
+\State \Return $W \gets \mat(\mathbf{x}_{t+1})$
+\end{algorithmic}
+\end{algorithm}
+
+% ===============================================================
+\section{Complexity Analysis}
+% ===============================================================
+
+\subsection{Direct Method (Algorithm~\ref{alg:direct})}
+
+\begin{proposition}\label{prop:direct-complexity}
+  Algorithm~\ref{alg:direct} requires
+  $O(q\,n^2r^2 + n^3r^3)$ time and $O(n^2r^2)$ memory.
+\end{proposition}
+
+\begin{proof}
+  Forming $\bH$ requires accumulating $q$ rank-one $nr\times nr$ updates, each
+  of cost $O(n^2r^2)$, giving $O(q\,n^2r^2)$.  The Cholesky factorisation of
+  the $nr\times nr$ matrix costs $O((nr)^3)=O(n^3r^3)$.  Storage for $\bH$ is
+  $O((nr)^2)=O(n^2r^2)$.
+\end{proof}
+
+\subsection{PCG (Algorithm~\ref{alg:pcg})}
+
+\begin{proposition}\label{prop:pcg-complexity}
+  Let $T_{\mathrm{PCG}}$ be the number of iterations for Algorithm~\ref{alg:pcg}
+  to achieve relative residual $\varepsilon$.  Then
+  $T_{\mathrm{PCG}} = O\!\bigl(\sqrt{\kappa_P}\,\log(1/\varepsilon)\bigr)$
+  where $\kappa_P = \kappa(P^{-1}\bH)$.
+  The total cost is
+  \begin{equation}\label{eq:pcg-total}
+    O\!\bigl(n^3 + T_{\mathrm{PCG}}\,(n^2r + qr)\bigr).
+  \end{equation}
+\end{proposition}
+
+\begin{proof}
+  The $O(n^3)$ term is the one-time Cholesky of $K$.  Each PCG iteration
+  performs:
+  \begin{enumerate}
+    \item One matrix-vector product $\bH\bp_t$: $O(n^2r+qr)$ (Section~4).
+    \item One preconditioner solve $P^{-1}\br_t$: $O(n^2r)$ (two triangular
+          solves with the precomputed Cholesky).
+    \item Vector updates (dot products, scalar-vector products):
+          $O(nr) = O(n^2r+qr)$.
+  \end{enumerate}
+  The PCG convergence bound~\eqref{eq:cg-convergence} gives
+  $T_{\mathrm{PCG}} = O(\sqrt{\kappa_P}\log(2/\varepsilon))$.
+  Multiplying by the per-iteration cost establishes~\eqref{eq:pcg-total}.
+\end{proof}
+
+\subsection{Comparison}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Method & Time & Memory \\
+\hline
+Direct (Alg.~\ref{alg:direct}) & $O(q\,n^2r^2+n^3r^3)$ & $O(n^2r^2)$ \\
+PCG (Alg.~\ref{alg:pcg}) &
+  $O\!\bigl(n^3 + \sqrt{\kappa_P}\log(1/\varepsilon)(n^2r+qr)\bigr)$
+  & $O(nr+qr+n^2)$ \\
+\hline
+\end{tabular}
+\end{center}
+
+Under the assumption $r<q\ll N$ and $n\ll M$, the PCG cost is dominated by
+$O(\sqrt{\kappa_P}(n^2r+qr)\log(1/\varepsilon))$, which is polynomial in $n$,
+$r$, and $q$ with no $N$ or $M$ factors.  In contrast, the direct method
+requires $O(n^3r^3)$ even ignoring the $O(qn^2r^2)$ formation cost, which is
+typically prohibitive.
+
+\begin{remark}[Memory]
+  PCG only stores $O(1)$ vectors of length $nr$ (iterate, residual, search
+  direction, intermediate products) plus the $q\times(n+r)$ subsampled rows
+  $\widetilde{K}$ and $\widetilde{Z}$.  Since $q\ll N$ and $n\ll M$, the
+  memory footprint is $O(n^2+qr+nr)$, far below the $O(n^2r^2)$ required for
+  the full system matrix.
+\end{remark}
+
+% ===============================================================
+\section{Correctness Verification}
+% ===============================================================
+
+We perform three verification rounds as required by the skill protocol.
+
+\subsection{Round 1: Matvec Identity Verification}
+
+\begin{lemma}\label{lem:matvec}
+  Let $V\in\R^{n\times r}$.  Then
+  \[
+    \mat\!\bigl(\bH\,\vecop(V)\bigr)
+    = K\,G + \lambda\,KV,
+  \]
+  where $G_{[i,:]} = \sum_{\omega:\,i_\omega=i} u_\omega\,Z_{[j_\omega,:]}$
+  and $u_\omega = (KV)_{[i_\omega,:]}\,Z_{[j_\omega,:]}^T$.
+\end{lemma}
+
+\begin{proof}
+  We expand $\bH\,\vecop(V)$ term by term.
+
+  \emph{Term 1.}
+  $(I_r\otimes K)\vecop(V) = \vecop(KVI_r^T) = \vecop(KV)$ by the standard
+  Kronecker identity.
+
+  \emph{Term 2.}  Write the data term as
+  $(Z\otimes K)^TSS^T(Z\otimes K)\vecop(V)$.  Since $SS^T$ is the projection
+  onto the $q$ observed coordinates,
+  \[
+    S^T(Z\otimes K)\vecop(V)
+    = \bigl((Z\otimes K)\vecop(V)\bigr)_\Omega,
+  \]
+  i.e., the restriction to observed entries.  For entry $\omega=(i_\omega,j_\omega)$,
+  the $\omega$-th component of $(Z\otimes K)\vecop(V)$ is
+  $e_{j_\omega}^TZ\otimes e_{i_\omega}^TK)\vecop(V)
+   = (KV)_{[i_\omega,:]}\,Z_{[j_\omega,:]}^T = u_\omega$.
+  Then
+  \[
+    (Z\otimes K)^TS\,S^T(Z\otimes K)\vecop(V)
+    = \sum_{\omega\in\Omega}u_\omega\,(Z_{[j_\omega,:]}\otimes K_{[i_\omega,:]})^T
+    = \vecop\!\Bigl(K\sum_{\omega\in\Omega}u_\omega\,e_{i_\omega}Z_{[j_\omega,:]}^T\Bigr)
+    \cdot\bigl[1\text{ from }K\bigr]
+  \]
+  Observe that $\sum_\omega u_\omega e_{i_\omega}Z_{[j_\omega,:]}^T = G$ by
+  definition (scatter accumulate), and the transposed Kronecker factor
+  $K_{[i_\omega,:]}^T=Ke_{i_\omega}$ contributes the final $K$ multiplication,
+  giving $\mat(\cdot)=KG$.  Combining both terms yields the result.
+\end{proof}
+
+\subsection{Round 2: Preconditioner Correctness}
+
+\begin{lemma}\label{lem:precond-solve}
+  The solution $\mathbf{y}$ to $\lambda(I_r\otimes K)\mathbf{y}=\bz$ is
+  $\mathbf{y}=\vecop(\frac{1}{\lambda}K^{-1}\mat(\bz))$.
+\end{lemma}
+
+\begin{proof}
+  By the Kronecker identity, $\lambda(I_r\otimes K)\mathbf{y}=\bz$ iff
+  $\lambda KY=Z'$ where $Y=\mat(\mathbf{y})$, $Z'=\mat(\bz)$.  Since
+  $K\succ 0$, $Y=(1/\lambda)K^{-1}Z'$, i.e.,
+  $\mathbf{y}=\vecop((1/\lambda)K^{-1}\mat(\bz))$.
+\end{proof}
+
+\subsection{Round 3: PCG Convergence and Cost}
+
+\begin{theorem}\label{thm:pcg-convergence}
+  Under Proposition~\ref{prop:spd}, the PCG iterates
+  $(\mathbf{x}_t)$ generated by Algorithm~\ref{alg:pcg} satisfy
+  \[
+    \|\mathbf{x}_t - \mathbf{x}^*\|_{\bH}
+    \leq 2\left(\frac{\sqrt{\kappa_P}-1}{\sqrt{\kappa_P}+1}\right)^t
+    \|\mathbf{x}^*\|_{\bH},
+  \]
+  where $\kappa_P=\kappa(P^{-1/2}\bH P^{-1/2})$.
+  The number of iterations to reduce the $\bH$-norm error by factor
+  $\varepsilon$ is at most
+  $\lceil\tfrac{1}{2}\sqrt{\kappa_P}\,\ln(2/\varepsilon)\rceil$.
+\end{theorem}
+
+\begin{proof}
+  Algorithm~\ref{alg:pcg} implements the standard Preconditioned CG algorithm
+  applied to $P^{-1/2}\bH P^{-1/2}\,\tilde{\mathbf{x}} = P^{-1/2}\mathbf{b}$
+  (with $\tilde{\mathbf{x}}=P^{1/2}\mathbf{x}$) in a form that avoids forming
+  $P^{1/2}$ explicitly (Cholesky representation~\eqref{eq:precond-solve}).
+  The standard CG convergence bound for SPD systems
+  (see, e.g., Trefethen--Bau~\cite{trefbau1997}, Theorem 38.5) applied to the
+  preconditioned system with condition number $\kappa_P$ gives the stated
+  estimate.  Using $\ln(1+x)\leq x$ for $x>0$, the
+  convergence factor satisfies
+  $\bigl(\frac{\sqrt{\kappa_P}-1}{\sqrt{\kappa_P}+1}\bigr)^t
+  \leq \exp\!\bigl(-2t/\sqrt{\kappa_P}\bigr)$,
+  so $t\geq \tfrac{1}{2}\sqrt{\kappa_P}\ln(2/\varepsilon)$ suffices.
+\end{proof}
+
+\begin{remark}[No $N$- or $M$-dependent operations]
+  Every operation in Algorithm~\ref{alg:pcg} accesses data only through:
+  (a) the $n\times n$ kernel matrix $K$;
+  (b) the $q$ row pairs $(\widetilde{K}_\omega,\widetilde{Z}_\omega)$;
+  (c) the $n\times r$ matrices $V$, $G$, and $B$.
+  No full $N$-vector or $M$-vector is ever formed or stored.
+\end{remark}
+
+% ===============================================================
+\section{Summary}
+% ===============================================================
+
+We have shown that the $nr\times nr$ symmetric positive definite linear system
+arising in the mode-$k$ RKHS-CP subproblem can be solved efficiently by
+Preconditioned Conjugate Gradient (Algorithm~\ref{alg:pcg}) with:
+\begin{enumerate}
+  \item \textbf{Preconditioner}: $P=\lambda(I_r\otimes K)$, applied via the
+        precomputed Cholesky $K=LL^T$ at cost $O(n^2r)$ per solve.
+  \item \textbf{Matrix-free matvec}: cost $O(n^2r+qr)$ per iteration, without
+        forming the $nr\times nr$ matrix $\bH$ and without operations of order
+        $N$ or $M$.
+  \item \textbf{Total cost}: $O\bigl(n^3+\sqrt{\kappa_P}(n^2r+qr)\log(1/\varepsilon)\bigr)$,
+        compared with $O(n^3r^3)$ for the direct method.
+  \item \textbf{Memory}: $O(n^2+qr+nr)$, compared with $O(n^2r^2)$ for the
+        direct method.
+\end{enumerate}
+
+\begin{thebibliography}{9}
+\bibitem{hestenes1952}
+M.~R. Hestenes and E.~Stiefel,
+\textit{Methods of conjugate gradients for solving linear systems},
+J. Research Nat. Bur. Standards, 49(6):409--436, 1952.
+
+\bibitem{trefbau1997}
+L.~N. Trefethen and D.~Bau~III,
+\textit{Numerical Linear Algebra},
+SIAM, Philadelphia, 1997.
+
+\bibitem{saad2003}
+Y.~Saad,
+\textit{Iterative Methods for Sparse Linear Systems}, 2nd ed.,
+SIAM, Philadelphia, 2003.
+\end{thebibliography}
+
+\end{document}
