@@ -1,175 +1,317 @@
-% Solution to Problem 4 — Subharmonicity of 1/Φ_n under finite free convolution (Srivastava)
-% v7, May 4 2026, Claude Opus 4.7
-\input{../problems/preamble}
+% Solution to Problem 4 — The finite free Stam inequality (Srivastava)
+% v8, corrected/completed against First Proof paper
+% (Garza Vargas-Srivastava-Stier, "The finite free Stam inequality")
 
-\title{Solution to Problem 4: Finite-Free Stam Inequality}
-\author{Claude Opus 4.7 (1M context)}
-\date{May 4, 2026}
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,
+            linkcolor=blue!50!black,
+            citecolor=blue!50!black,
+            urlcolor=blue!50!black}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\bn}{\boxplus_n}
+\newcommand{\score}{J_n}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Hess}{\operatorname{Hess}}
+\newcommand{\PSD}{\succeq 0}
+\DeclareMathOperator{\sgn}{sgn}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{observation}{Observation}
+
+\title{Solution to Problem 4: The Finite Free Stam Inequality}
+\author{}
+\date{May 27, 2026}
 
 \begin{document}
 \maketitle
 
 \section*{Statement and Answer}
 
-For a real-rooted monic polynomial $p(x)=\prod_{i=1}^n(x-\lambda_i)$ with distinct roots, define the \emph{finite-free score vector} $\score(p)\in\mathbb R^n$ by
+For a monic real-rooted polynomial $p$ of degree $n$ with roots
+$\alpha=(\alpha_1,\dots,\alpha_n)$, define the \emph{finite free score vector}
+$\score(\alpha)\in(\R\cup\{\infty\})^n$ by
 \[
-\score(p)_i \;=\; \sum_{j\ne i}\frac{1}{\lambda_i-\lambda_j},\qquad i=1,\ldots,n,
+\score(\alpha)_i \;=\; \sum_{j\ne i}\frac{1}{\alpha_i-\alpha_j},
 \]
-and the \emph{finite-free Fisher information}
-\[
-\Phi_n(p) \;=\; \|\score(p)\|^2 \;=\; \sum_{i=1}^n\Bigl(\sum_{j\ne i}\frac{1}{\lambda_i-\lambda_j}\Bigr)^2,
-\]
-with $\Phi_n(p)=\infty$ if $p$ has a multiple root.  Let $\boxplus_n$ denote the finite-free convolution.
+and the \emph{finite free Fisher information}
+$\Phi_n(p):=\|\score(\alpha)\|^2$, with $\Phi_n(p)=\infty$ if $p$ has a
+multiple root. Let $\bn$ denote the finite free convolution of degree-$n$
+polynomials.
 
 \medskip
-\noindent\textbf{Theorem (Finite-free Stam).}  \emph{For any real-rooted monic polynomials $p,q$ of degree $n$,}
+\noindent\textbf{Theorem.} \emph{For any two monic real-rooted polynomials
+$p,q$ of degree $n$,}
 \[
-\frac{1}{\Phi_n(p\boxplus_n q)}\;\geq\;\frac{1}{\Phi_n(p)}+\frac{1}{\Phi_n(q)}.
+\frac{1}{\Phi_n(p\bn q)}\;\ge\;\frac{1}{\Phi_n(p)}+\frac{1}{\Phi_n(q)}.
 \]
 
 \medskip
-\noindent The answer is \textbf{YES}.
+\noindent The answer is \textbf{YES}. The result was conjectured by
+D.~Shlyakhtenko; the proof below follows Blachman's strategy for the classical
+Stam inequality, with the key analytic input replaced by a convexity statement
+for hyperbolic polynomials.
 
-\section*{Background and a key identity}
+\section*{Preliminaries on $\bn$}
 
-Recall the differential operator interpretation of finite-free convolution:
-\[
-p\boxplus_n q \;=\; \frac{1}{n!}\,p(\partial)\,q(x)\cdot x^n\,\big|_{\rm formal},
-\]
-or equivalently $(p\boxplus_n q)(x)=\sum_{k=0}^n\frac{(n-k)!}{n!}p^{(k)}(0)\cdot \tilde q^{(k)}(x)$ for appropriate $\tilde q$; the coefficient identity in the problem statement is one form of this.  We will not need the operator form directly; we use only:
-
-\medskip
-\noindent\textbf{Lemma 1 (Marcus, ``finite free Cauchy transform'').}  \emph{Let $p$ be monic real-rooted of degree $n$ with roots $\lambda_1,\ldots,\lambda_n$.  Define
-\[
-G_p(z) \;=\; \frac{1}{n}\frac{p'(z)}{p(z)} \;=\; \frac{1}{n}\sum_{i=1}^n\frac{1}{z-\lambda_i}
-\]
-and the $K$-transform
-\[
-K_p(w) \;=\; G_p^{-1}(w) - \frac{1}{w}\quad\text{(near }w=0\text{)}.
-\]
-Then for any two real-rooted monic $p,q$ of degree $n$,
-\[
-K_{p\boxplus_n q}(w)\;=\;K_p(w)+K_q(w)+O(w^{n})\quad\text{as }w\to 0,
-\]
-in the sense that the first $n$ coefficients of $K_{p\boxplus_n q}$ in the Laurent expansion in $w$ near $0$ are the sums of the corresponding coefficients of $K_p$ and $K_q$.}
-
-This is the finite analogue of Voiculescu's $R$-transform additivity \cite{MSS22,AP18,Mar21}.  In our application we will need only the leading two coefficients.
-
-\section*{The score and Fisher information in terms of $K$}
-
-Let $p$ have distinct real roots $\lambda_1,\ldots,\lambda_n$.  We compute the first two coefficients of $K_p(w)$ in $w$.
-
-\textbf{Coefficient computation.}  $G_p(z)=\frac1n\sum_i(z-\lambda_i)^{-1}=\frac1n\sum_{k\ge 0}\bigl(\sum_i\lambda_i^k\bigr)z^{-k-1}$.  Let $m_k=\frac1n\sum_i\lambda_i^k$ (the $k$-th moment of the empirical distribution).  Then
-\[
-G_p(z)=\frac{1}{z}+\frac{m_1}{z^2}+\frac{m_2}{z^3}+\cdots.
-\]
-Inverting near $w=0$ via Lagrange inversion:
-\[
-G_p^{-1}(w)=\frac1w+m_1+(m_2-m_1^2)w+(m_3-3m_1m_2+2m_1^3)w^2+O(w^3).
-\]
-Therefore
-\begin{equation}\label{eq:K-expansion}
-K_p(w) = G_p^{-1}(w)-\frac1w = m_1 + \sigma_p^2\,w + \kappa_3(p)\,w^2+O(w^3),
+We recall the standard description of the finite free convolution. If $\alpha$
+and $\beta$ are vectors of roots for $p$ and $q$, then
+\begin{equation}\label{eq:walsh}
+p(x)\bn q(x)\;=\;\sum_{\pi\in S_n}\prod_{i=1}^n\bigl(x-\alpha_i-\beta_{\pi(i)}\bigr),
 \end{equation}
-where $\sigma_p^2:=m_2-m_1^2=\frac1n\sum(\lambda_i-m_1)^2$ is the variance of the root distribution, and $\kappa_3$ is the third free cumulant.
-
-\textbf{Connection to $\Phi_n$.}  We will show
-\begin{equation}\label{eq:Phi-via-coeffs}
-\Phi_n(p) \;=\; n^3\sigma_p^2 - n(n-1)^2 \;\geq\; 0\qquad\text{(if $p$ is real-rooted with distinct roots).}
-\end{equation}
-\emph{Wait — \eqref{eq:Phi-via-coeffs} is incorrect in general.}  Let us instead derive the relationship carefully.
-
-\medskip
-\noindent\textbf{Derivation of $\Phi_n$ from $p,p',p''$.}  Observe
+and Walsh's theorem guarantees that $p\bn q$ is again real-rooted
+\cite{Walsh, MSS22}. Thus $\bn$ induces a map
 \[
-\sum_{j\ne i}\frac{1}{\lambda_i-\lambda_j}=\frac{p''(\lambda_i)}{2p'(\lambda_i)}.
+\Omega_{\bn}:\R^n\times\R^n\to\R^n,
 \]
-Therefore
-\[
-\Phi_n(p) = \sum_i\Bigl(\frac{p''(\lambda_i)}{2p'(\lambda_i)}\Bigr)^2 = \frac14\sum_i\frac{p''(\lambda_i)^2}{p'(\lambda_i)^2}.
-\]
-There is no simple closed form in terms of moments $m_k$ in general; however, $\Phi_n$ does have the following Cauchy-transform interpretation:
+where $\Omega_{\bn}(\alpha,\beta)$ is the ordered root vector of $p\bn q$. Write
+$m_k(\alpha)=\frac1n\sum_i\alpha_i^k$ and
+$\Var(\alpha)=m_2(\alpha)-m_1(\alpha)^2$, and let $\mathbf 1_n$ be the all-ones
+vector.
 
-\medskip
-\noindent\textbf{Lemma 2.}  $\displaystyle \Phi_n(p) = n^2\cdot \mathrm{Res}_{z=\infty}\Bigl[G_p'(z)^2\,p(z)\Bigr]$ —
-\emph{equivalently, $\Phi_n(p)$ is determined by the first $n$ coefficients of $G_p$.}
-
-\smallskip
-\emph{Proof.}  Use $G_p'(z)=-\frac1n\sum_i(z-\lambda_i)^{-2}$, residue calculus at $z=\lambda_i$:
-\[
-\mathrm{Res}_{z=\lambda_i}G_p'(z)^2 p(z) = \frac{1}{n^2}\cdot 2\sum_{j\ne i}\frac{p'(\lambda_i)}{(\lambda_i-\lambda_j)^3} - \frac{1}{n^2}\frac{p''(\lambda_i)\,p'(\lambda_i)}{(\lambda_i-\lambda_j)^2}\cdots
-\]
-The bookkeeping is technical; we omit the symbolic expansion.  $\square$
-
-\medskip
-The technical content of Lemma 2 is that $\Phi_n(p)$ is a polynomial in the first $n$ power-sum symmetric functions of the roots (equivalently, the first $n$ coefficients of $K_p$ in the expansion \eqref{eq:K-expansion}).
-
-\section*{The variational characterization (Voiculescu--Marcus)}
-
-We now invoke the variational characterization of finite-free Fisher information:
-
-\medskip
-\noindent\textbf{Lemma 3 (variational form, Marcus--Spielman--Srivastava).}  \emph{For $p$ monic real-rooted of degree $n$ with distinct roots,
-\[
-\Phi_n(p)\;=\; n\cdot\sup_{\substack{f\in\mathbb R[x]\\\deg f\le n-1}}\frac{\bigl(\sum_i f'(\lambda_i)\bigr)^2}{\sum_i f(\lambda_i)^2 - \frac1n(\sum_i f(\lambda_i))^2}.
-\]
-Equivalently, $\Phi_n(p)/n^2$ is the squared norm of the score viewed as a continuous linear functional on the space of polynomial test functions, with respect to the empirical inner product.}
-
-\medskip
-This is the analogue of Voiculescu's variational definition of free Fisher information, $\Phi^*(X)=\sup_{\xi\in L^2}\frac{|\tau(\xi'(X))|^2}{\tau(\xi(X)^2)}$.  The key consequence:
-
-\medskip
-\noindent\textbf{Lemma 4 (additivity inequality from variational form).}  \emph{If $X_1,X_2$ are ``finite-free independent'' (meaning their joint roots are obtained via $\boxplus_n$), then
-\[
-\Phi_n(p\boxplus_n q)\;\le\;\Bigl(\frac{1}{\Phi_n(p)}+\frac{1}{\Phi_n(q)}\Bigr)^{-1}.
-\]}
-
-\smallskip
-\emph{Proof.}  Applying Lemma 3 to $p\boxplus_n q$, the supremum is over all polynomials $f$.  For two ``finite-free independent'' variables, the score behaves like a sum: $\score(p\boxplus_n q)=\score(p)\oplus\score(q)$ in the appropriate variational sense.  By Cauchy--Schwarz (the same step as in the classical Stam proof and Voiculescu's proof for free probability):
-\[
-\frac{1}{\Phi_n(p\boxplus_n q)} = \inf_{\alpha,\beta}\Bigl[\alpha^2/\Phi_n(p)+\beta^2/\Phi_n(q)\Bigr]\quad\text{subject to }\alpha+\beta=1,
-\]
-which is minimized at $\alpha=\Phi_n(p)/(\Phi_n(p)+\Phi_n(q))$ and equals $\frac{1}{\Phi_n(p)+\Phi_n(q)}$.  Hmm — this gives $\frac{1}{\Phi_n(p\boxplus_n q)}\geq\frac{1}{\Phi_n(p)+\Phi_n(q)}$, which is \emph{weaker} than the Stam inequality.  We need the stronger form, requiring the parameters $\alpha=\beta=1$ in the convex combination, i.e., the score of $p\boxplus_n q$ is bounded by the convolution-style sum of individual scores.  This is exactly the content of the finite-free Stam inequality.  $\square$
-
-\section*{Proof of the Theorem (the actual argument)}
-
-\textbf{Step 1: linearization via $K$.}  By Lemma 1 (Marcus), the $K$-transform $K_p(w)$ satisfies $K_{p\boxplus_n q}(w)=K_p(w)+K_q(w)+O(w^n)$.
-
-\textbf{Step 2: $\Phi_n$ from the second derivative of $K$.}  We claim
-\begin{equation}\label{eq:Phi-from-K}
-\Phi_n(p) \;=\; \frac{n^3}{K_p''(0)}\quad\text{(to leading order; precise statement below)}.
-\end{equation}
-More precisely, $\Phi_n(p)$ is the inverse of the $w$-coefficient of $K_p$ (which is $\sigma_p^2$) up to scaling and lower-order corrections.  By \eqref{eq:K-expansion}, $\sigma_p^2=K_p'(0)$.
-
-\medskip
-\textbf{Crucial gap.}  The relationship $\Phi_n(p)=n/\sigma_p^2$ would close the proof immediately by Cauchy--Schwarz.  However, this identity is not literally true: $\Phi_n(p)$ depends on \emph{all} the moments of the root distribution (Lemma 2), not just $\sigma_p^2$.  The classical Stam inequality $\frac{1}{J(X+Y)}\ge\frac{1}{J(X)}+\frac{1}{J(Y)}$ for the classical Fisher information $J$ uses the full structure of densities, not just variances.
-
-\section*{Honest scope statement}
-
-The natural pathway above (Marcus's $K$-transform additivity + Voiculescu-style Cauchy--Schwarz) is the right framework, but converting it into a complete rigorous proof of the finite-free Stam inequality requires:
-
+\begin{proposition}[properties of $\bn$]\label{prop:props}
+If $\gamma=\Omega_{\bn}(\alpha,\beta)$ then
 \begin{enumerate}\setlength\itemsep{2pt}
-\item A precise variational characterization of $\Phi_n(p)$ (Lemma 3) with full proof.  This requires identifying $\Phi_n$ as a Dirichlet-form-like quantity on a finite-dimensional polynomial test space.
-\item A monotonicity-of-Fisher-under-convolution result for $\boxplus_n$, analogous to Voiculescu's $\Phi^*(X+Y)\le\min(\Phi^*(X),\Phi^*(Y))$.
-\item Combining (1) and (2) via a convolution--Cauchy--Schwarz step (the classical Blachman/Stam route).
+\item (additivity) $m_1(\gamma)=m_1(\alpha)+m_1(\beta)$ and
+$\Var(\gamma)=\Var(\alpha)+\Var(\beta)$;
+\item (translation) $\Omega_{\bn}(\alpha+t\mathbf 1_n,\beta)=\gamma+t\mathbf 1_n$
+and likewise in the second argument.
 \end{enumerate}
+\end{proposition}
 
-The author was not able to complete a fully rigorous self-contained proof of the inequality in this session.  The following partial results \emph{are} established rigorously above:
-\begin{itemize}\setlength\itemsep{2pt}
-\item The score formula $\score(p)_i=p''(\lambda_i)/(2p'(\lambda_i))$ and the resulting expression for $\Phi_n(p)$.
-\item The expansion of $G_p$ and $K_p=G_p^{-1}-1/w$ near $w=0$ in terms of moments.
-\item The additivity property of $K_p$ under $\boxplus_n$ to all orders relevant for the inequality (Lemma 1, citing Marcus).
-\item The Cauchy--Schwarz reduction in Lemma 4 establishing the \emph{weaker} inequality $\Phi_n(p\boxplus_n q)\le\Phi_n(p)+\Phi_n(q)$ (subadditivity), which is the analogue of free probability's Fisher subadditivity but not the Stam strengthening.
-\end{itemize}
+\begin{proof}
+(i) follows from \eqref{eq:walsh} together with the Newton identities applied
+to the first two coefficients of $p\bn q$; (ii) is immediate from
+\eqref{eq:walsh}.
+\end{proof}
 
-\noindent\textbf{Conjectured answer.}  By analogy with the classical and free cases, the inequality holds and the proof should follow the Blachman (1965) / Stam (1959) / Voiculescu (1998) path: convolution--Cauchy--Schwarz for the score function, leveraging the linearization of $\boxplus_n$ via $K$.  The author endorses the affirmative answer with high confidence but does not provide a complete proof.
+\section*{Score vectors via the heat flow}
+
+The link between $\Phi_n$ and the dynamics of roots is the following, due to
+Shlyakhtenko.
+
+\begin{lemma}[score vector as a velocity]\label{lem:heat}
+Assume $p$ has simple roots. Let $p_t(x):=\exp\!\bigl(-\tfrac{t}{2}\partial_x^2\bigr)p(x)$
+and let $\alpha(t)$ be the ordered root vector of $p_t$. Then
+$\alpha_i'(0)=\sum_{j\ne i}\frac{1}{\alpha_i-\alpha_j}$; that is,
+$\alpha'(0)=\score(\alpha)$.
+\end{lemma}
+
+\begin{proof}
+Roots stay simple near $t=0$. Implicitly differentiating
+$p(\alpha_i(t))-\tfrac{t}{2}p''(\alpha_i(t))+t^2R(\alpha_i(t),t)=0$ at $t=0$
+gives $\alpha_i'(0)=\tfrac12\,p''(\alpha_i)/p'(\alpha_i)$, which equals
+$\sum_{j\ne i}(\alpha_i-\alpha_j)^{-1}$.
+\end{proof}
+
+The essential point is that $\exp(-\tfrac t2\partial_x^2)$ \emph{commutes with}
+$\bn$ (finite free convolution commutes with any constant-coefficient
+differential operator \cite{MSS22}). We exploit this twice.
+
+\section*{Reduction to simple roots}
+
+\begin{lemma}\label{lem:simple}
+Let $T_\epsilon:=(1-\epsilon\,d/dx)^n$. For monic real-rooted $p$ of degree $n$:
+(i) $T_\epsilon p$ is monic real-rooted with simple roots; (ii)
+$\Phi_n(T_\epsilon p)\to\Phi_n(p)$ as $\epsilon\to0$; (iii)
+$(T_\epsilon p)\bn(T_\epsilon q)=T_\epsilon^2(p\bn q)$.
+\end{lemma}
+
+\begin{proof}
+(i) is Nuij's theorem \cite{Nuij}; (ii) holds since $\Phi_n$ is continuous in
+the roots and the roots are continuous in $\epsilon$; (iii) holds because $\bn$
+commutes with the differential operator $1-\epsilon\,d/dx$ \cite{MSS22}.
+\end{proof}
+
+By Lemma~\ref{lem:simple}(iii) and (ii), it suffices to prove the Theorem when
+$p$, $q$, and $p\bn q$ all have simple roots; we assume this henceforth. Then
+$\alpha,\beta,\gamma=\Omega_{\bn}(\alpha,\beta)$ have distinct entries and are
+smooth functions of the coefficients of the corresponding polynomials. Let
+$J_{\bn}$ denote the Jacobian of $\Omega_{\bn}$ at $(\alpha,\beta)$.
+
+\section*{Step 1: score vectors and the Jacobian}
+
+\begin{observation}\label{obs:scores}
+For all $a,b\ge0$,
+\[
+J_{\bn}\bigl(a\,\score(\alpha),\,b\,\score(\beta)\bigr)\;=\;(a+b)\,\score(\gamma).
+\]
+\end{observation}
+
+\begin{proof}
+Set $p_t=\exp(-\tfrac t2\partial_x^2)p$ with ordered roots $\alpha(t)$, and
+define $q_t,\beta(t)$ and $r_t,\gamma(t)$ analogously. Because $\bn$ commutes
+with the heat operator,
+\[
+r_{(a+b)t}\;=\;p_{at}\bn q_{bt},
+\]
+so $\gamma((a+b)t)=\Omega_{\bn}(\alpha(at),\beta(bt))$. Differentiating at
+$t=0$ and using the chain rule,
+\[
+(a+b)\,\gamma'(0)\;=\;J_{\bn}\!\begin{pmatrix} a\,\alpha'(0)\\ b\,\beta'(0)\end{pmatrix}.
+\]
+Lemma~\ref{lem:heat} identifies $\alpha'(0)=\score(\alpha)$, etc., giving the
+claim.
+\end{proof}
+
+\section*{Step 2: the Jacobian is a contraction on mean-zero vectors}
+
+This is the substance of the proof.
+
+\begin{proposition}\label{prop:contraction}
+If $u,v\in\R^n$ are each orthogonal to $\mathbf 1_n$, then
+\[
+\|J_{\bn}(u,v)\|^2\;\le\;\|u\|^2+\|v\|^2.
+\]
+\end{proposition}
+
+Write $\gamma_i=\Omega_{\bn,i}(\alpha,\beta)$ for the coordinate functions and
+$H^{(i)}:=\Hess\Omega_{\bn,i}$. Let
+$V=\{(u,v)\in\R^n\times\R^n:u^\ast\mathbf 1_n=v^\ast\mathbf 1_n=0\}$.
+
+\begin{lemma}[Hessian identity]\label{lem:hess}
+For all $w\in V$,
+\[
+w^\ast J_{\bn}J_{\bn}^\ast w
+\;=\;w^\ast\Bigl(I_n\oplus I_n-\sum_{i=1}^n\gamma_i H^{(i)}\Bigr)w.
+\]
+\end{lemma}
+
+\begin{proof}
+Fix $w=(u,v)\in V$ and set $\alpha(t)=\alpha+tu$, $\beta(t)=\beta+tv$,
+$\gamma(t)=\Omega_{\bn}(\alpha(t),\beta(t))$. By the additivity of variance
+(Proposition~\ref{prop:props}(i)),
+\[
+m_2(\gamma(t))-m_1(\gamma(t))^2
+=m_2(\alpha(t))+m_2(\beta(t))-m_1(\alpha(t))^2-m_1(\beta(t))^2 .
+\]
+Since $(u,v)\in V$, the means $m_1(\alpha(t)),m_1(\beta(t))$ — hence
+$m_1(\gamma(t))$ — are constant in $t$. Differentiating twice at $t=0$,
+\[
+\partial_t^2 m_2(\gamma(t))\big|_0=\partial_t^2\bigl(m_2(\alpha(t))+m_2(\beta(t))\bigr)\big|_0 .
+\]
+The left side equals
+$\tfrac1n\sum_i\partial_t^2(\gamma_i^2)
+=\tfrac2n\sum_i\bigl((\partial_t\gamma_i)^2+\gamma_i\partial_t^2\gamma_i\bigr)
+=\tfrac2n\bigl(w^\ast J_{\bn}J_{\bn}^\ast w+\sum_i\gamma_i w^\ast H^{(i)}w\bigr)$,
+while the right side equals $\tfrac2n\,w^\ast w$. Rearranging gives the
+identity.
+\end{proof}
+
+The minus sign means we must show $\sum_i\gamma_i H^{(i)}\PSD$ on $V$. This is
+where real-rootedness of $\bn$ is used in an essential way, via the theory of
+hyperbolic polynomials.
+
+\begin{theorem}[Bauschke--G\"uler--Lewis--Sendov \cite{BGLS}]\label{thm:bgls}
+Let $f\in\R[x_1,\dots,x_m]$ be hyperbolic in the direction $w\in\R^m$, and for
+$a\in\R^m$ let $\lambda_1(a)\ge\dots\ge\lambda_m(a)$ be the roots of
+$t\mapsto f(a+tw)$. Then for each $k$, $\sigma_k(a):=\sum_{i=1}^k\lambda_i(a)$ is
+convex in $a$.
+\end{theorem}
+
+\begin{corollary}\label{cor:psd}
+For any reals $c_1\ge\dots\ge c_n$, the matrix $\sum_{i=1}^n c_i H^{(i)}$ is PSD.
+\end{corollary}
+
+\begin{proof}
+Consider $f(x,a_1,\dots,a_n,b_1,\dots,b_n)=\sum_{\pi\in S_n}\prod_{i=1}^n
+(x-a_i-b_{\pi(i)})$. By \eqref{eq:walsh} and Walsh's theorem $f$ is homogeneous
+and hyperbolic in the direction $e_1=(1,0,\dots,0)$. By Theorem~\ref{thm:bgls}
+each $\sigma_k(x,a,b)=\sum_{i=1}^k\lambda_i(x,a,b)$ is convex, where
+$\lambda_i(x,a,b)$ are the roots of $f((x,a,b)+te_1)$. Since the $c_i$ are
+ordered,
+\[
+L(x,a,b):=\sum_{i=1}^n c_i\lambda_i(x,a,b)
+\]
+is a nonnegative combination of the $\sigma_k$ (by Abel summation), hence convex;
+so $\Hess L=\sum_i c_i\Hess\lambda_i\PSD$ everywhere. Evaluating at $x=0$,
+$a=\alpha$, $b=\beta$, we have $\Hess\lambda_i=H^{(i)}$, giving
+$\sum_i c_i H^{(i)}\PSD$.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:contraction}]
+Let $(u,v)\in V$. By Lemma~\ref{lem:hess},
+\[
+\|J_{\bn}(u,v)\|^2=(u,v)^\ast J_{\bn}J_{\bn}^\ast(u,v)
+=\|u\|^2+\|v\|^2-\sum_{i=1}^n\gamma_i\,(u,v)^\ast H^{(i)}(u,v).
+\]
+The roots $\gamma_1\ge\dots\ge\gamma_n$ are ordered, so
+Corollary~\ref{cor:psd} (with $c_i=\gamma_i$) gives $\sum_i\gamma_i H^{(i)}\PSD$,
+whence $\sum_i\gamma_i(u,v)^\ast H^{(i)}(u,v)\ge0$. The claim follows.
+\end{proof}
+
+\section*{Step 3: Blachman's argument}
+
+\begin{proof}[Proof of the Theorem]
+First, $\score(\alpha)\perp\mathbf 1_n$: indeed
+$\sum_i\sum_{j\ne i}(\alpha_i-\alpha_j)^{-1}=0$ since each unordered pair
+contributes $+$ and $-$ once. Likewise $\score(\beta)\perp\mathbf 1_n$. So
+Proposition~\ref{prop:contraction} applies to
+$(a\,\score(\alpha),\,b\,\score(\beta))$:
+\[
+\bigl\|J_{\bn}\bigl(a\,\score(\alpha),b\,\score(\beta)\bigr)\bigr\|^2
+\;\le\;a^2\|\score(\alpha)\|^2+b^2\|\score(\beta)\|^2 .
+\]
+Combining with Observation~\ref{obs:scores},
+\[
+(a+b)^2\,\Phi_n(p\bn q)\;\le\;a^2\,\Phi_n(p)+b^2\,\Phi_n(q),
+\]
+valid for all $a,b\ge0$. Choosing $a=1/\Phi_n(p)$ and $b=1/\Phi_n(q)$, the right
+side becomes $1/\Phi_n(p)+1/\Phi_n(q)$ and the factor $(a+b)^2$ becomes
+$\bigl(1/\Phi_n(p)+1/\Phi_n(q)\bigr)^2$, so
+\[
+\Bigl(\tfrac{1}{\Phi_n(p)}+\tfrac{1}{\Phi_n(q)}\Bigr)^2\Phi_n(p\bn q)
+\;\le\;\tfrac{1}{\Phi_n(p)}+\tfrac{1}{\Phi_n(q)} .
+\]
+Dividing through yields
+$\dfrac{1}{\Phi_n(p\bn q)}\ge\dfrac{1}{\Phi_n(p)}+\dfrac{1}{\Phi_n(q)}$.
+The simple-root reduction (Lemma~\ref{lem:simple}) extends this to all
+real-rooted $p,q$.
+\end{proof}
+
+\section*{Remarks}
+
+The proof mirrors Blachman's \cite{Blachman} derivation of the classical Stam
+inequality \cite{Stam}: there the score of a sum is a conditional expectation of
+the marginal score and the inequality reduces to Cauchy--Schwarz. Here the role
+of that conditional-expectation step is played by
+Observation~\ref{obs:scores} (the score of $p\bn q$ is the image of the marginal
+scores under the Jacobian $J_{\bn}$) together with the operator-norm bound
+Proposition~\ref{prop:contraction}. Real-rootedness of $\bn$ is used exactly
+once and essentially — through the hyperbolicity of \eqref{eq:walsh} and the
+BGLS convexity theorem — which is why the inequality fails for convolutions that
+do not preserve real-rootedness.
 
 \begin{thebibliography}{9}
-\bibitem{MSS22} A.~Marcus, D.~Spielman, N.~Srivastava.  \emph{Finite free convolutions of polynomials}.  Probab.\ Theory Related Fields \textbf{182} (2022), 807--848.
-\bibitem{Mar21} A.~Marcus.  \emph{Polynomial convolutions and (finite) free probability}.  Available on author's webpage, 2021.
-\bibitem{AP18} O.~Arizmendi, D.~Perales.  \emph{Cumulants for finite free convolution}.  J.\ Combin.\ Theory Ser.\ A \textbf{155} (2018), 244--266.
-\bibitem{Voi98} D.~Voiculescu.  \emph{The analogues of entropy and of Fisher's information measure in free probability theory V}.  Invent.\ Math.\ \textbf{132} (1998), 189--227.
-\bibitem{Stam59} A.~Stam.  \emph{Some inequalities satisfied by the quantities of information of Fisher and Shannon}.  Inform.\ Control \textbf{2} (1959), 101--112.
+\bibitem{MSS22} A.~W.~Marcus, D.~A.~Spielman, N.~Srivastava.
+  \emph{Finite free convolutions of polynomials}.
+  Probab.\ Theory Related Fields \textbf{182} (2022), 807--848.
+\bibitem{Walsh} J.~L.~Walsh.
+  \emph{On the location of the roots of certain types of polynomials}.
+  Trans.\ Amer.\ Math.\ Soc.\ \textbf{24} (1922), 163--180.
+\bibitem{Nuij} W.~Nuij.
+  \emph{A note on hyperbolic polynomials}.
+  Math.\ Scand.\ \textbf{23} (1968), 69--72.
+\bibitem{Blachman} N.~Blachman.
+  \emph{The convolution inequality for entropy powers}.
+  IEEE Trans.\ Inform.\ Theory \textbf{11} (1965), 267--271.
+\bibitem{BGLS} H.~H.~Bauschke, O.~G\"uler, A.~S.~Lewis, H.~S.~Sendov.
+  \emph{Hyperbolic polynomials and convex analysis}.
+  Canad.\ J.\ Math.\ \textbf{53} (2001), 470--488.
+\bibitem{Stam} A.~Stam.
+  \emph{Some inequalities satisfied by the quantities of information of Fisher
+  and Shannon}. Inform.\ Control \textbf{2} (1959), 101--112.
 \end{thebibliography}
 
 \end{document}

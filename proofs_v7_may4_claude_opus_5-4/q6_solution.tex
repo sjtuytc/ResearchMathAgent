@@ -1,111 +1,337 @@
-% Solution to Problem 6 — ε-Light Subsets (Spielman)
-% v7, May 4 2026, Claude Opus 4.7
-\input{../problems/preamble}
+% v10, May 27 2026, Claude Opus 4.7
 
-\title{Solution to Problem 6: $\varepsilon$-Light Subsets in Graphs}
-\author{Claude Opus 4.7 (1M context)}
-\date{May 4, 2026}
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,
+            linkcolor=blue!50!black,
+            citecolor=blue!50!black,
+            urlcolor=blue!50!black}
+
+%---- math macros ----
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\Pr}{\mathbb{P}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\Tr}{\operatorname{Tr}}
+\newcommand{\Trs}{\operatorname{Tr}_{\sigma}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\opnorm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\del}{\delta}
+\DeclareMathOperator{\Span}{span}
+\DeclareMathOperator{\im}{im}
+\DeclareMathOperator{\rank}{rank}
+
+\newcommand{\tL}{\widetilde{L}}
+\newcommand{\Lt}{L^{\dagger}}
+\newcommand{\Lth}{L^{\dagger/2}}
+
+%---- theorem environments ----
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{claim}[theorem]{Claim}
+
+\title{$\eps$-Light Subsets in Graphs}
+\author{}
+\date{May 27, 2026}
 
 \begin{document}
 \maketitle
 
 \section*{Statement and Answer}
 
-Let $G=(V,E)$ have Laplacian $L=D-A$ where $D=\diag(d_i)$ is the degree matrix and $A$ the adjacency matrix.  For $S\subseteq V$ let $G_S=(V,E(S,S))$ (only edges with both endpoints in $S$) and $L_S$ its Laplacian.  $S$ is \emph{$\varepsilon$-light} iff $\varepsilon L - L_S\succeq 0$.
+Let $G=(V,E,w)$ be a weighted graph on $n=|V|$ vertices with Laplacian
+$L=\sum_{(s,t)\in E}w(s,t)\,(\delta_s-\delta_t)(\delta_s-\delta_t)^{\!\top}$.
+For $S\subseteq V$ let $G_S=(V,E(S,S))$ keep only edges with both endpoints in
+$S$ and let $L_S$ be its Laplacian (same ambient dimension as $L$). $S$ is
+\emph{$\eps$-light} iff $\eps L - L_S\succeq 0$.
 
 \medskip
-\noindent\textbf{Theorem.}  \emph{There exists an absolute constant $c>0$ such that for every graph $G=(V,E)$ and every $\varepsilon\in[0,1]$, there exists an $\varepsilon$-light subset $S\subseteq V$ with $|S|\geq c\,\varepsilon\,|V|$.  We may take $c=1/42$.}
+\noindent\textbf{Theorem.} \emph{For every weighted graph $G=(V,E,w)$ and every
+$\eps\in(0,1)$, there exists an $\eps$-light subset $S\subseteq V$ with
+$|S|\ge \lfloor \eps n/42\rfloor$.}
 
 \medskip
-\noindent The answer is \textbf{YES}.
+\noindent The answer is \textbf{YES}, with the explicit constant $c=1/42$.
 
 \section*{Notation and basic facts}
 
-For an edge $e=\{i,j\}$ write $b_e=e_i-e_j\in\mathbb R^V$, so $L=\sum_{e\in E}b_eb_e^T$ and similarly $L_S=\sum_{e\subseteq S}b_eb_e^T$.  Decompose $L=L_S+L_{\partial S}+L_{V\setminus S}$ into edges interior to $S$, boundary edges, and edges interior to $\bar S=V\setminus S$.  Each summand is PSD.
-
-The condition $\varepsilon L - L_S\succeq 0$ is equivalent (via conjugation by $L^{+/2}$, the pseudoinverse square root) to the operator-norm bound
+Write $\Lt$ for the Moore--Penrose pseudoinverse and $\Lth$ for its PSD square
+root. Define
 \[
-\|L^{+/2} L_S L^{+/2}\| \leq \varepsilon
+  \tL_S      := \Lth L_S \Lth, \qquad
+  \tL_{S,T}  := \Lth L_{S,T}  \Lth, \qquad
+  \tL_{S,t}  := \Lth L_{S,\{t\}}\Lth.
 \]
-acting on $\mathrm{im}(L)$.  By Foster's identity the matrix $\sum_{e\in E} b_eb_e^T = L$ has trace $\sum_e b_e^TL^+b_e=n-1$ on $\mathrm{im}(L)$ (for connected $G$), so the average effective resistance of an edge is $(n-1)/|E|$.
-
-\section*{Proof (Spielman's barrier-function method)}
-
-We use Spielman--Srivastava barrier potentials \cite{SS11,BSS12} adapted to vertex sampling.  Set $p:=\varepsilon/c'$ for a constant $c'$ to be tuned ($c'=42$ at the end).
-
-\subsection*{Step 1: random vertex sample and expectation}
-
-Let $S$ be obtained by including each vertex independently with probability $p_0=2p$.  Then $\mathbb E|S|=2pn$, and
-\[
-\mathbb E\,L_S = \sum_{e=\{i,j\}\in E}\Pr[i\in S\wedge j\in S]\,b_eb_e^T = (2p)^2 L = 4p^2L.
-\]
-
-\subsection*{Step 2: Operator-norm concentration via potential functions}
-
-Let $\Pi=L^{+/2}L L^{+/2}$ (the projector onto $\mathrm{im}(L)$).  Define the random matrix
-\[
-M:=L^{+/2}L_SL^{+/2} = \sum_{e\in E}\xi_e\, Y_e,\qquad Y_e:=L^{+/2}b_eb_e^TL^{+/2},\quad \xi_e=\mathbf 1[e\subseteq S].
-\]
-Each $Y_e$ is PSD with $\|Y_e\|=R_e:=b_e^TL^+b_e$ (effective resistance of $e$), and $\sum_e Y_e=\Pi$.  By Foster, $\sum_e R_e=n-1$.
-
-The variables $\xi_e$ are not independent, but for any two edges $e,e'$,
-\[
-\mathrm{Cov}(\xi_e,\xi_{e'})\le \begin{cases}p_0^2(1-p_0^2),&e\cap e'=\emptyset,\\p_0^3-p_0^4,&|e\cap e'|=1,\\p_0^2-p_0^4,&e=e'.\end{cases}
-\]
-Apply the matrix Chernoff inequality of Tropp \cite{Tropp12} for sums of weakly-dependent PSD matrices (or alternatively the matrix Bernstein for the centered $M-\mathbb E M$):
+Then $\Lth L \Lth = \Pi$, the orthogonal projector onto $\Span\{L\}$, and the
+condition $\eps L\succeq L_S$ is equivalent (by conjugation with $\Lth$ on
+$\im L$) to the operator-norm bound
+\begin{equation}\label{eq:opnorm-form}
+  \opnorm{\tL_S}_{\mathrm{op}} \;\le\; \eps.
+\end{equation}
 
 \medskip
-\noindent\textbf{Lemma (Spielman--Srivastava barrier).}  \emph{Let $u,\ell\in\mathbb R$.  Define the barrier potentials
+\noindent\emph{Leverage scores.}\quad The leverage score of an edge $(s,t)$ is
 \[
-\Phi_u(M):=\mathrm{tr}((uI-M)^{-1}),\quad \Phi^\ell(M):=\mathrm{tr}((M-\ell I)^{-1}).
+  \ell(s,t)
+   := w(s,t)\,(\delta_s-\delta_t)^{\!\top}\Lt(\delta_s-\delta_t)
+    = \Tr\!\bigl(L_{\{s\},\{t\}}\Lt\bigr),
 \]
-If $u-\Phi_u(M)^{-1}\geq\sum_e R_e\cdot p_0\cdot$ (variance correction) then the upper barrier $u$ is preserved under adding the next sampled rank-one term $\xi_e Y_e$.  Specifically, after $|E|$ Bernoulli trials, with probability at least $1/2$:
-\[
-\|M\| \leq 4p_0^2 + O(p_0^{3/2})\sqrt{\log n}.
-\]}
-
-For $p_0=2p\leq\varepsilon/21$ this gives $\|M\|\leq 4p^2+\text{l.o.t.}\leq\varepsilon/4$ once $\varepsilon$ is bounded above by $1$ and the $\log n$-correction is absorbed into the $1/42$ constant.
-
-\subsection*{Step 3: Size lower bound via reverse Markov}
-
-$|S|$ is a sum of $n$ independent Bernoullis of mean $p_0=2p$, so by Hoeffding:
-\[
-\Pr[|S|<pn]\leq e^{-2(p_0-p)^2 n/(2p_0)}=e^{-pn/2}\leq 1/4
-\]
-for $pn\geq 4$ (i.e., $\varepsilon n\geq 168$).
-
-\subsection*{Step 4: Combination}
-
-By union bound, with positive probability:
-(i) $\|M\|\leq\varepsilon$, and (ii) $|S|\geq pn=\varepsilon n/42$.  This gives the existence of an $\varepsilon$-light $S$ with $|S|\geq\varepsilon n/42$, completing the proof for $\varepsilon n\geq 168$.
-
-\subsection*{Step 5: Small graphs}
-
-For $\varepsilon n<168$, observe $\varepsilon|V|<168$, so $\lceil\varepsilon n/42\rceil\leq 4$.  We exhibit an $\varepsilon$-light $S$ with $|S|\geq 4$ as follows.  Take $S$ to be any single vertex of minimum degree.  Then $L_S=0$ (no induced edges), so $S$ is $0$-light, hence $\varepsilon$-light for any $\varepsilon\geq 0$.  This handles $\lceil\varepsilon n/42\rceil\leq 1$.  For larger sizes up to $4$, take $S$ to be a maximum independent set of size $\geq 4$; if $G$ has no independent set of size $4$, the size is $\leq 3$, so $n\leq O(1)$ by the chromatic number bound, and the claim is vacuous.
+and zero on non-edges. For $S,T\subseteq V$ set
+$\ell(S,T):=\sum_{s\in S,t\in T}\ell(s,t)$ and write
+$\ell(S):=\ell(S,V\setminus S)$ for the boundary leverage. By linearity
+$\ell(S,T)=\Tr(\tL_{S,T})$. Foster's identity, in the form
+$\sum_{(s,t)\in E}\ell(s,t)=n-1$ for connected $G$, follows from
+$\sum_{(s,t)}L_{\{s\},\{t\}}=L$ and $\Tr(L\Lt)=\rank L = n-1$.
 
 \medskip
-This completes the proof with $c=1/42$.\qed
+\noindent\emph{Bounded-rank upper barrier.}\quad For a symmetric $A$ with
+eigenvalues $\lambda_1\ge\cdots\ge\lambda_n$ and a real $u$, define
+\[
+  \Phi^u_{\sigma}(A) \;:=\;
+  \begin{cases}
+    \displaystyle\sum_{i=1}^{\sigma}\dfrac{1}{u-\lambda_i} & \text{if } u>\lambda_1,\\[2pt]
+    \infty & \text{otherwise,}
+  \end{cases}
+\]
+and the top-$\sigma$ trace $\Trs(A):=\sum_{i=1}^{\sigma}\lambda_i$. We write
+$\Phi^u_\sigma(S)$ for $\Phi^u_\sigma(\tL_S)$, and note
+$\Phi^u_\sigma(A)=\Trs\bigl((uI-A)^{-1}\bigr)$ when $u>\lambda_1$.
+
+For the rest of this note we fix
+\[
+  \del := \frac{21}{n}, \qquad
+  \phi := \frac{n}{21}, \qquad
+  \sigma := \lfloor \eps n/42 \rfloor.
+\]
+
+\section*{Proof}
+
+We build $S$ greedily, adding one vertex at a time and increasing the barrier
+parameter $u$ by $\del$ at each step. Throughout, two invariants are
+maintained: the bounded-rank barrier stays at most $\phi$, and the boundary
+leverage stays at most $4|S|$.
+
+\subsection*{Step 1: Initial set and target}
+
+Pick any $v_0\in V$ and set $S_0:=\{v_0\}$, $u_0:=\eps/2$. Since $G_{S_0}$ has
+no edges, $\tL_{S_0}=0$, and
+\[
+  \Phi^{u_0}_\sigma(S_0) \;=\; \frac{\sigma}{u_0}
+   \;\le\; \frac{\eps n/42}{\eps/2} \;=\; \frac{n}{21} \;=\; \phi.
+\]
+After $\sigma$ greedy steps, the barrier will sit at $u_\sigma=u_0+\sigma\del$.
+We chose parameters so that
+\[
+  u_\sigma = \tfrac{\eps}{2} + \sigma\cdot\tfrac{21}{n}
+           \le \tfrac{\eps}{2} + \tfrac{\eps}{2} = \eps,
+\]
+so once we reach $|S|=\sigma+1$ with $\Phi^{u_\sigma}_\sigma(S)$ finite, every
+eigenvalue of $\tL_S$ lies below $\eps$ and \eqref{eq:opnorm-form} gives
+$\eps L\succeq L_S$.
+
+\subsection*{Step 2: Greedy lemma}
+
+\begin{lemma}\label{lem:greedy}
+Suppose $|S|\le\sigma$, $\ell(S)\le 4|S|$, and $\Phi^u_\sigma(S)\le\phi$. Then
+there exists $t\notin S$ with
+\[
+  \Phi^{u+\del}_\sigma(S\cup\{t\})\le\phi
+  \qquad\text{and}\qquad
+  \ell(S\cup\{t\})\le\ell(S)+4.
+\]
+\end{lemma}
+
+\noindent The lemma is proved by two averaging arguments: more than half the
+candidates $t$ keep the leverage budget (Step 3), and at least half keep the
+barrier (Step 4). The two sets therefore intersect.
+
+\subsection*{Step 3: Leverage-score averaging}
+
+\begin{claim}\label{cl:Tlev}
+For every $T\subseteq V$, $\sum_{t\in T}\ell(t,T)\le 2(|T|-1)$.
+\end{claim}
+\begin{proof}
+By symmetry, $\sum_{t\in T}\ell(t,T)=2\Tr(L_T\Lt)$. Since $L_T\preceq L$, all
+eigenvalues of $L_T\Lt$ lie in $[0,1]$, and $L_T$ has rank at most $|T|-1$, so
+$\Tr(L_T\Lt)\le|T|-1$.
+\end{proof}
+
+For $t\notin S$,
+\[
+  \ell(S\cup\{t\}) \le \ell(S\cup\{t\},V\setminus S)
+                   = \ell(S)+\ell(t,V\setminus S),
+\]
+so it suffices to control $\ell(t,V\setminus S)$. Claim~\ref{cl:Tlev} applied
+to $T=V\setminus S$ gives
+$\sum_{t\notin S}\ell(t,V\setminus S)<2|V\setminus S|$, whence by Markov more
+than half of $t\notin S$ satisfy $\ell(t,V\setminus S)\le 4$.
+
+\subsection*{Step 4: Barrier averaging}
+
+This is the technical heart. The barrier-update lemma (Lemma~\ref{lem:bu}
+below) reduces our task to showing that for at least half of $t\notin S$,
+\begin{equation}\label{eq:U}
+  U(S,t) \;:=\;
+  \frac{\Trs(M^{-2}\tL_{S,t})}{\Phi^u_\sigma(S)-\Phi^{u+\del}_\sigma(S)}
+   + \Trs(M^{-1}\tL_{S,t}) \;<\; 1,
+\end{equation}
+where $M:=(u+\del)I-\tL_S$. We claim
+\begin{equation}\label{eq:total}
+  \sum_{t\notin S} U(S,t) \;\le\; \tfrac{5}{\del} + 5\phi.
+\end{equation}
+Granting \eqref{eq:total}, since each $U(S,t)\ge 0$, more than half of
+$t\notin S$ satisfy
+\[
+  U(S,t)\le\frac{2}{n-|S|}\!\left(\tfrac{5}{\del}+5\phi\right)
+        \le \frac{2}{41n/42}\cdot\tfrac{10n}{21} < 1
+\]
+for $|S|\le\sigma\le n/42$.
+
+\medskip
+\noindent\emph{Proof of \eqref{eq:total}.}\quad Let $\Pi_S$ project onto
+$\im\tL_S$, and $\Pi_S^\perp:=I-\Pi_S$. Since
+$M=(u+\del)(\Pi_S+\Pi_S^\perp)-\tL_S$ and $\Pi_S^\perp\tL_S=0$,
+\[
+  M^p \;=\; (u+\del)^p\Pi_S^\perp + \bigl((u+\del)\Pi_S-\tL_S\bigr)^p,
+  \qquad p\in\{-1,-2\}.
+\]
+By Ky Fan subadditivity of $\Trs$ \cite[Thm.~4.3.47a]{HJ12},
+\begin{equation}\label{eq:split}
+  \Trs(M^p\tL_{S,t}) \;\le\;
+  \Trs\!\bigl((u+\del)^p\Pi_S^\perp\tL_{S,t}\bigr)
+  + \Trs\!\Bigl(((u+\del)\Pi_S-\tL_S)^p\tL_{S,t}\Bigr).
+\end{equation}
+
+\smallskip
+\emph{$\Pi_S^\perp$ piece.}\quad
+$\Trs(\Pi_S^\perp\tL_{S,t})\le\Tr(\tL_{S,t})=\ell(S,t)$ (the PSD product has
+non-negative eigenvalues), and summing,
+\[
+  \sum_{t\notin S}\Trs\!\bigl((u+\del)^p\Pi_S^\perp\tL_{S,t}\bigr)
+   \le (u+\del)^p\,\ell(S)\le (u+\del)^p\cdot 4|S|.
+\]
+
+\smallskip
+\emph{$\Pi_S$ piece.}\quad
+$\sum_{t\notin S}\tL_{S,t}=\tL_{S,V\setminus S}\preceq\Pi$, and
+$((u+\del)\Pi_S-\tL_S)^p$ is PSD on $\im\Pi_S$, so
+\[
+\begin{aligned}
+\sum_{t\notin S}\Trs\!\Bigl(((u+\del)\Pi_S-\tL_S)^p\tL_{S,t}\Bigr)
+  &\le \Tr\!\Bigl(((u+\del)\Pi_S-\tL_S)^p\tL_{S,V\setminus S}\Bigr)\\
+  &\le \Tr\!\Bigl(((u+\del)\Pi_S-\tL_S)^p\Bigr)
+   = \Tr(\Pi_S M^p\Pi_S) \le \Trs(M^p),
+\end{aligned}
+\]
+the last step by the Ky Fan max principle.
+
+\smallskip
+Since all eigenvalues of $M$ are at most $u+\del$, for $p<0$ all eigenvalues of
+$M^p$ are at least $(u+\del)^p$, so $\Trs(M^p)\ge\sigma(u+\del)^p\ge|S|(u+\del)^p$.
+Combining,
+\[
+  \sum_{t\notin S}\Trs(M^p\tL_{S,t}) \;\le\; 4|S|(u+\del)^p + \Trs(M^p)
+   \;\le\; 5\,\Trs(M^p).
+\]
+Now we use (Claim~\ref{cl:phi-diff})
+$\Phi^u_\sigma(S)-\Phi^{u+\del}_\sigma(S)\ge\del\,\Trs(M^{-2})$ to bound the
+first term of $U(S,t)$, and $\Trs(M^{-1})=\Phi^u_\sigma(S)\le\phi$ for the
+second:
+\[
+  \sum_{t\notin S}U(S,t)
+   \;\le\; \frac{5\,\Trs(M^{-2})}{\del\,\Trs(M^{-2})} + 5\,\Phi^u_\sigma(S)
+   \;\le\; \tfrac{5}{\del}+5\phi,
+\]
+which is \eqref{eq:total}.\hfill$\square$
+
+\subsection*{Step 5: Combining and conclusion}
+
+Iterating Lemma~\ref{lem:greedy} $\sigma$ times starting from $S_0$ yields
+$S$ with $|S|=\sigma+1$, $\ell(S)\le 4\sigma$, and
+$\Phi^{u_\sigma}_\sigma(S)<\infty$, hence (by Step~1) every eigenvalue of
+$\tL_S$ is at most $u_\sigma\le\eps$, so $\eps L\succeq L_S$. This proves the
+theorem with $|S|\ge\lfloor\eps n/42\rfloor$.\qed
+
+\section*{Auxiliary lemmas}
+
+\begin{lemma}[Barrier update]\label{lem:bu}
+Let $A,B\succeq 0$ and $\del>0$. Set $M:=(u+\del)I-A$. If
+$\Phi^u_\sigma(A)<\infty$ and
+\[
+  \frac{\Trs(M^{-2}B)}{\Phi^u_\sigma(A)-\Phi^{u+\del}_\sigma(A)}
+   + \Trs(M^{-1}B) \;<\; 1,
+\]
+then $\Phi^{u+\del}_\sigma(A+B)\le\Phi^u_\sigma(A)$.
+\end{lemma}
+
+\begin{proof}
+$\Phi^u_\sigma(A)<\infty$ gives $u>\lambda_{\max}(A)$, hence
+$M,M^{-1},M^{-2}\succ 0$. Write $B=CC^{\!\top}$. By Sherman--Morrison--Woodbury,
+\[
+  (M-CC^{\!\top})^{-1}
+   = M^{-1} + M^{-1}C(I-C^{\!\top}M^{-1}C)^{-1}C^{\!\top}M^{-1}.
+\]
+Since $\Trs(M^{-1}B)=\Trs(C^{\!\top}M^{-1}C)<1$ the inverse exists and the
+second summand is PSD, so $\lambda_{\max}(A+B)<u+\del$. By Ky Fan
+subadditivity \cite[Thm.~4.3.47a]{HJ12},
+\[
+  \Phi^{u+\del}_\sigma(A+B)
+   \le \Trs(M^{-1})
+       + \Trs\!\bigl((I-C^{\!\top}M^{-1}C)^{-1}C^{\!\top}M^{-2}C\bigr).
+\]
+Since $\opnorm{C^{\!\top}M^{-1}C}\le\Trs(C^{\!\top}M^{-1}C)<1$, the operator
+$(I-C^{\!\top}M^{-1}C)^{-1}\preceq(1-\Trs(C^{\!\top}M^{-1}C))^{-1}I$, and
+monotonicity of $\Trs$ on PSD-ordered products gives
+\[
+  \Trs\!\bigl((I-C^{\!\top}M^{-1}C)^{-1}C^{\!\top}M^{-2}C\bigr)
+   \le \frac{\Trs(M^{-2}B)}{1-\Trs(M^{-1}B)}.
+\]
+Combining with
+$\Trs(M^{-1})=\Phi^u_\sigma(A)-(\Phi^u_\sigma(A)-\Phi^{u+\del}_\sigma(A))$
+and the hypothesis gives the claimed bound.
+\end{proof}
+
+\begin{claim}\label{cl:phi-diff}
+$\Phi^u_\sigma(S)-\Phi^{u+\del}_\sigma(S)\ge\del\,\Trs(M^{-2})$.
+\end{claim}
+\begin{proof}
+For each top-$\sigma$ eigenvalue $\lambda_i$ of $\tL_S$,
+\[
+  \tfrac{1}{u-\lambda_i}-\tfrac{1}{u+\del-\lambda_i}
+   = \tfrac{\del}{(u-\lambda_i)(u+\del-\lambda_i)}
+   \ge \tfrac{\del}{(u+\del-\lambda_i)^2};
+\]
+sum over $i$.
+\end{proof}
 
 \section*{Remarks}
 
 \begin{enumerate}\setlength\itemsep{4pt}
-\item \textbf{Tightness.}  The conjectured optimal constant is $c=1/2$.  The current best known is $c=1/42$ (Spielman, this work) — improving the constant is an open problem.
-\item \textbf{Comparison to edge sampling.}  The Marcus--Spielman--Srivastava sparsification theorem (Kadison--Singer) gives \emph{edge}-light subsets with optimal constant.  The vertex-light variant addressed here is more delicate because correlations between edges sharing a vertex reduce the effective independence available for matrix Chernoff.
-\item \textbf{Connection to spectral sparsification.}  An $\varepsilon$-light $S$ with $|S|\geq c\varepsilon n$ implies that $\bar S$ contains all but a $1-c\varepsilon$ fraction of vertices, with the boundary $L_{\partial S}+L_{V\setminus S}\succeq (1-\varepsilon)L$.  This is a one-sided spectral sparsification of $L$ supported on the vertex set $\bar S$.
+\item \textbf{Constant.} The constant $1/42$ comes from the parameter choices
+$\del=21/n$, $\phi=n/21$, which balance the $5/\del$ and $5\phi$ contributions
+in \eqref{eq:total}. It is not believed optimal; improving it is open.
+\item \textbf{Key innovation.} The standard upper-barrier function tracks all
+eigenvalues; here we track only the top $\sigma$. This adaptation, together
+with the Ky Fan inequalities for $\Trs$, is what makes the argument go
+through.
+\item \textbf{Connection to spectral sparsification.} An $\eps$-light $S$ with
+$|S|\ge c\eps n$ says the induced subgraph on $S$ contributes at most $\eps L$
+spectrally, giving a perspective on ``light'' as ``spectrally independent''.
+\item \textbf{Vertex vs.\ edge sampling.} The edge-partitioning analogue
+admits an optimal constant of $1/2$ via the Kadison--Singer resolution. The
+vertex-light variant is more delicate because edges sharing a vertex are
+correlated; the deterministic barrier method bypasses concentration entirely.
 \end{enumerate}
 
-\section*{Honest scope statement}
-
-The proof above invokes the Spielman--Srivastava barrier-function method (Lemma in Step 2) at a high level.  The full execution of the barrier potential analysis with the precise correlation structure of the $\xi_e$ variables (edges sharing a vertex have $\Pr[\xi_e\xi_{e'}=1]=p_0^3$ rather than $p_0^4$) requires a careful adaptation of \cite{SS11,BSS12} from the original edge-sampling setting to vertex sampling.  The author has presented the structure of the argument, the choice of parameters yielding $c=1/42$, and the size-vs-spectrum tradeoff, but the explicit barrier-update calculations (showing that the upper potential $\Phi_u$ stays bounded as edges are added) are not reproduced in full here.  The bottleneck in obtaining a clean constant via this method is precisely the second-moment correlation between edges sharing a vertex; the $1/42$ constant arises from this dependency.
-
-\medskip
-\noindent\textbf{Confidence.}  The answer is YES, with $c=1/42$ as the best constant attainable by the standard Spielman--Srivastava vertex-barrier method.  The method itself is established \cite{SS11,BSS12,Tropp12}; the adaptation to vertex sampling is the content of Spielman's original argument that motivated this benchmark question.
-
 \begin{thebibliography}{9}
-\bibitem{SS11} D.~Spielman, N.~Srivastava.  \emph{Graph sparsification by effective resistances}.  SIAM J.\ Comput.\ \textbf{40} (2011), 1913--1926.
-\bibitem{BSS12} J.~Batson, D.~Spielman, N.~Srivastava.  \emph{Twice-Ramanujan sparsifiers}.  SIAM J.\ Comput.\ \textbf{41} (2012), 1704--1721.
-\bibitem{Tropp12} J.~A.~Tropp.  \emph{User-friendly tail bounds for sums of random matrices}.  Found.\ Comput.\ Math.\ \textbf{12} (2012), 389--434.
-\bibitem{MSS15} A.~Marcus, D.~Spielman, N.~Srivastava.  \emph{Interlacing families II: Mixed characteristic polynomials and the Kadison--Singer problem}.  Ann.\ Math.\ \textbf{182} (2015), 327--350.
+\bibitem{HJ12} R.~A.~Horn and C.~R.~Johnson.
+  \emph{Matrix Analysis}, 2nd ed.\ Cambridge University Press, 2012.
 \end{thebibliography}
 
 \end{document}
