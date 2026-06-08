@@ -1,0 +1,405 @@
+\documentclass{article}
+\usepackage[margin=1.5in]{geometry}
+\usepackage{amsmath, amsfonts, amssymb}
+\DeclareMathOperator{\vecop}{vec}
+\DeclareMathOperator{\diag}{diag}
+
+% Needed only for proof
+\usepackage{amsthm}
+\theoremstyle{plain} % bold heading, italic body
+\newtheorem{lemma}{Lemma} 
+\usepackage{pgfplotstable}
+\usepackage{booktabs,colortbl}
+\pgfplotsset{compat=1.18}
+
+\usepackage{hyperref}
+\usepackage[capitalize,nameinlink]{cleveref}
+\hypersetup{
+  frenchlinks=false,
+  pdfborder={0 0 0},
+  naturalnames=false,
+  hypertexnames=false,
+  breaklinks
+}
+
+\begin{document}
+
+\begin{center}
+	\large
+	\textbf{Solution Source:} \\
+	Johannes Brust and Tamara G. Kolda,\\
+	\emph{Fast and Accurate CP-HIFI Solution} (tentative title), 2025.
+\end{center}
+
+The system to be solved is
+\begin{equation}\label{eq:unaligned-infinite} 
+	\left[
+    (Z \otimes K)^T S
+    S^T (Z \otimes K)
+    + \lambda (I_r \otimes K) 
+  \right] \vecop(W)
+	= (I_r \otimes K) 
+	\vecop( B ).
+\end{equation}
+
+We consider several approaches for solving \cref{eq:unaligned-infinite} 
+in the remainder of this section.
+We present a direct method for the symmetric linear system in \cref{sec:direct-ui-sym},
+using an additional regularization term.
+% In \cref{sec:direct-ui-nonsym}, we present an alternative direct method
+% based on a nonsymmetric formulation of the system that does not
+% need additional regularization.
+In \cref{sec:transformed-ui}, we present a transformation of the symmetric system
+based on the eigendecomposition of $K$.
+In \cref{sec:pcg-ui}, we present an iterative method based on
+the transformed symmetric system, adding some regularization akin to the symmetric direct method.
+In \cref{tab:unaligned-infinite-cost-comparison} and \cref{sec:cost-compare-ui},
+we provide an accounting of the costs and comparison of direct and iterative methods.
+
+\subsection{Direct Solution of UI Subproblem (Symmetric Form)}
+\label{sec:direct-ui-sym}
+
+\Cref{eq:unaligned-infinite} is an indefinite 
+symmetric linear system of size $rn \times rn$.
+Since it is indefinite, 
+we add a regularization term parameterized by $\rho > 0$ 
+to ensure positive definiteness.
+The modified system is
+\begin{equation}\label{eq:unaligned-infinite-1}
+	[ F^T F  + \lambda (I_r \otimes K) + \rho  I_{rn} ] \vecop(W)
+	= \vecop(K B),
+\end{equation}
+where $F=S^T(Z \otimes UD)$.
+Observe that we have pulled $K$ inside the vectorization on the right-hand side.
+	
+To compute $F$, we want to avoid forming the $N \times nr$ Kronecker product 
+$Z \otimes K$ explicitly.
+Instead, we create two special matrices:
+$\hat{K} \in \mathbb{R}^{q \times n}$ and $\hat{Z} \in \mathbb{R}^{q \times r}$.
+Each index $\ell \in [q]$ corresponds to a known entry index that we 
+denote as $(i_1^{(\ell)}, i_2^{(\ell)}, \dots, i_d^{(\ell)}) \in \Omega$.
+Then, for each $\ell \in [q]$, we let
+\begin{align}
+    \label{eq:zhat} 
+    \hat{Z}(\ell,:) & = \left(
+        A_{d}(i_d^{(\ell)},:) \ast \cdots \ast A_{k+1}(i_{k+1}^{(\ell)},:) \ast
+        A_{k-1}(i_{k-1}^{(\ell)},:) \ast \cdots \ast A_{1}(i_1^{(\ell)},:)
+	\right)^T, 
+    \text{ and}
+    \\
+    \label{eq:khat} 
+    \hat{K}(\ell,:) & = K(i_k^{(\ell)},:)  .
+\end{align}
+Here, $\ast$ represents elementwise multiplication.
+In other words, $\hat{Z}$ and $\hat{K}$ 
+represent the subset of rows of $Z$ and $K$, respectively,
+that corresponds to the known entries of $\mathcal{T}$.
+Then, row $\ell$ of $F$ is given by
+\begin{equation}
+    F(\ell,:) = \hat{Z}(\ell,:) \otimes \hat{K}(\ell,:).
+\end{equation}
+
+
+% \subsection{Direct Solution of UI Subproblem (Nonsymmetric Version)}
+% \label{sec:direct-ui-nonsym}
+
+% An alternative direct solution method is to factor out $(I_r \otimes K)$ from \cref{eq:unaligned-infinite} to 
+% obtain the equation
+% \begin{equation} 
+%     \label{eq:unaligned-infinite-nonsym} 
+% 	[
+% 		\underbrace{ (Z \otimes I_{n})^T S }_{G^T} 
+% 		\underbrace{S^T (Z \otimes K)}_{F}  
+% 		+ \lambda I_{rn} 
+% 	]\vecop(W)
+% 	=  \vecop(B),
+% \end{equation}
+% where we let $G := S^T (Z \otimes I_{n}) \in \mathbb{R}^{q \times rn}$
+% be analogous to $F$.
+
+
+% We can form $G$ similarly to how we formed $F$.
+% If we define $\hat{I}$ analogously to $\hat{K}$ so that $\hat{I}(\ell,:) = I_{n}(i_k^{(\ell)},:)$ for each $\ell \in [q]$,
+% then row $\ell$ of $G$ is given by
+% \begin{equation}
+%     G(\ell,:) = \hat{Z}(\ell,:) \otimes \hat{I}(\ell,:).
+% \end{equation}
+
+
+\subsection{Transforming the UI Subproblem}
+\label{sec:transformed-ui}
+we can exploit a factorization of $K$ 
+to transform \cref{eq:unaligned-infinite} 
+into an equivalent but potentially better conditioned system.
+Assuming we have the eigendecomposition 
+$K = U D U^T$,
+we can rewrite \cref{eq:unaligned-infinite} 
+by factoring out $(I_r \otimes U)$ to obtain
+\begin{equation}
+    [{
+        \underbrace{(Z \otimes UD)^T S}_{\bar{F}^T}
+        \underbrace{S^T (Z \otimes UD)}_{\bar{F}}
+    + \lambda  (I_r \otimes D) 
+    }] \vecop(\underbrace{U^TW}_{\bar{W}})
+    =  \vecop(\underbrace{DU^TB}_{\bar{B}}).
+\end{equation}
+Now we have a transformed system in the variable $\bar{W} = U^T W$,
+and we can solve for $W$ via $W = U \bar{W}$ after solving the system.
+Note that we cannot pull $D$ into the definition of $\bar{W}$ because it is indefinite.
+We define $\bar{F} := S^T (Z \otimes UD) \in \mathbb{R}^{q \times rn}$,
+which is analogous to $F$ with $K$ replaced by $UD$.
+We define $\bar{B} := D U^T B \in \mathbb{R}^{n \times r}$.
+Adding a regularization term as before,
+we obtain the modified system
+\begin{equation}
+    \label{eq:ui-transformed}
+    [   
+        \bar{F}^T \bar{F} + \lambda (I_r \otimes D) + \rho \, I_{rn}
+    ]
+    \vecop(\bar{W})
+    = \vecop(\bar{B}).
+\end{equation}
+
+\subsection{Key Lemmas for PCG Solution of UI Subproblem}
+\label{app:unaligned-lemmas}
+Before we continue to the details of solving \cref{eq:ui-transformed} via PCG,
+we present some key lemmas about working with matrices where each row is a Kronecker product of rows of two other matrices.
+These lemmas are important for efficiently computing the matrix-vector products and a preconditioner needed for PCG. We state these generically here so they can be reused in other contexts.
+
+% C = F
+% A = \hat{Z}
+% B = \hat{K}
+Let $A \in \mathbb{R}^{q \times r}$ and $B \in \mathbb{R}^{q \times n}$.  Define the $q \times rn$ matrix $C$ row-wise as
+\begin{equation}\label{eq:FAB}
+    C(\ell,:) = A(\ell,:) \otimes B(\ell,:), 
+    \quad \text{for} \quad \ell=1,\ldots,q.
+\end{equation} 
+Recall that for the Kronecker product of an $n$-vector and an $r$-vector or the vectorization of an $n \times r$ matrix, there is a correspondence between $k \in [rn]$ and the pair $(i,j)$ with $i \in [n]$ and $j \in [r]$ such that $k = i + (j-1)n$.
+For the Kronecker product means, this means $C_{\ell k} = B_{\ell i} A_{\ell j}$.
+For a vectorized matrix, we have $(\vecop(X))_k = X_{ij}$.
+
+\Cref{lem:F} shows how to compute the matrix-vector product $C x$ efficiently.
+This would normally cost $\mathcal{O}(q r n)$ if we formed $C$ explicitly.
+However, using the structure of $C$, we can compute it using only $\mathcal{O}(q (r + n))$ operations. Moreover, we avoid forming $C$ explicitly, which reduces the memory from $\mathcal{O}(q r n)$ to $\mathcal{O}(q (r + n))$.
+
+\begin{lemma}\label{lem:F}
+    Given the setup in \cref{eq:FAB}, let $X \in \mathbb{R}^{n \times r}$ be a matrix and define $x = \vecop(X)$.
+    Then we have
+    \begin{displaymath}
+        C x = ( A \ast B X )  1_r.
+    \end{displaymath}
+	Here $1_r$ denotes the $r$-vector of all ones.
+\end{lemma}
+\begin{proof}
+    For all $\ell=1,\ldots,q$ we have
+    \begin{displaymath}
+        (C x)_{\ell} 
+        = \sum_{k=1}^{rn} C_{\ell k} x_{k}
+        = \sum_{j=1}^n \sum_{i=1}^n B_{\ell i} X_{ij} A_{\ell j}
+        = \sum_{j=1}^r (B X)_{\ell j} A_{\ell j}.
+		\qedhere
+    \end{displaymath}
+\end{proof}
+
+\Cref{lem:Ft} shows how to compute the matrix-vector product $C^T v$ without forming $C$ explicitly. The cost is unchanged at $\mathcal{O}(qrn)$, but the memory is reduced from $\mathcal{O}(q r n)$ to $\mathcal{O}(q (r + n))$.
+
+\begin{lemma}\label{lem:Ft}
+    Given the setup in \cref{eq:FAB}, let $v \in \mathbb{R}^{q}$.
+    Then we have
+    \begin{displaymath}
+        C^T v = \vecop( B^T \diag(v) \, A ).
+    \end{displaymath}
+\end{lemma}
+
+\begin{proof}    
+    Define $k = i + (j-1)n$ for $i=1,\ldots,n$ and $j=1,\ldots,r$. Then, we have
+    \begin{displaymath}
+        (C^T v)_{k} 
+        = \sum_{\ell=1}^q C_{\ell k} v_{\ell} 
+        = \sum_{\ell=1}^q B_{\ell i} A_{\ell j} v_{\ell} 
+        = (B^T \diag(v) \, A)_{ij}.
+        = \left( \vecop (B^T \diag(v) \, A) \right)_{k}.        
+		\qedhere
+    \end{displaymath}
+\end{proof}
+
+\Cref{lem:FtF} shows how to compute the diagonal of $C^T C$ efficiently.
+We reduce the computation from $\mathcal{O}(q r^2 n^2)$ to $\mathcal{O}(q(r^2 + n^2))$ operations.
+And, again, we avoid forming $C$ explicitly, which reduces the memory from $\mathcal{O}(q r n)$ to $\mathcal{O}(q (r + n))$.
+
+\begin{lemma}\label{lem:FtF}
+    Given the setup in \cref{eq:FAB}. Then
+    \begin{displaymath}
+        \diag(C^TC) =
+        \vecop\left((B \ast B)^T (A \ast A)\right).
+    \end{displaymath}
+\end{lemma}
+
+\begin{proof}
+    Define $k = i + (j-1)n$ for $i=1,\ldots,n$ and $j=1,\ldots,r$. Then, we have
+    \begin{align*}
+        (C^TC)_{kk} 
+        & = \sum_{\ell=1}^q C_{\ell k}^2 
+        = \sum_{\ell=1}^q B_{\ell i}^2 A_{\ell j}^2 \\
+        & = \left[(B \ast B)^T (A \ast A)\right]_{ij}
+        = \left[\vecop \left((B \ast B)^T (A \ast A)\right) \right]_{k}.    \qedhere   
+    \end{align*}
+\end{proof}
+
+We apply these results in the next section.
+
+\subsection{PCG Solution of Transformed UI Subproblem}
+\label{sec:pcg-ui}
+We can form $\bar{F}$ similarly to how we formed $F$.
+We define $H = UD \in \mathbb{R}^{n \times n}$
+and $\hat{H} \in \mathbb{R}^{q \times n}$ such that $\hat{H}(\ell,:) = H(i_k^{(\ell)},:)$ for each $\ell \in [q]$.
+Then, for each $\ell \in [q]$, we let
+\begin{equation}
+    \bar{F}(\ell,:) = \hat{Z}(\ell,:) \otimes \hat{H}(\ell,:).
+\end{equation}
+Let $x \in \mathbb{R}^{rn}$ be an arbitrary vector, and let $X \in \mathbb{R}^{n \times r}$ be its matrix representation
+so that $\vecop(X) = x$.
+From \cref{lem:F,lem:Ft} in \cref{app:unaligned-lemmas}, we can compute 
+$\bar{F}^T \bar{F} x$ as $\vecop \left(\hat{H}^T
+\diag \left( (\hat{Z} \ast \hat{H} X) 1_{r} \right) \, \hat{Z}\right)$.
+
+Then, we can compute the matrix-vector products for the conjugate gradient iterations without forming any Kronecker products
+using
+\begin{equation}\label{eq:pcg-matvec-ui}
+    \left(\bar{F}^T \bar{F} + \lambda (I_r \otimes D) + \rho \, I_{rn}\right) x =
+    \vecop \left(
+        \hat{H}^T          
+        \diag \left( (\hat{Z} \ast \hat{H} X) 1_{r} \right)
+        \, \hat{Z}
+        +
+        \lambda D X + \rho X
+    \right).
+\end{equation}
+
+We propose a diagonal preconditioner of the form
+\begin{displaymath}
+    \bar{D} = 
+    \diag(\diag(\bar{F}^T \bar{F})) + \lambda (I_r \otimes D) + \rho \, I_{rn}.
+\end{displaymath}
+Observe that $\bar{d} := \diag(\bar{D})$ is easy to compute since
+\begin{equation}\label{eq:preconditioner-ui}
+    \begin{aligned}
+    \bar{d} 
+    & = \diag(
+        \diag(\diag(\bar{F}^T \bar{F})) + \lambda (I_r \otimes D) + \rho \, I_{rn}
+    ) \\
+    &= \diag(\bar{F}^T \bar{F}) + \lambda (1_{r} \otimes \diag(D)) + \rho \, 1_{rn} \\
+    &= \vecop( (\hat{H} \ast \hat{H})^T (\hat{Z} \ast \hat{Z})) + \lambda (1_{r} \otimes \diag(D)) + \rho \, 1_{rn} 
+    \end{aligned}
+\end{equation}
+The last step comes from \cref{lem:FtF} in \cref{app:unaligned-lemmas}.
+% This preconditioner can be applied as 
+% $\bar{D}^{-1} x = x \div \bar{d}$ where $\div$ denotes elementwise division.
+
+\subsection{Comparison of Costs}
+\label{sec:cost-compare-ui}
+
+A comparison of the direct solution of the original symmetric problem \cref{eq:unaligned-infinite-1}
+and PCG iterative solutions of the 
+transformed problem \cref{eq:ui-transformed} 
+are shown in \cref{tab:unaligned-infinite-cost-comparison}.
+For PCG, we let $p$ denote the number of iterations needed for convergence.
+Recall that $d$ is the order of the tensor, 
+$n$ is the size of mode $k$, $r$ is the target rank,
+and $q$ is the number of known entries.
+In general, we do not make assumptions about the relative sizes
+of $n$ and $r$. We do assume, however, that
+$d < n,r \ll q$.
+Because we are working with an incomplete tensors, the MTTKRP is relatively cheap and never dominates the cost.
+
+\begin{table}[ht]
+    \centering
+    \caption{Comparison of costs to solve the mode-$k$ unaligned infinite-dimensional subproblem \cref{eq:unaligned-infinite} of size $nr \times nr$ where $n$ is the size of mode $k$ and $r$ is the target tensor decomposition rank.
+    The variable $q$ is the number of known entries in the observed tensor $\mathcal{T}$.
+    For the PCG iterative method, $p$ is the number of iterations.}
+    \label{tab:unaligned-infinite-cost-comparison}
+    \renewcommand{\arraystretch}{1.5}
+    \pgfplotstabletypeset[
+        col sep=&,row sep=\\,
+        string type,
+        columns/Description/.style={column type=c},
+        columns/DS/.style={column type=c, column name={Direct Symmetric}},
+        columns/PCG/.style={column type=c, column name={PCG Iterative}},
+        every head row/.style={before row={
+            \toprule
+            }, after row=\midrule},
+        every last row/.style={after row=\bottomrule},
+        every even row/.style={before row={\rowcolor[gray]{0.9}}},
+        font=\footnotesize,
+        assign column name/.style={/pgfplots/table/column name={\sffamily\textbf{#1}}},
+    ]{
+        Description & DS & PCG \\
+        Factorize $K = U D U^T$ \emph{one-time cost!} & --- & $\mathcal{O}(n^3)$ \\
+        Compute $\hat{Z}$ and MTTKRP $B := \mathcal{T} Z$ & $\mathcal{O}(qrd)$ & $\mathcal{O}(qrd)$ \\
+        Form $F$ (and $G$) or $H$ & $\mathcal{O}(q r n)$ &  $\mathcal{O}(n^2)$ \\
+        Form matrix for linear solve & $\mathcal{O}(q r^2 n^2)$ &  --- \\
+        Form right-hand side & $\mathcal{O}(n^2 r)$ &  $\mathcal{O}(n^2 r)$  \\
+        Form Preconditioner ($\bar{d}$) & --- & $\mathcal{O}(q n^2 + q r^2)$ \\
+        Solve system & $\mathcal{O}(r^3 n^3)$ & $\mathcal{O}(pnqr)$ \\
+        Recover $W$  & --- &  $\mathcal{O}(n^2 r)$ \\
+        Total Cost & $\mathcal{O}(q n^2 r^2 + n^3 r^3)$ & $\mathcal{O}(q n^2 + q r^2 + qnrp )$ \\
+        Storage & $\mathcal{O}(qnr +  r^2n^2)$ & $\mathcal{O}(qn+qr)$ \\
+    }
+\end{table}
+
+\paragraph{Factorizing the kernel matrix $K$ for the transformed system}
+The eigendecomposition of $K$ 
+costs $ \mathcal{O}(n^3) $ flops.
+We stress once again that this is only done \emph{one time}
+before the outermost alternating optimization iterations begin.
+In the methods we compare here, this is needed only for the PCG iterative method. 
+
+\paragraph{Shared costs of all methods}
+
+The $q \times r$ matrix $\hat{Z}$ defined in \cref{eq:zhat} is used by both methods.
+Likewise, the $n \times r$ MTTKRP $B = T Z$ is used by all methods.
+The cost to compute $\hat{Z}$ is $\mathcal{O}(qrd)$, 
+Computing $B$ is an MTTKRP with an incomplete tensor (Ballard and Kolda, Tensor Decompositions for Data Science, Cambridge University Press, 2025 with PDF available freely online). This would normally cost $\mathcal{O}(qrd)$ operations, but we can use $\hat{Z}$ to
+reduce the cost to $\mathcal{O}(qr)$ operations.
+
+
+\paragraph{Direct solve of symmetric regularized system}
+
+We first analyze the cost to form and solve the system as discussed in \cref{sec:direct-ui-sym}.
+We have to explicitly form $F$ to form the system in \cref{eq:unaligned-infinite-1}.
+The cost to compute the $q \times rn$ matrix 
+$F$ is $\mathcal{O}(qrn)$ and requires $\mathcal{O}(qrn)$ storage.
+Forming the $rn \times rn$ matrix $F' F + \lambda (I_r \otimes K) + \rho \, I_{rn}$ is dominated by the cost to compute $F' F$, which costs $\mathcal{O}(q r^2 n^2)$ operations.
+We also have to compute the right-hand side $\vecop(K B)$, which costs $\mathcal{O}(n^2 r)$ operations.
+Finally,  using a direct method such as Cholesky
+to solve the system costs $\mathcal{O}((rn)^3)$ operations.
+The storage is either dominated by storing $F$ or the system matrix,
+which is $\mathcal{O}(rnq + r^2 n^2)$.
+% The MTTKRP will never dominate the cost of this method because the cost of forming the system matrix is always at least $\mathcal{O}(q r^2 n^2)$
+% versus the MTTKRP cost of $\mathcal{O}(q r d)$. 
+% We assume that $d < n,r$.
+
+\paragraph{PCG iterative solve of transformed system}
+We now analyze the cost of using PCG to solve the transformed system \cref{eq:ui-transformed} as discussed in \cref{sec:pcg-ui}.
+The right hand side $\vecop(\bar{B}) = \vecop(D U^T B)$ can be computed at a cost of $\mathcal{O}(n^2 r)$ operations.
+We first have to compute the $n \times n$ matrix $H := U D$, which costs $\mathcal{O}(n^2)$ operations.
+Forming the diagonal preconditioner, the $rn$-vector $\bar{d}$ in \cref{eq:preconditioner-ui}, costs $\mathcal{O}(qn^2 + qr^2)$ operations.
+We never form $\bar{F}$ explicitly, which saves both computation and storage.
+Each matrix vector product is computed as in \cref{eq:pcg-matvec-ui} at a cost of $\mathcal{O}(q n r)$ operations.
+Each preconditioner application costs $\mathcal{O}(r n)$ operations.
+Assuming that PCG converges in $p$ iterations, the total cost for the PCG iterations is $\mathcal{O}(p q n r)$ operations.
+Finally, after solving for $\bar{W}$, we have to recover $W = U \bar{W}$, which costs $\mathcal{O}(n^2 r)$ operations.
+The storage needed for PCG is dominated by storing $\hat{Z}$ and $\hat{H}$, which is $\mathcal{O}(qn + qr)$.
+
+\paragraph{Summary and Comparison}
+
+The direct method is cubic in the size of the unknown matrix $W$.
+In contrast, the PCG iterative method has a cost that is orders of magnitude lower, depending on the number of iterations $p$ needed for convergence and the relative sizes of $n$, $r$, and $p$. In general, we expect the problem to be well conditioned
+so that $p$ is not too large.
+The PCG method also has significantly lower storage requirements. Assuming $r < n < rn < q$, we have $qrn$ storage for the direct methods versus $qn$ storage for PCG.
+
+
+
+
+
+\end{document}

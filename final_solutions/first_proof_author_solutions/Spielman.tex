@@ -1,0 +1,624 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amsfonts,amsthm,alltt,amssymb}
+\usepackage{enumitem}
+\textheight 8.5in
+\topmargin -0.2in
+\oddsidemargin 0.2in
+\textwidth 6.3in
+
+\def\trace#1{\mathrm{Tr} \left(#1 \right)}
+\def\calA{\mathcal{A}}
+\def\calB{\mathcal{B}}
+\def\Ltil{\widetilde{L}}
+\def\union{\cup}
+\def\intersect{\cap}
+\def\floor#1{\left\lfloor #1 \right\rfloor}
+\def\norm#1{\left\| #1 \right\|}
+\def\ddelta{\boldsymbol{\delta}}
+\def\pleq{\preccurlyeq}
+\def\pgeq{\succcurlyeq}
+\def\defeq{\stackrel{\mathrm{def}}{=}}
+\def\setof#1{\left\{#1  \right\}}
+\def\sizeof#1{\left|#1  \right|}
+
+\def\trs#1{\mathrm{Tr}_{\sigma} \left(#1 \right)}
+\def\Trs{\mathrm{Tr}_{\sigma}}
+
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{observation}[theorem]{Observation}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{assumption}[theorem]{Assumption}
+\newtheorem{warning}[theorem]{Warning}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+
+
+
+%%%------------------------------------------
+%%%  general defs
+%%%
+
+
+\renewcommand{\dim}[1]{\mathsf{dim}(#1)}
+\newcommand{\codegen}[1]{\mathsf{codegen}(#1)}
+
+\newcommand{\disc}[1]{\mathsf{disc}(#1)}
+\newcommand{\adj}[1]{\mathsf{adj}(#1)}
+
+
+\newcommand{\spn}[1]{\mathsf{span}(#1)}
+\newcommand{\nul}[1]{\mathsf{null}(#1)}
+
+
+
+
+%%%---------------------------------------------
+%%%  begin document
+%%%
+
+
+\begin{document}
+\begin{center}
+{\Large Light Sets of Vertices\\
+Daniel Spielman, Jan. 30, 2026}
+\end{center}
+
+Throughout this note, $G = (V,E,w)$ will be a weighted graph with $n$ vertices. 
+For an edge $(s,t) \in E$, we let $w(s,t)$ be its weight.
+For two vertex sets, $S$ and $T$, the subgraph $G_{S,T}$ of $G$ has vertex set $V$,
+  but only the edges going between vertices in $S$ and $T$.
+We write $G_{S}$ for the graph that only contains the edges between vertices in $S$.
+
+The matrix $L$ is the Laplacian of $G$, which we recall may be defined by
+\[
+  L = \sum_{(s,t) \in E} w(s,t) (\ddelta_s - \ddelta_t) (\ddelta_s - \ddelta_t)^T,
+\]
+where $\ddelta_s$ is the elementary unit vector with a 1 in position $s$.
+We let $L_{S}$ denote the Laplacian of $G_{S}$.
+As $G_{S}$ and $G$ have been defined to have the same vertex set,
+  $L_{S}$ has the same dimension as $L$.
+
+\begin{lemma}\label{lem:light}
+For every weighted graph $G = (V,E,w)$ with $n$ vertices, and for every $0 < \epsilon < 1$,
+  there is an $S \subseteq V$ of size at least $\epsilon n / 42$
+  so that
+\[
+  \epsilon L \pgeq  L_{S} .
+\]
+\end{lemma}
+
+We call such a set of vertices $S$ an $\epsilon$-light set.
+A set $S$ is $0$-light if and only if it is independent, and we could view lightness as a qualitative measure of independence.
+We might have called it ``spectral independence,'' if that term were not already in use.
+
+
+This lemma was proved by Daniel Spielman while working on the paper ``Sparsified Cholesky Solvers for SDD linear systems'', written with Richard Peng and Yin-Tat Lee~\cite{LeePengSpielman}. 
+We decided not to include the lemma in that paper because, while it could be used to obtain interesting variants of some results, it was not necessary for the main results in that paper.
+That paper evolved into the paper ``Sparsified Cholesky and Multigrid Solvers for Connection Laplacians,'' written with Rasmus Kyng, Yin Tat Lee, Richard Peng and Sushant Sachdeva~\cite{kyng2016sparsified}. 
+
+
+
+
+
+
+
+
+
+
+\section{Proof Strategy}
+We define $L_{S,T}$ to be the Laplacian of $G_{S,T}$.
+For a vertex $t$ and a subset of vertices $S$, we define $L_{S,t}$ to be the Laplacian of $G_{S , \setof{t}}$.
+
+For a matrix $L$, we write its pseudo-inverse as $L^\dagger$. 
+We write $L^{\dagger/2}$ for the square root of the pseudo-inverse.
+We will prove the following statement that is equivalent to Lemma~\ref{lem:light}
+\[
+  \norm{ L^{\dagger/2} L_{S} L^{\dagger/2}} \leq \epsilon .
+\]
+
+We will find it convenient to multiply all Laplacian matrices on the left and right by $L^{\dagger/2}$. 
+So, we define 
+\[
+  \Ltil_S = L^{\dagger/2} L_{S} L^{\dagger/2},
+  \quad 
+  \Ltil_{S,T} = L^{\dagger/2} L_{S,T} L^{\dagger/2},
+  \quad 
+  \Ltil_{S,t} = L^{\dagger/2} L_{S,t} L^{\dagger/2},
+\]
+and recall that $L^{\dagger/2} L L^{\dagger/2} \defeq \Pi $ 
+  is a symmetric projection matrix.
+
+We are going to build up $S$ in a greedy fashion.
+We will begin with a singleton set, and then add one vertex at a time.
+As we add vertices to $S$, we will need to maintain bounds on two quantities: a modification of the upper barrier function from \cite{BSS} and the sum of the leverage scores of edges between $S$ and $V \setminus S$. 
+
+The leverage score of an edge $(s,t)$ is defined to be $w(s,t)$ times the effective resistance between $s$ and $t$:
+\[
+  \ell(s,t  ) = 
+  w(s,t) (\ddelta_s - \ddelta_t)^T L^{\dagger} (\ddelta_s - \ddelta_t)
+  = \trace{w(s,t) (\ddelta_s - \ddelta_t) (\ddelta_s - \ddelta_t)^T L^{\dagger} }
+  = \trace{L_{\setof{s}, \setof{t}} L^{\dagger}}.
+\]
+For vertices $s$ and $t$ for which $(s,t)$ is not an edge, we define $\ell(s,t) = 0$.
+For subsets of vertices $S$ and $T$, we define
+\[
+  \ell(S,T) \defeq \sum_{s \in S} \sum_{t \in T} \ell(s,t)
+  = \sum_{s \in S} \sum_{t \in T : (s,t) \in E} \ell(s,t),
+\]
+and 
+\[
+  \ell(S) \defeq \ell(S,V - S).
+\]
+
+\begin{claim}\label{clm:ellSt}
+For $S$ and $T$ subsets of vertices, $\ell(S, T) = \trace{\Ltil_{S,T}}$.
+\end{claim}
+\begin{proof}
+From the definition of the Laplacian of a graph, we have 
+$
+  L_{S,T} = \sum_{s \in S} \sum_{t \in T} L_{\setof{s}, \setof{t}}
+$.
+So, 
+\begin{multline*}
+  \trace{\Ltil_{S,T}} 
+    = \trace{L^{\dagger/2} L_{S,T} L^{\dagger/2} } 
+  = \trace{L_{S,T} L^\dagger} \\
+= 
+\sum_{s \in S} \sum_{t \in T} \trace{ L_{\setof{s}, \setof{t}} L^\dagger }
+= 
+\sum_{s \in S} \sum_{t \in T} \ell(s,t)
+= \ell(S,T).
+\end{multline*}
+\end{proof}
+
+
+
+
+
+We modify the BSS barrier function to make it better suited to matrices of rank at most $\sigma$ by only incorporating the largest $\sigma$ eigenvalues of the matrix. 
+For a matrix $A$ with eigenvalues $\lambda_1 \geq \lambda_2 \geq \dotsb \geq \lambda_n$, and a $u > \lambda_1$, we define
+\[
+  \Phi^{u}_{\sigma} (A) \defeq \sum_{i=1}^{\sigma}\frac{1}{u - \lambda_{i}}.
+\]
+If $u \leq \lambda_1$, we define $\Phi^{u}_{\sigma} (A) = \infty$.
+We overload the definition of $\Phi $ by setting
+\[
+  \Phi^{u}_{\sigma} (S) \defeq \Phi^{u}_{\sigma} (\Ltil_{S}).
+\]
+Our objective is to find a set $S$ of size $\sigma$ so that $\Phi^{\epsilon}_{\sigma} (S) < \infty$.
+
+We deal with this barrier function by considering a modified trace of a matrix that only sums the largest $\sigma$ eigenvalues of its argument:
+\[
+  \trs{A} \defeq \sum_{i=1}^{\sigma}\lambda_{i},
+\]
+where the eigenvalues of $A$ are $\lambda_1 \geq \lambda_2 \geq \dotsb \geq \lambda_n$.
+We then have $\Phi^{u}_{\sigma} (A) = \trs{\left(u I - A\right)^{-1}}$.
+In all cases we consider, the argument of $\Trs$ is a diagonalizable matrix with real eigenvalues.
+
+
+For the rest of this note, define 
+\[
+  \delta \defeq  \frac{21}{n},
+\quad 
+  \phi \defeq \frac{n}{21},
+  \quad \mathrm{and} \quad 
+  \sigma \defeq \floor{\epsilon n / 42}.
+\]
+
+We will prove Lemma \ref{lem:light} by iteratively applying the following lemma. 
+
+\begin{lemma}\label{lem:oneStep}
+If $\sizeof{S} \leq \sigma$, $\ell(S) \leq 4 \sizeof{S}$, and
+  $\Phi^{u}_{\sigma} (S) \leq \phi$,
+  then there is a $t \not \in S$ so that
+\[
+  \Phi^{u+\delta}_{\sigma} (S \union \setof{t}) \leq \phi 
+  \quad \mathrm{and} \quad 
+  \ell(S \union \setof{t}) \leq \ell(S) + 4.
+\]
+\end{lemma}
+\begin{proof}
+Lemma \ref{lem:ell} says that for more than half the $t \not \in S$, $\ell(S \union \setof{t}) \leq \ell(S) + 4$.
+And, under the conditions of the lemma, 
+  Lemma~\ref{lem:barrier} says that for at least half the $t \not \in S$, $\Phi^{u}_{\sigma} (S \union \setof{t}) \leq \phi$.
+So, there is a $t \not \in S$ that satisfies both conditions.
+\end{proof}
+
+
+\begin{proof}[Proof of Lemma \ref{lem:light}]
+Set $u_{0} = \epsilon / 2$ and let $S_0 = \setof{v_0}$ an arbitrary $v_0 \in V$.
+As $G_{S_0}$ has no edges, 
+\[
+  \Phi^{u_{0}}_{\sigma} (S_{0}) = \sigma / u_{0} \leq \frac{n}{21} = \phi .
+\]
+By applying Lemma~\ref{lem:oneStep} $\sigma$ times, we inductively construct a set $S$
+  of $\sigma + 1$ vertices so that $\ell(S) \leq 4 \sigma$ and
+  $\Phi^{u_{0} + \sigma \delta}_{\sigma} (S) \leq  \phi$.
+This implies that all of the eigenvalues of $\Ltil_{S}$ are at most
+\[
+ u_{0} + \sigma \delta = \frac{\epsilon}{2} + \sigma \frac{21}{n} 
+ \leq \epsilon .
+\]
+
+\end{proof} 
+
+
+\section{Proofs}
+
+
+
+\begin{lemma}\label{lem:ell}
+Let $S \subset V$. 
+Then, for more than half the $t$ not in $S$,
+\[
+ \ell(S \union \setof{t}) \leq \ell(S) + 4.
+\]
+\end{lemma}
+\begin{proof}
+Recall $\ell(S \union \setof{t}) 
+= \ell(S \union \setof{t}, V - (S \union \setof{t}))$.
+For $t \not \in S$, we use the inequality 
+\[
+\ell(S \union \setof{t}, V - (S \union \setof{t}))
+\leq 
+\ell(S \union \setof{t}, V - S)
+= \ell(S) + \ell(t, V - S).
+\]
+So, it suffices to show that for more than half the $t \not \in S$, 
+$\ell(t, V - S) \leq 4$.  
+This follows from the non-negativity of $\ell$ and Claim~\ref{clm:ell} which shows that 
+\[
+\sum_{t \in V - S} \ell(t, V - S) < 2 \sizeof{V - S} .
+\]
+\end{proof}
+
+
+\begin{claim}\label{clm:ell}
+For every $T \subset V$, 
+\[ \sum_{t \in T} \ell(t, T) \leq 2 (\sizeof{T} - 1). \]
+\end{claim}
+\begin{proof}
+\begin{align*}
+\sum_{t \in T} \ell(t, T) 
+= \sum_{t \in T} \trace{L_{\setof{t}, T} L^\dagger} 
+= 2 \trace{L_{T} L^\dagger}.
+\end{align*}
+To show that $\trace{L_T L^\dagger} < \sizeof{T}$, observe that $L_T \pleq L$, so all the eigenvalues of $L_T L^\dagger$ are between 0 and 1.
+Because $L_T$ has rank at most $\sizeof{T}-1$, at most $\sizeof{T}-1$ eigenvalues of $L_T L^\dagger$ are non-zero.
+
+\end{proof}
+
+
+
+For convenience, we now state a few key properties of the function $\Trs$ of a matrix.
+We begin with its defect: it is not additive. 
+But, Ky Fan's eigenvalue inequality (see Theorem 4.3.47a of \cite{HornJohnsonMatrix}) tells us that it is subadditive:
+\begin{equation}\label{eqn:modtrace:subadditive}
+\trs{A + B} \leq \trs{A} + \trs{B}.
+\end{equation}
+
+Most of the properties of $\Trs$ that we find helpful follow from the fact that, for matrices $A$ and $B$, $AB$ has the same non-zero eigenvalues as $BA$, counted with multiplicity.  
+
+
+\begin{proposition}\label{prop:modtrace}
+For symmetric matrices $A$ and $B$,
+  \begin{enumerate}[label=\alph*., ref=\alph*]
+    \item $\trs{A} = \max_{U} \trace{U A U^T}$, where the maximum is taken over all orthogonal matrices of rank $\sigma$. \label{prop:modtrace:max}
+    \item If $A$ is positive semidefinite, then $\trs{AB} = \trs{BA}$. \label{prop:modtrace:rotate}
+    \item If $A$ and $B$ are positive semidefinite, then $\trs{AB} \geq 0$. \label{prop:modtrace:positive}
+    \item If $A \pleq B$, then $\trs{A} \leq \trs{B}$. \label{prop:modtrace:monotone}
+    \item If $C$ is positive semidefinite and $A \pleq B$, then $\trs{AC} \leq \trs{BC}$. \label{prop:modtrace:monotone2}
+  \end{enumerate}
+\end{proposition}
+\begin{proof}
+Part \ref{prop:modtrace:max} is Ky Fan's maximum principle, proved in \cite{KyFanWeyl}. Part \ref{prop:modtrace:rotate} is a direct consequence of the facts that $AB$ has $n$ real eigenvalues if $A$ is positive semidefinite, and $AB$ and $BA$ have the same non-zero eigenvalues. 
+Part \ref{prop:modtrace:positive} follows from the fact that all eigenvalues of the product of positive semidefinite matrices are non-negative.
+Part \ref{prop:modtrace:monotone} follows from using \eqref{eqn:modtrace:subadditive} to show $\trs{A} \leq \trs{B} + \trs{A - B} \leq \trs{B},$ using the fact that $A - B$ is negative semidefinite and so $\trs{A - B} \leq 0$.  
+To derive part \ref{prop:modtrace:monotone2} from part \ref{prop:modtrace:monotone}, let $V$ be a matrix so that $V^T V = C$, and apply \ref{prop:modtrace:rotate} to show the conclusion is equivalent to $\trs{V A V^T} \leq \trs{V B V^T}$, which follows from $V A V^T \pleq V B V^T$.
+\end{proof}
+
+
+Note that $\Ltil_{S \union \setof{t}} = \Ltil_{S} + \Ltil_{S,t}$.
+To show that we can choose a $t \not \in S$ that does not increase the barrier function, 
+  we employ the following adaptation of 
+ Lemma~19 of \cite{CarliSilvaHS}, which in turn is an adaptation of Lemma 3.3 from \cite{BSS}.
+We include a proof for completeness.
+
+\begin{lemma}\label{lem:upperBarrier}
+Let $A$ and $B$ be positive semidefinite matrices, $\delta > 0$, and let $M = (u+\delta)I - A$.
+If $\Phi^{u}_{\sigma} (A) < \infty$ and
+\begin{equation}\label{eqn:upperBarrier}
+\frac{\trs{M^{-2} B}}
+     {\Phi^{u}_{\sigma} (A) - \Phi^{u+\delta }_{\sigma} (A) }
++ 
+\trs{M^{-1} B}
+< 1, 
+\end{equation}
+then $\Phi^{u+\delta}_{\sigma} (A + B) \leq \Phi^{u}_{\sigma} (A)$.
+\end{lemma}
+
+\begin{proof}
+Our assumption that $\Phi^{u}_{\sigma} (A) < \infty$ implies that 
+  $M$, $M^{-1}$, and $M^{-2}$ are all positive definite.
+Thus, Proposition~\ref{prop:modtrace}\ref{prop:modtrace:positive} implies that both terms in \eqref{eqn:upperBarrier} are non-negative.
+Let $C$ be a matrix for which  $B = C C^T$,
+  and so by
+ Proposition~\ref{prop:modtrace}\ref{prop:modtrace:rotate}
+   $\trs{M^{-1} B} = \trs{C^T M^{-1} C} < 1$.
+
+Recall $\Phi^{u+\delta}_{\sigma} (A + B) 
+=  
+\trs{(M - C C^T)^{-1}}.$
+By the Sherman-Morrison-Woodbury formula, 
+\[ 
+(M - C C^T)^{-1} 
+= 
+M^{-1} + M^{-1} C (I - C^T M^{-1} C)^{-1} C^T M^{-1}.
+\]
+As $\norm{C^T M^{-1} C} \leq \trs{C^T M^{-1} C} < 1$, we know that right-hand term is positive definite, and thus all eigenvalues of $A+B$ are less than $u + \delta$.
+Now, \eqref{eqn:modtrace:subadditive} implies 
+\[
+\Phi^{u+\delta}_{\sigma} (A + B) 
+\leq 
+\trs{M^{-1}} + \trs{M^{-1} C (I - C^T M^{-1} C)^{-1} C^T M^{-1}}.
+\]
+By Propositon~\ref{prop:modtrace}\ref{prop:modtrace:rotate},
+\[
+\trs{M^{-1} C (I - C^T M^{-1} C)^{-1} C^T M^{-1}} 
+= 
+\trs{ (I - C^T M^{-1} C)^{-1} C^T M^{-2} C}
+\]
+As $\norm{C^T M^{-1} C} \leq \trs{C^T M^{-1} C} < 1$,  
+$(I - C^T M^{-1} C)^{-1} \pleq  (1 - \trs{C^T M^{-1} C})^{-1} I$, and 
+by Proposition~\ref{prop:modtrace}\ref{prop:modtrace:monotone}, 
+\[
+\trs{ (I - C^T M^{-1} C)^{-1} C^T M^{-2} C}
+\leq 
+\frac{\trs{C^T M^{-2} C}}{1 - \trs{C^T M^{-1} C}}.
+\]
+Writing $\trs{M^{-1}} = \Phi^{u}_{\sigma} (A) - (\Phi^{u}_{\sigma} (A) - \Phi^{u+\delta}_{\sigma} (A))$, 
+we obtain 
+\[
+\Phi^{u+\delta}_{\sigma} (A + B) 
+\leq 
+\Phi^{u}_{\sigma} (A) - (\Phi^{u}_{\sigma} (A) - \Phi^{u+\delta}_{\sigma} (A)) 
++ 
+\frac{\trs{C^T M^{-2} C}}{1 - \trs{C^T M^{-1} C}},
+\]
+which \eqref{eqn:upperBarrier} and Proposition~\ref{prop:modtrace}\ref{prop:modtrace:rotate} imply is at most $\Phi^{u}_{\sigma} (A)$.
+\end{proof}
+
+We will apply this result with $A = \Ltil_{S}$ and $B = \Ltil_{S,t}$.
+When these terms, along with $u$ and $\delta$ are given, 
+it will be convenient to write 
+\[
+U (S,t) \defeq 
+\frac{\trs{M^{-2} \Ltil_{S,t}}}
+     {\Phi^{u}_{\sigma} (S) - \Phi^{u+\delta }_{\sigma} (S) }
+     + \trs{M^{-1} \Ltil_{S,t}}.
+\]
+
+
+
+
+\begin{lemma}\label{lem:barrier}
+If $\sizeof{S} \leq \sigma$, $\Phi^{u}_{\sigma} (S) \leq \phi$, and $\ell(S) \leq 4 \sizeof{S}$, then for at least half the $t \not \in S$, 
+\[
+U (S,t)
+<
+1
+\]
+\end{lemma}
+\begin{proof}
+We will prove that 
+\[
+\sum_{t \not \in S} U(S,t) \leq \frac{5}{\delta} + 5 \phi.
+\]
+As $U(S,t)$ is non-negative, this implies that for at least half the $t \not \in S$, 
+\[
+U(S,t) \leq \frac{2}{n - \sizeof{S}} \left( \frac{5}{\delta} + 5 \phi \right)
+\leq \frac{2}{n} \frac{42}{41} \left( \frac{5 n}{21} + \frac{5 n}{21} \right)
+< 1.
+\]  
+
+We need to upper bound the terms $\trs{M^{p} \Ltil_{S,t}}$ for $p \in \setof{-1,-2}$.
+We do this by breaking each term into two parts.
+Let $\Pi_{S}$ be the symmetric  projection onto the span of $\Ltil_{S}$
+  and let $\Pi_{T} = I - \Pi_{S}$.
+As $M = (u + \delta) (\Pi_{S} + \Pi_{T}) - \Ltil_{S}$, 
+  $\Pi_{T} \Pi_{S} = \Pi_{T} \Ltil_{S} = 0$,
+  and $\Pi_{S}^p = \Pi_{S}$, 
+\[ 
+  M^p = (u + \delta)^p \Pi_{T} +  
+    \left( (u + \delta) \Pi_{S} - \Ltil_{S} \right)^p.
+\]  
+By the subadditivity of $\Trs$ 
+ we conclude
+\[ 
+\trs{M^{p} \Ltil_{S,t}}
+\leq 
+\trs{ (u + \delta)^p \Pi_{T} \Ltil_{S,t}}
++
+\trs{ \left( (u + \delta) \Pi_{S} - \Ltil_{S} \right)^p \Ltil_{S,t}}.
+\]
+The term invovling $\Pi_{S}$ is addressed by Claim~\ref{clm:barrierSPart}, which says
+\[
+  \sum_{t \not \in S} 
+  \trs{\left( (u+\delta)\Pi_{S} - \Ltil_{S} \right)^{p} \Ltil_{S,t}}
+\leq
+  \trs{M^{p}}.
+\]
+
+For the other term, we recall that $\Pi_{T}$ and $\Ltil_{S,t}$ are positive semidefinite and so their product has only non-negative eigenvalues to show
+\[
+\trs{ (u + \delta)^p \Pi_{T} \Ltil_{S,t}}
+\leq 
+\trace{ (u + \delta)^p \Pi_{T} \Ltil_{S,t}}
+\\ = 
+(u + \delta)^p \trace{ \Pi_{T} \Ltil_{S,t}}
+\leq 
+(u + \delta)^p \trace{\Ltil_{S,t}}.
+\]
+Claim~\ref{clm:ellSt} tells us that this equals $(u + \delta)^p \ell(S,t)$, giving
+\[
+\sum_{t \not \in S} \trs{ (u + \delta)^p \Pi_{T} \Ltil_{S,t}}
+\leq 
+(u + \delta)^p \sum_{t \not \in S} \ell(S,t) 
+= 
+(u + \delta)^p \ell(S)
+\leq 
+(u + \delta)^p 4 \sizeof{S}.
+\]
+
+To combine these terms, note that all the eigenvalues of $M$ are at most $(u+\delta)$, and thus for $p < 0$ all the eigenvalues of $M^p$ are at least $(u+\delta)^p$. 
+This tells us that $\trs{M^p} \geq \sigma (u+\delta)^p \geq \sizeof{S} (u+\delta)^p$. 
+We conclude that
+\[
+\sum_{t \not \in S} \trs{M^p \Ltil_{S,t}}
+\leq 
+5 \trs{M^p}.
+\]
+
+To finish, we return to  
+\[
+\sum_{t \not \in S}
+U (S,t)
+= 
+\sum_{t \not \in S}
+\frac{\trs{M^{-2} \Ltil_{S,t}}}
+     {\Phi^{u}_{\sigma} (S) - \Phi^{u+\delta }_{\sigma} (S) }
++ 
+\sum_{t \not \in S}
+\trs{M^{-1} \Ltil_{S,t}}
+\leq
+\frac{5 \trs{M^{-2}}}
+     {\Phi^{u}_{\sigma} (S) - \Phi^{u+\delta }_{\sigma} (S) }
++ 
+5 \trs{M^{-1}}.
+\]
+The right-hand term is at most $5 \Phi^{u+\delta}_{\sigma} (S)$,
+  and Claim~\ref{clm:barrierPhi} shows that
+  the left-hand term is at most $\frac{5}{\delta}$.
+Summing these together gives the result.
+\end{proof}
+
+
+\begin{claim}\label{clm:barrierSPart}
+Assume that $\sizeof{S} \leq  \sigma$. 
+For $M = (u+\delta)I - \Ltil_{S}$, and nonzero real  $p$,
+\[
+  \sum_{t \not \in S} 
+  \trs{\left( (u+\delta)\Pi_{S} - \Ltil_{S} \right)^{p} \Ltil_{S,t}}
+\leq
+  \trs{M^{p}}.
+\]
+\end{claim}
+\begin{proof}
+Because both $\Ltil_{S,t}$ and $\left( (u+\delta)\Pi_{S} - \Ltil_{S} \right)^{p}$ are positive semidefinite, the eigenvalues of their product are nonnegative, and so 
+\[
+  \trs{\left( (u+\delta)\Pi_{S} - \Ltil_{S} \right)^{p} \Ltil_{S,t}}
+\leq 
+  \trace{\left( (u+\delta)\Pi_{S} - \Ltil_{S} \right)^{p} \Ltil_{S,t}}.
+\] 
+As $\sum_{t \not \in S} \Ltil_{S,t} = \Ltil_{S,T} \pleq I$, 
+  Proposition~\ref{prop:modtrace}\ref{prop:modtrace:monotone} implies
+\begin{multline*}
+  \sum_{t \not \in S} 
+  \trace{\left( (u+\delta)\Pi_{S} - \Ltil_{S} \right)^{p} \Ltil_{S,t}}
+=
+  \trace{\left( (u+\delta)\Pi_{S} - \Ltil_{S} \right)^{p} \Ltil_{S,T}}
+\\
+  \leq 
+  \trace{\left( (u+\delta)\Pi_{S} - \Ltil_{S} \right)^{p}}
+  = 
+    \trace{\Pi_{S} \left( (u+\delta) I - \Ltil_{S} \right)^{p} \Pi_{S}}
+    = 
+        \trace{\Pi_{S} M^{p} \Pi_{S}}.
+\end{multline*}
+By Ky Fan's maximum principle (Proposition~\ref{prop:modtrace}\ref{prop:modtrace:max})
+  this latter term is at most $\trs{M^{p}}$.
+\end{proof}
+
+
+
+\begin{claim}\label{clm:barrierPhi}
+\[
+\Phi^{u}_{\sigma} (S) - \Phi^{u+\delta }_{\sigma} (S) 
+\geq 
+\delta \trs{M^{-2}}.
+\]
+\end{claim}
+\begin{proof}
+Let $\lambda_{1}, \dotsc , \lambda_{\sigma}$
+  be the largest $\sigma$ eigenvalues of $\Ltil_{S}$.
+Then,
+\begin{align*}
+\Phi^{u}_{\sigma} (S) - \Phi^{u+\delta }_{\sigma} (S)
+& =
+  \sum_{i=1}^{\sigma} \frac{1}{u - \lambda_{i}}
+- 
+  \sum_{i=1}^{\sigma} \frac{1}{u + \delta - \lambda_{i}}
+\\
+& =
+  \sum_{i=1}^{\sigma} \frac{\delta }{(u - \lambda_{i}) (u + \delta - \lambda_{i})}
+\\
+& \geq 
+  \sum_{i=1}^{\sigma} \frac{\delta }{(u + \delta - \lambda_{i})^{2}}.
+\\
+& = 
+ \delta \trs{M^{-2}}.
+\end{align*}
+\end{proof}
+
+\newcommand{\etalchar}[1]{$^{#1}$}
+\begin{thebibliography}{KLP{\etalchar{+}}16}
+
+\bibitem[BSS12]{BSS}
+Joshua Batson, Daniel~A Spielman, and Nikhil Srivastava.
+\newblock Twice-{Ramanujan} sparsifiers.
+\newblock {\em SIAM Journal on Computing}, 41(6):1704--1721, 2012.
+
+\bibitem[Fan49]{KyFanWeyl}
+Ky~Fan.
+\newblock On a theorem of {Weyl} concerning eigenvalues of linear
+  transformations {I}.
+\newblock {\em Proceedings of the National Academy of Sciences of the United
+  States of America}, 35(11):652, 1949.
+
+\bibitem[HJ12]{HornJohnsonMatrix}
+Roger~A Horn and Charles~R Johnson.
+\newblock {\em Matrix analysis}.
+\newblock Cambridge university press, 2012.
+
+\bibitem[KLP{\etalchar{+}}16]{kyng2016sparsified}
+Rasmus Kyng, Yin~Tat Lee, Richard Peng, Sushant Sachdeva, and Daniel~A
+  Spielman.
+\newblock Sparsified {Cholesky} and multigrid solvers for connection
+  {Laplacians}.
+\newblock In {\em Proceedings of the forty-eighth annual ACM symposium on
+  Theory of Computing}, pages 842--850. ACM, 2016.
+
+\bibitem[LPS15]{LeePengSpielman}
+Yin~Tat Lee, Richard Peng, and Daniel~A. Spielman.
+\newblock Sparsified {Cholesky} solvers for {SDD} linear systems.
+\newblock {\em CoRR}, abs/1506.08204, 2015.
+
+\bibitem[SHS15]{CarliSilvaHS}
+Marcel K De~Carli Silva, Nicholas~JA Harvey, and Cristiane~M Sato.
+\newblock Sparse sums of positive semidefinite matrices.
+\newblock {\em ACM Transactions on Algorithms (TALG)}, 12(1):1--17, 2015.
+
+\end{thebibliography}
+
+
+
+
+\end{document}
+  
+ 
