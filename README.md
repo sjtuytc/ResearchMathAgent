@@ -1,29 +1,20 @@
-# AgentForMath
+# RMA: an Agentic System for Research-Level Mathematical Problems
 
-> A math-agent research system from problem statement to verifiable proof artifacts.
+[[Paper (arXiv)](https://arxiv.org/abs/2605.22875)] [[Final Solutions on First Proofs](final_solutions/)]
 
-Built by researchers at **Georgia Institute of Technology**.
+Official code release for **RMA**.
+RMA is a research math agent system that turns problem statements into verifiable proof artifacts.
 
-**Quick Links**: [Paper (arXiv)](https://arxiv.org/abs/2605.22875) | [Final Solutions](final_solutions/) | [Problems](problems/)
+- Multi-agent iterative workflow (`initializer -> proposer -> verifier -> refiner`).
+- Benchmark-oriented repository with problem sets and merged final solutions.
+- Reproducible outputs in structured artifacts (e.g., LaTeX/PDF + machine-readable files).
 
-`AgentForMath` is the implementation workspace for **RMA (Research Math Agents)**, a framework for solving research-level mathematical problems with multi-agent iterative refinement and verifier feedback.
+## Abstract
 
-This repository focuses on hard benchmark problems and organizes agent-generated outputs into reproducible proof artifacts (LaTeX/PDF). The current repository already contains problem sets, project skills, and merged final solutions.
-
-This README is both:
-- a research-facing project entrypoint linked to the RMA paper, and
-- a **vNext system design draft** inspired by `PoggioAI_MSc`, tailored to math-agent workflows.
-
+We present $\textbf{Research Math Agents (RMA)}$, an agentic framework for automated reasoning on research-level mathematical problems. Unlike prior studies centered on competition mathematics or formal theorem proving, RMA targets research-level mathematical problems that require long-horizon reasoning, literature grounding, and iterative proof refinement. RMA decomposes research-level proof solving into specialized modules for problem analysis, literature search and understanding, fair comparison, knowledge-bank construction, and proof verification, all coordinated by initializer, proposer, and verifier agents through a shared structured memory. Within this unified framework, these agents operate in a multi-role, multi-round workflow, collaboratively generating, refining, and verifying candidate proofs through iterative feedback. We evaluate RMA on the First Proof benchmark, which consists of ten research-level problems contributed by expert mathematicians across diverse domains. Through comprehensive expert evaluation, RMA outperforms strong baselines on the First Proof benchmark, including GPT-5.2R and Aletheia, solving eight out of ten research problems and producing more logically sound and readable proofs. Our comprehensive ablation studies further show that performance gains arise from the interaction of structured reasoning modules, iterative refinement, and verifier-based feedback, rather than any single component.
 ---
 
-## Paper
-
-- **Title**: *RMA: an Agentic System for Research-Level Mathematical Problems*
-- **Authors**: Zelin Zhao, Bo Yuan, Jaemoo Choi, Yongxin Chen
-- **Institution**: Georgia Institute of Technology
-- **arXiv**: https://arxiv.org/abs/2605.22875
-
-### Paper Summary
+## Overview
 
 RMA targets **research-level mathematics** (not just competition math or formal theorem proving) by combining specialized modules for:
 - problem analysis,
@@ -32,7 +23,7 @@ RMA targets **research-level mathematics** (not just competition math or formal 
 - knowledge-bank construction, and
 - proof verification.
 
-Within a multi-role, multi-round workflow, initializer/proposer/verifier agents share structured memory to iteratively generate, refine, and validate candidate proofs. On the First Proof benchmark, the paper reports stronger results than strong baselines through the combination of structured modules, iterative refinement, and verifier-based feedback.
+Within a multi-role, multi-round workflow, initializer/proposer/verifier agents share structured memory to iteratively generate, refine, and validate candidate proofs. On the First Proof benchmark, RMA reports stronger results than strong baselines through structured modules, iterative refinement, and verifier feedback.
 
 ---
 
