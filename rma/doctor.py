@@ -14,9 +14,9 @@ REQUIRED_PATHS = (
     "main.tex",
     "references.bib",
     "neurips_2026.sty",
-    "problems",
+    "data/first_proof_1/problems",
     "skills",
-    "output_solutions",
+    "outputs/first_proof_1",
     "figures/teaser.pdf",
     "figures/model.pdf",
     "config/default.yaml",
@@ -43,7 +43,7 @@ def run_doctor(args: Namespace) -> int:
 
     if repo_root is None:
         print("RMA doctor")
-        print("FAIL repo root: could not find README.md and problems/ from this directory")
+        print("FAIL repo root: could not find README.md and data/first_proof_1/problems from this directory")
         return 1
 
     checks.append(Check("PASS", "repo root", str(repo_root)))
@@ -83,7 +83,7 @@ def _resolve_repo_root(repo_root: str | None) -> Path | None:
 
 
 def _looks_like_repo_root(path: Path) -> bool:
-    return (path / "README.md").is_file() and (path / "problems").is_dir()
+    return (path / "README.md").is_file() and (path / "data" / "first_proof_1" / "problems").is_dir()
 
 
 def _check_python() -> list[Check]:
@@ -117,10 +117,10 @@ def _check_optional_tools() -> list[Check]:
 
 
 def _check_writable_runs(repo_root: Path) -> list[Check]:
-    output_dir = repo_root / "output_solutions"
+    output_dir = repo_root / "outputs" / "first_proof_1"
     target = output_dir if output_dir.exists() else repo_root
 
     if os.access(target, os.W_OK):
-        detail = "output_solutions/ exists and is writable" if output_dir.exists() else "repo root is writable; output_solutions/ can be created later"
+        detail = "outputs/first_proof_1/ exists and is writable" if output_dir.exists() else "repo root is writable; outputs/first_proof_1/ can be created later"
         return [Check("PASS", "output directory", detail)]
     return [Check("FAIL", "output directory", f"{target} is not writable")]

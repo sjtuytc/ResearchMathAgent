@@ -84,7 +84,7 @@ def _add_pipeline_arguments(parser: argparse.ArgumentParser, *, render: bool, ma
     parser.add_argument(
         "--output",
         default=None,
-        help="Output experiment directory. Defaults to output_solutions/<exp-name>_<model-name>.",
+        help="Output experiment directory. Defaults to outputs/first_proof_1/<exp-name>_<model-name>.",
     )
     parser.add_argument(
         "--exp-name",

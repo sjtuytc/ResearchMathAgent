@@ -33,8 +33,10 @@ MATHEMATICAL_ISSUE_CODES = {
     "unresolved_citations",
     "boundary_cases_not_proved",
 }
-BLOCKED_INPUT_DIRS = ("final_solutions", "output_solutions", "skill_solutions", "baselines")
-BLOCKED_OUTPUT_DIRS = ("final_solutions", "skill_solutions", "baselines")
+PROBLEMS_DIR = "data/first_proof_1/problems"
+OUTPUT_BASE_DIR = "outputs/first_proof_1"
+BLOCKED_INPUT_DIRS = ("data/first_proof_1/final_solutions", "outputs", "skill_solutions", "baselines")
+BLOCKED_OUTPUT_DIRS = ("data/first_proof_1/final_solutions", "skill_solutions", "baselines")
 LATEX_AUX_SUFFIXES = (".aux", ".fdb_latexmk", ".fls", ".log", ".out", ".synctex.gz")
 MONTH_NAMES = (
     "january",
@@ -258,7 +260,7 @@ def _build_context(command: str, args: Namespace) -> tuple[Path, tuple[str, ...]
     repo_root = _resolve_repo_root(getattr(args, "repo_root", None))
     if repo_root is None:
         print(f"RMA {command}")
-        print("FAIL repo root: could not find README.md and problems/ from this directory")
+        print("FAIL repo root: could not find README.md and data/first_proof_1/problems from this directory")
         return None
 
     problems = PROBLEM_IDS if getattr(args, "all", False) else (_normalize_problem_id(getattr(args, "problem", None)),)
@@ -290,7 +292,7 @@ def _parse_problem(
     skill_info: dict[str, str],
 ) -> Path:
     paths = _problem_paths(output_dir, problem_id)
-    problem_path = repo_root / "problems" / f"{problem_id}.tex"
+    problem_path = repo_root / PROBLEMS_DIR / f"{problem_id}.tex"
     _ensure_allowed_input(repo_root, problem_path)
     if not problem_path.is_file():
         raise FileNotFoundError(f"Missing problem file: {problem_path}")
@@ -580,7 +582,7 @@ def _resolve_output_dir(repo_root: Path, args: Namespace) -> Path:
         now = datetime.now()
         exp_name = getattr(args, "exp_name", None) or f"proofs_v1_{MONTH_NAMES[now.month - 1]}{now.day}"
         folder_name = f"{_safe_name(exp_name)}_{_safe_name(getattr(args, 'model_name', 'rma-skeleton'))}"
-        output_dir = repo_root / "output_solutions" / folder_name
+        output_dir = repo_root / OUTPUT_BASE_DIR / folder_name
     output_dir = output_dir.resolve()
     _ensure_allowed_output(repo_root, output_dir)
     return output_dir
@@ -664,7 +666,7 @@ def _build_parsed_problem(problem_meta: dict[str, str], source: str, output_dir:
         "quantifier_summary": _extract_quantifier_summary(statement),
         "boundary_cases": _extract_boundary_cases(statement),
         "fairness_boundary": {
-            "allowed_inputs": ["problems/", "skills/"],
+            "allowed_inputs": [f"{PROBLEMS_DIR}/", "skills/"],
             "blocked_inputs": list(BLOCKED_INPUT_DIRS),
             "output_root": _relative_to_output(output_dir, output_dir),
         },
@@ -1272,7 +1274,7 @@ def _write_state(
             "solution": _relative_to_output(output_dir, paths["solution"]),
             "skill": skill_info,
             "blocked_input_dirs": list(BLOCKED_INPUT_DIRS),
-            "fairness_note": "Pipeline stages may read problems/, skills/, and same-run artifacts only; official/prior solution directories are blocked.",
+            "fairness_note": f"Pipeline stages may read {PROBLEMS_DIR}/, skills/, and same-run artifacts only; official/prior solution directories are blocked.",
             "stage_files": stage_files,
         }
     )
@@ -1300,9 +1302,9 @@ def _print_stage_summary(stage: str, repo_root: Path, output_dir: Path, paths: l
 
 def _ensure_allowed_input(repo_root: Path, path: Path) -> None:
     resolved = path.resolve()
-    problems_dir = (repo_root / "problems").resolve()
+    problems_dir = (repo_root / PROBLEMS_DIR).resolve()
     if not _is_relative_to(resolved, problems_dir):
-        raise ValueError(f"Input is outside problems/: {path}")
+        raise ValueError(f"Input is outside {PROBLEMS_DIR}/: {path}")
     for blocked in BLOCKED_INPUT_DIRS:
         blocked_dir = (repo_root / blocked).resolve()
         if _is_relative_to(resolved, blocked_dir):
@@ -1384,7 +1386,7 @@ def _write_report(
                 f"- Solution file: `{solution_path}`",
                 f"- Input copy: `{problem_id}/input/problem.tex`",
                 f"- Skill: `{skill_info['relative_path']}` (`{skill_info['name']}`)",
-                "- Blocked inputs: `final_solutions/`, `output_solutions/`, `skill_solutions/`, `baselines/`",
+                "- Blocked inputs: `data/first_proof_1/final_solutions/`, `outputs/`, `skill_solutions/`, `baselines/`",
                 "",
                 "The pipeline created the benchmark-fair output structure and advanced",
                 "this problem through the requested stage.",
