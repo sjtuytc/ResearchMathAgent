@@ -63,20 +63,46 @@ def gen_trees(n):
         yield edges
 
 def short_vectors(M, max_norm, lam_min):
-    """Yield all integer vectors a with 1 <= a^T M a <= max_norm via bounded box + recursion."""
+    """Yield all integer vectors a with 1 <= a^T M a <= max_norm.
+
+    Rigorous Fincke-Pohst style enumeration via Cholesky M = R^T R (R upper).
+    Then a^T M a = sum_i ( sum_{j>=i} R[i,j] a[j] )^2. Enumerate coords from last
+    to first; at each level the partial sum of completed squares bounds choices,
+    guaranteeing NO short vector is missed.
+    """
     n = M.shape[0]
     if max_norm < 1:
         return
-    B = int(np.ceil(np.sqrt(max_norm / max(lam_min, 1e-9)))) + 1
-    # recursive enumeration with running quadratic form is overkill for small n; box filter
-    rng = range(-B, B + 1)
-    for a in itertools.product(rng, repeat=n):
-        av = np.array(a, dtype=np.int64)
-        if not av.any():
-            continue
-        q = int(av @ M @ av)
-        if 1 <= q <= max_norm:
-            yield av, q
+    R = np.linalg.cholesky(M.astype(np.float64)).T  # upper triangular, R^T R = M
+    a = [0] * n
+    EPS = 1e-9
+
+    def rec(i, partial):
+        # partial = sum over rows k>i of (sum_{j>=k} R[k,j] a[j])^2 already fixed
+        # at row i: term = R[i,i]*a[i] + sum_{j>i} R[i,j]*a[j]
+        rem = max_norm - partial
+        if rem < -EPS:
+            return
+        if i < 0:
+            av = np.array(a, dtype=np.int64)
+            if av.any():
+                q = int(av @ M @ av)  # exact integer norm, no float rounding
+                if 1 <= q <= max_norm:
+                    yield av, q
+            return
+        s = sum(R[i, j] * a[j] for j in range(i + 1, n))  # contribution of already-set higher coords
+        rii = R[i, i]
+        # |rii*ai + s| <= sqrt(rem); add slack so we never miss a valid coord
+        half = np.sqrt(max(rem, 0.0) + 1e-6)
+        lo = int(np.floor((-half - s) / rii - EPS))
+        hi = int(np.ceil((half - s) / rii + EPS))
+        for ai in range(lo, hi + 1):
+            a[i] = ai
+            term = rii * ai + s
+            yield from rec(i - 1, partial + term * term)
+        a[i] = 0
+
+    yield from rec(n - 1, 0.0)
 
 def is_reducible(M, u, lam_min):
     """e_u reducible? search a with 1<=|a|^2<=w(u)-1, b=e_u-a nonzero, a.b>=0."""
