@@ -1,4 +1,4 @@
-# AgentForMath — Research Project
+# ResearchMathAgent — Research Project
 
 ## Overview
 This project studies the **$\varepsilon$-light subset problem** in spectral graph theory.
@@ -32,18 +32,19 @@ All 10 problems from the *First Proof* benchmark live in `problems/`:
 - `.claude/skills/math-research/SKILL.md` — Project-local skill install
 
 ## Active Work
-Currently focused on **Q6** ($\varepsilon$-light subsets). Solutions go in `ai_assignments/`.
+Currently building the benchmark-fair `rma solve` pipeline. New solver outputs go in `output_solutions/<exp-name>_<model-name>/`.
 
 ## ⛔ STRICT RULE: DO NOT READ PREVIOUS SOLUTIONS
 
-**Never read, glob, or grep inside `skill_solutions/` or `baselines/` directories.**
+**Never read, glob, or grep existing files inside `output_solutions/`, `final_solutions/`, or `baselines/` directories.**
 
 These directories contain prior AI-generated solutions to the benchmark problems. Reading them constitutes cheating on the benchmark and invalidates the evaluation. `.claudeignore` suppresses them from automatic context, but tool-based access (`Read`, `Glob`, `Grep`) is also forbidden.
 
 This rule applies to Claude itself, all sub-agents, and any automated process. Violation includes:
-- Reading any file under `skill_solutions/`
+- Reading any existing file under `output_solutions/`
+- Reading any file under `final_solutions/`
 - Reading any file under `baselines/`
 - Using prior solutions to "understand the format" before writing new ones
 - Asking a sub-agent to do any of the above
 
-The only permitted reads are: `problems/`, `ai_assignments/`, `skills/`, `.claude/skills/`, `CLAUDE.md`, and preamble files.
+The only permitted reads for solving are: `problems/`, `skills/`, `CLAUDE.md`, and preamble files. The solver may write fresh files under its own new `output_solutions/<exp-name>_<model-name>/` folder, but must not read prior solution files from that tree.
