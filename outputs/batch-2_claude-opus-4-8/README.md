@@ -23,7 +23,7 @@ output format (`prob-XXX.tex`, standalone LaTeX).
 | 003 | Probability | Holds iff **p ∈ [0,⅓] ∪ {½} ∪ {1}** | Complete (one step via extremal reduction) |
 | 004 | Metric geometry (k-dilation) | Volume inequality + full dichotomy | Partial: Case A complete; Case B = Guth directional coarea (cited) |
 | 005 | Singular SPDE | **Unique** invariant measure | Partial: Doob–Khasminskii architecture rigorous; n-uniform gradient bound = [ABLM24] mechanism (cited) |
-| 006 | Lattices on trees | Irreducible vertex = **v** (the one with w(v)<d(v)) | Partial: main cases proved; one degree-regime case flagged |
+| 006 | Lattices on trees | Existence of irreducible vertex (TRUE); weight-1 vertices always irreducible | ⚠️ `prob-006.tex` is WRONG (claimed "v is irreducible" — refuted by brute force, v reducible in ~14%); corrected attempt in `prob-006_corrected.tex` |
 | 007 | Topology / GGT | **F_w is contractible** | Complete, modulo Nerve Lemma + Ω²(aspherical) (standard, cited) |
 | 008 | Tropical geometry (Dressian) | **Yes** | Partial: proved for Boolean family; verified all matroids ≤5 elements |
 | 009 | Algebraic combinatorics | Hook coeffs c_λ(n): single-row = #{σ: maj(σ)=a}; general hook = Weyl alt. sum / parking-fn | Partial: single-row complete; general hook validated n≤5 |

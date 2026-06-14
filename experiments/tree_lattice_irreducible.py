@@ -254,9 +254,15 @@ def run():
                 if len(deficient) != 1:
                     continue
                 M = build_M(n, edges, w)
+                # strict positive-definiteness: smallest eigenvalue safely > 0
+                evmin = float(np.linalg.eigvalsh(M.astype(np.float64)).min())
+                if evmin <= 1e-7:
+                    continue
                 try:
                     Rnp = np.linalg.cholesky(M.astype(np.float64)).T
                 except np.linalg.LinAlgError:
+                    continue
+                if min(float(Rnp[i, i]) for i in range(n)) <= 1e-6:
                     continue
                 R = [[float(Rnp[i, j]) for j in range(n)] for i in range(n)]
                 Mrows = [[int(M[i, j]) for j in range(n)] for i in range(n)]
