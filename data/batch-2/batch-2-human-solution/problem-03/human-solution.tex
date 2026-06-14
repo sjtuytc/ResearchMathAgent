@@ -1,0 +1,275 @@
+%\documentclass[a4paper,11pt]{article}
+\documentclass[11pt]{amsart}
+
+\usepackage[dvipsnames]{xcolor}
+\usepackage{todonotes}
+\usepackage[utf8]{inputenc}
+\usepackage{comment,enumerate,graphicx}
+\usepackage{enumitem,amsmath,amssymb}
+\usepackage{amsthm}
+\usepackage{thmtools}
+\usepackage{url}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[top=23 mm, bottom=23 mm, left=21 mm, right= 21 mm]{geometry}
+\usepackage{relsize}
+\usepackage{microtype}
+
+
+\usepackage[hidelinks]{hyperref}
+%%%% Code for property numbering in theorems.
+\makeatletter
+\newcommand{\labelinthm}[1]{%
+   \label{temp#1}
+   \protected@write \@auxout {}{\string \newlabel{#1}{{\emph{\ref{temp#1}}}{\thepage}{\emph{\ref{temp#1}}}{temp#1}{}} }%
+   %\hypertarget{temp#1}{\emph{\ref{temp#1}}}
+}
+\makeatother
+\usepackage{adjustbox}
+\usepackage{tikz}
+\usetikzlibrary{math,calc,intersections, scopes}
+\usetikzlibrary{positioning,arrows,shapes,decorations.markings,decorations.pathreplacing, decorations.pathmorphing,matrix,patterns}
+\tikzstyle{vertex}=[circle,draw=black,fill=black,inner sep=0,minimum size=5pt,text=white,font=\footnotesize]
+\tikzstyle{redvertex}=[circle,draw=red,fill=red,inner sep=0,minimum size=5pt,text=white,font=\footnotesize]
+\definecolor{amber}{rgb}{1.0, 0.75, 0.0}
+\definecolor{darkgreen}{rgb}{0.18, 0.7, 0.46}
+
+\newcommand\anote[1]{\todo[color=Green!50]{#1}}
+\global\long\def\am#1{\textcolor{red}{\textbf{[AM comments:} #1\textbf{]}}}
+\global\long\def\zh#1{\textcolor{blue}{\textbf{[ZH comments:} #1\textbf{]}}}
+
+\declaretheorem[name=Theorem]{theorem}
+
+
+\newtheorem{lemma}[theorem]{\bf Lemma}
+\newtheorem{corollary}[theorem]{\bf Corollary}
+\newtheorem{claim}[theorem]{\bf Claim}
+\newtheorem{proposition}[theorem]{\bf Proposition}
+\newtheorem{conjecture}[theorem]{\bf Conjecture}
+\newtheorem{question}[theorem]{\bf Question}
+\newtheorem{problem}[theorem]{\bf Problem}
+\newtheorem*{theorem*}{\bf Theorem}
+
+\theoremstyle{definition}
+
+\newtheorem{remark}[theorem]{\bf Remark}
+\newtheorem{definition}[theorem]{\bf Definition}
+\newtheorem{result}[theorem]{\bf Result}
+\newtheorem{example}{\bf Example}
+\newtheorem{exampletwo}{\bf Example}
+\renewcommand\theexample{\textbf{E\arabic{example}}}
+\renewcommand\theexampletwo{\textbf{F\arabic{exampletwo}}}
+\newcommand\eref[1]{\emph{\ref{#1}}}
+
+\newenvironment{claimproof}{%
+  \renewcommand{\qedsymbol}{$\boxdot$}%
+  \begin{proof}%
+}{%
+  \end{proof}%
+  \renewcommand{\qedsymbol}{$\square$}%
+}
+
+
+\newcommand\claimproofend{\renewcommand{\qedsymbol}{$\boxdot$}
+\end{proof}
+\renewcommand{\qedsymbol}{$\square$}
+}
+\def\eps{\varepsilon}
+\def\vx{\textbf{x}}
+\def\vy{\textbf{y}}
+\def\vz{\textbf{z}}
+\def\Hom{\mathrm{Hom}}
+\def\cC{\mathcal{C}}
+\def\cD{\mathcal{D}}
+\def\cF{\mathcal{F}}
+\def\cG{\mathcal{G}}
+\def\cH{\mathcal{H}}
+\def\cN{\mathcal{N}}
+\def\cP{\mathcal{P}}
+\def\cQ{\mathcal{Q}}
+\def\cS{\mathcal{S}}
+\def\bF{\mathbb{F}}
+\def\bE{\mathbb{E}}
+\def\bR{\mathbb{R}}
+\def\bZ{\mathbb{Z}}
+\def\Pb{\mathbb{P}}
+\def\ex{\mathrm{ex}}
+
+\def\be{\boldsymbol{e}}
+\def\bx{\boldsymbol{x}}
+\def\by{\boldsymbol{y}}
+\def\bz{\boldsymbol{z}}
+
+\DeclareMathOperator{\red}{red}
+\DeclareMathOperator{\blue}{blue}
+\DeclareMathOperator{\spn}{span}
+
+\title{\vspace{-0.9cm} On the Probability a Weighted Bernoulli Sum Exceeds Its Mean}
+\date{}
+
+\author{Aleksa Milojevi\'c}
+\author{Benny Sudakov}
+\thanks{Department of Mathematics, ETH Z\"urich, Switzerland. Email: {\tt \{aleksa.milojevic, benjamin.sudakov\}@math.ethz.ch}. Research supported in part by SNSF grant 200021-228014.}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Let $w_1, \dots, w_m$ be positive real weights summing to $1$, and let $v_1, \dots, v_m$ be i.i.d. Bernoulli$(p)$ random variables. If we let $X=\sum_{i=1}^m w_i v_i$, then we ask for which $p\in (0, 1)$ we have that
+\[\Pb\big[X\geq \bE[X]\big]\geq p?\] 
+In this short note, we observe a connection of this question with a version of the Manickam--Mikl\'os--Singhi conjecture, which allows one to resolve it for sufficiently small values of $p$.
+\end{abstract}
+
+\section{Introduction}
+
+Let $w\in \bR_{>0}^m$ be a vector of positive weights satisfying $\sum_{i=1}^m w_i=1$, and let $v\in \{0, 1\}^m$ be a random binary vector, in which every coordinate equals $1$ independently and with some fixed probability $p$. Then, the random variable $X=\langle w, v\rangle$ takes
+values in $[0,1]$ and satisfies $\bE[X]=p$. 
+
+In this note, we study lower bounds on the probability that $X$ exceeds $p$, i.e. its mean. In general, one cannot expect a lower bound better than $p$, because of the following example. If $m=1$ and $w_1=1$, then $X=v_1$ and $\Pb[X\ge \bE[X]]=\Pb[v_1=1]=p$. The following question asks for which value of $p$ this example is indeed the worst one. 
+
+\begin{question}\label{q:prob}
+For which values of $p\in (0, 1)$ does the following hold? For every $w\in \bR_{>0}^m$ such that $\sum_{i=1}^m w_i=1$, if $v\in \{0, 1\}^m$ is a random vector with i.i.d. Bernoulli$(p)$ coordinates, then
+\[\Pb[\langle v, w\rangle\geq p]\geq p.\]
+\end{question}
+
+To the best of our knowledge, the first result proved in this direction comes from the work of Alon, Emek, Feldman and Tennenholtz~\cite{AEFT13} on information leakage in adversarial games, where they have shown that $\Pb[X\ge \bE[X]]\ge p(1-p)/10$ for all $p$, which is tight up to a constant factor for $p\leq 1/2$. One natural guess would be that Question~\ref{q:prob} holds for all $p\leq 1/3$ and for $p=1/2$. In Proposition~\ref{prop:counterexample} we show that the inequality does not hold for other values of $p$.
+
+It is also worth noting that \cite{AEFT13} already proposes a very elegant coupling argument showing that the answer to Question~\ref{q:prob} is yes if $p$ is of the form $p=\frac{1}{n}$ for some positive integer $n$. In fact, the proof in this note is inspired by their argument. %Also, the reason for the $p\leq 1/3$ assumption is that when $p>1/3$ the statement is simply not true (unless $p=1/2$), as we will show in Proposition~\ref{prop:counterexample}.
+
+Let us also note that in the special case where all weights are equal (so that $mX\sim \mathrm{Bin}(m,p)$), related lower bounds for $\Pb[\mathrm{Bin}(m,p)\ge mp]$ have been studied; see, e.g., Greenberg--Mohri~\cite{GM14}, Pelekis--Ramon~\cite{PR16}, and Doerr~\cite{Doe18}. Finally, let us mention that Question~\ref{q:prob} is also vaguely reminiscent of Feige's conjecture, which states that for independent positive random variables $X_1, \dots, X_n$, each of which has expectation $1$, we have $\Pb[X_1+\dots+X_n\geq n+1]\leq 1-1/e$. 
+
+The purpose of this note is to explain an unexpected (at least to us) connection of this problem to the classical
+Manickam--Mikl\'os--Singhi (MMS) conjecture on the number of nonnegative $k$-sums.
+
+\begin{conjecture}\label{conj:MMS}
+Let $n,k$ be positive integers, with $n\ge 4k$. For any real numbers $x_1,\dots,x_n$ whose sum is $0$, at least $\binom{n-1}{k-1}$ of the $k$-element subsets $S\subseteq [n]$ satisfy
+\[
+  \sum_{i\in S} x_i \ge 0.
+\]
+\end{conjecture}
+
+This question was first raised by Bier and Manickam~\cite{BM87}, who proved Conjecture~\ref{conj:MMS} when $k$ divides $n$ or when $n$ is much larger than $k$, and this exact form of the conjecture was later put forward by Manickam and Mikl\'os~\cite{MM88} and also by Manickam and Singhi~\cite{MS88}. In 2012, Tyomkyn~\cite{Tyom12} significantly improved the quantitative bounds, proving the conjecture for $n>k(4e\log k)^k$. Later, Alon, Huang and Sudakov~\cite{AHS11} proved the polynomial bound and showed the conjecture when $n\ge 33k^2$. Finally, a linear bound $n\geq 10^{46} k$ was obtained by Pokrovskiy~\cite{Pok15}.
+
+% A condition of the form $n\geq 3k+2$ is necessary for Conjecture~\ref{conj:MMS} to hold, as can be seen from the following example of Bier and Manickam~\cite{BM87}. If $n=3k+1$ and $x_{1}=\cdots=x_{3k-2}=3$ and $x_{3k-1}=x_{3k}=x_{3k+1}=2-3k$, then the only $k$-tuples with nonnegative sum are those which include only positive numbers, and therefore there are at most $\binom{n-3}{k}< \binom{n-1}{k-1}$ such $k$-tuples. 
+
+% Our goal is to show Conjecture~\ref{conj:prob} if the following variant of the Conjecture~\ref{conj:MMS} holds.
+
+% \begin{question}\label{q:MMS_variant}
+% Is the following statement true?
+
+% For any constants $\eps, C>0$, and every sufficiently large integers $n, k$ satisfying $n\geq (3+\eps)k$, we have the following. Let $x_1, \dots, x_n$ be real numbers whose sum is $0$, such that at most $C$ among them are nonnegative and such that any two negative values $x_i, x_j$ are equal. Then, at least $\binom{n-1}{k-1}$ of the $k$-element subsets $S\subseteq [n]$ have nonnegative sum.
+% \end{question}
+
+The main purpose of this note is to prove the following theorem. This theorem, combined with the result of Pokrovskiy~\cite{Pok15}, shows that the answer to Question~\ref{q:prob} is positive for all $0\leq p< 10^{-46}$. Moreover, it shows that conditionally on the Manickam-Mikl\'os-Singhi conjecture being true, Question~\ref{q:prob} holds for all $0\leq p\leq 1/4$.
+
+\begin{theorem}\label{thm:main}
+If there is a constant $c$ such that Conjecture~\ref{conj:MMS} holds for all $n\geq ck$, then Question~\ref{q:prob} holds for all $p\in [0, 1/c)$.
+\end{theorem}
+
+Interestingly, the same theorem would still hold true if one weakens Conjecture~\ref{conj:MMS} to only ask about sequences $x_1, \dots, x_n$ where all negative entries have the same value.
+
+\section{Proofs}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}.]
+We split this proof into two parts - first, we will show the positive answer Question~\ref{q:prob} for all rational numbers $p\in [0, 1/c)$, and then we will extend it to all $p\in [0, 1/c)$ via a simple limiting argument.
+
+Thus, let us assume that we have $p=\frac{k_0}{n_0}$, a rational number, and let $w\in \bR_{>0}^m$ be the corresponding weight vector. Let $t$ be a large integer, and let us set $k=k_0t, n=n_0t$.
+
+The crucial object of the proof is the random $0/1$-matrix $M$, with $n$ rows and $m$ columns. To generate $M$, we will fill out every column with $n-1$ zeros and exactly $1$ one, with the position of the $1$ being uniformly picked among the $n$ possible rows, independently of all other decisions. If we denote the rows of $M$ by $r_1, \dots, r_n$, we calculate the inner products $y_i=\langle w, r_i\rangle$, and we choose a $k$-element set $S\subset [n]$ uniformly at random. Finally, we set $Y=\sum_{i\in S}y_i$. 
+
+\begin{claim}
+The random variable $Y$ has the same distribution as the inner product $X=\langle w, v\rangle$.
+\end{claim}
+\begin{claimproof}
+Since $Y=\langle w, \sum_{i\in S}r_i\rangle$, it suffices to show that $\sum_{i\in S}r_i$ follows the same distribution as $v$. For any fixed set $S$ and $j\in [m]$, the $j$-th coordinate of $\sum_{i\in S}r_i$ is $1$ precisely if one of the rows corresponding to $S$ contains a $1$ in the $j$-th column, which happens exactly with probability $\frac{|S|}{n}=\frac{k}{n}=p$. Since the distribution of $\sum_{i\in S}r_i$ is the same as the distribution of $v$ for any fixed set $S$, the same is true if $S$ is chosen uniformly at random.
+\end{claimproof}
+
+\begin{claim}
+We have \[\Pb[Y\geq p]\geq p.\]
+\end{claim}
+\begin{claimproof}
+Let us define $z_i=y_i-\frac{1}{n}$. First, observe that $y_i$ either takes value $0$ (if all coordinates of $r_i$ are $0$), or it takes value at least $\min_{j\in [m]}\{w_j\}>0$. Further, observe that if $t$ is sufficiently large, then $\frac{1}{n}=\frac{1}{n_0t}<\min_{j\in [m]}\{w_j\}$. Therefore, the only distinct negative value which appears among $z_i$'s is $-\frac{1}{n}$.
+
+Also, since the sum of coordinates of $w$ is $1$ and $M$ contains exactly one $1$ per column, we have \[\sum_{i=1}^n y_i=\langle w, \sum_{i=1}^n r_i\rangle=\langle w, \mathbf{1}\rangle=1.\]
+Thus, $\sum_{i=1}^n z_i=0$. 
+
+Finally, since $p=\frac{k}{n}<1/c$, we have $n\geq ck$. Thus, if Conjecture~\ref{conj:MMS} holds for $n\geq ck$, we can apply it to the numbers $z_1, \dots, z_n$ to conclude that a uniform random set $S\subset[n]$ of size $k$ has nonnegative sum with probability at least $\binom{n-1}{k-1}/\binom{n}{k}=\frac{k}{n}=p$. 
+
+Since $\sum_{i\in S}z_i\geq 0$ is equivalent to $Y=\sum_{i\in S} y_i\geq \frac{|S|}{n}=p$, we conclude that with probability at least $p$ over the choice of $S$ we have $Y\geq p$, as we wanted to show.
+\end{claimproof}
+
+Combining the two claims above shows that $\Pb[\langle v, w\rangle\geq p]=\Pb[Y\geq p]\geq p$ whenever $p$ is a rational and at most $\frac{1}{c}$. To show the conjecture when $p$ is irrational, let $p_i$ be a sequence of rationals approaching $p$ from below and observe that $\Pb[\langle w, v\rangle \geq p_i]\geq p_i$ (where the entries of $v$ are still distributed according to Bernoulli$(p)$, as before). This inequality follows directly from our argument above, since $v$ can be coupled with a vector $v_i$ whose coordinates are distributed according to Bernoulli$(p_i)$, so that we always have that $v$ dominates $v_i$ on every coordinate. The conclusion is that 
+\[\Pb[\langle w, v\rangle\geq p]=\lim_{p_i\to p}\Pb[\langle w, v\rangle\geq p_i]\geq \lim_{p_i\to p}p_i=p\qedhere\]
+\end{proof}
+
+\begin{proposition}\label{prop:counterexample}
+The answer to Question~\ref{q:prob} is negative for any $p\in (1/3, 1)$, with the exception of $p=1/2$. 
+\end{proposition}
+\begin{proof}
+Let us first consider the case $1/3<p<1/2$. In this case, choosing $w=(1/3, 1/3, 1/3)$, we see that $\langle w, v\rangle\geq p$ if and only if $v$ has ones on at least $2$ coordinates. Thus,
+\[\Pb[\langle w, v\rangle\geq p]=3p^2(1-p)+p^3=p(3p-2p^2).\]
+It is not hard to verify that this quantity is smaller than $p$ for all $p\in (1/3, 1/2)$, since 
+\[p-p(3p-2p^2)=p(1-3p+2p^2)=p(1-2p)(1-p)>0.\]
+If $1/2<p<1$, we have a similar example, with $w=(1/2, 1/2)$. Again, we see that $\langle w, v\rangle\geq p$ if and only if $v$ has ones on at least $2$ coordinates. Thus,
+\[\Pb[\langle w, v\rangle\geq p]=p^2<p.\qedhere\]
+\end{proof}
+
+\medskip
+\textbf{Acknowledgements.} We would like to thank Byron Chin, Saba Lepsveridze and Alan Yan for their valuable comments on this paper.
+
+\begin{thebibliography}{99}
+\bibitem{BM87}
+T.~Bier and N.~Manickam,
+\emph{The first distribution invariant of the Johnson-scheme},
+\emph{SEAMS Bull. Math.} \textbf{11} (1987), 61--68.
+
+\bibitem{MM88}
+N.~Manickam and D.~Mikl\'os,
+\emph{On the number of nonnegative partial sums of a nonnegative sum},
+In \emph{Colloq. Math. Soc. Janos Bolyai} \textbf{52} (1987), 385--392.
+
+\bibitem{MS88}
+N.~Manickam and N.~M.~Singhi,
+\emph{First distribution invariants and EKR theorems},
+\emph{J. Combin. Theory Ser. A} \textbf{48} (1988), 91--103.
+
+\bibitem{AEFT13}
+N.~Alon, Y.~Emek, M.~Feldman, and M.~Tennenholtz,
+\emph{Adversarial leakage in games},
+\emph{SIAM J. Discrete Math.} \textbf{27} (2013), 363--385.
+
+\bibitem{AHS11}
+N.~Alon, H.~Huang, and B.~Sudakov,
+\emph{Nonnegative $k$-sums, fractional covers, and probability of small deviations},
+\emph{J. Combin. Theory Ser. B}, \textbf{102} (2012), 784--796.
+
+\bibitem{Tyom12}
+M.~Tyomkyn,
+\emph{An improved bound for the Manickam--Mikl\'os--Singhi conjecture},
+\emph{European J. Combin.} \textbf{33} (2012), 27--32.
+
+\bibitem{GM14}
+S.~Greenberg and M.~Mohri,
+\emph{Tight lower bound on the probability of a binomial exceeding its expectation},
+\emph{Statistics \& Probability Letters} \textbf{86} (2014), 91--98.
+
+\bibitem{PR16}
+C.~Pelekis and J.~Ramon,
+\emph{A lower bound on the probability that a binomial random variable is exceeding its mean},
+\emph{Statistics \& Probability Letters} \textbf{119} (2016), 305--309.
+
+\bibitem{Doe18}
+B.~Doerr,
+\emph{An elementary analysis of the probability that a binomial random variable exceeds its expectation},
+\emph{Statistics \& Probability Letters} \textbf{139} (2018), 67--74.
+
+\bibitem{Pok15}
+A.~Pokrovskiy,
+\emph{A linear bound on the Manickam--Mikl\'os--Singhi conjecture},
+\emph{J. Combin. Theory Ser. A} \textbf{133} (2015), 280--306.
+
+\end{thebibliography}
+
+
+\end{document}

@@ -1,0 +1,298 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[full]{textcomp}
+\usepackage[osf]{newtxtext}
+\usepackage{graphicx}
+
+%% ---- Base math packages (always available) -------------------------------
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{hyperref}
+
+%% ---- Submission preamble (imported so the inlined solution compiles) ----
+\usepackage{amsmath,amssymb,amsthm,mathtools,enumitem}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+
+\newcommand{\HH}{\mathbb H}
+\newcommand{\bd}{\partial}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\barb}{\overline b}
+\newcommand{\barc}{\overline c}
+
+%% ---- Theorem environments not supplied by the submission ------------------
+\makeatletter
+\@ifundefined{theorem}{\newtheorem{theorem}{Theorem}}{}
+\@ifundefined{lemma}{\newtheorem{lemma}{Lemma}}{}
+\@ifundefined{proposition}{\newtheorem{proposition}{Proposition}}{}
+\@ifundefined{corollary}{\newtheorem{corollary}{Corollary}}{}
+\@ifundefined{definition}{\theoremstyle{definition}\newtheorem{definition}{Definition}}{}
+\@ifundefined{remark}{\theoremstyle{remark}\newtheorem{remark}{Remark}}{}
+\makeatother
+
+%% ---- First Proof theme + in-text comment box -----------------------------
+%% Palette from the FINAL DELIVERABLES brand assets:
+%%   slate     #171313  (ink)
+%%   warm-gray #69626D  (secondary)
+%%   sand      #F2ECE9  (light background)
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+
+\definecolor{FPslate}{HTML}{171313}
+\definecolor{FPwarmgray}{HTML}{69626D}
+\definecolor{FPsand}{HTML}{F2ECE9}
+
+% Reviewer number for this document (set per file). Used by the comment box tag.
+\newcommand{\reviewernum}{1}
+
+% \review{...} : a First-Proof-themed reviewer comment, set inline in the text
+%            as a sand box with a warm-gray rule and a "Reviewer N" tag.
+\newtcolorbox{reviewbox}{
+  breakable, enhanced, sharp corners,
+  colback=FPsand, colframe=FPwarmgray,
+  coltext=FPslate, boxrule=0pt, leftrule=2.5pt,
+  left=8pt, right=8pt, top=14pt, bottom=5pt,
+  before skip=6pt, after skip=6pt,
+  fontupper=\small,
+  overlay unbroken and first={
+    \node[anchor=north east, font=\bfseries\footnotesize\sffamily,
+          text=FPwarmgray, inner sep=0pt]
+      at ([xshift=-8pt,yshift=-4pt]frame.north east) {Reviewer~\reviewernum};}
+}
+\newcommand{\review}[1]{\begin{reviewbox}#1\end{reviewbox}}
+
+\title{Review of Submission 7C}
+\author{First Proof Second Batch \\ Reviewer \reviewernum}
+\date{June 4--8, 2026}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \noindent
+  \begin{minipage}[t]{0.68\textwidth}
+    \vspace{20pt}
+    \raggedright
+    {\LARGE\bfseries \@title\par}
+    \vspace{0.35em}
+    {\large \@author\par}
+    \vspace{0.35em}
+    {\normalsize \@date\par}
+  \end{minipage}%
+  \hfill
+  \begin{minipage}[t]{0.25\textwidth}
+    \vspace{0pt}
+    \raggedleft
+    \raisebox{\dimexpr-\height+\ht\strutbox+0.225in\relax}{\includegraphics[height=1.35in]{Logo-slate.png}}
+  \end{minipage}
+  \par\vspace{2em}
+}
+\makeatother
+
+\begin{document}
+\maketitle
+\section{Review}
+
+
+\paragraph{Correctness.}
+This solution is entirely correct.
+
+\paragraph{Novelty/exposition.}
+All of the AI solutions for this problem laid out essentially the same proof: (1) any matching produces a graph which is a forest; (2) remove the quasi-reduced condition by noting that we can remove trivial cancelling pairs without changing $C(M)$; (3) calculate $C(M)$ for $aa^{-1}aa^{-1}aa^{-1}$; (4) show that in this case $C(M)$ is noncontractible. (This is also the approach of the human solution.) 
+
+The main differences between the AI solutions are in their level of detail in (1)--(3), and their method of showing (4). This particular solution uses a calculation of the homology group $H_2$ to prove (4); for what it's worth, this strikes me as the sort of bare-bones approach that a student might use in an algebraic topology problem set, while a more mature mathematician would just note that the CW complex is clearly homeomorphic to $S^2$ and thus not contractible. Besides this (and a minor expositional issue in the proof of Proposition 1 that I flagged there), this is quite a good proof.
+
+
+
+\section{Recommendation}
+Publishable with minor revisions.
+
+  \section{Submission with inline comments}
+
+%% ======================================================================
+%% Inlined verbatim from the anonymised submission prob_007-C.
+%% ======================================================================
+
+\date{}
+
+
+\begin{abstract}
+We show that the complex \(F_w\) in the question is not always contractible.  We give an explicit reducible quasi-reduced word \(w\) for which \(F_w\) is isomorphic to a two-dimensional cubical complex with nonzero \(H_2\).  In fact, the relevant subcomplex is a cubical cell structure on \(S^2\).
+\end{abstract}
+
+\subsection{Two elementary facts about matchings}
+
+Let \(\HH=\mathbb R\times \mathbb R_+\).  Given a matching \(M\), let \(\Gamma(M)\) be the finite graph obtained from \(M\) by declaring the boundary points and the crossings to be vertices.  Thus boundary vertices have valence \(1\), crossing vertices have valence \(4\), and the edges of \(\Gamma(M)\) are the open subarcs between consecutive vertices.
+
+\begin{lemma}[No cycles]\label{lem:forest}
+For every matching \(M\) satisfying the defining conditions in the question, the graph \(\Gamma(M)\) is a forest.
+\end{lemma}
+
+\begin{proof}
+Suppose \(\Gamma(M)\) had a cycle.  Since all valence-one vertices lie on \(\mathbb R\times\{0\}\), every cycle lies in the interior of \(\HH\).  A finite plane graph with a cycle has a bounded complementary face whose boundary contains no boundary vertex on \(\mathbb R\times\{0\}\).  For the corresponding component \(R\) of \(\HH\setminus M\), some component of \(M\cap \bd \overline R\) therefore has boundary not equal to two points of \(\{1,\dots,2n\}\times\{0\}\).  This contradicts the third condition in the definition of matching.
+\end{proof}
+
+\begin{lemma}[Labels around one component]\label{lem:cycliclabels}
+Let \(T\) be a connected component of \(\Gamma(M)\).  Let
+\[
+p_1,p_2,\dots,p_m
+\]
+be the boundary leaves of \(T\), listed in the cyclic order in which they occur around a small regular neighbourhood of \(T\).  Then
+\[
+w_{p_i}=w_{p_{i+1}}^{-1}
+\]
+for every \(i\), with indices taken modulo \(m\).  In particular, all leaves of \(T\) are labelled by one letter \(\ell\) and its inverse, alternating around \(T\).
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:forest}, \(T\) is a tree.  A sufficiently small regular neighbourhood \(N(T)\subset \HH\) is therefore a disk.  Its frontier in \(\HH\) consists of arcs joining consecutive leaves \(p_i,p_{i+1}\) in the cyclic order around \(T\).  Each such frontier arc is a small push-off of a component of \(M\cap \bd\overline R\) for a complementary region \(R\).  By the defining condition on matchings, the endpoints of that component have inverse labels.  Hence \(w_{p_i}=w_{p_{i+1}}^{-1}\) for all \(i\).
+\end{proof}
+
+\begin{corollary}[A uniquely occurring letter is forced]\label{cor:forced}
+Suppose a letter \(x\) and its inverse \(x^{-1}\) occur exactly once each in \(w\).  Then in every matching \(M\), the two corresponding boundary points are joined by a single interval with no crossings.
+\end{corollary}
+
+\begin{proof}
+Let \(T\) be the component of \(\Gamma(M)\) containing the unique \(x\)-labelled leaf.  If \(T\) had more than two leaves, then that leaf would have two distinct cyclic neighbours around \(T\), and Lemma~\ref{lem:cycliclabels} would force both of them to be labelled \(x^{-1}\), impossible because \(x^{-1}\) occurs only once.  Thus \(T\) has exactly two leaves.
+
+Since \(T\) is a tree with \(m\) leaves and \(v\) four-valent vertices, the degree count gives
+\[
+m+4v=2(m+v-1).
+\]
+For \(m=2\), this yields \(v=0\).  Hence \(T\) is a single interval with endpoints labelled \(x\) and \(x^{-1}\), and it has no crossings.
+\end{proof}
+
+\subsection{The counterexample}
+
+Let
+\[
+G=\langle a,b,c\rangle
+\]
+be the free group of rank \(3\), and write \(\bar a=a^{-1}\), \(\bar b=b^{-1}\), \(\bar c=c^{-1}\).  Consider the word
+\[
+w=a\bar a\, b\bar b\, a\bar a\, c\bar c\, a\bar a.
+\]
+This word is freely reducible to the identity.  It is also quasi-reduced: its length-three subwords are
+\[
+a\bar a b,\quad
+\bar a b\bar b,\quad
+b\bar b a,\quad
+\bar b a\bar a,\quad
+a\bar a c,\quad
+\bar a c\bar c,\quad
+c\bar c a,\quad
+\bar c a\bar a,
+\]
+and none has the form \(\ell\ell^{-1}\ell\).
+
+By Corollary~\ref{cor:forced}, the unique occurrences of \(b,\bar b\) are forced to form a single isolated interval, and similarly the unique occurrences of \(c,\bar c\) are forced to form a single isolated interval.  Therefore deleting those two forced intervals gives a cubical isomorphism from \(F_w\) to the matching complex for the alternating six-letter word
+\[
+\alpha=a\bar a\, a\bar a\, a\bar a.
+\]
+Conversely, any matching for \(\alpha\) gives a matching for \(w\) by inserting small isolated intervals for \(b\bar b\) and \(c\bar c\) in the two gaps.  This operation preserves crossings, resolutions, and attaching maps.  Hence it suffices to compute the complex \(K:=F_\alpha\).
+
+\subsection{The complex for \(a\bar a a\bar a a\bar a\)}
+
+Label the six boundary points \(1,\dots,6\), with odd points labelled \(a\) and even points labelled \(\bar a\).  We write \((ij)\) for an interval joining \(i\) to \(j\), and products such as \((12)(34)(56)\) for the corresponding matching.
+
+Because of Lemma~\ref{lem:forest}, two intervals in a valid matching cross at most once.  Thus an endpoint pairing determines the crossing pattern: two intervals cross exactly when their endpoints interleave.  There are \(15\) pairings of the six endpoints.  They fall into the following classes:
+\[
+\begin{array}{c|l}
+\text{crossings} & \text{pairings} \\ \hline
+0 &
+(12)(34)(56),\ (12)(36)(45),\ (14)(23)(56),\ (16)(23)(45),\ (16)(25)(34) \\[2mm]
+1 &
+(12)(35)(46),\ (13)(24)(56),\ (13)(26)(45),\ (15)(23)(46),\ (15)(26)(34),\ (16)(24)(35) \\[2mm]
+2 &
+(13)(25)(46),\ (14)(26)(35),\ (15)(24)(36) \\[2mm]
+3 &
+(14)(25)(36).
+\end{array}
+\]
+The last pairing has three pairwise crossings and hence contains a cycle in the underlying graph, so it is invalid by Lemma~\ref{lem:forest}.  The pairings in the first three rows satisfy the side-label condition.  For the two-crossing pairings, the sides of a regular neighbourhood connect the cyclically consecutive pairs
+\[
+(1,2),(2,3),(3,4),(4,5),(5,6),(6,1),
+\]
+all of which have inverse labels.
+
+Thus \(K\) has five vertices.  Name them
+\[
+N=(12)(34)(56),\qquad S=(16)(23)(45),
+\]
+and
+\[
+E_1=(12)(36)(45),\qquad
+E_2=(14)(23)(56),\qquad
+E_3=(16)(25)(34).
+\]
+The six edges are precisely the edges joining each of \(N,S\) to each \(E_i\).  The three square two-cells are:
+\[
+D_{12}=(13)(25)(46),\qquad
+D_{13}=(14)(26)(35),\qquad
+D_{23}=(15)(24)(36),
+\]
+with boundaries
+\[
+\bd D_{12}=N E_1 S E_2 N,
+\]
+\[
+\bd D_{13}=N E_1 S E_3 N,
+\]
+\[
+\bd D_{23}=N E_2 S E_3 N.
+\]
+There are no higher-dimensional cells because a valid matching on three intervals has at most two crossings by Lemma~\ref{lem:forest}.
+
+\begin{proposition}\label{prop:h2}
+The complex \(K\) has nonzero second homology.
+\end{proposition}
+
+\begin{proof}
+Orient the edges \(a_i\) from \(N\) to \(E_i\), and orient the edges \(b_i\) from \(E_i\) to \(S\).  Orient the square \(D_{ij}\) by the boundary path
+\[
+N\longrightarrow E_i\longrightarrow S\longrightarrow E_j\longrightarrow N.
+\]
+Then
+\[
+\partial D_{ij}=a_i+b_i-b_j-a_j.
+\]
+
+Therefore
+\[
+z:=D_{12}-D_{13}+D_{23}
+\]
+satisfies
+\[
+\partial z
+=
+(a_1+b_1-b_2-a_2)
+-(a_1+b_1-b_3-a_3)
++(a_2+b_2-b_3-a_3)
+=0.
+\]
+Since \(K\) has no \(3\)-cells, this nonzero cellular \(2\)-cycle represents a nonzero class in \(H_2(K;\mathbb Z)\).
+\review{Minor comment: this proof makes complete intuitive sense and would probably be unremarkable if written by a human, but I note that the proof implicitly assumes that we're using the cellular model for homology as opposed to say the singular model. However, this isn't stated anywhere except for a single passing use of the word ``cellular'' at the end. Given how careful the rest of the proof is, I found this omission a bit surprising.}
+\end{proof}
+
+\begin{theorem}
+The complex \(F_w\) is not contractible for
+\[
+w=a\bar a\, b\bar b\, a\bar a\, c\bar c\, a\bar a.
+\]
+Consequently, the answer to the question is negative in general.
+\end{theorem}
+
+\begin{proof}
+As shown above, \(F_w\cong K\).  By Proposition~\ref{prop:h2},
+\[
+H_2(F_w;\mathbb Z)\cong H_2(K;\mathbb Z)\neq 0.
+\]
+A contractible CW complex has trivial reduced homology in all positive degrees.  Hence \(F_w\) is not contractible.
+\end{proof}
+
+\end{document}
