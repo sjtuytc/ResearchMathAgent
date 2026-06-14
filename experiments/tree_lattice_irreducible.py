@@ -105,31 +105,50 @@ def short_vectors(M, max_norm, lam_min):
     yield from rec(n - 1, 0.0)
 
 def short_vectors_fast(Mrows, R, max_norm):
-    """Pure-Python version of short_vectors. Mrows: list of int rows. R: float upper Cholesky.
-    Yields integer tuples a with 1 <= a^T M a <= max_norm."""
+    """Pure-Python Fincke-Pohst enumeration. Mrows: list of int rows. R: float upper Cholesky.
+    Yields integer tuples a with 1 <= a^T M a <= max_norm.
+
+    The exact integer norm equals round(partial) at a leaf, but to avoid any float
+    rounding ambiguity we recompute it exactly using the sparse rows (tree => O(n) nonzeros)."""
     n = len(Mrows)
     if max_norm < 1:
         return
+    import math
     a = [0] * n
     EPS = 1e-9
-    import math
+    # sparse representation of M: diag[i] and list of (j, Mij) for j != i
+    diag = [Mrows[i][i] for i in range(n)]
+    offs = [[(j, Mrows[i][j]) for j in range(n) if j != i and Mrows[i][j] != 0] for i in range(n)]
 
-    def quad(a):
-        return sum(a[i] * Mrows[i][j] * a[j] for i in range(n) for j in range(n))
+    def exact_norm(a):
+        q = 0
+        for i in range(n):
+            ai = a[i]
+            if ai == 0:
+                continue
+            q += diag[i] * ai * ai
+            for (j, mij) in offs[i]:
+                if a[j]:
+                    q += mij * ai * a[j]
+        return q
 
     def rec(i, partial):
         if max_norm - partial < -EPS:
             return
         if i < 0:
-            if any(a):
-                q = quad(a)
-                if 1 <= q <= max_norm:
-                    yield tuple(a)
+            for x in a:
+                if x:
+                    q = exact_norm(a)
+                    if 1 <= q <= max_norm:
+                        yield tuple(a)
+                    return
             return
-        s = 0.0
         Ri = R[i]
+        s = 0.0
         for j in range(i + 1, n):
-            s += Ri[j] * a[j]
+            aj = a[j]
+            if aj:
+                s += Ri[j] * aj
         rii = Ri[i]
         half = math.sqrt(max(max_norm - partial, 0.0) + 1e-6)
         lo = int(math.floor((-half - s) / rii - EPS))
@@ -144,17 +163,34 @@ def short_vectors_fast(Mrows, R, max_norm):
 
 
 def is_reducible_fast(Mrows, R, u):
-    """e_u reducible? Pure-python. Mrows int rows, R float upper Cholesky."""
+    """e_u reducible? Pure-python. Mrows int rows, R float upper Cholesky.
+
+    a.b = a^T M b where b = e_u - a, so a.b = a^T M e_u - a^T M a = (M e_u)·a - |a|^2.
+    (M e_u) is just column u of M. We need a != 0, a != e_u (so b != 0), and a.b >= 0."""
     n = len(Mrows)
     wu = Mrows[u][u]
+    colu = [Mrows[i][u] for i in range(n)]  # M e_u  (column u)
     for av in short_vectors_fast(Mrows, R, wu - 1):
-        # b = e_u - a; require b nonzero
-        b = [(-av[k]) for k in range(n)]
-        b[u] += 1
-        if not any(b):
+        # b = e_u - a must be nonzero, i.e. a != e_u
+        if av[u] == 1 and all(av[k] == 0 for k in range(n) if k != u):
             continue
-        # a.b = a^T M b
-        adotb = sum(av[i] * Mrows[i][j] * b[j] for i in range(n) for j in range(n))
+        # |a|^2 = exact norm; since a in short_vectors, 1<=|a|^2<=wu-1
+        normsq = 0
+        adotMe = 0
+        for k in range(n):
+            ak = av[k]
+            if ak:
+                adotMe += colu[k] * ak
+        # recompute |a|^2 via sparse rows
+        for i in range(n):
+            ai = av[i]
+            if ai:
+                normsq += Mrows[i][i] * ai * ai
+                row = Mrows[i]
+                for j in range(n):
+                    if j != i and row[j] and av[j]:
+                        normsq += row[j] * ai * av[j]
+        adotb = adotMe - normsq
         if adotb >= 0:
             return True
     return False
