@@ -104,6 +104,62 @@ def short_vectors(M, max_norm, lam_min):
 
     yield from rec(n - 1, 0.0)
 
+def short_vectors_fast(Mrows, R, max_norm):
+    """Pure-Python version of short_vectors. Mrows: list of int rows. R: float upper Cholesky.
+    Yields integer tuples a with 1 <= a^T M a <= max_norm."""
+    n = len(Mrows)
+    if max_norm < 1:
+        return
+    a = [0] * n
+    EPS = 1e-9
+    import math
+
+    def quad(a):
+        return sum(a[i] * Mrows[i][j] * a[j] for i in range(n) for j in range(n))
+
+    def rec(i, partial):
+        if max_norm - partial < -EPS:
+            return
+        if i < 0:
+            if any(a):
+                q = quad(a)
+                if 1 <= q <= max_norm:
+                    yield tuple(a)
+            return
+        s = 0.0
+        Ri = R[i]
+        for j in range(i + 1, n):
+            s += Ri[j] * a[j]
+        rii = Ri[i]
+        half = math.sqrt(max(max_norm - partial, 0.0) + 1e-6)
+        lo = int(math.floor((-half - s) / rii - EPS))
+        hi = int(math.ceil((half - s) / rii + EPS))
+        for ai in range(lo, hi + 1):
+            a[i] = ai
+            term = rii * ai + s
+            yield from rec(i - 1, partial + term * term)
+        a[i] = 0
+
+    yield from rec(n - 1, 0.0)
+
+
+def is_reducible_fast(Mrows, R, u):
+    """e_u reducible? Pure-python. Mrows int rows, R float upper Cholesky."""
+    n = len(Mrows)
+    wu = Mrows[u][u]
+    for av in short_vectors_fast(Mrows, R, wu - 1):
+        # b = e_u - a; require b nonzero
+        b = [(-av[k]) for k in range(n)]
+        b[u] += 1
+        if not any(b):
+            continue
+        # a.b = a^T M b
+        adotb = sum(av[i] * Mrows[i][j] * b[j] for i in range(n) for j in range(n))
+        if adotb >= 0:
+            return True
+    return False
+
+
 def is_reducible(M, u, lam_min):
     """e_u reducible? search a with 1<=|a|^2<=w(u)-1, b=e_u-a nonzero, a.b>=0."""
     n = M.shape[0]
@@ -138,26 +194,61 @@ def run():
     classcount = {}  # key: 'lt','eq','gt'
     # weight-2 orthogonal-split equivalence
     w2_match = w2_mismatch = 0
+    # candidate sufficient-condition tallies: name -> [num_irreducible, num_reducible]
+    cond_tally = {k: [0, 0] for k in ('w<=d', 'w==1', 'leaf&w==1', 'w<d', 'w==d')}
+
+    import random
+    random.seed(12345)
+    # n=2..5 exhaustive; n=6 random sample of weight combos per tree (tractable, still covers n=6)
+    SAMPLE_N6 = 40  # weight combos sampled per n=6 tree
+
+    def configs(n, edges, d):
+        if n <= 5:
+            yield from itertools.product(weights_choices, repeat=n)
+        else:
+            for _ in range(SAMPLE_N6):
+                yield tuple(random.choice(weights_choices) for _ in range(n))
 
     for n in range(2, 7):
         for edges in gen_trees(n):
             d = degrees(n, edges)
-            for w in itertools.product(weights_choices, repeat=n):
+            for w in configs(n, edges, d):
                 # exactly one vertex with w<d
                 deficient = [u for u in range(n) if w[u] < d[u]]
                 if len(deficient) != 1:
                     continue
                 M = build_M(n, edges, w)
-                if not is_pd(M):
+                try:
+                    Rnp = np.linalg.cholesky(M.astype(np.float64)).T
+                except np.linalg.LinAlgError:
                     continue
-                lam_min = float(np.linalg.eigvalsh(M.astype(np.float64)).min())
+                R = [[float(Rnp[i, j]) for j in range(n)] for i in range(n)]
+                Mrows = [[int(M[i, j]) for j in range(n)] for i in range(n)]
                 total_valid += 1
                 v = deficient[0]
                 irr_vertices = []
+                red_status = {}
                 for u in range(n):
-                    red, _ = is_reducible(M, u, lam_min)
+                    red = is_reducible_fast(Mrows, R, u)
+                    red_status[u] = red
                     if not red:
                         irr_vertices.append(u)
+                    # candidate sufficient conditions for IRREDUCIBILITY
+                    # C1: w(u) <= d(u)
+                    if w[u] <= d[u]:
+                        cond_tally['w<=d'][0 if not red else 1] += 1
+                    # C2: w(u) == 1
+                    if w[u] == 1:
+                        cond_tally['w==1'][0 if not red else 1] += 1
+                    # C3: leaf with w(u)==1
+                    if d[u] == 1 and w[u] == 1:
+                        cond_tally['leaf&w==1'][0 if not red else 1] += 1
+                    # C4: w(u) < d(u) (the deficient vertex)
+                    if w[u] < d[u]:
+                        cond_tally['w<d'][0 if not red else 1] += 1
+                    # C5: w(u) == d(u)
+                    if w[u] == d[u]:
+                        cond_tally['w==d'][0 if not red else 1] += 1
                     # patterns
                     cls = 'lt' if w[u] < d[u] else ('eq' if w[u] == d[u] else 'gt')
                     c = classcount.setdefault(cls, [0, 0])
@@ -171,7 +262,7 @@ def run():
                         else: leaf_irr += 1
                     # weight-2 orthogonal-split test
                     if w[u] == 2:
-                        ortho = w2_has_ortho_split(M, u, lam_min)
+                        ortho = w2_has_ortho_split_fast(Mrows, R, u)
                         if ortho == red:
                             w2_match += 1
                         else:
@@ -199,8 +290,30 @@ def run():
         if k in classcount:
             print(f"    {k}: {classcount[k]}")
     print("-" * 70)
+    print("CANDIDATE SUFFICIENT CONDITIONS for IRREDUCIBILITY  [irreducible, reducible]:")
+    print("  (if reducible count == 0, the condition GUARANTEES irreducibility)")
+    for k, (irr, red) in cond_tally.items():
+        verdict = "SUFFICIENT (never reducible)" if red == 0 and irr > 0 else "not sufficient"
+        print(f"    {k:12s}: irr={irr:7d} red={red:7d}  -> {verdict}")
+    print("-" * 70)
     print(f"weight-2: reducible <=> orthogonal norm-1 split  match={w2_match} mismatch={w2_mismatch}")
     print("=" * 70)
+
+def w2_has_ortho_split_fast(Mrows, R, u):
+    """For w(u)=2: does e_u = e+f with e,f norm-1 lattice vectors, e.f=0? Pure python."""
+    n = len(Mrows)
+    def dot(x, y):
+        return sum(x[i] * Mrows[i][j] * y[j] for i in range(n) for j in range(n))
+    norm1 = [list(av) for av in short_vectors_fast(Mrows, R, 1)]  # all have q==1 since max_norm=1
+    for ev in norm1:
+        fv = [-ev[k] for k in range(n)]
+        fv[u] += 1
+        if not any(fv):
+            continue
+        if dot(fv, fv) == 1 and dot(ev, fv) == 0:
+            return True
+    return False
+
 
 def w2_has_ortho_split(M, u, lam_min):
     """For w(u)=2: does e_u = e+f with e,f norm-1 lattice vectors, e.f=0?"""
