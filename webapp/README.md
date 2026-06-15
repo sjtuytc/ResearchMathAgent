@@ -66,6 +66,41 @@ python -m webapp               # serves http://127.0.0.1:8000 (override with HOS
 Open <http://127.0.0.1:8000>, pick a question, open the **Agent** tab, choose
 **Claude Code (subscription)**, and hit **Solve**.
 
+### On a Linux server with port forwarding
+
+Default bind is `127.0.0.1:8000`, which is exactly right for SSH local
+forwarding from your laptop:
+
+```bash
+# on the server
+python -m webapp                      # binds 127.0.0.1:8000
+
+# on your laptop
+ssh -L 8000:localhost:8000 user@server
+# then open http://localhost:8000
+```
+
+If you forward by binding the server's interface instead, set
+`HOST=0.0.0.0 PORT=8000 python -m webapp` (and restrict access at the firewall —
+the app has no auth). The `claude` CLI and your `claude login` session must live
+on the **server**, since that's where the agent process runs.
+
+## Run control (full frontend↔backend lifecycle)
+
+Each run gets a `run_id`. The **Stop** button doesn't just close the browser
+stream — it calls `POST /api/cancel`, which sets a cancel flag and **kills the
+backend process group** (the `claude` CLI plus its node child), so a stopped run
+stops consuming your subscription immediately. Cancellation also fires on tab
+close (via `keepalive` fetch). For the API provider, the loop is cancelled
+between turns and mid-stream.
+
+Control endpoints:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/runs` | List active runs (id, problem, provider, age) |
+| `POST /api/cancel` `{run_id}` | Stop a specific run; kills its process group |
+
 ## Architecture
 
 ```

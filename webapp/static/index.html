@@ -131,7 +131,7 @@
 </div>
 <script>
 const $=(id)=>document.getElementById(id);
-let problems=[], selected=null, claudeCode=false, es=null;
+let problems=[], selected=null, claudeCode=false, es=null, runId=null;
 let cur={text:null,think:null}; const toolCards={}; let lastArtifact=null;
 
 const KATEX_OPTS={delimiters:[
@@ -292,23 +292,42 @@ async function logRun(art){
   $("i-status").textContent="run logged to issue ✓";
 }
 
+function newRunId(){
+  return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2);
+}
 function start(){
   if(!selected){setStatus("pick a question first");return;}
   const provider=$("provider").value, model=$("model").value.trim(), thinking=$("thinking").checked?1:0;
+  runId=newRunId();
   $("run").style.display="none"; $("stop").style.display="inline-block"; setStatus("connecting…","run");
-  const q=`/api/solve?problem=${encodeURIComponent(selected)}&provider=${encodeURIComponent(provider)}&model=${encodeURIComponent(model)}&thinking=${thinking}`;
+  const q=`/api/solve?problem=${encodeURIComponent(selected)}&provider=${encodeURIComponent(provider)}`
+        +`&model=${encodeURIComponent(model)}&thinking=${thinking}&run_id=${encodeURIComponent(runId)}`;
   es=new EventSource(q);
   es.onmessage=(e)=>handle(JSON.parse(e.data));
-  es.onerror=()=>{setStatus("connection closed");finish("disconnected");};
+  es.onerror=()=>{setStatus("connection closed");cancelBackend();finish("disconnected");};
+}
+function cancelBackend(){
+  if(!runId)return;
+  // keepalive so the cancel still fires if the page is closing
+  try{ fetch("/api/cancel",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({run_id:runId}),keepalive:true}); }catch(e){}
+}
+async function stop(){
+  setStatus("stopping…","run"); $("stop").disabled=true;
+  cancelBackend();
+  // backend will emit a 'stopped' done event; fall back to local finish after a moment
+  setTimeout(()=>{ if(es) finish("stopped"); $("stop").disabled=false; },1500);
 }
 function finish(reason){
   if(es){es.close();es=null;}
-  $("run").style.display="inline-block"; $("stop").style.display="none";
+  $("run").style.display="inline-block"; $("stop").style.display="none"; $("stop").disabled=false;
+  runId=null;
   const ok=["end_turn","stop_sequence","done",undefined].includes(reason);
   setStatus(ok?"done":String(reason),ok?"ok":"err");
 }
 $("run").onclick=start;
-$("stop").onclick=()=>finish("stopped");
+$("stop").onclick=stop;
+window.addEventListener("beforeunload",cancelBackend);
 init();
 </script>
 </body>

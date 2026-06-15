@@ -87,9 +87,12 @@ def _initial_user_message(cfg: AgentConfig) -> str:
     )
 
 
-def run_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
+def run_agent(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
     """Drive the agent loop, yielding AgentEvents. Never raises — failures are
-    emitted as ``error`` events so the UI stream stays well-formed."""
+    emitted as ``error`` events so the UI stream stays well-formed.
+
+    ``handle`` is an optional RunHandle (webapp.runs) carrying a cancel signal so
+    the loop can be stopped between turns / mid-stream from another thread."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         yield AgentEvent("error", {"message": "ANTHROPIC_API_KEY is not set in the server environment."})
@@ -122,9 +125,14 @@ def run_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
               "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}
 
     for iteration in range(1, MAX_ITERATIONS + 1):
+        if _cancelled(handle):
+            yield AgentEvent("done", {"reason": "stopped"})
+            return
         yield AgentEvent("turn_start", {"iteration": iteration})
         try:
-            final_message, stream_events = _stream_turn(client, create_kwargs, messages)
+            final_message, stream_events, cancelled = _stream_turn(
+                client, create_kwargs, messages, handle
+            )
         except anthropic.APIStatusError as exc:
             yield AgentEvent("error", {"message": f"Anthropic API error {exc.status_code}: {exc.message}"})
             yield AgentEvent("done", {"reason": "error"})
@@ -135,6 +143,9 @@ def run_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
             return
 
         yield from stream_events
+        if cancelled or final_message is None:
+            yield AgentEvent("done", {"reason": "stopped"})
+            return
 
         usage = getattr(final_message, "usage", None)
         if usage is not None:
@@ -148,6 +159,10 @@ def run_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
         tool_uses = [b for b in final_message.content if getattr(b, "type", None) == "tool_use"]
         if final_message.stop_reason != "tool_use" or not tool_uses:
             yield AgentEvent("done", {"reason": final_message.stop_reason or "end_turn"})
+            return
+
+        if _cancelled(handle):
+            yield AgentEvent("done", {"reason": "stopped"})
             return
 
         tool_results = []
@@ -168,13 +183,20 @@ def run_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
     yield AgentEvent("done", {"reason": "max_iterations"})
 
 
-def _stream_turn(client: anthropic.Anthropic, create_kwargs: dict, messages: list[dict]):
+def _cancelled(handle) -> bool:
+    return handle is not None and handle.cancelled
+
+
+def _stream_turn(client: anthropic.Anthropic, create_kwargs: dict, messages: list[dict], handle=None):
     """Stream one assistant turn, buffering delta events to yield after the
-    stream context closes (so we always have the final message too)."""
+    stream context closes. Returns (final_message, buffered_events, cancelled).
+    On cancel, aborts the stream and returns final_message=None."""
     buffered: list[AgentEvent] = []
     block_types: dict[int, str] = {}
     with client.messages.stream(messages=messages, **create_kwargs) as stream:
         for event in stream:
+            if _cancelled(handle):
+                return None, buffered, True
             etype = getattr(event, "type", "")
             if etype == "content_block_start":
                 block = getattr(event, "content_block", None)
@@ -190,7 +212,7 @@ def _stream_turn(client: anthropic.Anthropic, create_kwargs: dict, messages: lis
                 elif dtype == "thinking_delta":
                     buffered.append(AgentEvent("thinking_delta", {"text": delta.thinking}))
         final_message = stream.get_final_message()
-    return final_message, buffered
+    return final_message, buffered, False
 
 
 def _run_tool(ctx: ToolContext, name: str, tool_input) -> tuple[str, bool]:

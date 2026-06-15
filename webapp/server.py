@@ -17,9 +17,12 @@ from fastapi import Body, FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+import uuid
+
 from .agent import DEFAULT_MODEL, AgentConfig, run_agent
 from .claude_code import claude_code_available, run_claude_code_agent
 from .issues import append_activity, get_issue, save_issue
+from .runs import REGISTRY
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -82,15 +85,27 @@ def solve(
     model: str = Query(""),
     provider: str = Query("claude-code", description="claude-code | api"),
     thinking: int = Query(1),
+    run_id: str = Query(""),
 ) -> StreamingResponse:
     return StreamingResponse(
-        _sse(problem, model, provider, bool(thinking)),
+        _sse(problem, model, provider, bool(thinking), run_id or uuid.uuid4().hex),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
-def _sse(problem: str, model: str, provider: str, thinking: bool):
+@app.post("/api/cancel")
+def cancel(payload: dict = Body(...)) -> JSONResponse:
+    run_id = str(payload.get("run_id", ""))
+    return JSONResponse({"ok": REGISTRY.cancel(run_id), "run_id": run_id})
+
+
+@app.get("/api/runs")
+def runs() -> JSONResponse:
+    return JSONResponse({"runs": REGISTRY.active()})
+
+
+def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str):
     def send(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
 
@@ -115,14 +130,18 @@ def _sse(problem: str, model: str, provider: str, thinking: bool):
         provider=provider,
     )
     runner = run_claude_code_agent if provider == "claude-code" else run_agent
+    handle = REGISTRY.register(run_id, {"problem": problem, "provider": provider, "model": cfg.model})
 
-    yield send({"type": "start", "problem": problem, "model": cfg.model, "provider": provider})
+    yield send({"type": "start", "problem": problem, "model": cfg.model,
+                "provider": provider, "run_id": run_id})
     try:
-        for event in runner(cfg):
+        for event in runner(cfg, handle):
             yield send(event.to_dict())
     except Exception as exc:  # noqa: BLE001 - keep the stream well-formed
         yield send({"type": "error", "message": f"Server error: {exc}"})
         yield send({"type": "done", "reason": "error"})
+    finally:
+        REGISTRY.unregister(run_id)
 
 
 # Serve the SPA. Mounted last so /api/* routes take precedence.

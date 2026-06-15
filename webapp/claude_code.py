@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Iterator
 
 from .agent import AgentConfig, AgentEvent
+from .runs import RunHandle
 
 # acceptEdits + an explicit allowlist runs autonomously without interactive
 # prompts AND works when the server runs as root (unlike bypassPermissions /
@@ -54,7 +55,7 @@ def claude_code_available() -> str | None:
     return shutil.which("claude")
 
 
-def run_claude_code_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
+def run_claude_code_agent(cfg: AgentConfig, handle: RunHandle | None = None) -> Iterator[AgentEvent]:
     """Drive the ``claude`` CLI and yield AgentEvents. Never raises."""
     binary = claude_code_available()
     if not binary:
@@ -99,15 +100,23 @@ def run_claude_code_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
     yield AgentEvent("status", {"state": "running", "model": cfg.model or "default",
                                 "provider": "claude-code", "workspace": str(workspace)})
 
+    if handle is not None and handle.cancelled:
+        yield AgentEvent("done", {"reason": "stopped"})
+        return
+
     try:
         proc = subprocess.Popen(
             cmd, cwd=str(workspace), env=env, text=True, bufsize=1,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            start_new_session=True,  # own process group so cancel kills the node child too
         )
     except OSError as exc:
         yield AgentEvent("error", {"message": f"Failed to start claude CLI: {exc}"})
         yield AgentEvent("done", {"reason": "error"})
         return
+
+    if handle is not None:
+        handle.attach_proc(proc)
 
     stderr_chunks: list[str] = []
     drain = threading.Thread(target=_drain, args=(proc.stderr, stderr_chunks), daemon=True)
@@ -115,12 +124,18 @@ def run_claude_code_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
 
     deadline = time.time() + _WALL_CLOCK_SECONDS
     saw_result = False
+    cancelled = False
+    timed_out = False
     try:
         assert proc.stdout is not None
         for line in proc.stdout:
+            if handle is not None and handle.cancelled:
+                cancelled = True
+                handle.kill_proc()
+                break
             if time.time() > deadline:
-                proc.kill()
-                yield AgentEvent("error", {"message": "Run exceeded the time limit; stopped."})
+                timed_out = True
+                _kill(handle, proc)
                 break
             line = line.strip()
             if not line:
@@ -137,7 +152,15 @@ def run_claude_code_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
         try:
             proc.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            proc.kill()
+            _force_kill(handle, proc)
+
+    if cancelled:
+        yield AgentEvent("done", {"reason": "stopped"})
+        return
+    if timed_out:
+        yield AgentEvent("error", {"message": "Run exceeded the time limit; stopped."})
+        yield AgentEvent("done", {"reason": "timeout"})
+        return
 
     # Surface the final artifact if one was produced.
     solution = workspace / "solution.tex"
@@ -149,6 +172,26 @@ def run_claude_code_agent(cfg: AgentConfig) -> Iterator[AgentEvent]:
         msg = ("".join(stderr_chunks)).strip() or "claude CLI exited without a result."
         yield AgentEvent("error", {"message": msg[-1500:]})
         yield AgentEvent("done", {"reason": "error"})
+
+
+def _kill(handle: RunHandle | None, proc) -> None:
+    if handle is not None:
+        handle.kill_proc()
+    else:
+        try:
+            proc.terminate()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _force_kill(handle: RunHandle | None, proc) -> None:
+    if handle is not None:
+        handle.force_kill_proc()
+    else:
+        try:
+            proc.kill()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def _seed_workspace(cfg: AgentConfig, repo_root: Path) -> Path | None:
