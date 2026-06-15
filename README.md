@@ -1,6 +1,7 @@
 # RMA: an Agentic System for Research-Level Mathematical Problems
 
 [[Paper (arXiv)](https://arxiv.org/abs/2605.22875)]
+[![GitHub Stars](https://img.shields.io/github/stars/sjtuytc/ResearchMathAgent?style=social)](https://github.com/sjtuytc/ResearchMathAgent/stargazers)
 
 Official code release for **RMA**.
 RMA is a research math agent system that turns problem statements into verifiable proof artifacts.
@@ -393,6 +394,12 @@ latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
 ## Acknowledgement
 
 We thank **PoggioAI** for open-sourcing `PoggioAI_MSc`, which inspired the system-organization direction and README structure of this project.
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=sjtuytc/ResearchMathAgent&type=Date)](https://star-history.com/#sjtuytc/ResearchMathAgent&Date)
 
 ---
 
