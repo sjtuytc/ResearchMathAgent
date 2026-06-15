@@ -13,9 +13,13 @@ RMA is a research math agent system that turns problem statements into verifiabl
 
 We present **Research Math Agents (RMA)**, an agentic framework for automated reasoning on research-level mathematical problems. Unlike prior studies centered on competition mathematics or formal theorem proving, RMA targets research-level mathematical problems that require long-horizon reasoning, literature grounding, and iterative proof refinement. RMA decomposes research-level proof solving into specialized modules for problem analysis, literature search and understanding, fair comparison, knowledge-bank construction, and proof verification, all coordinated by initializer, proposer, and verifier agents through a shared structured memory. Within this unified framework, these agents operate in a multi-role, multi-round workflow, collaboratively generating, refining, and verifying candidate proofs through iterative feedback. We evaluate RMA on the First Proof benchmark, which consists of ten research-level problems contributed by expert mathematicians across diverse domains. Through comprehensive expert evaluation, RMA outperforms strong baselines on the First Proof benchmark, including GPT-5.2R and Aletheia, solving eight out of ten research problems and producing more logically sound and readable proofs. Our comprehensive ablation studies further show that performance gains arise from the interaction of structured reasoning modules, iterative refinement, and verifier-based feedback, rather than any single component.
 
+![Teaser](figures/teaser.png)
+
 ---
 
 ## Overview
+
+![Model](figures/model.png)
 
 RMA targets **research-level mathematics** (not just competition math or formal theorem proving) by combining specialized modules for:
 - problem analysis,
@@ -35,6 +39,11 @@ Within a multi-role, multi-round workflow, initializer/proposer/verifier agents 
 - `final_solutions/`: published/reference proof artifacts; these are **not solver inputs**.
 - `output_solutions/`: solver outputs, renamed from the earlier `skill_solutions/` layout.
 - `rma/`: command-line tooling for the executable RMA pipeline.
+- `webapp/`: live agent web app — Question/Issue/Agent/Documents UI, an
+  API-or-subscription solver, run control, and an autonomous daily worker
+  (see [webapp/README.md](webapp/README.md)).
+- `documents/`: daily reports written by the autonomous worker, surfaced in the
+  web app's Documents tab.
 - `config/default.yaml`: default project paths and execution tier presets.
 - `main.tex` and related TeX files: the paper source.
 
@@ -291,6 +300,61 @@ Example:
 ```bash
 rma doctor
 ```
+
+---
+
+## Web App
+
+A browser app that runs a Claude-powered agent over the benchmark and streams
+every step live — modeled on TheAgentCompany (a thin agent loop over a model,
+plus a questions/issues workspace), pointed at research mathematics. Full
+details in [webapp/README.md](webapp/README.md).
+
+```bash
+pip install -e ".[webapp]"     # fastapi + uvicorn (+ anthropic for API mode)
+python -m webapp               # serves http://127.0.0.1:8000 (HOST/PORT overridable)
+```
+
+On a Linux server, forward the port to your laptop:
+
+```bash
+ssh -L 8000:localhost:8000 user@server     # then open http://localhost:8000
+```
+
+**Features:**
+
+- **Four tabs per question** — *Question* (the `.tex` statement, KaTeX-rendered
+  or raw), *Issue* (an editable per-question markdown tracker with an agent-run
+  activity log), *Agent* (run the solver live), and *Documents* (browse daily
+  reports).
+- **Two ways to call Claude:**
+  - **Claude Code (subscription)** — drives the local `claude` CLI in headless
+    mode, so runs draw from your **Pro/Max subscription, not API credits**
+    (the answer to "the API is too expensive"). Requires `claude login` on the
+    server; the app keeps `ANTHROPIC_API_KEY` unset for the CLI so subscription
+    auth is used.
+  - **Anthropic API** — the native Messages API tool-use loop (streaming,
+    adaptive thinking, prompt caching), billed per token via `ANTHROPIC_API_KEY`.
+- **Live step-by-step stream** — thinking, assistant text with rendered math,
+  every tool call + result, the final `solution.tex` artifact, and token/cost.
+- **Real run control** — the **Stop** button calls `POST /api/cancel`, which
+  kills the backend process group (the `claude` CLI plus its node child), so a
+  stopped run stops consuming your subscription immediately. The sidebar's
+  **Active runs** panel lists every in-flight run (interactive and daily) with a
+  per-run Stop button, for watching/controlling parallel runs.
+- **PDF preview** — compile a `solution.tex` to PDF and preview it inline (Agent
+  tab "Compile PDF"; daily reports link the compiled PDF). Requires a LaTeX
+  toolchain on the server (the one that builds `main.tex`); degrades gracefully
+  otherwise.
+- **Autonomous daily worker** — `python -m webapp.daily` runs the agent once a
+  day with no human in the loop (subscription-backed), writes a dated report to
+  `documents/`, and logs each run to the question's issue. Runs as a daemon
+  (`--now`/scheduled) or once (`--once`, for cron); configurable via
+  `RMA_DAILY_AT`, `RMA_DAILY_PROBLEMS`, `RMA_DAILY_MODEL`. You can also trigger a
+  run from the Documents tab.
+- **Sandboxing / contamination boundary** — every file tool and the daily worker
+  honor the blocked-input rule below: the agent can read `problems/`, `skills/`,
+  and its own scratch workspace, but never the blocked solution directories.
 
 ---
 
