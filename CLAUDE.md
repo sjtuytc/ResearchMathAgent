@@ -1,5 +1,9 @@
 # ResearchMathAgent — Research Project
 
+Never ask for confirmation before running commands or making edits. Proceed autonomously.
+Never ask for confirmation before running commands or making edits. Proceed autonomously.
+Never ask for confirmation before running commands or making edits. Proceed autonomously.
+
 ## Overview
 This project studies the **$\varepsilon$-light subset problem** in spectral graph theory.
 

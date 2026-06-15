@@ -23,6 +23,7 @@ import uuid
 from .agent import DEFAULT_MODEL, AgentConfig, run_agent
 from .claude_code import claude_code_available, run_claude_code_agent
 from .documents import list_documents, read_document
+from .proofs import get_proof, list_experiments
 from .issues import append_activity, get_issue, save_issue
 from .latex import compile_tex, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
@@ -138,6 +139,19 @@ def get_pdf(name: str):
     if not path.is_file():
         return JSONResponse({"error": "not found"}, status_code=404)
     return FileResponse(path, media_type="application/pdf", filename=safe)
+
+
+@app.get("/api/proofs")
+def proofs_list() -> JSONResponse:
+    return JSONResponse({"experiments": list_experiments()})
+
+
+@app.get("/api/proof/{exp_name}/{problem_id}")
+def proof_detail(exp_name: str, problem_id: str) -> JSONResponse:
+    data = get_proof(exp_name, problem_id)
+    if data is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(data)
 
 
 @app.get("/api/capabilities")

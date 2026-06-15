@@ -417,7 +417,12 @@ def _propose_solution(
     iteration = _next_iteration(paths["proposals"], "proposal", ".tex")
     proposal_path = paths["proposals"] / f"proposal_{iteration:03d}.tex"
     proposal_meta_path = paths["proposals"] / f"proposal_{iteration:03d}.json"
-    solution_text, model_backend = _generate_solution_text(repo_root, parsed, PROBLEM_PROFILES[problem_id], skill_info, iteration, args)
+    solution_text, model_backend = _generate_solution_text(repo_root, parsed, PROBLEM_PROFILES[problem_id], skill_info, iteration, args, partial_output_dir=paths["problem"], fallback_file=paths["solution"])
+    # If model wrote the file directly via tools and returned no text, use what it wrote
+    if not solution_text and paths["solution"].is_file():
+        solution_text = paths["solution"].read_text(encoding="utf-8")
+    if not solution_text:
+        raise RuntimeError(f"No solution text generated for {problem_id}.")
     proposal_path.write_text(solution_text, encoding="utf-8")
     paths["solution"].write_text(solution_text, encoding="utf-8")
     proposal_meta = {
@@ -561,7 +566,13 @@ def _refine_solution(
             iteration + 1,
             args,
             verification=verification,
+            partial_output_dir=paths["problem"],
+            fallback_file=paths["solution"],
         )
+        if not solution_text and paths["solution"].is_file():
+            solution_text = paths["solution"].read_text(encoding="utf-8")
+        if not solution_text:
+            raise RuntimeError(f"No refined solution text generated for {problem_id}.")
         paths["solution"].write_text(solution_text, encoding="utf-8")
         refined_tex_path = paths["refinements"] / f"refined_solution_{iteration:03d}.tex"
         refined_tex_path.write_text(solution_text, encoding="utf-8")
@@ -849,6 +860,8 @@ def _generate_solution_text(
     iteration: int,
     args: Namespace,
     verification: dict[str, object] | None = None,
+    partial_output_dir: Path | None = None,
+    fallback_file: Path | None = None,
 ) -> tuple[str, dict[str, str]]:
     model_name = getattr(args, "model_name", "rma-skeleton")
     provider = getattr(args, "model_provider", "auto")
@@ -858,6 +871,8 @@ def _generate_solution_text(
             system=_model_system_prompt(),
             prompt=_model_user_prompt(repo_root, parsed, profile, skill_info, iteration, verification),
             cwd=repo_root,
+            partial_output_dir=partial_output_dir,
+            fallback_file=fallback_file,
         )
         return _strip_markdown_fences(response.text), {
             "provider": response.provider,

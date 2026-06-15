@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import select
 import shutil
 import ssl
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -146,6 +148,8 @@ def call_claude_code(
     prompt: str,
     cwd: Path,
     timeout: int = 1800,
+    partial_output_dir: Path | None = None,
+    fallback_file: Path | None = None,
 ) -> ModelResponse:
     claude_bin = shutil.which("claude")
     if claude_bin is None:
@@ -162,7 +166,8 @@ def call_claude_code(
         "-p",
         "Generate the requested Research Math Agent proof artifact from the prompt on stdin.",
         "--output-format",
-        "text",
+        "stream-json",
+        "--verbose",
         "--append-system-prompt",
         system,
         "--max-turns",
@@ -173,6 +178,15 @@ def call_claude_code(
     if model_arg is not None:
         command.extend(["--model", model_arg])
 
+    # Inherit env; ensure CLAUDE_CODE_MAX_OUTPUT_TOKENS passes through (avoids silent 16K cutoff)
+    env = os.environ.copy()
+    if "CLAUDE_CODE_MAX_OUTPUT_TOKENS" not in env:
+        env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = "100000"
+
+    _partial_dir = partial_output_dir if partial_output_dir is not None else cwd
+    _partial_dir.mkdir(parents=True, exist_ok=True)
+    partial_path = _partial_dir / "partial_output.tex"
+
     proc = subprocess.Popen(
         command,
         stdin=subprocess.PIPE,
@@ -180,24 +194,168 @@ def call_claude_code(
         stderr=subprocess.PIPE,
         text=True,
         cwd=cwd,
+        env=env,
     )
+
     try:
-        stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        stdout, stderr = proc.communicate()
-        if stdout and stdout.strip():
-            return ModelResponse(text=stdout.strip(), provider="claude-code", model=model_arg or "claude-code")
-        raise ModelRequestError("Claude Code request timed out and produced no output.")
+        proc.stdin.write(prompt)
+        proc.stdin.close()
+    except BrokenPipeError:
+        pass
 
-    if proc.returncode != 0:
-        detail = "\n".join(part for part in (stdout.strip(), stderr.strip()) if part)
-        raise ModelRequestError(f"Claude Code returned exit code {proc.returncode}: {detail[-4000:]}")
+    accumulated: list[str] = []
+    deadline = time.monotonic() + timeout
+    last_partial_write = 0.0
 
-    text = stdout.strip()
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                proc.kill()
+                proc.wait()
+                text = "".join(accumulated).strip()
+                if not text and fallback_file is not None and fallback_file.is_file():
+                    text = fallback_file.read_text(encoding="utf-8", errors="replace").strip()
+                if text:
+                    try:
+                        partial_path.write_text(text)
+                        _try_compile_latex(partial_path)
+                    except OSError:
+                        pass
+                    return ModelResponse(text=text, provider="claude-code", model=model_arg or "claude-code")
+                raise ModelRequestError("Claude Code request timed out and produced no output.")
+
+            ready, _, _ = select.select([proc.stdout], [], [], min(remaining, 60.0))
+            if not ready:
+                continue
+
+            line = proc.stdout.readline()
+            if not line:
+                break
+
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            event_type = event.get("type")
+
+            # Token-level streaming deltas (--verbose exposes these)
+            if event_type == "content_block_delta":
+                delta = event.get("delta", {})
+                if delta.get("type") == "text_delta":
+                    chunk = delta.get("text", "")
+                    if chunk:
+                        accumulated.append(chunk)
+
+            # Complete assistant turn
+            elif event_type == "assistant":
+                for block in event.get("message", {}).get("content", []):
+                    if block.get("type") == "text":
+                        chunk = block.get("text", "")
+                        if chunk:
+                            accumulated.append(chunk)
+                # Always flush on turn completion
+                text_so_far = "".join(accumulated)
+                if text_so_far.strip():
+                    try:
+                        partial_path.write_text(text_so_far)
+                        _try_compile_latex(partial_path)
+                        last_partial_write = time.monotonic()
+                    except OSError:
+                        pass
+
+            elif event_type == "result" and not accumulated:
+                result_text = event.get("result", "")
+                if result_text:
+                    accumulated.append(result_text)
+
+            # Periodic flush during token streaming (every 30 s)
+            now = time.monotonic()
+            if accumulated and now - last_partial_write >= 30:
+                text_so_far = "".join(accumulated)
+                if text_so_far.strip():
+                    try:
+                        partial_path.write_text(text_so_far)
+                        _try_compile_latex(partial_path)
+                        last_partial_write = now
+                    except OSError:
+                        pass
+
+    finally:
+        try:
+            proc.stdout.close()
+        except OSError:
+            pass
+
+    proc.wait()
+
+    try:
+        stderr_output = proc.stderr.read()
+    except OSError:
+        stderr_output = ""
+
+    text = "".join(accumulated).strip()
+    if not text and fallback_file is not None and fallback_file.is_file():
+        text = fallback_file.read_text(encoding="utf-8", errors="replace").strip()
     if not text:
-        raise ModelRequestError("Claude Code returned no result text.")
+        if proc.returncode != 0:
+            raise ModelRequestError(f"Claude Code returned exit code {proc.returncode}: {stderr_output.strip()[-4000:]}")
+        # Process succeeded but streamed no text — model wrote output via file tools.
+        return ModelResponse(text="", provider="claude-code", model=model_arg or "claude-code")
+
+    for suffix in (".tex", ".aux", ".log"):
+        try:
+            partial_path.with_suffix(suffix).unlink(missing_ok=True)
+        except OSError:
+            pass
+
     return ModelResponse(text=text, provider="claude-code", model=model_arg or "claude-code")
+
+
+def _try_compile_latex(tex_path: Path) -> None:
+    """Render LaTeX to HTML (pandoc+MathJax) or PDF if a compiler is available."""
+    text = tex_path.read_text(errors="replace")
+    if r"\begin{document}" not in text or r"\end{document}" not in text:
+        return
+    # Try PDF compilers first
+    for compiler in ("pdflatex", "xelatex", "lualatex", "latexmk"):
+        binary = shutil.which(compiler)
+        if binary is None:
+            continue
+        cmd = [binary, "-interaction=nonstopmode", "-output-directory", str(tex_path.parent), str(tex_path)]
+        try:
+            subprocess.run(cmd, capture_output=True, timeout=90, cwd=tex_path.parent)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        return
+    # Fallback: pandoc → HTML with MathJax
+    pandoc = shutil.which("pandoc") or _find_pandoc()
+    if pandoc is None:
+        return
+    html_path = tex_path.with_suffix(".html")
+    cmd = [pandoc, str(tex_path), "--from", "latex", "--to", "html",
+           "--mathjax", "--standalone", "-o", str(html_path)]
+    try:
+        subprocess.run(cmd, capture_output=True, timeout=60, cwd=tex_path.parent)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def _find_pandoc() -> str | None:
+    for prefix in (
+        "/sw/user/python/miniforge3-tensorflow-cpu/bin",
+        "/sw/user/python/miniforge3-datascience/bin",
+        "/sw/user/python/miniforge3-pytorch-2.5.0/bin",
+    ):
+        p = Path(prefix) / "pandoc"
+        if p.is_file():
+            return str(p)
+    return None
 
 
 def _claude_code_model_arg(model: str) -> str | None:
