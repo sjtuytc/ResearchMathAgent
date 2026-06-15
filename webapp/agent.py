@@ -75,6 +75,7 @@ class AgentConfig:
     workspace: Path | None = None
     repo_root: Path | None = None
     thinking: bool = True
+    provider: str = "api"
 
 
 def _initial_user_message(cfg: AgentConfig) -> str:
