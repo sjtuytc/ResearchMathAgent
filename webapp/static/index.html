@@ -586,46 +586,83 @@ document.querySelector('.tab[data-tab="proofs"]').addEventListener("click",()=>{
 // ---- Final Proofs tab ----
 let fpLoaded=false;
 function texToHtml(tex){
-  // Convert LaTeX body to renderable HTML:
-  // 1. Wrap newcommands in a hidden MathJax-processable span so macros are registered
-  // 2. Convert \section*, \subsection*, paragraphs, \textbf, \emph, \textit, \text
-  // 3. Leave math delimiters ($…$, $$…$$, \[…\]) for MathJax
-  const newcmds=[]; const lines=[];
-  for(const line of tex.split("\n")){
-    if(/^\\(new|renew)command|^\\DeclareMath/.test(line.trim())){newcmds.push(line);}
-    else lines.push(line);
-  }
-  let body=lines.join("\n");
-  // LaTeX structural → HTML
-  body=body
-    .replace(/\\clearpage/g,"<hr style='border-color:var(--border);margin:20px 0'>")
-    .replace(/\\section\*\{([^}]+)\}/g,"<h2 style='font-size:16px;margin:22px 0 8px;color:var(--accent)'>$1</h2>")
-    .replace(/\\subsection\*\{([^}]+)\}/g,"<h3 style='font-size:14px;margin:16px 0 6px'>$1</h3>")
-    .replace(/\\subsubsection\*\{([^}]+)\}/g,"<h4 style='font-size:13px;margin:12px 0 4px'>$1</h4>")
-    .replace(/\\begin\{(itemize|enumerate)\}/g,"<ul>").replace(/\\end\{(itemize|enumerate)\}/g,"</ul>")
-    .replace(/\\item\s/g,"<li>")
-    .replace(/\\begin\{(theorem|lemma|proposition|corollary|definition|remark)[^}]*\}/g,
-      (_,e)=>`<div style='border-left:3px solid var(--accent);padding:8px 12px;margin:10px 0;background:var(--panel2)'><b style='text-transform:capitalize'>${e}.</b> `)
-    .replace(/\\end\{(theorem|lemma|proposition|corollary|definition|remark)[^}]*\}/g,"</div>")
-    .replace(/\\begin\{proof\}/g,"<div style='border-left:2px solid var(--border);padding:6px 12px;margin:8px 0;color:var(--muted)'><i>Proof.</i> ")
+  // --- Pass 1: collect macro/theorem definitions ---
+  const newcmds=[], thmMap={};  // thmMap: envName -> display label
+  // Standard theorem-like names (fallback)
+  for(const n of ["theorem","lemma","proposition","corollary","definition","remark","claim","example","conjecture","fact"])
+    thmMap[n]=n.charAt(0).toUpperCase()+n.slice(1);
+  // Parse \newtheorem{envname}{Display} and \newtheorem*{envname}{Display}
+  tex=tex.replace(/\\newtheorem\*?\{([^}]+)\}\{([^}]+)\}/g,(_,env,label)=>{thmMap[env]=label;return "";});
+  // Collect \newcommand / \renewcommand / \DeclareMathOperator for MathJax
+  tex=tex.replace(/^[ \t]*(\\(?:new|renew)command\*?|\\DeclareMathOperator\*?)[^\n]+$/gm,m=>{newcmds.push(m);return "";});
+
+  // --- Pass 2: structural replacements ---
+  let body=tex
+    // document scaffolding
+    .replace(/\\begin\{document\}|\\end\{document\}/g,"")
+    .replace(/\\begingroup\b|\\endgroup\b/g,"")
+    .replace(/\\maketitle|\\tableofcontents/g,"")
+    .replace(/\\addcontentsline\{[^}]*\}\{[^}]*\}\{[^}]*\}/g,"")
+    .replace(/\\title\{[^}]+\}/g,"").replace(/\\author\{[^}]*\}/g,"").replace(/\\date\{[^}]*\}/g,"")
+    .replace(/\\hypersetup\{[\s\S]*?\}/g,"")
+    .replace(/\\usepackage(\[[^\]]*\])?\{[^}]+\}/g,"")
+    .replace(/\\documentclass(\[[^\]]*\])?\{[^}]+\}/g,"")
+    // sections
+    .replace(/\\clearpage\b/g,"<hr style='border-color:var(--border);margin:20px 0'>")
+    .replace(/\\section\*?\{([^}]+)\}/g,"<h2 style='font-size:16px;margin:22px 0 8px;color:var(--accent)'>$1</h2>")
+    .replace(/\\subsection\*?\{([^}]+)\}/g,"<h3 style='font-size:14px;margin:16px 0 6px'>$1</h3>")
+    .replace(/\\subsubsection\*?\{([^}]+)\}/g,"<h4 style='font-size:13px;margin:12px 0 4px'>$1</h4>")
+    // lists
+    .replace(/\\begin\{itemize\}|\\begin\{enumerate\}/g,"<ul>")
+    .replace(/\\end\{itemize\}|\\end\{enumerate\}/g,"</ul>")
+    .replace(/\\item(?:\[[^\]]*\])?\s*/g,"<li>")
+    // proof env
+    .replace(/\\begin\{proof\}(\[([^\]]*)\])?/g,(_,_2,opt)=>
+      `<div style='border-left:2px solid var(--border);padding:6px 12px;margin:8px 0'><em>${opt||"Proof"}.</em> `)
     .replace(/\\end\{proof\}/g," $\\square$</div>")
-    .replace(/\\begin\{align\*?\}/g,"$$\\begin{aligned}").replace(/\\end\{align\*?\}/g,"\\end{aligned}$$")
+    // math environments → MathJax display
+    .replace(/\\begin\{(align|aligned|gather|gathered|multline|flalign|eqnarray)\*?\}/g,
+      (_,e)=>`$$\\begin{${e}}`)
+    .replace(/\\end\{(align|aligned|gather|gathered|multline|flalign|eqnarray)\*?\}/g,
+      (_,e)=>`\\end{${e}}$$`)
     .replace(/\\begin\{equation\*?\}/g,"$$").replace(/\\end\{equation\*?\}/g,"$$")
-    .replace(/\\begin\{gather\*?\}/g,"$$\\begin{gathered}").replace(/\\end\{gather\*?\}/g,"\\end{gathered}$$")
+    .replace(/\\begin\{(pmatrix|bmatrix|vmatrix|matrix|cases|split|array)\}/g,
+      (_,e)=>`$\\begin{${e}}`)
+    .replace(/\\end\{(pmatrix|bmatrix|vmatrix|matrix|cases|split|array)\}/g,
+      (_,e)=>`\\end{${e}}$`)
+    // text formatting
     .replace(/\\textbf\{([^}]+)\}/g,"<b>$1</b>")
     .replace(/\\emph\{([^}]+)\}/g,"<em>$1</em>")
     .replace(/\\textit\{([^}]+)\}/g,"<em>$1</em>")
+    .replace(/\\textrm\{([^}]+)\}/g,"$1")
+    .replace(/\\textsc\{([^}]+)\}/g,"<span style='font-variant:small-caps'>$1</span>")
+    // spacing / misc
     .replace(/\\noindent\s*/g,"")
-    .replace(/\\medskip|\\bigskip|\\smallskip/g,"<br>")
+    .replace(/\\medskip|\\bigskip|\\smallskip|\\vspace\{[^}]*\}/g,"<br>")
+    .replace(/\\hspace\{[^}]*\}/g," ")
     .replace(/\\label\{[^}]+\}/g,"")
-    .replace(/\\(begin|end)\{(document|group)\}/g,"")
-    .replace(/\\(maketitle|tableofcontents|addcontentsline[^}]*\}[^}]*\}[^}]*\})/g,"")
-    .replace(/\\title\{[^}]+\}/g,"").replace(/\\author\{[^}]+\}/g,"").replace(/\\date\{[^}]*\}/g,"")
-    .replace(/\\hypersetup\{[\s\S]*?\}/g,"")
+    .replace(/\\ref\{([^}]+)\}/g,"(?)")
+    .replace(/\\cite\{([^}]+)\}/g,"[cite]")
+    .replace(/\\footnote\{[^}]+\}/g,"")
+    .replace(/---/g,"—").replace(/--/g,"–")
     .replace(/\n{3,}/g,"\n\n");
-  // inject newcommands invisibly so MathJax registers them
+
+  // --- Pass 3: dynamic theorem envs ---
+  // Build one regex for all known theorem-like envs
+  const thmNames=Object.keys(thmMap).map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|");
+  const thmBeginRe=new RegExp(`\\\\begin\\{(${thmNames})\\}(\\[[^\\]]*\\])?`,"g");
+  const thmEndRe  =new RegExp(`\\\\end\\{(${thmNames})\\}`,"g");
+  body=body
+    .replace(thmBeginRe,(_,env,opt)=>{
+      const label=thmMap[env]||env;
+      const extra=opt?` (${opt.slice(1,-1)})` :"";
+      return `<div style='border-left:3px solid var(--accent2);padding:8px 14px;margin:12px 0;background:var(--panel2);border-radius:0 6px 6px 0'><b style='color:var(--accent2)'>${label}${extra}.</b> `;
+    })
+    .replace(thmEndRe,"</div>");
+
+  // --- Pass 4: MathJax newcommand preamble (hidden span) ---
   const preamble=newcmds.length
-    ? `<span style="display:none">$${newcmds.join("\n")}$</span>`:"";
+    ? `<span style="display:none">\\(${newcmds.join("\n")}\\)</span>`:"";
   return preamble+body;
 }
 
