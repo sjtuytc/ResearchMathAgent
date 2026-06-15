@@ -145,7 +145,7 @@ def call_claude_code(
     system: str,
     prompt: str,
     cwd: Path,
-    timeout: int = 900,
+    timeout: int = 1800,
 ) -> ModelResponse:
     claude_bin = shutil.which("claude")
     if claude_bin is None:
@@ -153,6 +153,8 @@ def call_claude_code(
             "Claude Code backend requested, but the `claude` command is not installed or not on PATH. "
             "Install Claude Code and log in before running RMA with --model-provider claude-code."
         )
+
+    timeout = int(os.environ.get("RMA_CLAUDE_CODE_TIMEOUT", timeout))
 
     command = [
         claude_bin,

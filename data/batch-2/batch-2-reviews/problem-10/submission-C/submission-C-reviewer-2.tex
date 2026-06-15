@@ -1,0 +1,436 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[full]{textcomp}
+\usepackage[osf]{newtxtext}
+\usepackage{graphicx}
+
+%% ---- Base math packages (always available) -------------------------------
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{hyperref}
+
+%% ---- Submission preamble (imported so the inlined solution compiles) ----
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\V}{\mathcal V}
+\newcommand{\E}{\mathcal E}
+\newcommand{\Lk}{\operatorname{Lk}}
+\newcommand{\St}{\operatorname{St}}
+\newcommand{\Tr}{\operatorname{Tr}}
+\newcommand{\B}{\mathbb B}
+\newcommand{\K}{\mathbb K}
+\newcommand{\C}{\mathbb C}
+\newcommand{\bbarotimes}{\mathbin{\overline\otimes}}
+\newcommand{\freeprod}{\mathop{*}}
+\newcommand{\Ecal}{\mathcal E}
+
+%% ---- Theorem environments not supplied by the submission ------------------
+\makeatletter
+\@ifundefined{theorem}{\newtheorem{theorem}{Theorem}}{}
+\@ifundefined{lemma}{\newtheorem{lemma}{Lemma}}{}
+\@ifundefined{proposition}{\newtheorem{proposition}{Proposition}}{}
+\@ifundefined{corollary}{\newtheorem{corollary}{Corollary}}{}
+\@ifundefined{definition}{\theoremstyle{definition}\newtheorem{definition}{Definition}}{}
+\@ifundefined{remark}{\theoremstyle{remark}\newtheorem{remark}{Remark}}{}
+\makeatother
+
+%% ---- First Proof theme + in-text comment box -----------------------------
+%% Palette from the FINAL DELIVERABLES brand assets:
+%%   slate     #171313  (ink)
+%%   warm-gray #69626D  (secondary)
+%%   sand      #F2ECE9  (light background)
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+
+\definecolor{FPslate}{HTML}{171313}
+\definecolor{FPwarmgray}{HTML}{69626D}
+\definecolor{FPsand}{HTML}{F2ECE9}
+
+% Reviewer number for this document (set per file). Used by the comment box tag.
+\newcommand{\reviewernum}{2}
+
+% \review{...} : a First-Proof-themed reviewer comment, set inline in the text
+%            as a sand box with a warm-gray rule and a "Reviewer N" tag.
+\newtcolorbox{reviewbox}{
+  breakable, enhanced, sharp corners,
+  colback=FPsand, colframe=FPwarmgray,
+  coltext=FPslate, boxrule=0pt, leftrule=2.5pt,
+  left=8pt, right=8pt, top=14pt, bottom=5pt,
+  before skip=6pt, after skip=6pt,
+  fontupper=\small,
+  overlay unbroken and first={
+    \node[anchor=north east, font=\bfseries\footnotesize\sffamily,
+          text=FPwarmgray, inner sep=0pt]
+      at ([xshift=-8pt,yshift=-4pt]frame.north east) {Reviewer~\reviewernum};}
+}
+\newcommand{\review}[1]{\begin{reviewbox}#1\end{reviewbox}}
+
+\title{Review of Submission 10C}
+\author{First Proof Second Batch \\ Reviewer \reviewernum}
+\date{June 4--8, 2026}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \noindent
+  \begin{minipage}[t]{0.68\textwidth}
+    \vspace{20pt}
+    \raggedright
+    {\LARGE\bfseries \@title\par}
+    \vspace{0.35em}
+    {\large \@author\par}
+    \vspace{0.35em}
+    {\normalsize \@date\par}
+  \end{minipage}%
+  \hfill
+  \begin{minipage}[t]{0.25\textwidth}
+    \vspace{0pt}
+    \raggedleft
+    \raisebox{\dimexpr-\height+\ht\strutbox+0.225in\relax}{\includegraphics[height=1.35in]{Logo-slate.png}}
+  \end{minipage}
+  \par\vspace{2em}
+}
+\makeatother
+
+\begin{document}
+\maketitle
+\section{Review}
+
+\paragraph{Correctness.}
+
+The solution gives a correct outline but has one lemma which is wrong as stated (but can be reasonably easily fixed) and another lemma which is correct but effectively not proved. The issue with the second lemma should be considered a major gap which is highly nontrivial to fix.
+
+\paragraph{Novelty.}
+
+The solution is novel in that it suggests an approach that is different from the human solution. But the solution does not prove the main technical result needed. It can be made to work with significant additional efforts, but this is not obvious at all and no justification exists within the solution itself.
+
+\section{Recommendation}
+
+This is between requiring major revisions and outright rejection. The solution does not prove at all the main technical result needed, instead citing a paper and supplying no hints as to how to apply the result there to obtain the needed technical lemma. It turns out that this approach works, but this is by no means obvious or routine and requires a significant amount of additional arguments.
+
+  \section{Submission with inline comments}
+
+%% ======================================================================
+%% Inlined verbatim from the anonymised submission prob_010-C.
+%% ======================================================================
+
+\date{}
+
+
+
+
+\begin{abstract}
+We prove that if $\Gamma$ is a finite join-irreducible simplicial graph with at least three vertices and if each tracial vertex algebra $(M_v,\tau_v)$ contains a trace-zero unitary, then the tracial graph product von Neumann algebra is properly proximal.
+\end{abstract}
+
+\subsection{Preliminaries}
+
+We use the following standard convention.  A finite graph $\Gamma=(\V,\E)$ is called \emph{irreducible} if it is not a non-trivial join: equivalently, there is no non-empty proper subset $S\subset \V$ such that every vertex of $S$ is adjacent to every vertex of $\V\setminus S$.  Equivalently, the complement graph $\Gamma^c$ is connected.
+
+For $U\subset \V$, let $\Gamma_U$ be the induced subgraph and let
+\[
+(M_U,\tau_U)=\mathop{\star}_{v\in \Gamma_U}(M_v,\tau_v)
+\]
+denote the corresponding graph product von Neumann algebra.  We put $M_\varnothing=\C$.  The canonical trace-preserving conditional expectation is denoted
+\[
+E_U:M\to M_U.
+\]
+We write
+\[
+\Lk(v)=\{w\in \V: (v,w)\in \E\},
+\qquad
+\St(v)=\Lk(v)\cup\{v\}.
+\]
+
+We use the definition of proper proximality for finite von Neumann algebras introduced by Ding--Kunnawalkam Elayavalli--Peterson \cite{DKEP}.  If $N\subset M$ is a von Neumann subalgebra with expectation, let $X_N$ denote the $M$-boundary piece associated with $N$, i.e. the boundary piece generated by the Jones projection $e_N:L^2(M)\to L^2(N)$.  The small-at-infinity operator system is denoted $S_{X_N}(M)$.  By \cite[Theorems 6.2 and 8.5]{DKEP}, $M$ is properly proximal relative to $X_N$ exactly when there is no $M$-central state on $S_{X_N}(M)$ whose restriction to $M$ is normal.
+
+We shall use two standard consequences of the theory in \cite{DKEP}.
+
+\begin{lemma}[Upgrading from relative boundary pieces]\label{lem:upgrade}
+Let $(M,\tau)$ be separable and tracial.  Let $X_1,\dots,X_n$ be $M$-boundary pieces and let $q_i$ be the support projection of $K_{X_i}(M)$ in the bidual model of \cite[Section 8]{DKEP}.  Let $q_{\K}$ be the corresponding support projection for the compact boundary piece $\K(L^2M)$.  Suppose:
+\begin{enumerate}[label=(\roman*)]
+\item $M$ is properly proximal relative to every $X_i$;
+\item $\bigwedge_{i=1}^n q_i=q_{\K}$.
+\end{enumerate}
+Then $M$ is properly proximal.
+\end{lemma}
+
+\begin{proof}
+If $M$ were not properly proximal, then \cite[Theorem 8.5]{DKEP} would give an $M$-central state $\varphi$ on the bidual small-at-infinity system for the compact boundary whose restriction to $M$ is normal.  Since proper proximality relative to any $X_i$ rules out amenable direct summands, $\varphi(q_{\K})=0$; otherwise Connes' amenability criterion would produce an amenable direct summand.
+
+\review{While the result of this part is correct, it requires more justification. In particular, while $q_\K$ is in the small-at-infinity boundary. The same issue appears in the first line of the next paragraph, namely, justification is needed to show $q_i$ is in the small-at-infinity boundary (for the compact boundary), as otherwise $\varphi(q_i^\perp)$ makes no sense.}
+
+For each $i$, if $\varphi(q_i^\perp)>0$, then the normalized compression of $\varphi$ by $q_i^\perp$ gives an $M$-central state on the small-at-infinity system relative to $X_i$, still normal on $M$, contradicting relative proper proximality.  Hence $\varphi(q_i)=1$ for all $i$.  Since the $q_i$ are central projections and the family is finite,
+\[
+\varphi\Big(\bigwedge_i q_i\Big)=1.
+\]
+
+\review{This part is wrong. the claim that $q_i$ are central projections are wrong, so the argument does not work. In fact, the lemma is wrong as stated. It needs the additional assumption that $q_i$ commute with each other, which is also the ingredient needed to make this part of the argument work.}
+
+By assumption, $\bigwedge_i q_i=q_{\K}$, contradicting $\varphi(q_{\K})=0$.
+\end{proof}
+
+\begin{lemma}[Boundary cover for graph products]\label{lem:boundary-cover}
+For a graph product $M=\star_{\Gamma}(M_v,\tau_v)$ and subsets $U_1,\dots,U_n\subset \V$, let $q_{U_i}$ be the support projection associated with the boundary piece $X_{M_{U_i}}$.  Then
+\[
+q_{U_1}\wedge\cdots\wedge q_{U_n}=q_{U_1\cap\cdots\cap U_n}.
+\]
+In particular,
+\[
+\bigwedge_{v\in \V} q_{\Lk(v)}=q_\varnothing=q_{\K}.
+\]
+\end{lemma}
+
+\begin{proof}
+The first assertion is the support-projection form of the graph-product bimodule calculation for subgraph algebras; see Charlesworth--de Santiago--Hayes--Jekel--Kunnawalkam Elayavalli--Nelson \cite[Theorem 0.4, Theorem 5.4, and Proposition 5.5]{CDHJKEN}.  Equivalently, the $M$-$M$ boundary piece generated by $e_{M_U}$ intersects/fuses with the one generated by $e_{M_W}$ exactly as the subgraph algebras intersect:
+\[
+M_U\cap M_W=M_{U\cap W},
+\qquad
+E_U E_W=E_{U\cap W}.
+\]
+Iterating gives the formula for finitely many $U_i$.
+
+For $U_i=\Lk(v_i)$ over all vertices, the intersection is empty because $v\notin \Lk(v)$ for every $v$.  Thus the meet is $q_\varnothing$.  Since $M_\varnothing=\C$ and the boundary piece generated by $e_{\C}$ is exactly $\K(L^2M)$, we have $q_\varnothing=q_{\K}$.
+\end{proof}
+
+\review{While the AI suggested an approach different from the human solution here (and it turns out that the approach works, per the solution given by another AI system), it gives no justification as to why the ``graph-product bimodule calculation'' should yield the claimed result, nor is it obvious. The argument for this needs at least around three pages and requires plenty of nontrivial arguments. It should also be noted that, while the lemma is correct as stated, because of the issue in Lemma 3.1, we actually need the additional result that $q_{U_i}$ commutes with each other, a strengthening of the lemma claimed here.}
+
+\subsection{A relative proper proximality criterion for amalgamated free products}
+
+We need the following elementary relative version of the usual paradoxical-decomposition proof for free products.
+
+\begin{proposition}\label{prop:AFP}
+Let
+\[
+(M,\tau)=(A,E_B^A)\freeprod_B(C,E_B^C)
+\]
+be a tracial amalgamated free product over a common von Neumann subalgebra $B$.  Suppose there are unitaries
+\[
+u_1,u_2\in C,\qquad w\in A
+\]
+such that
+\[
+E_B^C(u_1)=E_B^C(u_2)=E_B^C(u_1^*u_2)=0,
+\qquad
+E_B^A(w)=0.
+\]
+Then $M$ is properly proximal relative to the boundary piece $X_B$ associated with $B$.
+\end{proposition}
+
+\begin{proof}
+Let $A^\circ=\ker E_B^A$ and $C^\circ=\ker E_B^C$.  In the standard $L^2$-model of the amalgamated free product,
+\[
+L^2(M)=L^2(B)\oplus H_A\oplus H_C,
+\]
+where $H_A$ is the closed span of reduced words beginning in $A^\circ$, and $H_C$ is the closed span of reduced words beginning in $C^\circ$.  Let $P_A$ and $P_C$ be the corresponding orthogonal projections.
+
+A direct Fock-space computation shows that
+\[
+P_A,P_C\in S_{X_B}(M).
+\]
+Indeed, right multiplication by an algebraic reduced word changes the first letter only through cancellations that factor through $L^2(B)$; hence the commutators with the right action of $M$ lie in the ideal generated by $e_B$, namely $K_{X_B}(M)$.  This is the standard computation used in \cite[Section 6]{DKEP}.
+
+Assume, toward contradiction, that there exists an $M$-central state $\varphi$ on $S_{X_B}(M)$ whose restriction to $M$ is normal.  Since $u_1,u_2\in C^\circ$ and $E_B(u_1^*u_2)=0$, the subspaces $u_1^*H_A$ and $u_2^*H_A$ are orthogonal and both are contained in $H_C$.  Hence
+\[
+u_1^*P_Au_1+u_2^*P_Au_2\leq P_C.
+\]
+By $M$-centrality and unitarity,
+\[
+2\varphi(P_A)
+=
+\varphi(u_1^*P_Au_1)+\varphi(u_2^*P_Au_2)
+\leq \varphi(P_C).
+\]
+Similarly, since $w\in A^\circ$,
+\[
+w^*P_Cw\leq P_A,
+\]
+and therefore
+\[
+\varphi(P_C)=\varphi(w^*P_Cw)\leq \varphi(P_A).
+\]
+Thus $\varphi(P_A)=\varphi(P_C)=0$.
+
+Finally, since $u_1\in C^\circ$, the range of $u_1^*e_Bu_1$ is contained in $H_C$, so
+\[
+u_1^*e_Bu_1\leq P_C.
+\]
+Again by centrality,
+\[
+\varphi(e_B)=\varphi(u_1^*e_Bu_1)\leq \varphi(P_C)=0.
+\]
+But $1=P_A+P_C+e_B$, so $\varphi(1)=0$, a contradiction.
+\end{proof}
+
+\subsection{Graph-product input}
+
+For every vertex $v$, the graph product admits the canonical amalgamated free product decomposition
+\[
+M
+=
+M_{\St(v)}
+\freeprod_{M_{\Lk(v)}}
+M_{\V\setminus\{v\}}.
+\]
+This follows directly from the graph-product normal form and is standard; see \cite{CF} and \cite[Section 1.1]{CDHJKEN}.
+
+We now verify that the hypotheses of Proposition \ref{prop:AFP} hold for each vertex.
+
+\begin{lemma}\label{lem:unitaries}
+Let $\Gamma$ be finite, irreducible, and $|\V|\geq 3$.  Fix $v\in\V$ and put $B=M_{\Lk(v)}$.  In the decomposition
+\[
+M
+=
+M_{\St(v)}
+\freeprod_B
+M_{\V\setminus\{v\}},
+\]
+there exist a unitary $w\in M_{\St(v)}$ and unitaries $u_1,u_2\in M_{\V\setminus\{v\}}$ such that
+\[
+E_B(w)=0,\qquad
+E_B(u_1)=E_B(u_2)=E_B(u_1^*u_2)=0.
+\]
+\end{lemma}
+
+\begin{proof}
+Choose, for each vertex $s$, a trace-zero unitary $a_s\in M_s$.
+
+First take
+\[
+w=a_v\in M_v\subset M_{\St(v)}.
+\]
+Since $M_{\St(v)}=M_v\bbarotimes M_{\Lk(v)}$ over the commuting graph product decomposition, we have
+\[
+E_B(w)=\tau_v(a_v)1=0.
+\]
+
+Let
+\[
+L=\Lk(v),\qquad W=\V\setminus(\{v\}\cup L).
+\]
+The set $W$ is non-empty.  Indeed, if $W=\varnothing$, then $v$ is adjacent to every vertex in $\V\setminus\{v\}$, giving the non-trivial join decomposition
+\[
+\Gamma=\{v\}+\Gamma_{\V\setminus\{v\}},
+\]
+contrary to irreducibility.
+
+We distinguish two cases.
+
+\smallskip
+
+\noindent\textbf{Case 1: $L=\varnothing$.}
+Then $B=\C$.  Since $|\V|\geq 3$, choose distinct vertices $r,s\in \V\setminus\{v\}$.  Put
+\[
+u_1=a_r,\qquad u_2=a_s a_r.
+\]
+Both are unitaries in $M_{\V\setminus\{v\}}$.  Their scalar expectations are zero:
+\[
+\tau(u_1)=0,\qquad \tau(u_2)=0.
+\]
+Moreover,
+\[
+u_1^*u_2=a_r^*a_s a_r.
+\]
+If $r$ and $s$ are adjacent, this equals $a_s$, whose trace is zero.  If they are not adjacent, it is a non-empty reduced word with trace-zero letters, hence has trace zero.  Thus $E_B(u_1^*u_2)=0$.
+
+\smallskip
+
+\noindent\textbf{Case 2: $L\neq \varnothing$.}
+We claim that there exist $\ell\in L$ and $r\in W$ such that $\ell$ is not adjacent to $r$.  If not, then every vertex of $L$ is adjacent to every vertex of $\V\setminus L$ because vertices of $L$ are adjacent to $v$ by definition and, by assumption, to every vertex of $W$.  Hence
+\[
+\Gamma=\Gamma_L+\Gamma_{\V\setminus L},
+\]
+again contradicting irreducibility.
+
+Choose such $\ell\in L$ and $r\in W$.  Put
+\[
+u_1=a_r,\qquad u_2=a_\ell a_r.
+\]
+Since $a_\ell\in M_\ell\subset B$ and $r\notin L$, both $u_1$ and $u_2$ lie in $M_{\V\setminus\{v\}}$ and satisfy
+\[
+E_B(u_1)=E_B(u_2)=0.
+\]
+Furthermore,
+\[
+u_1^*u_2=a_r^*a_\ell a_r.
+\]
+Because $r$ and $\ell$ are not adjacent, this is a reduced word involving the vertex $r\notin L$, so its expectation onto $B=M_L$ is zero.  Hence $E_B(u_1^*u_2)=0$.
+\end{proof}
+
+\begin{corollary}\label{cor:relative}
+For every $v\in\V$, the graph product $M$ is properly proximal relative to the boundary piece $X_{M_{\Lk(v)}}$.
+\end{corollary}
+
+\begin{proof}
+Apply Proposition \ref{prop:AFP} to
+\[
+M
+=
+M_{\St(v)}
+\freeprod_{M_{\Lk(v)}}
+M_{\V\setminus\{v\}},
+\]
+using the unitaries supplied by Lemma \ref{lem:unitaries}.
+\end{proof}
+
+\subsection{Proof of the theorem}
+
+\begin{theorem}
+Let $\Gamma$ be a finite simplicial graph with $|\V|\geq 3$.  Let $(M_v,\tau_v)$ be a separable tracial von Neumann algebra for every $v\in \V$.  Assume:
+\begin{enumerate}[label=(\alph*)]
+\item $\Gamma$ is irreducible, i.e. not a non-trivial join;
+\item every $M_v$ contains a trace-zero unitary.
+\end{enumerate}
+Let
+\[
+(M,\tau)=\mathop{\star}_{v\in\Gamma}(M_v,\tau_v)
+\]
+be the tracial graph product von Neumann algebra.  Then $M$ is properly proximal.
+\end{theorem}
+
+\begin{proof}
+For every vertex $v$, Corollary \ref{cor:relative} shows that $M$ is properly proximal relative to the boundary piece $X_{M_{\Lk(v)}}$.
+
+Therefore $M$ has no amenable direct summand: if $pM$ were an amenable direct summand, Connes' amenability criterion would give an $M$-central state on $\B(L^2(pM))$, hence by extension an $M$-central state on every $S_{X_{M_{\Lk(v)}}}(M)$ normal on $M$, contradicting relative proper proximality.
+
+By Lemma \ref{lem:boundary-cover},
+\[
+\bigwedge_{v\in\V} q_{\Lk(v)}=q_{\K}.
+\]
+Thus the finite family of boundary pieces $\{X_{M_{\Lk(v)}}:v\in\V\}$ satisfies the hypotheses of the upgrading Lemma \ref{lem:upgrade}.  Consequently $M$ is properly proximal.
+\end{proof}
+
+\begin{thebibliography}{99}
+
+\bibitem{CF}
+M.~Caspers and P.~Fima,
+\emph{Graph products of operator algebras},
+J. Noncommut. Geom. \textbf{11} (2017), no.~1, 367--411.
+
+\bibitem{CDHJKEN}
+I.~Charlesworth, R.~de Santiago, B.~Hayes, D.~Jekel,
+S.~Kunnawalkam Elayavalli and B.~Nelson,
+\emph{On the structure of graph product von Neumann algebras},
+Publ. Res. Inst. Math. Sci. \textbf{61} (2025), no.~4, 713--762.
+
+\bibitem{DKEP}
+C.~Ding, S.~Kunnawalkam Elayavalli and J.~Peterson,
+\emph{Properly proximal von Neumann algebras},
+Duke Math. J. \textbf{172} (2023), no.~15, 2821--2894.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,533 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[full]{textcomp}
+\usepackage[osf]{newtxtext}
+\usepackage{graphicx}
+
+%% ---- Base math packages (always available) -------------------------------
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{hyperref}
+
+%% ---- Submission preamble (imported so the inlined solution compiles) ----
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+
+\newcommand{\Trop}{\operatorname{Trop}}
+\newcommand{\Dr}{\operatorname{Dr}}
+\newcommand{\rk}{\operatorname{rk}}
+\newcommand{\cl}{\operatorname{cl}}
+\newcommand{\cL}{\mathcal L}
+\newcommand{\bT}{\mathbb T}
+\newcommand{\one}{\mathbf 1}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+%% ---- Theorem environments not supplied by the submission ------------------
+\makeatletter
+\@ifundefined{theorem}{\newtheorem{theorem}{Theorem}}{}
+\@ifundefined{lemma}{\newtheorem{lemma}{Lemma}}{}
+\@ifundefined{proposition}{\newtheorem{proposition}{Proposition}}{}
+\@ifundefined{corollary}{\newtheorem{corollary}{Corollary}}{}
+\@ifundefined{definition}{\theoremstyle{definition}\newtheorem{definition}{Definition}}{}
+\@ifundefined{remark}{\theoremstyle{remark}\newtheorem{remark}{Remark}}{}
+\makeatother
+
+%% ---- First Proof theme + in-text comment box -----------------------------
+%% Palette from the FINAL DELIVERABLES brand assets:
+%%   slate     #171313  (ink)
+%%   warm-gray #69626D  (secondary)
+%%   sand      #F2ECE9  (light background)
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+
+\definecolor{FPslate}{HTML}{171313}
+\definecolor{FPwarmgray}{HTML}{69626D}
+\definecolor{FPsand}{HTML}{F2ECE9}
+
+% Reviewer number for this document (set per file). Used by the comment box tag.
+\newcommand{\reviewernum}{3}
+
+% \review{...} : a First-Proof-themed reviewer comment, set inline in the text
+%            as a sand box with a warm-gray rule and a "Reviewer N" tag.
+\newtcolorbox{reviewbox}{
+  breakable, enhanced, sharp corners,
+  colback=FPsand, colframe=FPwarmgray,
+  coltext=FPslate, boxrule=0pt, leftrule=2.5pt,
+  left=8pt, right=8pt, top=14pt, bottom=5pt,
+  before skip=6pt, after skip=6pt,
+  fontupper=\small,
+  overlay unbroken and first={
+    \node[anchor=north east, font=\bfseries\footnotesize\sffamily,
+          text=FPwarmgray, inner sep=0pt]
+      at ([xshift=-8pt,yshift=-4pt]frame.north east) {Reviewer~\reviewernum};}
+}
+\newcommand{\review}[1]{\begin{reviewbox}#1\end{reviewbox}}
+
+\title{Review of Submission 8C}
+\author{First Proof Second Batch \\ Reviewer \reviewernum}
+\date{June 4--8, 2026}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \noindent
+  \begin{minipage}[t]{0.68\textwidth}
+    \vspace{20pt}
+    \raggedright
+    {\LARGE\bfseries \@title\par}
+    \vspace{0.35em}
+    {\large \@author\par}
+    \vspace{0.35em}
+    {\normalsize \@date\par}
+  \end{minipage}%
+  \hfill
+  \begin{minipage}[t]{0.25\textwidth}
+    \vspace{0pt}
+    \raggedleft
+    \raisebox{\dimexpr-\height+\ht\strutbox+0.225in\relax}{\includegraphics[height=1.35in]{Logo-slate.png}}
+  \end{minipage}
+  \par\vspace{2em}
+}
+\makeatother
+
+\begin{document}
+\maketitle
+\paragraph{Correctness.}
+This submission is written with extreme lucidity, to the point of being excessively verbose. Moreover, there are essentially no incorrect statements. Unfortunately, the bulk of the difficulty of the proof is concentrated is the single Theorem 3.4, which is left essentially entirely unproven.
+The reductions made in this submission amount to the formal simplications that a novice might make. Going beyond them requires substantial new ideas.
+
+The submission author is aware of the literature in the area but is not able to cite it in a targeted way. It can only cite general resources for the standard theory. It falsely claims that difficult results are standard facts in the literature.
+
+\paragraph{Novelty.}
+The proof does correctly take the first step in describing the correct construction. It also completes the easy step of checking that this construction extends the one for ordinary matroids. The substantial difficulties in the proof are entirely skipped. It remains to show that the construction results in a matroid and that it reverses quotient relations. At best, this submission could serve as a launching point for developping an actual proof. However, someone who is capable of this feat would almost certainly arrive at this stage without too much difficulty.
+
+\section{Recommendation}
+{This submission should be \textbf{rejected} on the basis of not proving its main result. It correctly \emph{sketches} what the proof should look like while leaving the deepest parts of the proof entirely to the reader.
+}
+
+  \section{Submission with inline comments}
+
+%% ======================================================================
+%% Inlined verbatim from the anonymised submission prob_008-C.
+%% ======================================================================
+
+\date{}
+
+
+\begin{abstract}
+We prove that if the lattice of flats of a finite matroid \(M\) admits an order-reversing involution \(F\mapsto F^\perp\), then the relative Dressian
+\[
+   \Dr(M)=\{\text{tropical linear subspaces of }\Trop(M)\}
+\]
+admits an order-reversing involution extending \(F\mapsto F^\perp\) under the natural embedding
+\[
+   \cL(M)^{\operatorname{op}}\hookrightarrow \Dr(M),\qquad
+   F\longmapsto \Trop(M/F\oplus U_{0,F}).
+\]
+The main point is that an order-reversing involution of a geometric lattice forces the lattice to be modular.  For modular matroids, valuated quotients are naturally valuated matroids on the modular lattice of flats, and the desired involution is obtained by pulling back along the lattice polarity.
+\end{abstract}
+
+\subsection{Conventions and background}
+
+Let \(M\) be a finite matroid of rank \(d\) on ground set \(E\).  We write
+\[
+  \cL(M)
+\]
+for its lattice of flats, ordered by inclusion.  If \(F\in \cL(M)\), then
+\[
+  X_F:=\Trop(M/F\oplus U_{0,F})
+\]
+is a tropical linear subspace of \(\Trop(M)\).  The assignment \(F\mapsto X_F\) is order-reversing, hence gives an embedding
+\[
+   \cL(M)^{\operatorname{op}}\hookrightarrow \Dr(M).
+\]
+
+We use the valuated-matroid model of tropical linear spaces.  A valuated matroid \(p\) of rank \(s\) on \(E\) determines a tropical linear space \(\Trop(p)\) of dimension \(s-1\), and tropical linear spaces are identified up to adding a global scalar to \(p\).  If \(q\) and \(p\) are valuated matroids of ranks \(t\ge s\), then
+\[
+   \Trop(p)\subseteq \Trop(q)
+\]
+if and only if \(p\) is a valuated quotient of \(q\), equivalently \((q,p)\) satisfies the tropical incidence--Plucker relations.  This is the valuated flag matroid correspondence; see Speyer \cite{SpeyerTLS}, Maclagan--Sturmfels \cite[Ch.~4]{MS}, and Brandt--Eur--Zhang \cite{BEZ}.
+
+For a flat \(F\), the corresponding valuated quotient \(p_F\) of rank \(d-\rk(F)\) is the trivial valuation on the matroid \(M/F\oplus U_{0,F}\).  Thus, if \(B\subseteq E\) has size \(d-\rk(F)\), then
+\[
+   p_F(B)=
+   \begin{cases}
+   0, & \text{if } B \text{ is a basis of }M/F,\\
+   \infty, & \text{otherwise}.
+   \end{cases}
+\]
+Equivalently, for an independent set \(B\) of \(M\),
+\[
+   p_F(B)<\infty
+   \quad\Longleftrightarrow\quad
+   \cl_M(B)\vee F=E.
+\]
+
+\subsection{A lattice-theoretic consequence of polarity}
+
+We first record the key structural consequence of the existence of an order-reversing involution on the lattice of flats.
+
+\begin{lemma}\label{lem:selfdual-implies-modular}
+Let \(L\) be a finite ranked semimodular lattice of rank \(d\).  Suppose that \(L\) admits an order-reversing involution
+\[
+   \alpha:L\longrightarrow L,\qquad x\longmapsto x^\perp .
+\]
+Then \(L\) is modular.
+\end{lemma}
+
+\begin{proof}
+Since \(\alpha\) is an order-reversing involution, it sends maximal chains to maximal chains with the order reversed.  Hence
+\[
+   \rk(x^\perp)=d-\rk(x)
+\]
+for all \(x\in L\).
+\review{At this point, one should immediately conclude that $-\rk$ is semimodular and thus $\rk$ is modular.
+The remainder of this proof is superfluous. In fact, the mere assertion that the order-reversing involution implies modularity would have been sufficient.}
+
+Because \(L\) is semimodular, for all \(x,y\in L\) we have
+\[
+   \rk(x)+\rk(y)\ge \rk(x\wedge y)+\rk(x\vee y).
+\]
+Apply semimodularity to \(x^\perp\) and \(y^\perp\).  Using
+\[
+   x^\perp\wedge y^\perp=(x\vee y)^\perp,
+   \qquad
+   x^\perp\vee y^\perp=(x\wedge y)^\perp,
+\]
+we obtain
+\[
+\begin{aligned}
+  \rk(x^\perp)+\rk(y^\perp)
+  &\ge
+  \rk((x\vee y)^\perp)+\rk((x\wedge y)^\perp)\\
+  (d-\rk(x))+(d-\rk(y))
+  &\ge
+  (d-\rk(x\vee y))+(d-\rk(x\wedge y)).
+\end{aligned}
+\]
+Cancelling \(2d\) gives
+\[
+   \rk(x)+\rk(y)\le \rk(x\wedge y)+\rk(x\vee y).
+\]
+Together with semimodularity, equality holds:
+\[
+   \rk(x)+\rk(y)=\rk(x\wedge y)+\rk(x\vee y).
+\]
+This is precisely the rank form of modularity.
+\end{proof}
+
+\begin{corollary}\label{cor:M-modular}
+If \(M\) admits an order-reversing involution on \(\cL(M)\), then \(\cL(M)\) is modular.
+\end{corollary}
+
+\begin{proof}
+The lattice of flats of a matroid is a finite geometric lattice, hence finite, ranked, atomic, and semimodular.  Apply Lemma~\ref{lem:selfdual-implies-modular}.
+\end{proof}
+
+\subsection{Valuated quotients of modular matroids}
+
+We now use the standard modular-lattice form of valuated matroids.
+\review{
+The lemmas in this section do not appear to be standard at all. Nor is there a ``modular-lattice'' form of valuated matroids.
+}
+
+Let \(M\) be modular of rank \(d\).  For \(0\le s\le d\), write
+\[
+   \cL_s(M):=\{F\in \cL(M):\rk(F)=s\}.
+\]
+
+\begin{lemma}\label{lem:flat-invariance}
+Let \(p\) be a rank-\(s\) valuated quotient of the trivial valuated matroid of \(M\).  If \(B,B'\subseteq E\) are bases of the same rank-\(s\) flat of \(M\), then
+\[
+   p(B)=p(B').
+\]
+Hence \(p\) descends to a function
+\[
+   \bar p:\cL_s(M)\longrightarrow \mathbb T,\qquad
+   \bar p(F)=p(B)
+\]
+for any basis \(B\) of \(F\).
+\end{lemma}
+
+\begin{proof}
+It is enough to prove the claim when \(B\) and \(B'\) differ by one element.  Let
+\[
+   B=S\cup\{i\},\qquad B'=S\cup\{j\},
+\]
+where \(|S|=s-1\), and assume
+\[
+   \cl_M(S\cup\{i\})=\cl_M(S\cup\{j\})=:F.
+\]
+Extend \(S\cup\{i\}\), equivalently \(S\cup\{j\}\), to a basis of \(M\) by choosing a set \(C\) of size \(d-s\) such that
+\[
+   S\cup\{i\}\cup C
+   \quad\text{and}\quad
+   S\cup\{j\}\cup C
+\]
+are both bases of \(M\).
+
+Let
+\[
+   J:=S\cup\{i,j\}\cup C.
+\]
+Then \(|J|=d+1\).  Consider the tropical incidence relation for the valuated quotient \(p\), indexed by \(S\) and \(J\):
+\[
+   \min_{e\in J\setminus S}\{p(S\cup\{e\})+\mu(J\setminus\{e\})\}
+\]
+must attain its minimum at least twice, where \(\mu\) is the trivial valuation of \(M\).  For \(e=i\) and \(e=j\), the terms are respectively
+\[
+   p(S\cup\{i\})+\mu(S\cup\{j\}\cup C)=p(B),
+\]
+and
+\[
+   p(S\cup\{j\})+\mu(S\cup\{i\}\cup C)=p(B').
+\]
+For \(e\in C\), the set
+\[
+   J\setminus\{e\}=S\cup\{i,j\}\cup(C\setminus\{e\})
+\]
+is dependent in \(M\), because \(i\) and \(j\) are dependent over \(S\).  Hence
+\[
+   \mu(J\setminus\{e\})=\infty.
+\]
+Thus the incidence relation reduces to saying that the minimum of the two values \(p(B)\) and \(p(B')\) is attained twice.  Therefore \(p(B)=p(B')\).
+
+Since the basis graph of a matroid restriction \(M|F\) is connected, any two bases of \(F\) are connected by such single-element exchanges.  The result follows.
+\review{The proof of this lemma is rather wordy. An expert reader would expect a more concise formulation. A novice would however appreciate the simplicity and clarity of it.}
+\end{proof}
+
+We will use the following standard form of valuated matroid duality on modular geometric lattices.  It is the modular-lattice version of ordinary valuated-matroid duality.  In the Boolean case it is exactly the usual operation
+\[
+   p^*(A)=p(E\setminus A).
+\]
+For modular lattices, the same construction is obtained by replacing set-complement by the lattice anti-isomorphism.  See Dress--Wenzel \cite{DW}, Murota \cite[Ch.~4]{Murota}, and the flag version in Brandt--Eur--Zhang \cite{BEZ}.
+\review{This part misleadingly suggests that these sources contain statements about relative duality operations in the relative Dressians of modular matroids. No such statements can be found in these sources.}
+
+\begin{theorem}[Modular-lattice valuated duality]\label{thm:modular-duality}
+Let \(M\) be a modular matroid of rank \(d\), and let
+\[
+   \alpha:\cL(M)\longrightarrow \cL(M),\qquad F\longmapsto F^\perp
+\]
+be an order-reversing involution.  Let \(p\) be a rank-\(s\) valuated quotient of \(M\), and let \(\bar p:\cL_s(M)\to \mathbb T\) be the descended function from Lemma~\ref{lem:flat-invariance}.  Define a function
+\[
+   \bar p^{\,\perp}:\cL_{d-s}(M)\longrightarrow \mathbb T
+\]
+by
+\[
+   \bar p^{\,\perp}(G):=\bar p(G^\perp).
+\]
+Then \(\bar p^{\,\perp}\) is the flat-valued form of a rank-\((d-s)\) valuated quotient \(p^\perp\) of \(M\).
+
+Moreover:
+\begin{enumerate}[label=\textup{(\roman*)}]
+\item \((p^\perp)^\perp=p\) up to tropical scalar;
+\item if \(q\) and \(p\) are valuated quotients of \(M\) with \(q\twoheadrightarrow p\), then
+\[
+   p^\perp\twoheadrightarrow q^\perp;
+\]
+\item the construction is compatible with tropical linear spaces:
+\[
+   \Trop(p)\subseteq \Trop(q)
+   \quad\Longleftrightarrow\quad
+   \Trop(q^\perp)\subseteq \Trop(p^\perp).
+\]
+\review{Point (iii) is redundant. It follows trivially from (i) and (ii) and standard facts about valuated matroid quotients.}
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+We recall the argument.  By Lemma~\ref{lem:flat-invariance}, every valuated quotient \(p\) of a modular matroid \(M\) is equivalently a valuated matroid on the modular lattice \(\cL(M)\), with coordinates indexed by rank-\(s\) flats.  The tropical Plucker relations are local relations in length-four intervals of \(\cL(M)\), and the tropical incidence relations for a pair of quotients are the corresponding local flag-Plucker relations.  An order-reversing lattice isomorphism sends length-four intervals to length-four intervals and interchanges rank \(s\) with rank \(d-s\).  Therefore pulling the flat-valued Plucker coordinates back along \(F\mapsto F^\perp\) preserves the tropical Plucker relations and reverses the flag incidence relations.
+
+Thus \(\bar p^\perp\) is again a valuated quotient of \(M\), now of rank \(d-s\).  Since \(\perp\) is an involution on \(\cL(M)\), applying the construction twice gives back \(\bar p\).  Finally, the valuated flag relation \(q\twoheadrightarrow p\) is carried to \(p^\perp\twoheadrightarrow q^\perp\), which is precisely the asserted reversal of containment of tropical linear spaces.
+\end{proof}
+\review{
+This single lemma crams in essentially all the difficult statements needed for the proof of the main result. Part (i) is trivial. The non-trivial aspects are (a) the proof that $\overline{p}^{\perp}$ is the flat-valued form of a valuated quotient of $M$, and (b) a proof of compatibility with quotients, i.e.\ (ii).
+
+Only the slightest hint is given about how (a) should be approached. Namely, it is suggested that it is enough to check the local-exchange relations for valuated matroids, and that this follows straightforwardly by looking at the corresponding relations for $p$. This is not quite correct. One must accompany the local-exchange relations with a verification that the support of $p^{\perp}$ is a matroid. This local-global condition suffices by standard results in the literature (e.g.\ Murota's work). The absent support condition is in general the more difficult and more substantial of the two. A lesser but still significant problem is that the proof of the validity of local-exchange relations is not given, only hinted at in vague terms. It is not only length-four intervals that have to be examined. The more ``degenerate'' cases must be dealt with also.
+
+As for part (b), its validity is asserted with no justification whatsoever. 
+}
+
+\subsection{Construction of the involution}
+
+Let \(L=\Trop(p)\in \Dr(M)\), where \(p\) is a valuated quotient of \(M\) of rank \(s\).  Define
+\[
+   \Phi(L):=\Trop(p^\perp),
+\]
+where \(p^\perp\) is the rank-\((d-s)\) quotient supplied by Theorem~\ref{thm:modular-duality}.
+
+Equivalently, if \(A\subseteq E\) is independent of size \(d-s\), then
+\[
+   p^\perp(A)=\bar p(\cl_M(A)^\perp),
+\]
+and if \(A\) is dependent in \(M\), then \(p^\perp(A)=\infty\).
+
+\begin{theorem}\label{thm:main}
+Let \(M\) be a finite matroid whose lattice of flats admits an order-reversing involution
+\[
+   F\longmapsto F^\perp.
+\]
+Then the map
+\[
+   \Phi:\Dr(M)\longrightarrow \Dr(M),\qquad
+   \Trop(p)\longmapsto \Trop(p^\perp),
+\]
+is an order-reversing involution.  Moreover, for every flat \(F\in \cL(M)\),
+\[
+   \Phi\!\left(\Trop(M/F\oplus U_{0,F})\right)
+   =
+   \Trop(M/F^\perp\oplus U_{0,F^\perp}).
+\]
+Thus \(\Phi\) extends the given involution \(F\mapsto F^\perp\) on \(\cL(M)\).
+\end{theorem}
+
+\begin{proof}
+By Corollary~\ref{cor:M-modular}, \(M\) is modular.  Hence Theorem~\ref{thm:modular-duality} applies.
+
+First, \(\Phi\) is well-defined because tropical linear spaces are identified with valuated matroids up to tropical scalar, and the construction \(p\mapsto p^\perp\) is unchanged by adding a global scalar to \(p\).
+
+Second, since \(F\mapsto F^\perp\) is an involution on \(\cL(M)\), Theorem~\ref{thm:modular-duality} gives
+\[
+   (p^\perp)^\perp=p
+\]
+up to tropical scalar.  Therefore
+\[
+   \Phi^2=\operatorname{id}_{\Dr(M)}.
+\]
+
+Third, suppose
+\[
+   \Trop(p)\subseteq \Trop(q).
+\]
+Equivalently, \(q\twoheadrightarrow p\).  By Theorem~\ref{thm:modular-duality},
+\[
+   p^\perp\twoheadrightarrow q^\perp.
+\]
+Therefore
+\[
+   \Trop(q^\perp)\subseteq \Trop(p^\perp),
+\]
+which is precisely
+\[
+   \Phi(\Trop(q))\subseteq \Phi(\Trop(p)).
+\]
+Thus \(\Phi\) is order-reversing.
+
+\review{The first part of this proof is just a trivial translation of the unproven Theorem 3.4. Only the latter half is non-trivial (though still straightforward).}
+
+It remains to check that \(\Phi\) extends the given flat involution.  Let \(F\in\cL(M)\), and put \(f=\rk(F)\).  Let \(p_F\) be the trivial valuation of the quotient \(M/F\oplus U_{0,F}\), so \(p_F\) has rank \(d-f\).  In flat-valued form,
+\[
+   \bar p_F(H)=
+   \begin{cases}
+   0, & H\vee F=E,\\
+   \infty, & H\vee F\ne E,
+   \end{cases}
+   \qquad H\in \cL_{d-f}(M).
+\]
+Let \(G\in\cL_f(M)\).  Then
+\[
+   \bar p_F^{\,\perp}(G)
+   =
+   \bar p_F(G^\perp).
+\]
+Thus
+\[
+   \bar p_F^{\,\perp}(G)=0
+   \quad\Longleftrightarrow\quad
+   G^\perp\vee F=E.
+\]
+Applying the order-reversing involution gives
+\[
+   G^\perp\vee F=E
+   \quad\Longleftrightarrow\quad
+   G\wedge F^\perp=\hat 0.
+\]
+Because \(\cL(M)\) is modular and
+\[
+   \rk(G)+\rk(F^\perp)=f+(d-f)=d,
+\]
+the condition \(G\wedge F^\perp=\hat 0\) is equivalent to
+\[
+   G\vee F^\perp=E.
+\]
+Therefore
+\[
+   \bar p_F^{\,\perp}(G)=0
+   \quad\Longleftrightarrow\quad
+   G\vee F^\perp=E.
+\]
+But this is exactly the flat-valued trivial valuation of the quotient
+\[
+   M/F^\perp\oplus U_{0,F^\perp}.
+\]
+Hence
+\[
+   p_F^\perp=p_{F^\perp},
+\]
+and consequently
+\[
+   \Phi(X_F)=X_{F^\perp}.
+\]
+This proves the claimed extension property.
+\end{proof}
+
+\begin{corollary}
+The answer to the question is affirmative: every order-reversing involution on \(\cL(M)\) extends to an order-reversing involution on \(\Dr(M)\).
+\end{corollary}
+
+\begin{thebibliography}{9}
+
+\bibitem{AK}
+F.~Ardila and C.~J. Klivans,
+\emph{The Bergman complex of a matroid and phylogenetic trees},
+J. Combin. Theory Ser. B \textbf{96} (2006), 38--49.
+
+\bibitem{BEZ}
+M.~Brandt, C.~Eur, and L.~Zhang,
+\emph{Tropical flag varieties},
+Adv. Math. \textbf{384} (2021), 107695.
+
+\bibitem{DW}
+A.~Dress and W.~Wenzel,
+\emph{Valuated matroids},
+Adv. Math. \textbf{93} (1992), 214--250.
+
+\bibitem{MS}
+D.~Maclagan and B.~Sturmfels,
+\emph{Introduction to Tropical Geometry},
+Graduate Studies in Mathematics, vol.~161,
+American Mathematical Society, 2015.
+
+\bibitem{Murota}
+K.~Murota,
+\emph{Discrete Convex Analysis},
+SIAM Monographs on Discrete Mathematics and Applications,
+SIAM, 2003.
+
+\bibitem{Oxley}
+J.~Oxley,
+\emph{Matroid Theory},
+2nd ed.,
+Oxford Graduate Texts in Mathematics,
+Oxford University Press, 2011.
+
+\bibitem{SpeyerTLS}
+D.~Speyer,
+\emph{Tropical linear spaces},
+SIAM J. Discrete Math. \textbf{22} (2008), 1527--1558.
+
+\end{thebibliography}
+
+\end{document}
