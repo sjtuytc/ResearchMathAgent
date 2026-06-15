@@ -99,7 +99,8 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
             REGISTRY.unregister(handle.run_id)
             _current = None
 
-        section = _build_section(pid, started, "".join(transcript), artifact, usage, reason)
+        pdf_name = _maybe_compile(repo_root, artifact, f"{date_str}_{pid}")
+        section = _build_section(pid, started, "".join(transcript), artifact, usage, reason, pdf_name)
         report_path = write_or_append_report(repo_root, date_str, section)
         try:
             append_activity(repo_root, pid,
@@ -112,7 +113,21 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
     return report_path
 
 
-def _build_section(pid: str, started: str, transcript: str, artifact, usage: dict, reason: str) -> str:
+def _maybe_compile(repo_root: Path, artifact, name: str) -> str | None:
+    if not (artifact and artifact.get("content")):
+        return None
+    from .latex import compile_tex, latex_available  # lazy import
+    if not latex_available():
+        return None
+    try:
+        res = compile_tex(repo_root, artifact["content"], name)
+        return res.get("pdf") if res.get("ok") else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _build_section(pid: str, started: str, transcript: str, artifact, usage: dict,
+                   reason: str, pdf_name: str | None = None) -> str:
     summary = transcript.strip()[-1800:] or "_(no text output)_"
     lines = [f"## {pid} — autonomous run ({started})", "", "**Outcome summary:**", "", summary, ""]
     bits = []
@@ -123,6 +138,8 @@ def _build_section(pid: str, started: str, transcript: str, artifact, usage: dic
     bits.append(f"tokens in {usage.get('input_tokens', 0)} / out {usage.get('output_tokens', 0)}")
     bits.append(f"stop: {reason}")
     lines.append("**Run:** " + " · ".join(bits))
+    if pdf_name:
+        lines += ["", f"**Compiled PDF:** [{pdf_name}](/api/pdf/{pdf_name})"]
     if artifact and artifact.get("content"):
         content = artifact["content"]
         lines += ["", "<details><summary>solution.tex (%d chars)</summary>" % len(content), "",

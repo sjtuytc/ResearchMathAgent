@@ -335,8 +335,13 @@ ssh -L 8000:localhost:8000 user@server     # then open http://localhost:8000
   every tool call + result, the final `solution.tex` artifact, and token/cost.
 - **Real run control** — the **Stop** button calls `POST /api/cancel`, which
   kills the backend process group (the `claude` CLI plus its node child), so a
-  stopped run stops consuming your subscription immediately. `GET /api/runs`
-  lists active runs.
+  stopped run stops consuming your subscription immediately. The sidebar's
+  **Active runs** panel lists every in-flight run (interactive and daily) with a
+  per-run Stop button, for watching/controlling parallel runs.
+- **PDF preview** — compile a `solution.tex` to PDF and preview it inline (Agent
+  tab "Compile PDF"; daily reports link the compiled PDF). Requires a LaTeX
+  toolchain on the server (the one that builds `main.tex`); degrades gracefully
+  otherwise.
 - **Autonomous daily worker** — `python -m webapp.daily` runs the agent once a
   day with no human in the loop (subscription-backed), writes a dated report to
   `documents/`, and logs each run to the question's issue. Runs as a daemon

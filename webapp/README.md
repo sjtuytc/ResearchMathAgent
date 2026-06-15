@@ -17,10 +17,15 @@ The UI has a sidebar of questions (q1–q10) and four tabs:
   live in `webapp/issues/<id>.md` (auto-seeded from the problem, gitignored).
 - **Agent** — run the solver live and watch every step (thinking, text with
   rendered math, tool calls + results, and the final `solution.tex` artifact).
-  A "Log run to issue" button appends the result to the issue.
+  Buttons on the artifact: "Log run to issue" and **"Compile PDF"** (compiles the
+  solution and shows an inline PDF preview).
 - **Documents** — browse the daily reports written by the autonomous worker (and
   on-demand runs), with a "Generate today's report" button. Reports live in the
-  repo-level `documents/` directory.
+  repo-level `documents/` directory and link to the compiled solution PDF.
+
+The sidebar also shows an **Active runs** panel (polls `GET /api/runs`) listing
+every in-flight run — interactive *and* daily — each with its own **Stop**
+button, so you can watch and control multiple parallel runs at once.
 
 ## Two ways to call Claude
 
@@ -134,13 +139,26 @@ Configuration (env vars):
 and exits cleanly. You can also trigger one run from the **Documents** tab
 ("Generate today's report"), which calls `POST /api/run-daily`.
 
-Documents endpoints:
+Documents & PDF endpoints:
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/documents` | List reports (name, title, modified, size) |
 | `GET /api/document/{name}` | Read one report's markdown |
 | `POST /api/run-daily` | Trigger one daily run in the background |
+| `POST /api/compile` `{content,name}` | Compile a `.tex` to PDF; returns `pdf_url` |
+| `GET /api/pdf/{name}` | Serve a compiled PDF |
+| `GET /api/capabilities` | Whether the `claude` CLI and a LaTeX toolchain are present |
+
+## PDF preview
+
+`solution.tex` artifacts can be compiled to PDF and previewed inline (Agent tab
+"Compile PDF" button; daily reports link the compiled PDF). This needs a LaTeX
+toolchain (`latexmk`/`pdflatex`) on the server. The benchmark preamble pulls in
+packages like `fullpage`, `marvosym`, and `rsfs`, so a fuller install is
+recommended — e.g. `texlive-latex-recommended texlive-fonts-extra` (or
+`texlive-full`); the same toolchain that builds `main.tex`. If no toolchain is
+present, compilation degrades gracefully with a clear message.
 
 ## Architecture
 
@@ -149,6 +167,7 @@ Browser (SSE) ──▶ FastAPI (server.py)
                     ├─ /api/problems · /api/problem/{id}        (Question view)
                     ├─ /api/issue/{id}  GET/POST · /activity     (Issue tracker)
                     ├─ /api/documents · /api/document/{name}     (Documents tab)
+                    ├─ /api/compile · /api/pdf/{name}            (PDF preview)
                     ├─ /api/runs · /api/cancel · /api/run-daily  (run control)
                     └─ /api/solve?provider=claude-code|api       (live agent stream)
                           │
@@ -173,8 +192,9 @@ documents.py, issues.py — markdown stores for reports and per-question issues
 | `runs.py` | Run registry + cancellation / process-group kill |
 | `daily.py` | Autonomous daily worker (daemon / cron / on-demand) |
 | `documents.py` | Daily-report store (read/list/append) |
+| `latex.py` | Compile `solution.tex` → PDF (graceful without a toolchain) |
 | `issues.py` | Per-question issue trackers |
-| `static/index.html` | Single-page UI (4 tabs, live stream, KaTeX) |
+| `static/index.html` | Single-page UI (4 tabs, active-runs panel, live stream, KaTeX, PDF preview) |
 
 ## Caveats
 

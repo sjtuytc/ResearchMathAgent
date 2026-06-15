@@ -24,6 +24,7 @@ from .agent import DEFAULT_MODEL, AgentConfig, run_agent
 from .claude_code import claude_code_available, run_claude_code_agent
 from .documents import list_documents, read_document
 from .issues import append_activity, get_issue, save_issue
+from .latex import compile_tex, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
 
@@ -118,6 +119,31 @@ def document(name: str) -> JSONResponse:
     if content is None:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse({"name": name, "markdown": content})
+
+
+@app.post("/api/compile")
+def compile_pdf(payload: dict = Body(...)) -> JSONResponse:
+    content = str(payload.get("content", ""))
+    name = str(payload.get("name", "solution"))
+    result = compile_tex(REPO_ROOT, content, name)
+    if result["ok"]:
+        result["pdf_url"] = f"/api/pdf/{result['pdf']}"
+    return JSONResponse(result)
+
+
+@app.get("/api/pdf/{name}")
+def get_pdf(name: str):
+    safe = safe_pdf_name(name)
+    path = pdf_dir(REPO_ROOT) / safe
+    if not path.is_file():
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(path, media_type="application/pdf", filename=safe)
+
+
+@app.get("/api/capabilities")
+def capabilities() -> JSONResponse:
+    return JSONResponse({"claude_code": bool(claude_code_available()),
+                         "latex": bool(latex_available())})
 
 
 @app.post("/api/run-daily")

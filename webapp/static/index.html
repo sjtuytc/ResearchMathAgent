@@ -65,6 +65,11 @@
   .pill{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)}
   .pill.on{color:var(--green);border-color:var(--green)}
   .empty{color:var(--muted);padding:40px;text-align:center}
+  .runitem{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:6px;font-size:12px}
+  .runitem .meta{color:var(--muted)}
+  .runitem .kind{font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em}
+  .runitem button{padding:4px 9px;font-size:11px;margin-top:6px;background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+  iframe.pdf{width:100%;height:520px;border:1px solid var(--border);border-radius:8px;margin-top:8px;background:#fff}
 </style>
 </head>
 <body>
@@ -74,7 +79,10 @@
   <span class="status" id="status">select a question</span>
 </header>
 <div class="layout">
-  <aside class="sidebar"><h2>Questions</h2><div id="qlist"></div></aside>
+  <aside class="sidebar">
+    <h2>Questions</h2><div id="qlist"></div>
+    <h2 style="margin-top:18px">Active runs</h2><div id="runlist"><div class="muted" style="padding:6px 10px;font-size:12px">none</div></div>
+  </aside>
   <main class="main">
     <div class="tabs">
       <div class="tab active" data-tab="question">Question</div>
@@ -286,6 +294,8 @@ function handle(ev){
       d.appendChild(el("pre",null,`<code>${esc(ev.content||"")}</code>`));c.appendChild(d);
       const log=el("button","btn-sec","Log run to issue");log.style.marginTop="8px";
       log.onclick=()=>logRun(ev);c.appendChild(log);
+      const pdf=el("button","btn-sec","Compile PDF");pdf.style.marginTop="8px";pdf.style.marginLeft="8px";
+      pdf.onclick=()=>compilePdf(ev.content,`${selected||"solution"}_${Date.now()}`,c,pdf);c.appendChild(pdf);
       $("stream").appendChild(c); scroll(); break;}
     case "usage":{
       let s="";
@@ -346,6 +356,50 @@ function finish(reason){
 $("run").onclick=start;
 $("stop").onclick=stop;
 window.addEventListener("beforeunload",cancelBackend);
+
+// ---- Active runs panel ----
+async function pollRuns(){
+  let runs=[];
+  try{ runs=(await (await fetch("/api/runs")).json()).runs||[]; }catch(e){ return; }
+  const box=$("runlist");
+  if(!runs.length){ box.innerHTML='<div class="muted" style="padding:6px 10px;font-size:12px">none</div>'; return; }
+  box.innerHTML="";
+  for(const r of runs){
+    const it=el("div","runitem");
+    const kind=r.kind?`<span class="kind">${esc(r.kind)}</span> `:"";
+    it.innerHTML=`${kind}<b>${esc(r.problem||"?")}</b> <span class="meta">· ${esc(r.provider||"")} ${esc(r.model||"")} · ${r.status} · ${r.age_s}s</span>`;
+    const b=el("button",null,"Stop"); b.onclick=()=>cancelRun(r.run_id,b); it.appendChild(b);
+    box.appendChild(it);
+  }
+}
+async function cancelRun(id,btn){
+  if(btn){btn.disabled=true;btn.textContent="stopping…";}
+  try{ await fetch("/api/cancel",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({run_id:id})}); }catch(e){}
+  setTimeout(pollRuns,800);
+}
+setInterval(pollRuns,4000); pollRuns();
+
+// ---- PDF compile ----
+async function compilePdf(content,name,card,btn){
+  btn.disabled=true; const old=btn.textContent; btn.textContent="compiling…";
+  let res;
+  try{ res=await (await fetch("/api/compile",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({content,name})})).json(); }
+  catch(e){ res={ok:false,log:String(e)}; }
+  btn.disabled=false; btn.textContent=old;
+  // remove any previous preview/log for this card
+  card.querySelectorAll(".pdf,.compile-log").forEach(n=>n.remove());
+  if(res.ok){
+    const a=el("div","tool-io"); a.appendChild(el("div","lbl",`PDF compiled — `));
+    const link=el("a",null,"open in new tab"); link.href=res.pdf_url; link.target="_blank"; link.style.color="var(--accent)";
+    a.firstChild.appendChild(link); card.appendChild(a);
+    const fr=document.createElement("iframe"); fr.className="pdf"; fr.src=res.pdf_url; card.appendChild(fr);
+  }else{
+    const d=el("details","compile-log"); d.appendChild(el("summary",null,"compile failed — log"));
+    d.appendChild(el("pre",null,`<code>${esc(res.log||"unknown error")}</code>`)); card.appendChild(d);
+  }
+  scroll();
+}
 
 // ---- Documents tab ----
 let docPoll=null;
