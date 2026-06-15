@@ -155,45 +155,46 @@ def call_claude_code(
         )
 
     timeout = int(os.environ.get("RMA_CLAUDE_CODE_TIMEOUT", timeout))
+    max_turns = int(os.environ.get("RMA_CLAUDE_CODE_MAX_TURNS", "5"))
 
     command = [
         claude_bin,
         "-p",
         "Generate the requested Research Math Agent proof artifact from the prompt on stdin.",
         "--output-format",
-        "json",
+        "text",
         "--append-system-prompt",
         system,
         "--max-turns",
-        "1",
+        str(max_turns),
         "--no-session-persistence",
     ]
     model_arg = _claude_code_model_arg(model)
     if model_arg is not None:
         command.extend(["--model", model_arg])
 
+    proc = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=cwd,
+    )
     try:
-        result = subprocess.run(
-            command,
-            input=prompt,
-            cwd=cwd,
-            text=True,
-            capture_output=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise ModelRequestError("Claude Code request timed out.") from exc
+        stdout, stderr = proc.communicate(input=prompt, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, stderr = proc.communicate()
+        if stdout and stdout.strip():
+            return ModelResponse(text=stdout.strip(), provider="claude-code", model=model_arg or "claude-code")
+        raise ModelRequestError("Claude Code request timed out and produced no output.")
 
-    if result.returncode != 0:
-        detail = "\n".join(part for part in (result.stdout.strip(), result.stderr.strip()) if part)
-        raise ModelRequestError(f"Claude Code returned exit code {result.returncode}: {detail[-4000:]}")
+    if proc.returncode != 0:
+        detail = "\n".join(part for part in (stdout.strip(), stderr.strip()) if part)
+        raise ModelRequestError(f"Claude Code returned exit code {proc.returncode}: {detail[-4000:]}")
 
-    try:
-        payload = json.loads(result.stdout)
-    except json.JSONDecodeError as exc:
-        raise ModelRequestError(f"Claude Code returned non-JSON output: {result.stdout[-2000:]}") from exc
-
-    text = str(payload.get("result", "")).strip()
+    text = stdout.strip()
     if not text:
         raise ModelRequestError("Claude Code returned no result text.")
     return ModelResponse(text=text, provider="claude-code", model=model_arg or "claude-code")
