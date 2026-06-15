@@ -21,9 +21,7 @@ MathJax = {
       aA: '\\mathcal{A}',
       aO: '\\mathcal{O}',
       vecop: ['\\operatorname{vec}', 0],
-      diag: ['\\operatorname{diag}', 0],
-      roots: ['\\operatorname{roots}', 0],
-      score: ['\\operatorname{score}', 0]
+      diag: ['\\operatorname{diag}', 0]
     }
   },
   options: {
@@ -101,6 +99,14 @@ MathJax = {
   .runitem .kind{font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em}
   .runitem button{padding:4px 9px;font-size:11px;margin-top:6px;background:var(--panel2);color:var(--text);border:1px solid var(--border)}
   iframe.pdf{width:100%;height:520px;border:1px solid var(--border);border-radius:8px;margin-top:8px;background:#fff}
+  .tok-chart-wrap{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:none}
+  .tok-chart-wrap canvas{display:block;width:100%;height:72px}
+  .tok-chart-legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-top:4px;align-items:center}
+  .tok-chart-legend span{display:flex;align-items:center;gap:4px}
+  .tok-chart-total{margin-left:auto;font-size:12px}
+  .tok-chart-total b{color:var(--text)}
+  .tok-info{color:var(--muted);font-size:11px;font-weight:400;margin-left:8px}
+  .tok-badge{font-size:10px;font-weight:400;color:var(--muted);margin-left:8px;padding:1px 6px;border-radius:999px;background:var(--panel2);border:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -121,7 +127,6 @@ MathJax = {
       <div class="tab" data-tab="agent">Agent</div>
       <div class="tab" data-tab="documents">Documents</div>
       <div class="tab" data-tab="proofs">Proofs</div>
-      <div class="tab" data-tab="final-proofs">Final Proofs</div>
     </div>
 
     <section class="pane active" id="pane-question">
@@ -166,6 +171,14 @@ MathJax = {
           <span class="usage" id="usage"></span>
         </div>
         <div id="prov-note" class="muted" style="margin-bottom:10px;font-size:12px"></div>
+        <div class="tok-chart-wrap" id="tok-chart-wrap">
+          <canvas id="tok-chart" height="72"></canvas>
+          <div class="tok-chart-legend">
+            <span><svg width="10" height="10"><rect width="10" height="10" rx="2" fill="#58a6ff66"/></svg> input</span>
+            <span><svg width="10" height="10"><rect width="10" height="10" rx="2" fill="#bc8cff99"/></svg> output</span>
+            <span class="tok-chart-total" id="tok-total"></span>
+          </div>
+        </div>
         <div id="stream"></div>
       </div>
     </section>
@@ -204,23 +217,13 @@ MathJax = {
       </div>
       <div id="pf-empty" class="empty" style="display:none">No proof results found. Run <code>rma solve --all</code> first.</div>
     </section>
-
-    <section class="pane" id="pane-final-proofs" style="padding:0;overflow:hidden">
-      <div style="display:grid;grid-template-columns:200px 1fr;height:calc(100vh - 98px)">
-        <div id="fp-list" style="border-right:1px solid var(--border);overflow-y:auto;padding:10px">
-          <div class="muted" style="font-size:12px;padding:6px 8px">Loading…</div>
-        </div>
-        <div id="fp-content" style="overflow-y:auto;padding:18px 24px">
-          <div class="empty">Select a problem on the left.</div>
-        </div>
-      </div>
-    </section>
   </main>
 </div>
 <script>
 const $=(id)=>document.getElementById(id);
 let problems=[], selected=null, claudeCode=false, es=null, runId=null;
 let cur={text:null,think:null}; const toolCards={}; let lastArtifact=null;
+let tokenHistory=[], curTurnSep=null, curAssistantCard=null;
 
 function el(t,c,h){const e=document.createElement(t);if(c)e.className=c;if(h!==undefined)e.innerHTML=h;return e;}
 function esc(s){return (s||"").replace(/[&<>]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
@@ -311,22 +314,62 @@ $("i-preview").onclick=()=>{
   if(show)md(r,$("i-editor").value);
 };
 
+// ---- Token chart ----
+function drawTokenChart(){
+  const canvas=$("tok-chart"); if(!canvas)return;
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth||600, H=72;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px";
+  const ctx=canvas.getContext("2d"); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  if(!tokenHistory.length)return;
+  const maxTok=Math.max(...tokenHistory.map(t=>t.in+t.out),1);
+  const n=tokenHistory.length;
+  const padX=6, padY=4;
+  const gap=3, barW=Math.max(6,Math.min(36,(W-padX*2-(n-1)*gap)/n));
+  tokenHistory.forEach((t,i)=>{
+    const x=padX+i*(barW+gap);
+    const totalH=H-padY*2;
+    const inH=Math.round((t.in/maxTok)*totalH);
+    const outH=Math.round((t.out/maxTok)*totalH);
+    // input (bottom)
+    ctx.fillStyle="rgba(88,166,255,0.35)";
+    ctx.fillRect(x, H-padY-inH, barW, inH);
+    // output (stacked on top)
+    ctx.fillStyle="rgba(188,140,255,0.65)";
+    ctx.fillRect(x, H-padY-inH-outH, barW, outH);
+    // turn label
+    ctx.fillStyle="#8b949e";
+    ctx.font=`9px system-ui`;
+    ctx.textAlign="center";
+    ctx.fillText(i+1, x+barW/2, H-padY+10 > H ? H : H-1);
+  });
+  // max scale label
+  ctx.fillStyle="#8b949e"; ctx.font="9px system-ui"; ctx.textAlign="left";
+  ctx.fillText(maxTok.toLocaleString(), padX, 9);
+}
+
 // ---- Agent stream ----
 function scroll(){const s=$("stream");s.scrollTop=s.scrollHeight;}
 function handle(ev){
   switch(ev.type){
     case "start":
       $("stream").innerHTML=""; Object.keys(toolCards).forEach(k=>delete toolCards[k]);
-      cur={text:null,think:null}; $("usage").textContent=""; lastArtifact=null; break;
+      cur={text:null,think:null}; $("usage").textContent=""; lastArtifact=null;
+      tokenHistory=[]; curTurnSep=null; curAssistantCard=null;
+      $("tok-chart-wrap").style.display="none"; $("tok-total").textContent=""; drawTokenChart(); break;
     case "status": setStatus(`running · ${ev.provider||""} ${ev.model||""}`,"run"); break;
-    case "turn_start": cur={text:null,think:null}; $("stream").appendChild(el("div","turn-sep",`Turn ${ev.iteration}`)); break;
+    case "turn_start": cur={text:null,think:null}; curAssistantCard=null;
+      curTurnSep=el("div","turn-sep",`Turn ${ev.iteration}`); $("stream").appendChild(curTurnSep); break;
     case "thinking_delta":{
       if(!cur.think){const c=el("div","card thinking");c.appendChild(el("div","tag","Thinking"));
         cur.think=el("div","body");cur.think.dataset.raw="";c.appendChild(cur.think);$("stream").appendChild(c);}
       cur.think.dataset.raw+=ev.text; cur.think.textContent=cur.think.dataset.raw; scroll(); break;}
     case "text_delta":{
       if(!cur.text){const c=el("div","card assistant");c.appendChild(el("div","tag","Claude"));
-        cur.text=el("div","body");cur.text.dataset.raw="";c.appendChild(cur.text);$("stream").appendChild(c);}
+        cur.text=el("div","body");cur.text.dataset.raw="";c.appendChild(cur.text);$("stream").appendChild(c);
+        curAssistantCard=c;}
       md(cur.text,(cur.text.dataset.raw||"")+ev.text,true); scroll(); break;}
     case "tool_use":{
       cur={text:null,think:null};
@@ -359,6 +402,18 @@ function handle(ev){
       const pdf=el("button","btn-sec","Compile PDF");pdf.style.marginTop="8px";pdf.style.marginLeft="8px";
       pdf.onclick=()=>compilePdf(ev.content,`${selected||"solution"}_${Date.now()}`,c,pdf);c.appendChild(pdf);
       $("stream").appendChild(c); scroll(); break;}
+    case "turn_usage":{
+      tokenHistory.push({in:ev.input_tokens||0, out:ev.output_tokens||0, t:Date.now()});
+      $("tok-chart-wrap").style.display="block";
+      drawTokenChart();
+      const totalIn=tokenHistory.reduce((s,t)=>s+t.in,0);
+      const totalOut=tokenHistory.reduce((s,t)=>s+t.out,0);
+      $("tok-total").innerHTML=`total in <b>${totalIn.toLocaleString()}</b> · out <b>${totalOut.toLocaleString()}</b>`;
+      $("usage").innerHTML=`tokens in <b>${totalIn.toLocaleString()}</b> · out <b>${totalOut.toLocaleString()}</b>`;
+      const badge=`<span class="tok-badge">in ${(ev.input_tokens||0).toLocaleString()} · out ${(ev.output_tokens||0).toLocaleString()}</span>`;
+      if(curTurnSep) curTurnSep.innerHTML+=`<span class="tok-info">in ${(ev.input_tokens||0).toLocaleString()} · out ${(ev.output_tokens||0).toLocaleString()}</span>`;
+      if(curAssistantCard){const tag=curAssistantCard.querySelector(".tag");if(tag)tag.innerHTML+=" "+badge;}
+      break;}
     case "usage":{
       let s="";
       if(ev.cost_usd!=null) s+=`est. cost <b>$${Number(ev.cost_usd).toFixed(4)}</b> · turns <b>${ev.num_turns??"?"}</b> · `;
@@ -581,121 +636,6 @@ $("pf-toggle-raw").onclick=function(){
 
 document.querySelector('.tab[data-tab="proofs"]').addEventListener("click",()=>{
   if(!pfExps.length) loadProofs();
-});
-
-// ---- Final Proofs tab ----
-let fpLoaded=false;
-function texToHtml(tex){
-  // --- Pass 1: collect macro/theorem definitions ---
-  const newcmds=[], thmMap={};  // thmMap: envName -> display label
-  // Standard theorem-like names (fallback)
-  for(const n of ["theorem","lemma","proposition","corollary","definition","remark","claim","example","conjecture","fact"])
-    thmMap[n]=n.charAt(0).toUpperCase()+n.slice(1);
-  // Parse \newtheorem{envname}{Display} and \newtheorem*{envname}{Display}
-  tex=tex.replace(/\\newtheorem\*?\{([^}]+)\}\{([^}]+)\}/g,(_,env,label)=>{thmMap[env]=label;return "";});
-  // Collect \newcommand / \renewcommand / \DeclareMathOperator for MathJax
-  tex=tex.replace(/^[ \t]*(\\(?:new|renew)command\*?|\\DeclareMathOperator\*?)[^\n]+$/gm,m=>{newcmds.push(m);return "";});
-
-  // --- Pass 2: structural replacements ---
-  let body=tex
-    // document scaffolding
-    .replace(/\\begin\{document\}|\\end\{document\}/g,"")
-    .replace(/\\begingroup\b|\\endgroup\b/g,"")
-    .replace(/\\maketitle|\\tableofcontents/g,"")
-    .replace(/\\addcontentsline\{[^}]*\}\{[^}]*\}\{[^}]*\}/g,"")
-    .replace(/\\title\{[^}]+\}/g,"").replace(/\\author\{[^}]*\}/g,"").replace(/\\date\{[^}]*\}/g,"")
-    .replace(/\\hypersetup\{[\s\S]*?\}/g,"")
-    .replace(/\\usepackage(\[[^\]]*\])?\{[^}]+\}/g,"")
-    .replace(/\\documentclass(\[[^\]]*\])?\{[^}]+\}/g,"")
-    // sections
-    .replace(/\\clearpage\b/g,"<hr style='border-color:var(--border);margin:20px 0'>")
-    .replace(/\\section\*?\{([^}]+)\}/g,"<h2 style='font-size:16px;margin:22px 0 8px;color:var(--accent)'>$1</h2>")
-    .replace(/\\subsection\*?\{([^}]+)\}/g,"<h3 style='font-size:14px;margin:16px 0 6px'>$1</h3>")
-    .replace(/\\subsubsection\*?\{([^}]+)\}/g,"<h4 style='font-size:13px;margin:12px 0 4px'>$1</h4>")
-    // lists
-    .replace(/\\begin\{itemize\}|\\begin\{enumerate\}/g,"<ul>")
-    .replace(/\\end\{itemize\}|\\end\{enumerate\}/g,"</ul>")
-    .replace(/\\item(?:\[[^\]]*\])?\s*/g,"<li>")
-    // proof env
-    .replace(/\\begin\{proof\}(\[([^\]]*)\])?/g,(_,_2,opt)=>
-      `<div style='border-left:2px solid var(--border);padding:6px 12px;margin:8px 0'><em>${opt||"Proof"}.</em> `)
-    .replace(/\\end\{proof\}/g," $\\square$</div>")
-    // math environments → MathJax display
-    .replace(/\\begin\{(align|aligned|gather|gathered|multline|flalign|eqnarray)\*?\}/g,
-      (_,e)=>`$$\\begin{${e}}`)
-    .replace(/\\end\{(align|aligned|gather|gathered|multline|flalign|eqnarray)\*?\}/g,
-      (_,e)=>`\\end{${e}}$$`)
-    .replace(/\\begin\{equation\*?\}/g,"$$").replace(/\\end\{equation\*?\}/g,"$$")
-    .replace(/\\begin\{(pmatrix|bmatrix|vmatrix|matrix|cases|split|array)\}/g,
-      (_,e)=>`$\\begin{${e}}`)
-    .replace(/\\end\{(pmatrix|bmatrix|vmatrix|matrix|cases|split|array)\}/g,
-      (_,e)=>`\\end{${e}}$`)
-    // text formatting
-    .replace(/\\textbf\{([^}]+)\}/g,"<b>$1</b>")
-    .replace(/\\emph\{([^}]+)\}/g,"<em>$1</em>")
-    .replace(/\\textit\{([^}]+)\}/g,"<em>$1</em>")
-    .replace(/\\textrm\{([^}]+)\}/g,"$1")
-    .replace(/\\textsc\{([^}]+)\}/g,"<span style='font-variant:small-caps'>$1</span>")
-    // spacing / misc
-    .replace(/\\noindent\s*/g,"")
-    .replace(/\\medskip|\\bigskip|\\smallskip|\\vspace\{[^}]*\}/g,"<br>")
-    .replace(/\\hspace\{[^}]*\}/g," ")
-    .replace(/\\label\{[^}]+\}/g,"")
-    .replace(/\\ref\{([^}]+)\}/g,"(?)")
-    .replace(/\\cite\{([^}]+)\}/g,"[cite]")
-    .replace(/\\footnote\{[^}]+\}/g,"")
-    .replace(/---/g,"—").replace(/--/g,"–")
-    .replace(/\n{3,}/g,"\n\n");
-
-  // --- Pass 3: dynamic theorem envs ---
-  // Build one regex for all known theorem-like envs
-  const thmNames=Object.keys(thmMap).map(n=>n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|");
-  const thmBeginRe=new RegExp(`\\\\begin\\{(${thmNames})\\}(\\[[^\\]]*\\])?`,"g");
-  const thmEndRe  =new RegExp(`\\\\end\\{(${thmNames})\\}`,"g");
-  body=body
-    .replace(thmBeginRe,(_,env,opt)=>{
-      const label=thmMap[env]||env;
-      const extra=opt?` (${opt.slice(1,-1)})` :"";
-      return `<div style='border-left:3px solid var(--accent2);padding:8px 14px;margin:12px 0;background:var(--panel2);border-radius:0 6px 6px 0'><b style='color:var(--accent2)'>${label}${extra}.</b> `;
-    })
-    .replace(thmEndRe,"</div>");
-
-  // --- Pass 4: MathJax newcommand preamble (hidden span) ---
-  const preamble=newcmds.length
-    ? `<span style="display:none">\\(${newcmds.join("\n")}\\)</span>`:"";
-  return preamble+body;
-}
-
-async function loadFinalProofs(){
-  const list=$("fp-list");
-  list.innerHTML='<div class="muted" style="font-size:12px;padding:6px 8px">Loading…</div>';
-  let data; try{data=await(await fetch("/api/final-proofs")).json();}catch(e){
-    list.innerHTML='<div class="muted" style="font-size:12px;padding:6px 8px">Error loading.</div>';return;}
-  list.innerHTML="";
-  for(const p of (data.problems||[])){
-    const it=el("div","qitem");
-    it.innerHTML=`<span class="qid" style="font-size:12px">${p.id}</span><span class="qt">${esc(p.title)}</span>`;
-    it.onclick=()=>openFinalProof(p.id,it);
-    list.appendChild(it);
-  }
-  fpLoaded=true;
-}
-
-async function openFinalProof(id, itEl){
-  document.querySelectorAll("#fp-list .qitem").forEach(e=>e.classList.remove("active"));
-  if(itEl) itEl.classList.add("active");
-  const content=$("fp-content");
-  content.innerHTML='<div class="muted" style="padding:40px;text-align:center">Loading…</div>';
-  let data; try{data=await(await fetch(`/api/final-proof/${id}`)).json();}catch(e){
-    content.innerHTML='<div class="muted">Error loading proof.</div>';return;}
-  if(data.error){content.innerHTML=`<div class="muted">${esc(data.error)}</div>`;return;}
-  const html=texToHtml(data.tex||"");
-  content.innerHTML=`<div class="rendered" style="max-width:860px">${html}</div>`;
-  typeset(content);
-}
-
-document.querySelector('.tab[data-tab="final-proofs"]').addEventListener("click",()=>{
-  if(!fpLoaded) loadFinalProofs();
 });
 
 init();

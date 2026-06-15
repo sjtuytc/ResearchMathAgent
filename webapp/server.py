@@ -24,7 +24,7 @@ from .agent import DEFAULT_MODEL, AgentConfig, run_agent
 from .claude_code import claude_code_available, run_claude_code_agent
 from .documents import list_documents, read_document
 from .proofs import get_proof, list_experiments
-from .issues import append_activity, get_issue, save_issue
+from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue
 from .latex import compile_tex, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
@@ -60,27 +60,74 @@ def get_problem(problem_id: str) -> JSONResponse:
     })
 
 
-@app.get("/api/issue/{problem_id}")
-def read_issue(problem_id: str) -> JSONResponse:
+@app.get("/api/issues/{problem_id}")
+def list_issues_ep(problem_id: str) -> JSONResponse:
     if not _PROBLEM_RE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    return JSONResponse({"id": problem_id, "markdown": get_issue(REPO_ROOT, problem_id)})
+    return JSONResponse({"issues": list_issues(REPO_ROOT, problem_id)})
 
 
-@app.post("/api/issue/{problem_id}")
-def write_issue(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+@app.post("/api/issues/{problem_id}")
+def create_issue_ep(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
     if not _PROBLEM_RE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    save_issue(REPO_ROOT, problem_id, str(payload.get("markdown", "")))
-    return JSONResponse({"ok": True})
+    issue = create_issue(
+        REPO_ROOT, problem_id,
+        title=str(payload.get("title", "Untitled")),
+        body=str(payload.get("body", "")),
+        author=str(payload.get("author", "human")),
+        labels=payload.get("labels", []),
+    )
+    return JSONResponse(issue)
 
 
-@app.post("/api/issue/{problem_id}/activity")
+@app.get("/api/issues/{problem_id}/{issue_id}")
+def get_issue_ep(problem_id: str, issue_id: str) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    issue = get_issue(REPO_ROOT, problem_id, issue_id)
+    if issue is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(issue)
+
+
+@app.post("/api/issues/{problem_id}/{issue_id}/comment")
+def add_comment_ep(problem_id: str, issue_id: str, payload: dict = Body(...)) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    issue = add_comment(
+        REPO_ROOT, problem_id, issue_id,
+        author=str(payload.get("author", "human")),
+        body=str(payload.get("body", "")),
+    )
+    if issue is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(issue)
+
+
+@app.patch("/api/issues/{problem_id}/{issue_id}")
+def update_issue_ep(problem_id: str, issue_id: str, payload: dict = Body(...)) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    issue = update_issue(REPO_ROOT, problem_id, issue_id, **payload)
+    if issue is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(issue)
+
+
+@app.post("/api/issues/{problem_id}/activity")
 def log_activity(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
     if not _PROBLEM_RE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    append_activity(REPO_ROOT, problem_id, str(payload.get("entry", "")))
+    append_activity(REPO_ROOT, problem_id, str(payload.get("entry", "")),
+                    agent=str(payload.get("agent", "solver-agent")))
     return JSONResponse({"ok": True})
+
+
+# legacy single-issue endpoints kept for backward compatibility
+@app.post("/api/issue/{problem_id}/activity")
+def log_activity_legacy(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+    return log_activity(problem_id, payload)
 
 
 @app.get("/api/solve")
