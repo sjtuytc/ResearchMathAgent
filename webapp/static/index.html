@@ -33,6 +33,7 @@ MathJax = {
 };
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
   // Bypass ngrok browser interstitial for all API fetch calls
   (function(){const _f=window.fetch;window.fetch=function(u,o={}){if(typeof u==='string'&&u.startsWith('/')){o={...o,headers:{...o.headers,'ngrok-skip-browser-warning':'1'}};}return _f(u,o);};})();
@@ -227,9 +228,18 @@ MathJax = {
           <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:12px 8px 8px">Author Solutions</div>
           <div id="fpf-authors"></div>
         </div>
-        <div id="fpf-viewer" style="overflow:hidden;display:flex;flex-direction:column">
-          <div class="empty" id="fpf-empty">Select a file on the left.</div>
-          <iframe id="fpf-iframe" style="display:none;flex:1;border:none;width:100%;height:100%" title="proof viewer"></iframe>
+        <div id="fpf-viewer" style="overflow:hidden;display:flex;flex-direction:column;background:#404040">
+          <div id="fpf-empty" class="empty" style="background:var(--bg);margin:0;height:100%;display:flex;align-items:center;justify-content:center">Select a file on the left.</div>
+          <!-- toolbar -->
+          <div id="fpf-toolbar" style="display:none;background:var(--panel);border-bottom:1px solid var(--border);padding:6px 12px;align-items:center;gap:10px;font-size:13px">
+            <span id="fpf-pageinfo" style="color:var(--muted);font-size:12px;min-width:80px"></span>
+            <span style="margin-left:8px;color:var(--muted);font-size:12px">Zoom</span>
+            <button class="btn-sec" id="fpf-zout" style="padding:4px 8px">−</button>
+            <span id="fpf-zoom" style="color:var(--muted);font-size:12px;min-width:40px;text-align:center">100%</span>
+            <button class="btn-sec" id="fpf-zin" style="padding:4px 8px">+</button>
+            <a id="fpf-dl" style="margin-left:auto;font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none" target="_blank">⬇ Download</a>
+          </div>
+          <div id="fpf-canvas-wrap" style="display:none;flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
         </div>
       </div>
     </section>
@@ -654,8 +664,47 @@ document.querySelector('.tab[data-tab="proofs"]').addEventListener("click",()=>{
   if(!pfExps.length) loadProofs();
 });
 
-// ---- Final Proof tab ----
-let fpfLoaded=false;
+// ---- Final Proof tab (PDF.js) ----
+let fpfLoaded=false, fpfDoc=null, fpfScale=1.5, fpfCurrentUrl=null;
+
+if(typeof pdfjsLib!=="undefined"){
+  pdfjsLib.GlobalWorkerOptions.workerSrc=
+    "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+}
+
+async function fpfRenderAll(){
+  const wrap=$("fpf-canvas-wrap");
+  wrap.innerHTML="";
+  const numPages=fpfDoc.numPages;
+  $("fpf-pageinfo").textContent=`${numPages} page${numPages!==1?"s":""}`;
+  for(let i=1;i<=numPages;i++){
+    const page=await fpfDoc.getPage(i);
+    const vp=page.getViewport({scale:fpfScale});
+    const canvas=document.createElement("canvas");
+    canvas.width=vp.width; canvas.height=vp.height;
+    canvas.style.cssText="max-width:100%;box-shadow:0 2px 12px rgba(0,0,0,.5);background:#fff";
+    wrap.appendChild(canvas);
+    await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;
+  }
+}
+
+async function fpfLoadPdf(url, filename){
+  $("fpf-empty").style.display="none";
+  $("fpf-toolbar").style.display="flex";
+  $("fpf-canvas-wrap").style.display="flex";
+  $("fpf-dl").href=url;
+  $("fpf-dl").download=filename||"proof.pdf";
+  fpfCurrentUrl=url;
+  const wrap=$("fpf-canvas-wrap");
+  wrap.innerHTML=`<div style="color:#aaa;font-size:14px;padding:32px">Loading PDF…</div>`;
+  try{
+    const task=pdfjsLib.getDocument(url);
+    fpfDoc=await task.promise;
+    await fpfRenderAll();
+  }catch(e){
+    wrap.innerHTML=`<div style="color:#f88;padding:32px">Error loading PDF: ${esc(String(e))}</div>`;
+  }
+}
 
 function fpfItem(file, container){
   const it=el("div","qitem");
@@ -665,10 +714,18 @@ function fpfItem(file, container){
   it.onclick=()=>{
     document.querySelectorAll("#fpf-list .qitem").forEach(e=>e.classList.remove("active"));
     it.classList.add("active");
-    $("fpf-empty").style.display="none";
-    const frame=$("fpf-iframe");
-    frame.style.display="block";
-    frame.src="/api/final-proof-file/"+encodeURIComponent(file.path);
+    if(isPdf){
+      fpfLoadPdf("/api/final-proof-file/"+encodeURIComponent(file.path), file.name);
+    } else {
+      $("fpf-empty").style.display="none";
+      $("fpf-toolbar").style.display="none";
+      $("fpf-canvas-wrap").style.display="flex";
+      $("fpf-canvas-wrap").innerHTML=`<div style="color:#ccc;white-space:pre-wrap;font-family:monospace;font-size:12px;padding:16px;max-width:900px">Loading…</div>`;
+      fetch("/api/final-proof-file/"+encodeURIComponent(file.path))
+        .then(r=>r.text()).then(t=>{
+          $("fpf-canvas-wrap").innerHTML=`<div style="color:#ccc;white-space:pre-wrap;font-family:monospace;font-size:12px;padding:16px;max-width:900px">${esc(t)}</div>`;
+        });
+    }
   };
   container.appendChild(it);
 }
@@ -681,11 +738,18 @@ async function loadFinalProofFiles(){
   mc.innerHTML=""; ac.innerHTML="";
   merged.forEach(f=>fpfItem(f,mc));
   authors.forEach(f=>fpfItem(f,ac));
-  // auto-open merged PDF
-  const mainPdf=merged.find(f=>f.name==="all_proofs_merged.pdf");
-  if(mainPdf) mc.querySelector(".qitem")&&mc.querySelector(".qitem").click();
   fpfLoaded=true;
+  // auto-open the merged PDF
+  const mainPdf=merged.find(f=>f.name==="all_proofs_merged.pdf");
+  if(mainPdf){
+    const first=mc.querySelector(".qitem");
+    if(first) first.click();
+  }
 }
+
+$("fpf-zin").onclick=async()=>{fpfScale=Math.min(fpfScale+0.25,4);$("fpf-zoom").textContent=Math.round(fpfScale*100)+"%";if(fpfDoc)await fpfRenderAll();};
+$("fpf-zout").onclick=async()=>{fpfScale=Math.max(fpfScale-0.25,0.5);$("fpf-zoom").textContent=Math.round(fpfScale*100)+"%";if(fpfDoc)await fpfRenderAll();};
+$("fpf-zoom").textContent=Math.round(fpfScale*100)+"%";
 
 document.querySelector('.tab[data-tab="final-proof"]').addEventListener("click",()=>{
   if(!fpfLoaded) loadFinalProofFiles();
