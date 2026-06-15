@@ -232,7 +232,16 @@ def _translate(obj: dict) -> Iterator[AgentEvent]:
         return
 
     if etype == "assistant":
-        for block in obj.get("message", {}).get("content", []):
+        msg = obj.get("message", {})
+        usage = msg.get("usage", {}) or {}
+        if usage.get("input_tokens") or usage.get("output_tokens"):
+            yield AgentEvent("turn_usage", {
+                "input_tokens": usage.get("input_tokens", 0),
+                "output_tokens": usage.get("output_tokens", 0),
+                "cache_read_input_tokens": usage.get("cache_read_input_tokens", 0),
+                "cache_creation_input_tokens": usage.get("cache_creation_input_tokens", 0),
+            })
+        for block in msg.get("content", []):
             if block.get("type") == "tool_use":
                 yield AgentEvent("tool_use", {
                     "id": block.get("id", ""),
