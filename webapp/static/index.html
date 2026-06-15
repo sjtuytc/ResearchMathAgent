@@ -121,6 +121,7 @@ MathJax = {
       <div class="tab" data-tab="agent">Agent</div>
       <div class="tab" data-tab="documents">Documents</div>
       <div class="tab" data-tab="proofs">Proofs</div>
+      <div class="tab" data-tab="final-proofs">Final Proofs</div>
     </div>
 
     <section class="pane active" id="pane-question">
@@ -202,6 +203,17 @@ MathJax = {
         <pre id="pf-raw" style="display:none"><code id="pf-raw-code" class="language-latex"></code></pre>
       </div>
       <div id="pf-empty" class="empty" style="display:none">No proof results found. Run <code>rma solve --all</code> first.</div>
+    </section>
+
+    <section class="pane" id="pane-final-proofs" style="padding:0;overflow:hidden;display:none">
+      <div style="display:grid;grid-template-columns:200px 1fr;height:100%">
+        <div id="fp-list" style="border-right:1px solid var(--border);overflow-y:auto;padding:10px">
+          <div class="muted" style="font-size:12px;padding:6px 8px">Loading…</div>
+        </div>
+        <div id="fp-content" style="overflow-y:auto;padding:18px 24px">
+          <div class="empty">Select a problem on the left.</div>
+        </div>
+      </div>
     </section>
   </main>
 </div>
@@ -569,6 +581,84 @@ $("pf-toggle-raw").onclick=function(){
 
 document.querySelector('.tab[data-tab="proofs"]').addEventListener("click",()=>{
   if(!pfExps.length) loadProofs();
+});
+
+// ---- Final Proofs tab ----
+let fpLoaded=false;
+function texToHtml(tex){
+  // Convert LaTeX body to renderable HTML:
+  // 1. Wrap newcommands in a hidden MathJax-processable span so macros are registered
+  // 2. Convert \section*, \subsection*, paragraphs, \textbf, \emph, \textit, \text
+  // 3. Leave math delimiters ($…$, $$…$$, \[…\]) for MathJax
+  const newcmds=[]; const lines=[];
+  for(const line of tex.split("\n")){
+    if(/^\\(new|renew)command|^\\DeclareMath/.test(line.trim())){newcmds.push(line);}
+    else lines.push(line);
+  }
+  let body=lines.join("\n");
+  // LaTeX structural → HTML
+  body=body
+    .replace(/\\clearpage/g,"<hr style='border-color:var(--border);margin:20px 0'>")
+    .replace(/\\section\*\{([^}]+)\}/g,"<h2 style='font-size:16px;margin:22px 0 8px;color:var(--accent)'>$1</h2>")
+    .replace(/\\subsection\*\{([^}]+)\}/g,"<h3 style='font-size:14px;margin:16px 0 6px'>$1</h3>")
+    .replace(/\\subsubsection\*\{([^}]+)\}/g,"<h4 style='font-size:13px;margin:12px 0 4px'>$1</h4>")
+    .replace(/\\begin\{(itemize|enumerate)\}/g,"<ul>").replace(/\\end\{(itemize|enumerate)\}/g,"</ul>")
+    .replace(/\\item\s/g,"<li>")
+    .replace(/\\begin\{(theorem|lemma|proposition|corollary|definition|remark)[^}]*\}/g,
+      (_,e)=>`<div style='border-left:3px solid var(--accent);padding:8px 12px;margin:10px 0;background:var(--panel2)'><b style='text-transform:capitalize'>${e}.</b> `)
+    .replace(/\\end\{(theorem|lemma|proposition|corollary|definition|remark)[^}]*\}/g,"</div>")
+    .replace(/\\begin\{proof\}/g,"<div style='border-left:2px solid var(--border);padding:6px 12px;margin:8px 0;color:var(--muted)'><i>Proof.</i> ")
+    .replace(/\\end\{proof\}/g," $\\square$</div>")
+    .replace(/\\begin\{align\*?\}/g,"$$\\begin{aligned}").replace(/\\end\{align\*?\}/g,"\\end{aligned}$$")
+    .replace(/\\begin\{equation\*?\}/g,"$$").replace(/\\end\{equation\*?\}/g,"$$")
+    .replace(/\\begin\{gather\*?\}/g,"$$\\begin{gathered}").replace(/\\end\{gather\*?\}/g,"\\end{gathered}$$")
+    .replace(/\\textbf\{([^}]+)\}/g,"<b>$1</b>")
+    .replace(/\\emph\{([^}]+)\}/g,"<em>$1</em>")
+    .replace(/\\textit\{([^}]+)\}/g,"<em>$1</em>")
+    .replace(/\\noindent\s*/g,"")
+    .replace(/\\medskip|\\bigskip|\\smallskip/g,"<br>")
+    .replace(/\\label\{[^}]+\}/g,"")
+    .replace(/\\(begin|end)\{(document|group)\}/g,"")
+    .replace(/\\(maketitle|tableofcontents|addcontentsline[^}]*\}[^}]*\}[^}]*\})/g,"")
+    .replace(/\\title\{[^}]+\}/g,"").replace(/\\author\{[^}]+\}/g,"").replace(/\\date\{[^}]*\}/g,"")
+    .replace(/\\hypersetup\{[\s\S]*?\}/g,"")
+    .replace(/\n{3,}/g,"\n\n");
+  // inject newcommands invisibly so MathJax registers them
+  const preamble=newcmds.length
+    ? `<span style="display:none">$${newcmds.join("\n")}$</span>`:"";
+  return preamble+body;
+}
+
+async function loadFinalProofs(){
+  const list=$("fp-list");
+  list.innerHTML='<div class="muted" style="font-size:12px;padding:6px 8px">Loading…</div>';
+  let data; try{data=await(await fetch("/api/final-proofs")).json();}catch(e){
+    list.innerHTML='<div class="muted" style="font-size:12px;padding:6px 8px">Error loading.</div>';return;}
+  list.innerHTML="";
+  for(const p of (data.problems||[])){
+    const it=el("div","qitem");
+    it.innerHTML=`<span class="qid" style="font-size:12px">${p.id}</span><span class="qt">${esc(p.title)}</span>`;
+    it.onclick=()=>openFinalProof(p.id,it);
+    list.appendChild(it);
+  }
+  fpLoaded=true;
+}
+
+async function openFinalProof(id, itEl){
+  document.querySelectorAll("#fp-list .qitem").forEach(e=>e.classList.remove("active"));
+  if(itEl) itEl.classList.add("active");
+  const content=$("fp-content");
+  content.innerHTML='<div class="muted" style="padding:40px;text-align:center">Loading…</div>';
+  let data; try{data=await(await fetch(`/api/final-proof/${id}`)).json();}catch(e){
+    content.innerHTML='<div class="muted">Error loading proof.</div>';return;}
+  if(data.error){content.innerHTML=`<div class="muted">${esc(data.error)}</div>`;return;}
+  const html=texToHtml(data.tex||"");
+  content.innerHTML=`<div class="rendered" style="max-width:860px">${html}</div>`;
+  typeset(content);
+}
+
+document.querySelector('.tab[data-tab="final-proofs"]').addEventListener("click",()=>{
+  if(!fpLoaded) loadFinalProofs();
 });
 
 init();

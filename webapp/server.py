@@ -160,6 +160,51 @@ def capabilities() -> JSONResponse:
                          "latex": bool(latex_available())})
 
 
+_FINAL_PROOFS_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "ResearchMathAgent" / "data" / "first_proof_1" / "final_solutions" / "all_proofs_merged.tex"
+)
+
+def _split_final_proofs(tex: str) -> list[dict]:
+    """Split all_proofs_merged.tex into per-problem sections."""
+    import re
+    chunks = re.split(r"% =====\s*Begin (q\d+)_solution\.tex\s*=====", tex)
+    problems = []
+    # chunks[0] is preamble, then alternating: problem_id, content
+    for i in range(1, len(chunks), 2):
+        pid = chunks[i]
+        body = chunks[i + 1] if i + 1 < len(chunks) else ""
+        # strip trailing end marker
+        body = re.sub(r"\s*% =====\s*End.*?=====\s*$", "", body.rstrip())
+        # extract title from \section*{Problem N}
+        m = re.search(r"\\section\*\{([^}]+)\}", body)
+        title = m.group(1) if m else pid
+        problems.append({"id": pid, "title": title, "tex": body.strip()})
+    return problems
+
+
+@app.get("/api/final-proofs")
+def final_proofs_list() -> JSONResponse:
+    if not _FINAL_PROOFS_PATH.is_file():
+        return JSONResponse({"problems": [], "error": "file not found"})
+    tex = _FINAL_PROOFS_PATH.read_text(encoding="utf-8", errors="replace")
+    problems = _split_final_proofs(tex)
+    return JSONResponse({"problems": [{"id": p["id"], "title": p["title"]} for p in problems]})
+
+
+@app.get("/api/final-proof/{problem_id}")
+def final_proof_detail(problem_id: str) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    if not _FINAL_PROOFS_PATH.is_file():
+        return JSONResponse({"error": "file not found"}, status_code=404)
+    tex = _FINAL_PROOFS_PATH.read_text(encoding="utf-8", errors="replace")
+    problems = {p["id"]: p for p in _split_final_proofs(tex)}
+    if problem_id not in problems:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(problems[problem_id])
+
+
 @app.post("/api/run-daily")
 def run_daily() -> JSONResponse:
     """Trigger one daily-report run in the background (returns immediately)."""
