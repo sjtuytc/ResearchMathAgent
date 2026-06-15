@@ -80,6 +80,7 @@
       <div class="tab active" data-tab="question">Question</div>
       <div class="tab" data-tab="issue">Issue</div>
       <div class="tab" data-tab="agent">Agent</div>
+      <div class="tab" data-tab="documents">Documents</div>
     </div>
 
     <section class="pane active" id="pane-question">
@@ -127,6 +128,22 @@
         <div id="stream"></div>
       </div>
     </section>
+
+    <section class="pane" id="pane-documents">
+      <div class="bar">
+        <button class="btn-pri" id="d-run">Generate today's report</button>
+        <button class="btn-sec" id="d-refresh">Refresh</button>
+        <span class="muted" id="d-status"></span>
+      </div>
+      <div class="muted" style="margin-bottom:10px;font-size:12px">
+        Daily reports written by the autonomous worker (<code>python -m webapp.daily</code>) and
+        on-demand runs. Files live in <code>documents/</code>.
+      </div>
+      <div style="display:grid;grid-template-columns:250px 1fr;gap:14px">
+        <div id="d-list"></div>
+        <div class="rendered" id="d-view"><span class="muted">Select a report on the left.</span></div>
+      </div>
+    </section>
   </main>
 </div>
 <script>
@@ -172,6 +189,7 @@ function onProviderChange(){
 function setTab(name){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
   document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("active",p.id==="pane-"+name));
+  if(name==="documents") loadDocuments();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -328,6 +346,39 @@ function finish(reason){
 $("run").onclick=start;
 $("stop").onclick=stop;
 window.addEventListener("beforeunload",cancelBackend);
+
+// ---- Documents tab ----
+let docPoll=null;
+async function loadDocuments(){
+  const r=await fetch("/api/documents"); const {documents}=await r.json();
+  const list=$("d-list"); list.innerHTML="";
+  if(!documents.length){ list.innerHTML='<div class="muted" style="padding:10px">No reports yet. Run the daily worker or click “Generate today\'s report”.</div>'; return; }
+  for(const d of documents){
+    const it=el("div","qitem");
+    it.innerHTML=`<span class="qid" style="font-size:13px">${esc(d.name)}</span><span class="qt">${esc(d.title)} · ${d.modified}</span>`;
+    it.onclick=()=>selectDocument(d.name,it);
+    list.appendChild(it);
+  }
+}
+async function selectDocument(name,node){
+  document.querySelectorAll("#d-list .qitem").forEach(n=>n.classList.remove("active"));
+  if(node)node.classList.add("active");
+  const r=await fetch(`/api/document/${encodeURIComponent(name)}`); const d=await r.json();
+  md($("d-view"), d.markdown||"_(empty)_");
+}
+$("d-refresh").onclick=loadDocuments;
+$("d-run").onclick=async()=>{
+  $("d-run").disabled=true; $("d-status").textContent="starting…";
+  const r=await (await fetch("/api/run-daily",{method:"POST"})).json();
+  if(!r.started){ $("d-status").textContent=r.reason||"already running"; $("d-run").disabled=false; return; }
+  $("d-status").textContent="generating… (the agent is running on your subscription; this can take a while)";
+  let n=0; clearInterval(docPoll);
+  docPoll=setInterval(async()=>{ n++; await loadDocuments();
+    if(n>=40){ clearInterval(docPoll); $("d-status").textContent="done polling — click Refresh to update"; $("d-run").disabled=false; }
+  },15000);
+  setTimeout(()=>{ $("d-run").disabled=false; },20000);
+};
+
 init();
 </script>
 </body>

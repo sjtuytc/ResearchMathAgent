@@ -17,10 +17,12 @@ from fastapi import Body, FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+import threading
 import uuid
 
 from .agent import DEFAULT_MODEL, AgentConfig, run_agent
 from .claude_code import claude_code_available, run_claude_code_agent
+from .documents import list_documents, read_document
 from .issues import append_activity, get_issue, save_issue
 from .runs import REGISTRY
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
@@ -103,6 +105,31 @@ def cancel(payload: dict = Body(...)) -> JSONResponse:
 @app.get("/api/runs")
 def runs() -> JSONResponse:
     return JSONResponse({"runs": REGISTRY.active()})
+
+
+@app.get("/api/documents")
+def documents() -> JSONResponse:
+    return JSONResponse({"documents": list_documents(REPO_ROOT)})
+
+
+@app.get("/api/document/{name}")
+def document(name: str) -> JSONResponse:
+    content = read_document(REPO_ROOT, name)
+    if content is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse({"name": name, "markdown": content})
+
+
+@app.post("/api/run-daily")
+def run_daily() -> JSONResponse:
+    """Trigger one daily-report run in the background (returns immediately)."""
+    from .daily import run_daily_job
+
+    active = [r for r in REGISTRY.active() if r.get("kind") == "daily"]
+    if active:
+        return JSONResponse({"started": False, "reason": "a daily run is already in progress"})
+    threading.Thread(target=run_daily_job, daemon=True).start()
+    return JSONResponse({"started": True})
 
 
 def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str):
