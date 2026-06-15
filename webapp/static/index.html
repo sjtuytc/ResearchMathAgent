@@ -127,6 +127,7 @@ MathJax = {
       <div class="tab" data-tab="agent">Agent</div>
       <div class="tab" data-tab="documents">Documents</div>
       <div class="tab" data-tab="proofs">Proofs</div>
+      <div class="tab" data-tab="final-proof">Final Proof</div>
     </div>
 
     <section class="pane active" id="pane-question">
@@ -216,6 +217,21 @@ MathJax = {
         <pre id="pf-raw" style="display:none"><code id="pf-raw-code" class="language-latex"></code></pre>
       </div>
       <div id="pf-empty" class="empty" style="display:none">No proof results found. Run <code>rma solve --all</code> first.</div>
+    </section>
+
+    <section class="pane" id="pane-final-proof" style="padding:0;overflow:hidden">
+      <div style="display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 98px)">
+        <div id="fpf-list" style="border-right:1px solid var(--border);overflow-y:auto;padding:10px">
+          <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 8px">Merged</div>
+          <div id="fpf-merged"></div>
+          <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:12px 8px 8px">Author Solutions</div>
+          <div id="fpf-authors"></div>
+        </div>
+        <div id="fpf-viewer" style="overflow:hidden;display:flex;flex-direction:column">
+          <div class="empty" id="fpf-empty">Select a file on the left.</div>
+          <iframe id="fpf-iframe" style="display:none;flex:1;border:none;width:100%;height:100%" title="proof viewer"></iframe>
+        </div>
+      </div>
     </section>
   </main>
 </div>
@@ -636,6 +652,43 @@ $("pf-toggle-raw").onclick=function(){
 
 document.querySelector('.tab[data-tab="proofs"]').addEventListener("click",()=>{
   if(!pfExps.length) loadProofs();
+});
+
+// ---- Final Proof tab ----
+let fpfLoaded=false;
+
+function fpfItem(file, container){
+  const it=el("div","qitem");
+  const isPdf=file.name.endsWith(".pdf");
+  const icon=isPdf?"📄":"📝";
+  it.innerHTML=`<span style="font-size:12px">${icon} ${esc(file.name)}</span>`;
+  it.onclick=()=>{
+    document.querySelectorAll("#fpf-list .qitem").forEach(e=>e.classList.remove("active"));
+    it.classList.add("active");
+    $("fpf-empty").style.display="none";
+    const frame=$("fpf-iframe");
+    frame.style.display="block";
+    frame.src="/api/final-proof-file/"+encodeURIComponent(file.path);
+  };
+  container.appendChild(it);
+}
+
+async function loadFinalProofFiles(){
+  const data=await(await fetch("/api/final-proof-files")).json();
+  const merged=data.files.filter(f=>f.group==="merged");
+  const authors=data.files.filter(f=>f.group==="author");
+  const mc=$("fpf-merged"), ac=$("fpf-authors");
+  mc.innerHTML=""; ac.innerHTML="";
+  merged.forEach(f=>fpfItem(f,mc));
+  authors.forEach(f=>fpfItem(f,ac));
+  // auto-open merged PDF
+  const mainPdf=merged.find(f=>f.name==="all_proofs_merged.pdf");
+  if(mainPdf) mc.querySelector(".qitem")&&mc.querySelector(".qitem").click();
+  fpfLoaded=true;
+}
+
+document.querySelector('.tab[data-tab="final-proof"]').addEventListener("click",()=>{
+  if(!fpfLoaded) loadFinalProofFiles();
 });
 
 init();

@@ -201,6 +201,40 @@ def proof_detail(exp_name: str, problem_id: str) -> JSONResponse:
     return JSONResponse(data)
 
 
+_FINAL_SOLUTIONS_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "ResearchMathAgent" / "data" / "first_proof_1" / "final_solutions"
+)
+_AUTHOR_SOLUTIONS_DIR = _FINAL_SOLUTIONS_DIR / "first_proof_author_solutions"
+_ALLOWED_EXTS = {".pdf", ".tex"}
+
+
+@app.get("/api/final-proof-files")
+def final_proof_files() -> JSONResponse:
+    files = []
+    if _FINAL_SOLUTIONS_DIR.is_dir():
+        for f in sorted(_FINAL_SOLUTIONS_DIR.iterdir()):
+            if f.is_file() and f.suffix in _ALLOWED_EXTS:
+                files.append({"name": f.name, "path": f.name, "group": "merged"})
+    if _AUTHOR_SOLUTIONS_DIR.is_dir():
+        for f in sorted(_AUTHOR_SOLUTIONS_DIR.iterdir()):
+            if f.is_file() and f.suffix in _ALLOWED_EXTS:
+                files.append({"name": f.name, "path": f"first_proof_author_solutions/{f.name}", "group": "author"})
+    return JSONResponse({"files": files})
+
+
+@app.get("/api/final-proof-file/{file_path:path}")
+def final_proof_file(file_path: str) -> FileResponse:
+    # Sanitize: only allow files inside the final_solutions dir
+    safe = (_FINAL_SOLUTIONS_DIR / file_path).resolve()
+    if not str(safe).startswith(str(_FINAL_SOLUTIONS_DIR.resolve())):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    if not safe.is_file() or safe.suffix not in _ALLOWED_EXTS:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    media = "application/pdf" if safe.suffix == ".pdf" else "text/plain"
+    return FileResponse(safe, media_type=media, filename=safe.name)
+
+
 @app.get("/api/capabilities")
 def capabilities() -> JSONResponse:
     return JSONResponse({"claude_code": bool(claude_code_available()),
