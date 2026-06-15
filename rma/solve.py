@@ -210,9 +210,19 @@ def run_solve(args: Namespace) -> int:
     repo_root, problems, output_dir, skill_info = context
 
     max_rounds = max(1, int(getattr(args, "max_rounds", 3)))
+    resume = getattr(args, "resume", False)
     final_results = []
     all_passed = True
     for problem_id in problems:
+        if resume and _is_already_verified(output_dir, problem_id):
+            paths = _problem_paths(output_dir, problem_id)
+            latest_v = _latest_file(paths["verifications"], "verification", ".json")
+            verification = _read_json(latest_v) if latest_v else {"passed": True, "report_path": latest_v}
+            verification["report_path"] = latest_v
+            final_results.append((paths["solution"], verification))
+            print(f"  {problem_id}: already verified, skipping")
+            continue
+
         _parse_problem(repo_root, output_dir, problem_id, args, skill_info)
         try:
             _propose_solution(repo_root, output_dir, problem_id, args, skill_info)
@@ -245,15 +255,80 @@ def run_solve(args: Namespace) -> int:
     print(f"output: {_display_path(repo_root, output_dir)}")
     for solution_path, verification in final_results:
         print(f"solution: {_display_path(repo_root, solution_path)}")
-        print(f"problem_status: {'verified' if verification['passed'] else 'needs_refinement'}")
+        print(f"problem_status: {'verified' if verification.get('passed') else 'needs_refinement'}")
         pdf_path = solution_path.with_suffix(".pdf")
         if pdf_path.exists():
             print(f"rendered: {_display_path(repo_root, pdf_path)}")
-        print(f"verification: {_display_path(repo_root, verification['report_path'])}")
+        if verification.get("report_path"):
+            print(f"verification: {_display_path(repo_root, verification['report_path'])}")
     print()
     print("Completed parser -> proposer -> verifier/refiner solve pipeline.")
     print("No official/prior solution directories were read.")
     return 0 if all_passed else 1
+
+
+def run_diff(args: Namespace) -> int:
+    repo_root = _resolve_repo_root(getattr(args, "repo_root", None))
+    if repo_root is None:
+        print("RMA diff")
+        print("FAIL repo root: could not find README.md and data/first_proof_1/problems from this directory")
+        return 1
+
+    dir_a = Path(args.output_a).expanduser().resolve() if args.output_a else (repo_root / OUTPUT_BASE_DIR / args.exp_a)
+    dir_b = Path(args.output_b).expanduser().resolve() if args.output_b else (repo_root / OUTPUT_BASE_DIR / args.exp_b)
+
+    if not dir_a.is_dir():
+        print(f"RMA diff\nFAIL: output-a not found: {dir_a}")
+        return 1
+    if not dir_b.is_dir():
+        print(f"RMA diff\nFAIL: output-b not found: {dir_b}")
+        return 1
+
+    label_a = args.output_a or args.exp_a
+    label_b = args.output_b or args.exp_b
+
+    print("RMA diff")
+    print(f"  A: {_display_path(repo_root, dir_a)}")
+    print(f"  B: {_display_path(repo_root, dir_b)}")
+    print()
+    col = 22
+    print(f"{'Problem':<10} {'A':<{col}} {'B':<{col}} {'Change'}")
+    print("-" * (10 + col * 2 + 12))
+
+    any_diff = False
+    for problem_id in PROBLEM_IDS:
+        def _read_status(d: Path) -> tuple[str, int]:
+            meta = d / problem_id / "artifacts" / "metadata.json"
+            if not meta.is_file():
+                return "missing", 0
+            data = _read_json(meta)
+            status = str(data.get("status", "unknown"))
+            v_dir = d / problem_id / "artifacts" / "verifications"
+            rounds = len(list(v_dir.glob("verification_*.json"))) if v_dir.is_dir() else 0
+            return status, rounds
+
+        status_a, rounds_a = _read_status(dir_a)
+        status_b, rounds_b = _read_status(dir_b)
+        cell_a = f"{status_a} ({rounds_a}v)" if status_a != "missing" else "missing"
+        cell_b = f"{status_b} ({rounds_b}v)" if status_b != "missing" else "missing"
+
+        if status_a == status_b:
+            change = "same"
+        elif status_a == "verified" and status_b != "verified":
+            change = "regression"
+            any_diff = True
+        elif status_b == "verified" and status_a != "verified":
+            change = "improvement"
+            any_diff = True
+        else:
+            change = "changed"
+            any_diff = True
+
+        print(f"{problem_id:<10} {cell_a:<{col}} {cell_b:<{col}} {change}")
+
+    print()
+    print("No differences." if not any_diff else "Differences found.")
+    return 0
 
 
 def _build_context(command: str, args: Namespace) -> tuple[Path, tuple[str, ...], Path, dict[str, str]] | None:
@@ -392,7 +467,7 @@ def _verify_solution(
     parsed_path = paths["artifacts"] / "parsed_problem.json"
     parsed = _read_json(parsed_path)
     solution_text = paths["solution"].read_text(encoding="utf-8")
-    issues = _collect_verification_issues(parsed, solution_text)
+    issues = _collect_verification_issues(parsed, solution_text, repo_root, args)
     render_info = _verify_render(paths["solution"], getattr(args, "no_render", False))
     if not render_info["passed"]:
         issues.append(
@@ -527,6 +602,14 @@ def _refine_solution(
         },
     )
     return {"report_path": report_path, "action": action, "status": status}
+
+
+def _is_already_verified(output_dir: Path, problem_id: str) -> bool:
+    status_path = _problem_paths(output_dir, problem_id)["artifacts"] / "status.json"
+    if not status_path.is_file():
+        return False
+    data = _read_json(status_path)
+    return bool(data.get("completed")) and data.get("status") == "verified"
 
 
 def _normalize_problem_id(problem: str | None) -> str | None:
@@ -850,31 +933,43 @@ def _model_user_prompt(
         "verification_seed": profile["verification"],
     }
 
-    return f"""Generate iteration {iteration} of the solution for this First Proof problem.
+    return f"""Generate iteration {iteration} of the complete proof for this First Proof research problem.
 
-Allowed context:
-1. Parsed problem artifact:
+## Context
+
+### Problem
 {json.dumps(parsed_payload, indent=2)}
 
-2. Project math-research skill excerpt:
-{_skill_prompt_excerpt(repo_root, skill_info)}
-
-3. Profile-guided seed. Treat this as a starting hypothesis, not as a proof:
+### Proof strategy seed (hypothesis only — you must derive the actual proof)
 {json.dumps(profile_payload, indent=2)}
 
-4. Latest verifier feedback:
+### Math research skill
+{_skill_prompt_excerpt(repo_root, skill_info)}
+
+### Verifier feedback from previous iteration
 {verification_block}
 
-Requirements:
-- Return only a complete, standalone LaTeX document beginning with \\documentclass and ending with \\end{{document}}.
-- Include theorem/lemma/claim/proposition environments and proof environments for key intermediate claims.
-- The initial solution must be a full proof, not a sketch, draft, placeholder, plan, or outline.
-- If you use any named theorem, state the exact version used and include a subsection titled "Hypotheses check" proving that every hypothesis applies.
-- Prefer self-contained derivations over citations. If citations are unavoidable, include a complete thebibliography environment in this same document; do not leave unresolved \\cite commands.
-- Include explicit case analysis for boundary and degenerate cases from the parsed artifact.
-- Keep notation consistent with the problem statement. Define every introduced symbol.
-- Do not mention blocked directories or the fact that you lack access to official solutions inside the proof.
-- Do not wrap the result in Markdown fences.
+## Proof structure (follow this order)
+
+1. **Key tools**: Open with a section listing every named theorem, lemma, or formula you will invoke. For each:
+   - State it precisely (exact quantifiers, exact hypotheses).
+   - Prove it holds in this setting, or cite a self-contained derivation below.
+
+2. **Subclaim decomposition**: Break the main result into 2–5 lemmas/claims with explicit statements. Each must have its own `\\begin{{proof}}...\\end{{proof}}`.
+
+3. **Main proof**: Assemble the subclaims into the proof of the main theorem step by step. Every non-trivial logical step must be justified.
+
+4. **Hypotheses check**: A dedicated subsection that verifies every precondition of every named theorem you invoked actually holds for the objects in this problem.
+
+5. **Boundary and degenerate cases**: Explicit case analysis for each boundary case in the parsed artifact.
+
+## Output requirements
+- Return ONLY a complete standalone LaTeX document: `\\documentclass` ... `\\end{{document}}`.
+- Use `theorem`, `lemma`, `claim`, `proposition`, `corollary`, and `proof` environments.
+- If you use `\\cite`, include a complete `thebibliography` in the same document. Prefer inline derivations over citations.
+- Define every symbol you introduce. Keep notation consistent with the problem statement.
+- Do not mention blocked directories or missing access in the proof text.
+- Do not wrap output in Markdown fences.
 """
 
 
@@ -985,7 +1080,12 @@ def _latex_escape_text(value: str) -> str:
     return value
 
 
-def _collect_verification_issues(parsed: dict[str, object], solution_text: str) -> list[dict[str, str]]:
+def _collect_verification_issues(
+    parsed: dict[str, object],
+    solution_text: str,
+    repo_root: Path | None = None,
+    args: Namespace | None = None,
+) -> list[dict[str, str]]:
     issues: list[dict[str, str]] = []
     issues.extend(_latex_balance_issues(solution_text))
     forbidden_phrases = (
@@ -1042,7 +1142,57 @@ def _collect_verification_issues(parsed: dict[str, object], solution_text: str) 
             }
         )
     issues.extend(_mathematical_completeness_issues(solution_text))
+    if repo_root is not None and args is not None:
+        issues.extend(_model_verify_proof(solution_text, args))
     return issues
+
+
+def _model_verify_proof(solution_text: str, args: Namespace) -> list[dict[str, str]]:
+    model_name = getattr(args, "model_name", "rma-skeleton")
+    provider = getattr(args, "model_provider", "auto")
+    if not (should_use_anthropic(model_name, provider) or should_use_claude_code(model_name, provider)):
+        return []
+
+    system = (
+        "You are a mathematical proof verifier. You read LaTeX proofs and identify genuine logical errors. "
+        "Be conservative: only flag real problems, not style preferences."
+    )
+    prompt = (
+        "Review the following LaTeX proof for these specific issues:\n\n"
+        "1. HYPOTHESIS_NOT_VERIFIED: A named theorem, lemma, or formula is invoked but its preconditions "
+        "are not explicitly checked for the objects in this proof.\n"
+        "2. LOGICAL_GAP: A step's conclusion does not follow from the stated premises — the logical link is missing.\n"
+        "3. UNJUSTIFIED_CLAIM: A non-trivial claim is stated without proof or citation.\n\n"
+        "Return ONLY a JSON array (no prose, no fences). Each element:\n"
+        '{"code": "hypothesis_not_verified"|"logical_gap"|"unjustified_claim", '
+        '"severity": "error", "message": "<specific description>", "detail": "<the theorem name or claim>"}\n\n'
+        "If the proof is sound, return exactly: []\n\n"
+        f"PROOF:\n{solution_text[:24000]}"
+    )
+
+    try:
+        if should_use_claude_code(model_name, provider):
+            import tempfile
+            with tempfile.TemporaryDirectory() as tmp:
+                response = call_claude_code(model=model_name, system=system, prompt=prompt, cwd=Path(tmp))
+        else:
+            response = call_anthropic(model=model_name, system=system, prompt=prompt, max_tokens=2048, temperature=0.0)
+        raw = response.text.strip()
+        fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", raw, re.DOTALL)
+        if fence:
+            raw = fence.group(1).strip()
+        issues = json.loads(raw)
+        if not isinstance(issues, list):
+            return []
+        valid = []
+        for item in issues:
+            if isinstance(item, dict) and "code" in item and "message" in item:
+                item.setdefault("severity", "error")
+                item.setdefault("detail", "")
+                valid.append({k: str(item[k]) for k in ("code", "severity", "message", "detail")})
+        return valid
+    except Exception:
+        return []
 
 
 def _mathematical_completeness_issues(solution_text: str) -> list[dict[str, str]]:

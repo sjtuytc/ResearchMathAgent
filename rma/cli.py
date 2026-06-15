@@ -4,7 +4,7 @@ import argparse
 from collections.abc import Sequence
 
 from .doctor import run_doctor
-from .solve import run_parse, run_propose, run_refine, run_solve, run_verify
+from .solve import run_diff, run_parse, run_propose, run_refine, run_solve, run_verify
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -58,7 +58,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run parser -> proposer -> verifier/refiner pipeline for one or all First Proof problems.",
     )
     _add_pipeline_arguments(solve, render=True, max_rounds=True)
+    solve.add_argument(
+        "--resume",
+        action="store_true",
+        help="Skip problems that are already marked verified in the output folder.",
+    )
     solve.set_defaults(func=run_solve)
+
+    diff = subparsers.add_parser(
+        "diff",
+        help="Compare verification results between two experiment output folders.",
+    )
+    diff_target = diff.add_mutually_exclusive_group(required=True)
+    diff_target.add_argument("--exp-a", default=None, help="First experiment name (under outputs/first_proof_1/).")
+    diff_target.add_argument("--output-a", default=None, help="Absolute path to first experiment folder.")
+    diff_b = diff.add_mutually_exclusive_group(required=True)
+    diff_b.add_argument("--exp-b", default=None, help="Second experiment name (under outputs/first_proof_1/).")
+    diff_b.add_argument("--output-b", default=None, help="Absolute path to second experiment folder.")
+    diff.add_argument("--repo-root", default=None)
+    diff.set_defaults(func=run_diff)
 
     return parser
 
