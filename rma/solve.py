@@ -228,8 +228,9 @@ def run_solve(args: Namespace) -> int:
             _propose_solution(repo_root, output_dir, problem_id, args, skill_info)
         except (ModelConfigurationError, ModelRequestError) as exc:
             print("RMA solve")
-            print(f"FAIL model: {exc}")
-            return 1
+            print(f"FAIL model ({problem_id}): {exc}")
+            all_passed = False
+            continue
 
         verification = {"passed": False}
         for _round in range(1, max_rounds + 1):
@@ -241,8 +242,8 @@ def run_solve(args: Namespace) -> int:
                     _refine_solution(repo_root, output_dir, problem_id, args, skill_info)
                 except (ModelConfigurationError, ModelRequestError) as exc:
                     print("RMA solve")
-                    print(f"FAIL model: {exc}")
-                    return 1
+                    print(f"FAIL model ({problem_id}): {exc}")
+                    break
 
         solution_path = _problem_paths(output_dir, problem_id)["solution"]
         final_results.append((solution_path, verification))
