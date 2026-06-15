@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Research Math Agent</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0e1117; --panel: #161b22; --panel2: #1c2230; --border: #2a3140;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --accent2: #bc8cff;
+    --green: #3fb950; --red: #f85149; --amber: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--border);
+           display: flex; align-items: baseline; gap: 12px; }
+  header h1 { font-size: 16px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .layout { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 53px); }
+  .sidebar { border-right: 1px solid var(--border); padding: 18px; overflow-y: auto; }
+  .sidebar label { display: block; font-size: 12px; color: var(--muted);
+                   margin: 14px 0 5px; text-transform: uppercase; letter-spacing: .04em; }
+  select, input[type=text] { width: 100%; padding: 8px 10px; background: var(--panel2);
+        color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+  .row input[type=checkbox] { accent-color: var(--accent); }
+  button { width: 100%; margin-top: 18px; padding: 10px; border: 0; border-radius: 6px;
+           font-size: 14px; font-weight: 600; cursor: pointer; }
+  #run { background: var(--accent); color: #07101f; }
+  #run:disabled { opacity: .5; cursor: not-allowed; }
+  #stop { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  .usage { margin-top: 22px; font-size: 12px; color: var(--muted); }
+  .usage b { color: var(--text); font-weight: 600; }
+  .stream { padding: 18px 22px; overflow-y: auto; }
+  .turn-sep { color: var(--muted); font-size: 11px; text-transform: uppercase;
+              letter-spacing: .08em; margin: 18px 0 8px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+          padding: 12px 14px; margin: 10px 0; }
+  .card .tag { font-size: 11px; font-weight: 700; text-transform: uppercase;
+               letter-spacing: .05em; margin-bottom: 6px; display: flex; gap: 8px; align-items: center; }
+  .card.thinking { background: var(--panel2); border-style: dashed; }
+  .card.thinking .tag { color: var(--accent2); }
+  .card.thinking .body { color: var(--muted); white-space: pre-wrap; font-size: 13px; }
+  .card.assistant .tag { color: var(--accent); }
+  .card.tool .tag { color: var(--amber); }
+  .card.error { border-color: var(--red); }
+  .card.error .tag { color: var(--red); }
+  pre { background: #0b0f16; border: 1px solid var(--border); border-radius: 6px;
+        padding: 10px; overflow-x: auto; font-size: 12.5px; margin: 6px 0; }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  .tool-io { font-size: 12.5px; }
+  .tool-io .lbl { color: var(--muted); margin-top: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.run { background: var(--amber); animation: pulse 1.2s infinite; }
+  .dot.ok { background: var(--green); } .dot.err { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .status { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .assistant .body { word-wrap: break-word; }
+  .assistant .body p:first-child { margin-top: 0; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Research Math Agent</h1>
+  <span class="sub">Claude solving the <i>First Proof</i> benchmark — live</span>
+  <span class="status" id="status">idle</span>
+</header>
+<div class="layout">
+  <aside class="sidebar">
+    <label for="problem">Problem</label>
+    <select id="problem"></select>
+    <label for="model">Model</label>
+    <input type="text" id="model" value="claude-opus-4-8" />
+    <div class="row">
+      <input type="checkbox" id="thinking" checked />
+      <label for="thinking" style="margin:0;text-transform:none;letter-spacing:0;color:var(--text)">Show thinking</label>
+    </div>
+    <button id="run">Solve</button>
+    <button id="stop" style="display:none">Stop</button>
+    <div class="usage" id="usage"></div>
+  </aside>
+  <main class="stream" id="stream"></main>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const stream = $("stream");
+let es = null;
+let cur = { text: null, think: null };  // current open blocks for this turn
+const toolCards = {};                    // tool_use_id -> card element
+
+async function loadProblems() {
+  try {
+    const res = await fetch("/api/problems");
+    const { problems } = await res.json();
+    const sel = $("problem");
+    sel.innerHTML = "";
+    for (const p of problems) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = `${p.id} — ${p.title}`;
+      sel.appendChild(opt);
+    }
+    const q6 = problems.find((p) => p.id === "q6");
+    if (q6) sel.value = "q6";
+  } catch (e) {
+    setStatus("failed to load problems");
+  }
+}
+
+function setStatus(s, cls) {
+  $("status").innerHTML = cls ? `<span class="dot ${cls}"></span> ${s}` : s;
+}
+
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+function renderMd(node, raw) {
+  node.dataset.raw = raw;
+  node.innerHTML = marked.parse(raw);
+  if (window.renderMathInElement) {
+    renderMathInElement(node, {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "\\[", right: "\\]", display: true },
+        { left: "$", right: "$", display: false },
+        { left: "\\(", right: "\\)", display: false },
+      ],
+      throwOnError: false,
+    });
+  }
+}
+
+function scroll() { stream.scrollTop = stream.scrollHeight; }
+
+function handle(ev) {
+  switch (ev.type) {
+    case "start":
+      stream.innerHTML = "";
+      Object.keys(toolCards).forEach((k) => delete toolCards[k]);
+      cur = { text: null, think: null };
+      $("usage").textContent = "";
+      break;
+    case "status":
+      setStatus(`running · ${ev.model}`, "run");
+      break;
+    case "turn_start":
+      cur = { text: null, think: null };
+      stream.appendChild(el("div", "turn-sep", `Turn ${ev.iteration}`));
+      break;
+    case "thinking_delta": {
+      if (!cur.think) {
+        const c = el("div", "card thinking");
+        c.appendChild(el("div", "tag", "Thinking"));
+        cur.think = el("div", "body");
+        cur.think.dataset.raw = "";
+        c.appendChild(cur.think);
+        stream.appendChild(c);
+      }
+      cur.think.dataset.raw += ev.text;
+      cur.think.textContent = cur.think.dataset.raw;
+      scroll();
+      break;
+    }
+    case "text_delta": {
+      if (!cur.text) {
+        const c = el("div", "card assistant");
+        c.appendChild(el("div", "tag", "Claude"));
+        cur.text = el("div", "body");
+        cur.text.dataset.raw = "";
+        c.appendChild(cur.text);
+        stream.appendChild(c);
+      }
+      renderMd(cur.text, (cur.text.dataset.raw || "") + ev.text);
+      scroll();
+      break;
+    }
+    case "tool_use": {
+      cur = { text: null, think: null };
+      const c = el("div", "card tool");
+      c.appendChild(el("div", "tag", `<span class="dot run"></span> Tool · ${ev.name}`));
+      const io = el("div", "tool-io");
+      const inputStr = typeof ev.input === "string" ? ev.input : JSON.stringify(ev.input, null, 2);
+      io.appendChild(el("div", "lbl", "input"));
+      io.appendChild(el("pre", null, `<code>${escapeHtml(inputStr)}</code>`));
+      c.appendChild(io);
+      stream.appendChild(c);
+      toolCards[ev.id] = c;
+      scroll();
+      break;
+    }
+    case "tool_result": {
+      const c = toolCards[ev.id];
+      if (c) {
+        const tag = c.querySelector(".tag");
+        tag.innerHTML = `<span class="dot ${ev.is_error ? "err" : "ok"}"></span> Tool · ${ev.name}`;
+        const out = el("div", "tool-io");
+        out.appendChild(el("div", "lbl", ev.is_error ? "error" : "result"));
+        const text = (ev.output || "").trim();
+        const short = text.length <= 1400;
+        if (short) {
+          out.appendChild(el("pre", null, `<code>${escapeHtml(text)}</code>`));
+        } else {
+          const d = el("details");
+          d.appendChild(el("summary", null, `result (${text.length} chars)`));
+          d.appendChild(el("pre", null, `<code>${escapeHtml(text)}</code>`));
+          out.appendChild(d);
+        }
+        c.appendChild(out);
+      }
+      scroll();
+      break;
+    }
+    case "usage":
+      $("usage").innerHTML =
+        `tokens — in <b>${ev.input_tokens}</b> · out <b>${ev.output_tokens}</b>` +
+        `<br>cache read <b>${ev.cache_read_input_tokens}</b> · ` +
+        `write <b>${ev.cache_creation_input_tokens}</b>`;
+      break;
+    case "error": {
+      const c = el("div", "card error");
+      c.appendChild(el("div", "tag", "Error"));
+      c.appendChild(el("div", "body", escapeHtml(ev.message || "unknown error")));
+      stream.appendChild(c);
+      scroll();
+      break;
+    }
+    case "done":
+      finish(ev.reason);
+      break;
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+function start() {
+  const problem = $("problem").value;
+  const model = $("model").value.trim() || "claude-opus-4-8";
+  const thinking = $("thinking").checked ? 1 : 0;
+  if (!problem) return;
+  $("run").style.display = "none";
+  $("stop").style.display = "block";
+  setStatus("connecting…", "run");
+  es = new EventSource(`/api/solve?problem=${encodeURIComponent(problem)}&model=${encodeURIComponent(model)}&thinking=${thinking}`);
+  es.onmessage = (e) => handle(JSON.parse(e.data));
+  es.onerror = () => { setStatus("connection closed"); finish("disconnected"); };
+}
+
+function finish(reason) {
+  if (es) { es.close(); es = null; }
+  $("run").style.display = "block";
+  $("stop").style.display = "none";
+  const ok = ["end_turn", "stop_sequence", undefined, "done"].includes(reason);
+  setStatus(reason ? `${ok ? "done" : reason}` : "done", ok ? "ok" : "err");
+}
+
+$("run").addEventListener("click", start);
+$("stop").addEventListener("click", () => finish("stopped"));
+loadProblems();
+</script>
+</body>
+</html>
