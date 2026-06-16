@@ -263,7 +263,7 @@ def _save_improved_proof(repo_root: Path, problem_id: str, ws: Path) -> None:
 
 
 def _merge_analysis_into_document(repo_root: Path, problem_id: str, ws: Path) -> None:
-    """Append the critic agent's analysis.md into the question document."""
+    """Append the critic agent's analysis.md into the question strategies and progress docs."""
     analysis_path = ws / "analysis.md"
     if not analysis_path.is_file():
         return
@@ -271,15 +271,21 @@ def _merge_analysis_into_document(repo_root: Path, problem_id: str, ws: Path) ->
     if not analysis:
         return
     try:
-        from .rich_documents import questions_dir
-        doc_path = questions_dir(repo_root) / f"{problem_id}.md"
-        now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-        section = f"\n\n---\n\n## Critic Agent Analysis — {now}\n\n{analysis}\n"
-        if doc_path.is_file():
-            existing = doc_path.read_text(encoding="utf-8", errors="replace")
-            doc_path.write_text(existing.rstrip() + section, encoding="utf-8")
-        else:
-            doc_path.write_text(f"# {problem_id.upper()} Analysis\n{section}", encoding="utf-8")
+        from .rich_documents import question_dir
+        import datetime as _dt
+        now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        section = f"\n\n---\n\n### Critic Agent — {now}\n\n{analysis}\n"
+        # Append to strategies.md (agent insights section)
+        strat_path = question_dir(repo_root, problem_id) / "strategies.md"
+        if strat_path.is_file():
+            existing = strat_path.read_text(encoding="utf-8", errors="replace")
+            strat_path.write_text(existing.rstrip() + section, encoding="utf-8")
+        # Also append a brief note to progress.md
+        prog_path = question_dir(repo_root, problem_id) / "progress.md"
+        if prog_path.is_file():
+            brief = f"\n\n---\n\n### Critic Agent Note — {now}\n\n> Analysis written to [strategies.md](strategies.md). Summary: {analysis[:400]}\n"
+            existing = prog_path.read_text(encoding="utf-8", errors="replace")
+            prog_path.write_text(existing.rstrip() + brief, encoding="utf-8")
     except Exception:
         pass
 

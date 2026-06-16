@@ -471,14 +471,33 @@ MathJax = {
         <button class="btn-pri" id="d-run">Generate today's report</button>
         <button class="btn-sec" id="d-refresh">Refresh</button>
         <span class="muted" id="d-status"></span>
+        <button class="btn-sec" id="d-show-all" style="display:none;margin-left:auto;font-size:11px">All docs ↗</button>
       </div>
-      <div class="muted" style="margin-bottom:10px;font-size:12px">
-        Daily reports written by the autonomous worker (<code>python -m webapp.daily</code>) and
-        on-demand runs. Files live in <code>documents/</code>.
+
+      <!-- Question-specific document view (shown when a question is selected) -->
+      <div id="d-q-view" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span id="d-q-label" style="font-size:13px;font-weight:700;color:var(--accent)"></span>
+          <div style="display:flex;gap:5px">
+            <button class="btn-sec d-q-btn" data-file="overview.md"   style="font-size:11px;padding:3px 10px">Overview</button>
+            <button class="btn-sec d-q-btn" data-file="timeline.md"   style="font-size:11px;padding:3px 10px">Timeline</button>
+            <button class="btn-sec d-q-btn" data-file="progress.md"   style="font-size:11px;padding:3px 10px">Progress</button>
+            <button class="btn-sec d-q-btn" data-file="strategies.md" style="font-size:11px;padding:3px 10px">Strategies</button>
+          </div>
+          <span id="d-q-doc-label" style="font-size:11px;color:var(--muted);margin-left:4px"></span>
+        </div>
+        <div class="rendered" id="d-q-content" style="min-height:200px"><span class="muted">Select a document above.</span></div>
       </div>
-      <div style="display:grid;grid-template-columns:250px 1fr;gap:14px">
-        <div id="d-list"></div>
-        <div class="rendered" id="d-view"><span class="muted">Select a report on the left.</span></div>
+
+      <!-- All-docs view (shown when no question selected, or "All docs" clicked) -->
+      <div id="d-all-view">
+        <div class="muted" style="margin-bottom:10px;font-size:12px">
+          Daily reports and per-question documents. Select a question on the left to see its files.
+        </div>
+        <div style="display:grid;grid-template-columns:250px 1fr;gap:14px">
+          <div id="d-list"></div>
+          <div class="rendered" id="d-view"><span class="muted">Select a report on the left.</span></div>
+        </div>
       </div>
     </section>
 
@@ -1057,7 +1076,7 @@ function setTab(name){
     }
   });
   if(name==="overview") startOvRefresh(); else stopOvRefresh();
-  if(name==="documents") loadDocuments();
+  if(name==="documents"){ if(selected) loadQuestionDocs(selected); else loadDocuments(); }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -1230,6 +1249,8 @@ async function selectQuestion(qid, node, dataset){
   // Agent pane — hide hint, clear previous stream
   $("a-empty").style.display="none";
   $("stream").innerHTML=""; $("usage").textContent=""; lastArtifact=null;
+  // If documents tab is active, load this question's docs
+  if(document.querySelector(".tab.active[data-tab='documents']")) loadQuestionDocs(qid);
 }
 
 $("q-toggle").onclick=()=>{
@@ -1738,7 +1759,47 @@ async function compilePdf(content,name,card,btn){
 
 // ---- Documents tab ----
 let docPoll=null;
+let _docAllMode=false; // true when user explicitly chose "all docs" view
+
+function _showDocAllView(){
+  $("d-q-view").style.display="none";
+  $("d-all-view").style.display="";
+  $("d-show-all").style.display="none";
+  _docAllMode=true;
+}
+function _showDocQView(qid){
+  $("d-all-view").style.display="none";
+  $("d-q-view").style.display="";
+  $("d-show-all").style.display="";
+  $("d-q-label").textContent=qid.toUpperCase();
+  _docAllMode=false;
+}
+
+async function loadQuestionDocs(qid, file){
+  _showDocQView(qid);
+  // Default to overview.md
+  const target=file||"overview.md";
+  // Highlight active button
+  document.querySelectorAll(".d-q-btn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.file===target);
+    b.style.fontWeight=b.dataset.file===target?"700":"400";
+    b.style.borderColor=b.dataset.file===target?"var(--accent)":"";
+    b.style.color=b.dataset.file===target?"var(--accent)":"";
+  });
+  $("d-q-doc-label").textContent=target.replace(".md","");
+  $("d-q-content").innerHTML='<span class="muted">Loading…</span>';
+  const path=`questions/${qid}/${target}`;
+  const r=await fetch(`/api/document/${path.split("/").map(encodeURIComponent).join("/")}`);
+  if(r.ok){
+    const d=await r.json();
+    renderContent($("d-q-content"), d.markdown||"_(empty)_");
+  } else {
+    $("d-q-content").innerHTML=`<p style="color:var(--muted)">No ${target} yet for ${esc(qid)} — run the daily agent or seed documents first.</p>`;
+  }
+}
+
 async function loadDocuments(){
+  _showDocAllView();
   const r=await fetch("/api/documents"); const {documents}=await r.json();
   const list=$("d-list"); list.innerHTML="";
   if(!documents.length){ list.innerHTML='<div class="muted" style="padding:10px">No reports yet.</div>'; return; }
@@ -1766,7 +1827,8 @@ async function loadDocuments(){
     fold.innerHTML=`<span class="doc-folder-arrow">▾</span> 📁 ${esc(folderName)} <span style="color:var(--muted);font-weight:400;font-size:10px">(${items.length})</span>`;
     const children=el("div","doc-folder-children");
     for(const d of items) addDocItem(d, children);
-    fold.onclick=()=>{
+    fold.onclick=e=>{
+      if(e.target!==fold && e.target.closest(".qitem")) return; // don't collapse when clicking item
       fold.classList.toggle("collapsed");
       children.style.display=fold.classList.contains("collapsed")?"none":"";
     };
@@ -1774,36 +1836,35 @@ async function loadDocuments(){
     list.appendChild(children);
   }
 }
+
 async function openQuestionDoc(qid){
   setTab("documents");
-  await loadDocuments();
-  // Try to find and click the matching doc item in the list
-  const docPath = "questions/" + qid + ".md";
-  const items = document.querySelectorAll("#d-list .qitem");
-  let matched = null;
-  items.forEach(it => {
-    if((it._docPath||"") === docPath) { matched = it; }
-  });
-  if(matched){ matched.click(); return; }
-  // Fallback: fetch directly
-  const r = await fetch(`/api/document/${encodeURIComponent("questions/"+qid+".md")}`);
-  if(r.ok){ const data=await r.json(); renderContent($("d-view"), data.markdown||"_(empty)_"); }
-  else { $("d-view").innerHTML = `<p style="color:var(--muted)">No document yet for ${esc(qid)} — run the daily agent to generate it.</p>`; }
+  await loadQuestionDocs(qid, "overview.md");
 }
+
 async function selectDocument(path,node){
   document.querySelectorAll("#d-list .qitem").forEach(n=>n.classList.remove("active"));
   if(node)node.classList.add("active");
   const r=await fetch(`/api/document/${path.split("/").map(encodeURIComponent).join("/")}`); const d=await r.json();
   renderContent($("d-view"), d.markdown||"_(empty)_");
 }
-$("d-refresh").onclick=loadDocuments;
+
+// Wire up the 4 doc-type buttons
+document.querySelectorAll(".d-q-btn").forEach(btn=>{
+  btn.onclick=()=>{ if(selected) loadQuestionDocs(selected, btn.dataset.file); };
+});
+
+$("d-show-all").onclick=loadDocuments;
+$("d-refresh").onclick=()=>{ if(selected && !_docAllMode) loadQuestionDocs(selected); else loadDocuments(); };
 $("d-run").onclick=async()=>{
   $("d-run").disabled=true; $("d-status").textContent="starting…";
   const r=await (await fetch("/api/run-daily",{method:"POST"})).json();
   if(!r.started){ $("d-status").textContent=r.reason||"already running"; $("d-run").disabled=false; return; }
   $("d-status").textContent="generating… (the agent is running on your subscription; this can take a while)";
   let n=0; clearInterval(docPoll);
-  docPoll=setInterval(async()=>{ n++; await loadDocuments();
+  docPoll=setInterval(async()=>{ n++;
+    if(selected && !_docAllMode) await loadQuestionDocs(selected);
+    else await loadDocuments();
     if(n>=40){ clearInterval(docPoll); $("d-status").textContent="done polling — click Refresh to update"; $("d-run").disabled=false; }
   },15000);
   setTimeout(()=>{ $("d-run").disabled=false; },20000);
