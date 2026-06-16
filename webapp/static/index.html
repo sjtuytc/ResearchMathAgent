@@ -430,8 +430,7 @@ MathJax = {
     </section>
 
     <section class="pane" id="pane-agent">
-      <div id="a-empty" class="empty">Pick a question, then run the agent.</div>
-      <div id="a-body" style="display:none">
+      <div id="a-body">
         <div class="bar">
           <label class="inline">Provider
             <select id="provider"></select>
@@ -453,6 +452,7 @@ MathJax = {
             <span class="tok-chart-total" id="tok-total"></span>
           </div>
         </div>
+        <div id="a-empty" class="muted" style="margin-top:18px;font-size:13px">Select a question from the left to run the agent.</div>
         <div id="stream"></div>
       </div>
     </section>
@@ -1157,8 +1157,8 @@ async function selectQuestion(qid, node, dataset){
   // Load issues (non-blocking) — scoped to dataset
   const ds2=selectedDataset||"first_proof_1";
   fetch(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`).then(r=>r.json()).then(d=>loadIssueList(qid,d.issues||[])).catch(()=>{});
-  // Agent pane
-  $("a-empty").style.display="none"; $("a-body").style.display="block";
+  // Agent pane — hide hint, clear previous stream
+  $("a-empty").style.display="none";
   $("stream").innerHTML=""; $("usage").textContent=""; lastArtifact=null;
 }
 
@@ -1573,7 +1573,12 @@ function newRunId(){
   return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2);
 }
 function start(){
-  if(!selected){setStatus("pick a question first");return;}
+  if(!selected){
+    $("a-empty").style.display="block";
+    $("a-empty").textContent="Select a question from the left first, then click Solve.";
+    setStatus("pick a question first");
+    return;
+  }
   const provider=$("provider").value, model=$("model").value.trim(), thinking=$("thinking").checked?1:0;
   runId=newRunId();
   $("run").style.display="none"; $("stop").style.display="inline-block"; setStatus("connecting…","run");
@@ -1866,28 +1871,12 @@ async function loadProofDetail(pid){
     $("pf-detail").style.display="block";
     $("pf-status").textContent="";
     const wrap=$("pf-pdf-wrap");
-    pfDoc=null; $("pf-dl").style.display="none";
-    wrap.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px">
-      <div style="color:#aaa;font-size:13px">${tex?tex.length+' chars of LaTeX ready':'No solution .tex available'}</div>
-      ${tex?`<button class="btn-sec" id="pf-load-pdf-btn" style="padding:8px 18px">Load PDF</button>`:''}
-    </div>`;
-    if(tex){
-      document.getElementById("pf-load-pdf-btn").onclick=async function(){
-        this.disabled=true; this.textContent="Compiling…";
-        wrap.innerHTML=`<div style="color:#aaa;padding:32px">Compiling PDF in backend…</div>`;
-        try{
-          const pr=await (await fetch(`/api/best-proof-pdf/${encodeURIComponent(pid)}`)).json();
-          if(pr.ok && pr.pdf_url){
-            $("pf-dl").href=pr.pdf_url; $("pf-dl").style.display="";
-            await pdfLoad(pr.pdf_url, wrap, d=>{pfDoc=d;}, pfScale);
-          } else {
-            wrap.innerHTML=`<div style="color:#f88;padding:32px">PDF compile failed:<br><pre style="font-size:11px;color:#aaa;white-space:pre-wrap">${esc(pr.log||"")}</pre></div>`;
-          }
-        }catch(e){
-          wrap.innerHTML=`<div style="color:#f88;padding:32px">${esc(String(e))}</div>`;
-        }
-      };
-    }
+    pfDoc=null;
+    const pdfUrl=`/api/best-proof-pdf/${encodeURIComponent(pid)}`;
+    $("pf-dl").href=pdfUrl; $("pf-dl").style.display="";
+    $("pf-dl").download=`${pid}_best_proof.pdf`;
+    // Auto-load the PDF (compiled and stored server-side)
+    await pdfLoad(pdfUrl, wrap, d=>{pfDoc=d;}, pfScale);
   }catch(e){$("pf-status").textContent="error: "+e.message;}
 }
 

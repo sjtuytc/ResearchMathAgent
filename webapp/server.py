@@ -29,7 +29,7 @@ from .dataset_store import (
     _validate_slug, _validate_id,
 )
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof
-from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, _proof_outputs_root
+from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
 from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
@@ -359,25 +359,23 @@ def best_proof_detail(problem_id: str) -> JSONResponse:
 
 @app.post("/api/consolidate-best")
 def consolidate_best_ep() -> JSONResponse:
-    result = consolidate_best("first_proof_1")
+    result = consolidate_best("first_proof_1", compile_pdfs=True)
     return JSONResponse({"updated": len(result), "problems": list(result.keys())})
 
 
 @app.get("/api/best-proof-pdf/{problem_id}")
-def best_proof_pdf(problem_id: str) -> JSONResponse:
+def best_proof_pdf(problem_id: str):
+    """Serve the pre-compiled PDF for the best proof, compiling it on demand if needed."""
     if not _PROBLEM_RE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    data = get_best_proof(problem_id)
-    if data is None:
-        return JSONResponse({"ok": False, "pdf_url": None, "log": "no best proof found"})
-    name = f"best_proof_{problem_id}"
-    tex = data.get("solution_tex", "")
-    if not tex:
-        return JSONResponse({"ok": False, "pdf_url": None, "log": "no solution tex"})
-    result = compile_tex(REPO_ROOT, tex, name)
-    if result["ok"]:
-        result["pdf_url"] = f"/api/pdf/{result['pdf']}"
-    return JSONResponse(result)
+    pdf_path = _best_dir("first_proof_1") / problem_id / "solution.pdf"
+    if not pdf_path.is_file():
+        # Compile on demand and store
+        ok = compile_best_pdf(problem_id, "first_proof_1")
+        if not ok or not pdf_path.is_file():
+            return JSONResponse({"error": "PDF not available — run Consolidate first"}, status_code=404)
+    return FileResponse(pdf_path, media_type="application/pdf",
+                        filename=f"{problem_id}_best_proof.pdf")
 
 
 _FINAL_SOLUTIONS_DIR = (

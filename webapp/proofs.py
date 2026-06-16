@@ -166,9 +166,11 @@ def _best_dir(dataset: str = "first_proof_1") -> Path:
     return _proof_outputs_root(dataset) / "best"
 
 
-def consolidate_best(dataset: str = "first_proof_1") -> dict[str, dict]:
+def consolidate_best(dataset: str = "first_proof_1",
+                     compile_pdfs: bool = True) -> dict[str, dict]:
     """Scan all non-skeleton runs, write outputs/<dataset>/best/<pid>/ with
-    solution.tex + best_meta.json. Returns mapping pid → best_meta."""
+    solution.tex + best_meta.json (+ solution.pdf if compile_pdfs=True).
+    Returns mapping pid → best_meta."""
     root = _proof_outputs_root(dataset)
     if not root.is_dir():
         return {}
@@ -198,14 +200,65 @@ def consolidate_best(dataset: str = "first_proof_1") -> dict[str, dict]:
     for pid, (score, info, sol_path) in best.items():
         out_dir = _best_dir(dataset) / pid
         out_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(sol_path, out_dir / "solution.tex")
+        dest_tex = out_dir / "solution.tex"
+        shutil.copy2(sol_path, dest_tex)
         meta = {**info, "dataset": dataset, "problem_id": pid, "updated_at": now}
         (out_dir / "best_meta.json").write_text(
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
         )
+        if compile_pdfs:
+            compile_best_pdf(pid, dataset)
         result[pid] = meta
 
     return result
+
+
+def compile_best_pdf(problem_id: str, dataset: str = "first_proof_1") -> bool:
+    """Compile best/<pid>/solution.tex to best/<pid>/solution.pdf.
+    Returns True if the PDF now exists (compiled or cached)."""
+    from .latex import compile_tex, build_main_tex, latex_available
+    import shutil as _shutil
+    import subprocess
+    import tempfile
+
+    out_dir = _best_dir(dataset) / problem_id
+    tex_path = out_dir / "solution.tex"
+    pdf_path = out_dir / "solution.pdf"
+
+    if pdf_path.is_file() and pdf_path.stat().st_mtime >= tex_path.stat().st_mtime:
+        return True  # already up to date
+
+    if not tex_path.is_file():
+        return False
+
+    tool = latex_available()
+    if not tool:
+        return False
+
+    content = tex_path.read_text(encoding="utf-8", errors="replace")
+    preamble = REPO_ROOT / "problems" / "preamble.tex"
+    has_preamble = preamble.is_file()
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="rma_best_") as tmp:
+            build = Path(tmp)
+            if has_preamble:
+                _shutil.copyfile(preamble, build / "preamble.tex")
+            (build / "main.tex").write_text(build_main_tex(content, has_preamble), encoding="utf-8")
+            if "tectonic" in tool:
+                cmd = [tool, "main.tex"]
+            elif _shutil.which("latexmk"):
+                cmd = ["latexmk", "-pdf", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
+            else:
+                cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
+            proc = subprocess.run(cmd, cwd=build, text=True, capture_output=True, timeout=240)
+            out_pdf = build / "main.pdf"
+            if proc.returncode == 0 and out_pdf.is_file():
+                _shutil.copy2(out_pdf, pdf_path)
+                return True
+    except Exception:
+        pass
+    return False
 
 
 def _discover_problems(root: Path) -> list[str]:
