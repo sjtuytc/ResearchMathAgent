@@ -1814,7 +1814,17 @@ function _showDocQView(qid){
   _docAllMode=false;
 }
 
+// Datasets that have per-question documents under documents/questions/{qid}/
+const _DS_WITH_QDOCS = new Set(["first_proof_1","first_proof_2"]);
+
 async function loadQuestionDocs(qid, file){
+  const ds = selectedDataset || "first_proof_1";
+  // For datasets without per-question documents, fall back to the all-docs view
+  if(!_DS_WITH_QDOCS.has(ds)){
+    _showDocAllView();
+    await loadDocuments();
+    return;
+  }
   _showDocQView(qid);
   // Default to overview.md
   const target=file||"overview.md";
@@ -1833,7 +1843,7 @@ async function loadQuestionDocs(qid, file){
     const d=await r.json();
     renderContent($("d-q-content"), d.markdown||"_(empty)_");
   } else {
-    $("d-q-content").innerHTML=`<p style="color:var(--muted)">No ${target} yet for ${esc(qid)} — run the daily agent or seed documents first.</p>`;
+    $("d-q-content").innerHTML=`<p style="color:var(--muted)">No <code>${esc(target)}</code> for <strong>${esc(qid)}</strong> yet — run the daily agent to generate it.</p>`;
   }
 }
 
@@ -1878,7 +1888,12 @@ async function loadDocuments(){
 
 async function openQuestionDoc(qid){
   setTab("documents");
-  await loadQuestionDocs(qid, "overview.md");
+  const ds = selectedDataset || "first_proof_1";
+  if(_DS_WITH_QDOCS.has(ds)){
+    await loadQuestionDocs(qid, "overview.md");
+  } else {
+    await loadDocuments();
+  }
 }
 
 async function selectDocument(path,node){
