@@ -134,17 +134,71 @@ MathJax = {
   .doc-folder-children{padding-left:12px}
   .doc-folder-arrow{transition:transform .15s;display:inline-block}
   .doc-folder.collapsed .doc-folder-arrow{transform:rotate(-90deg)}
+  /* Dataset picker & filter panel */
+  .ds-picker{padding:6px 8px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);width:100%;margin-bottom:6px}
+  .filter-panel{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:8px;font-size:12px}
+  .filter-panel label{color:var(--muted);display:block;margin-bottom:3px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .filter-panel input[type=text],.filter-panel input[type=range],.filter-panel select{width:100%;padding:4px 7px;font-size:12px;margin-bottom:6px}
+  .filter-panel input[type=range]{padding:0;height:18px;accent-color:var(--accent)}
+  .filter-row{display:flex;gap:6px;align-items:center}
+  .filter-row input[type=range]{flex:1}
+  .filter-row span{color:var(--muted);font-size:11px;min-width:28px;text-align:right}
+  .filter-toggle{cursor:pointer;color:var(--muted);font-size:11px;display:flex;align-items:center;gap:4px;margin-bottom:6px;user-select:none}
+  .filter-toggle:hover{color:var(--text)}
+  /* Solvability badge */
+  .solve-bar{height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden}
+  .solve-bar-fill{height:100%;border-radius:2px;background:var(--green);transition:width .3s}
+  .solve-badge{font-size:10px;padding:1px 5px;border-radius:4px;font-weight:700;letter-spacing:.03em}
+  .solve-badge.easy{background:#1a3a1a;color:var(--green)}
+  .solve-badge.med{background:#3a2a00;color:var(--amber)}
+  .solve-badge.hard{background:#2d1010;color:var(--red)}
+  .solve-badge.none{background:var(--panel2);color:var(--muted)}
+  /* Dataset badge on qitem */
+  .ds-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);margin-left:auto;flex-shrink:0}
+  .qitem-top{display:flex;align-items:center;gap:4px}
+  /* Tags strip */
+  .tag-strip{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px}
+  .tag-chip{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--panel2);color:var(--muted);border:1px solid var(--border)}
 </style>
 </head>
 <body>
 <header>
   <h1>Research Math Agent</h1>
-  <span class="sub">First Proof benchmark · questions, issues, and a live solver</span>
+  <span class="sub" id="header-sub">Research-level math problems · multi-dataset · live solver</span>
   <span class="status" id="status">select a question</span>
 </header>
 <div class="layout">
   <aside class="sidebar">
-    <h2>Questions</h2><div id="qlist"></div>
+    <h2>Dataset</h2>
+    <select id="ds-select" class="ds-picker"><option value="">Loading…</option></select>
+    <div class="filter-toggle" id="filter-toggle"><span id="filter-arrow" style="font-size:9px">▶</span> Filter &amp; Sort</div>
+    <div id="filter-panel" class="filter-panel" style="display:none">
+      <label>Search</label>
+      <input type="text" id="f-search" placeholder="title, tags…" style="width:100%;padding:4px 7px;font-size:12px;margin-bottom:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px">
+      <label>Tags</label>
+      <input type="text" id="f-tags" placeholder="e.g. number theory" style="width:100%;padding:4px 7px;font-size:12px;margin-bottom:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px">
+      <label>Sort by</label>
+      <select id="f-sort" class="ds-picker" style="margin-bottom:6px">
+        <option value="id">Default</option>
+        <option value="title">Title A→Z</option>
+        <option value="difficulty_asc">Difficulty: Easy→Hard</option>
+        <option value="difficulty_desc">Difficulty: Hard→Easy</option>
+        <option value="solvability_desc">Solvability: Easiest first</option>
+        <option value="solvability_asc">Solvability: Hardest first</option>
+      </select>
+      <label>Min solvability: <span id="f-solv-label">any</span></label>
+      <div class="filter-row" style="display:flex;gap:6px;align-items:center">
+        <input type="range" id="f-solv" min="0" max="100" value="0" step="5" style="flex:1;accent-color:var(--accent)">
+      </div>
+      <label style="margin-top:4px">Status</label>
+      <select id="f-status" class="ds-picker" style="margin-bottom:2px">
+        <option value="">All</option>
+        <option value="open">Open only</option>
+        <option value="solved">Solved only</option>
+      </select>
+    </div>
+    <h2 style="display:flex;align-items:center;gap:6px">Problems <span id="q-count" style="font-size:10px;font-weight:400;color:var(--muted)"></span></h2>
+    <div id="qlist"></div>
     <h2 style="margin-top:18px">Active runs</h2><div id="runlist"><div class="muted" style="padding:6px 10px;font-size:12px">none</div></div>
     <h2 style="margin-top:18px">Daily cycle</h2>
     <div style="padding:6px 10px">
@@ -361,9 +415,10 @@ if(typeof pdfjsLib!=="undefined"){
   pdfjsLib.GlobalWorkerOptions.workerSrc=
     "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 }
-let problems=[], selected=null, claudeCode=false, es=null, runId=null;
+let problems=[], selected=null, selectedDataset="first_proof_1", claudeCode=false, es=null, runId=null;
 let cur={text:null,think:null}; const toolCards={}; let lastArtifact=null;
 let tokenHistory=[], curTurnSep=null, curAssistantCard=null;
+let allDatasets=[];
 
 function el(t,c,h){const e=document.createElement(t);if(c)e.className=c;if(h!==undefined)e.innerHTML=h;return e;}
 function esc(s){return (s||"").replace(/[&<>]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
@@ -373,30 +428,116 @@ function typesetDebounced(node,delay=600){clearTimeout(_tsTimer);_tsTimer=setTim
 function md(node,raw,stream=false){node.dataset.raw=raw;node.innerHTML=marked.parse(raw);stream?typesetDebounced(node):typeset(node);}
 function setStatus(s,cls){$("status").innerHTML=cls?`<span class="dot ${cls}"></span> ${s}`:s;}
 
-async function init(){
+// ── Solvability badge ────────────────────────────────────────────────────────
+function solvBadge(score){
+  if(score===null||score===undefined) return '<span class="solve-badge none">?</span>';
+  const pct=Math.round(score*100);
+  const cls=pct>=60?"easy":pct>=30?"med":"hard";
+  return `<span class="solve-badge ${cls}">${pct}%</span>`;
+}
+
+// ── Dataset picker ───────────────────────────────────────────────────────────
+async function loadDatasets(){
   try{
-    const r=await fetch("/api/problems");
+    const r=await fetch("/api/datasets");
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d=await r.json();
-    problems=d.problems||[]; claudeCode=d.claude_code;
-    const list=$("qlist"); list.innerHTML="";
-    if(!problems.length){
-      list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">No problems found.</div>';
+    allDatasets=d.datasets||[];
+    const sel=$("ds-select"); sel.innerHTML="";
+    sel.appendChild(new Option("All datasets",""));
+    for(const ds of allDatasets){
+      sel.appendChild(new Option(`${ds.name} (${ds.problem_count||"?"})`, ds.slug));
     }
-    for(const p of problems){
-      const it=el("div","qitem");
-      it.innerHTML=`<span class="qid">${p.id}</span><span class="qt">${esc(p.title.replace(/^Problem \d+:\s*/,''))}</span>`;
-      it.onclick=()=>selectQuestion(p.id,it);
-      list.appendChild(it);
-    }
-    // provider options
+    sel.value="first_proof_1";
+    selectedDataset="first_proof_1";
+    sel.onchange=()=>{selectedDataset=sel.value; loadProblems();};
+  }catch(e){
+    $("ds-select").innerHTML=`<option value="">Error loading datasets</option>`;
+  }
+}
+
+// ── Filter toggle ────────────────────────────────────────────────────────────
+$("filter-toggle").onclick=()=>{
+  const p=$("filter-panel"), open=p.style.display!=="none";
+  p.style.display=open?"none":"block";
+  $("filter-arrow").textContent=open?"▶":"▼";
+};
+let _filterTimer=null;
+function scheduleFilterReload(delay=400){clearTimeout(_filterTimer);_filterTimer=setTimeout(loadProblems,delay);}
+$("f-search").oninput=()=>scheduleFilterReload();
+$("f-tags").oninput=()=>scheduleFilterReload();
+$("f-sort").onchange=loadProblems;
+$("f-status").onchange=loadProblems;
+$("f-solv").oninput=function(){
+  const v=parseInt(this.value);
+  $("f-solv-label").textContent=v>0?`${v}%`:"any";
+  scheduleFilterReload(600);
+};
+
+// ── Problem list loader ──────────────────────────────────────────────────────
+async function loadProblems(){
+  const params=new URLSearchParams();
+  if(selectedDataset) params.set("dataset",selectedDataset);
+  const sort=$("f-sort").value; if(sort&&sort!=="id") params.set("sort",sort);
+  const search=$("f-search").value.trim(); if(search) params.set("search",search);
+  const tags=$("f-tags").value.trim(); if(tags) params.set("tags",tags);
+  const solv=parseInt($("f-solv").value||"0"); if(solv>0) params.set("min_solvability",(solv/100).toFixed(2));
+  const status=$("f-status").value; if(status) params.set("status",status);
+
+  const list=$("qlist");
+  list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">Loading…</div>';
+  try{
+    const r=await fetch("/api/ds/problems?"+params);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();
+    problems=d.problems||[];
+    claudeCode=d.claude_code||claudeCode;
+    renderProblemList(problems);
+  }catch(e){
+    list.innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed: ${esc(String(e))}</div>`;
+    setStatus("server error","err");
+  }
+}
+
+function renderProblemList(ps){
+  const list=$("qlist"); list.innerHTML="";
+  $("q-count").textContent=`(${ps.length})`;
+  if(!ps.length){
+    list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">No problems match.</div>';
+    return;
+  }
+  const showDs=!selectedDataset; // show dataset badge when viewing "all"
+  for(const p of ps){
+    const it=el("div","qitem");
+    const shortTitle=esc((p.title||p.id).replace(/^Problem \d+:\s*/,""));
+    const tagHtml=p.tags&&p.tags.length
+      ? `<div class="tag-strip">${p.tags.slice(0,3).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("")}</div>`
+      : "";
+    const dsBadge=showDs?`<span class="ds-badge">${esc(p.dataset||"")}</span>`:"";
+    it.innerHTML=`<div class="qitem-top"><span class="qid">${esc(p.id)}</span>${dsBadge}${solvBadge(p.solvability_score)}</div><span class="qt">${shortTitle}</span>${tagHtml}`;
+    it.dataset.pid=p.id; it.dataset.ds=p.dataset||selectedDataset||"first_proof_1";
+    it.onclick=()=>selectQuestion(p.id,it,p.dataset||selectedDataset||"first_proof_1");
+    list.appendChild(it);
+  }
+}
+
+async function init(){
+  try{
+    // Load datasets and initial problem list
+    await loadDatasets();
+    await loadProblems();
+    // provider options (from legacy endpoint)
+    try{
+      const r=await fetch("/api/problems");
+      if(r.ok){const d=await r.json(); claudeCode=d.claude_code||false;}
+    }catch(_){}
     const prov=$("provider"); prov.innerHTML="";
     if(claudeCode) prov.appendChild(new Option("Claude Code (subscription)","claude-code"));
     prov.appendChild(new Option("Anthropic API","api"));
     prov.value=claudeCode?"claude-code":"api";
     prov.onchange=onProviderChange; onProviderChange();
   }catch(e){
-    $("qlist").innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed to load questions:<br>${esc(String(e))}<br><br>Is the server running?</div>`;
+    $("qlist").innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed to load:<br>${esc(String(e))}<br><br>Is the server running?</div>`;
     setStatus("server error","err");
   }
 }
@@ -474,8 +615,10 @@ function extractStatement(tex){
   return body.trim();
 }
 
-async function selectQuestion(qid,node){
+async function selectQuestion(qid, node, dataset){
   selected=qid;
+  if(dataset) selectedDataset=dataset;
+  const ds=selectedDataset||"first_proof_1";
   document.querySelectorAll(".qitem").forEach(n=>n.classList.remove("active"));
   if(node)node.classList.add("active");
   setStatus(`${qid} loading…`,"run");
@@ -490,21 +633,50 @@ async function selectQuestion(qid,node){
   $("q-pdf-btn").textContent="Compile PDF";
   $("q-pdf-btn").disabled=false;
   try{
-    const pr=await (await fetch(`/api/problem/${qid}`)).json();
+    // Try new multi-dataset endpoint first; fall back to legacy for first_proof_1
+    let pr;
+    const dsUrl=`/api/ds/problem/${encodeURIComponent(ds)}/${encodeURIComponent(qid)}`;
+    const legUrl=`/api/problem/${encodeURIComponent(qid)}`;
+    const res=await fetch(dsUrl);
+    if(res.ok){
+      pr=await res.json();
+    } else if(ds==="first_proof_1"){
+      pr=await (await fetch(legUrl)).json();
+    } else {
+      pr=await res.json();
+    }
     if(pr.error) throw new Error(pr.error);
-    $("q-title").textContent=pr.title;
-    $("q-file").textContent=`problems/${qid}.tex`;
-    $("q-raw-code").textContent=pr.tex||"";
-    // Show rendered LaTeX immediately — no PDF compile needed
+    $("q-title").textContent=pr.title||qid;
+    $("q-file").textContent=`${ds}/${qid}`;
+    $("q-raw-code").textContent=pr.tex||pr.statement||"";
+    // Show rendered content immediately
     const r=$("q-rendered");
-    md(r, extractStatement(pr.tex||""));
+    const content=pr.tex?extractStatement(pr.tex):pr.statement||"*(no statement available)*";
+    md(r, content);
+    // Show solvability if available
+    if(pr.solvability_score!=null){
+      const pct=Math.round(pr.solvability_score*100);
+      const badge=document.createElement("div");
+      badge.style.cssText="margin-top:8px;font-size:12px;color:var(--muted)";
+      badge.innerHTML=`Solvability: ${solvBadge(pr.solvability_score)} (${pct}% of runs succeeded)`;
+      r.appendChild(badge);
+    }
+    // Show tags
+    if(pr.tags&&pr.tags.length){
+      const tagDiv=document.createElement("div");
+      tagDiv.className="tag-strip";
+      tagDiv.style.marginTop="8px";
+      tagDiv.innerHTML=pr.tags.map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("");
+      r.appendChild(tagDiv);
+    }
     setStatus(`${qid} selected`);
   }catch(e){
     $("q-rendered").innerHTML=`<span style="color:var(--red)">Failed to load question: ${esc(String(e))}</span>`;
     setStatus("load error","err");
   }
-  // Load issues (non-blocking)
-  fetch(`/api/issues/${qid}`).then(r=>r.json()).then(d=>loadIssueList(qid,d.issues||[])).catch(()=>{});
+  // Load issues (non-blocking) — scoped to dataset
+  const ds2=selectedDataset||"first_proof_1";
+  fetch(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`).then(r=>r.json()).then(d=>loadIssueList(qid,d.issues||[])).catch(()=>{});
   // Agent pane
   $("a-empty").style.display="none"; $("a-body").style.display="block";
   $("stream").innerHTML=""; $("usage").textContent=""; lastArtifact=null;

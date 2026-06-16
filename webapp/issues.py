@@ -40,10 +40,17 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _issues_dir(repo_root: Path, problem_id: str) -> Path:
-    d = repo_root / "webapp" / "issues" / problem_id
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+def _issues_dir(repo_root: Path, problem_id: str, dataset: str = "first_proof_1") -> Path:
+    # New layout: webapp/issues/<dataset>/<problem_id>/
+    # Legacy layout (dataset=first_proof_1): also check old path for back-compat
+    new_path = repo_root / "webapp" / "issues" / dataset / problem_id
+    if not new_path.exists() and dataset == "first_proof_1":
+        old_path = repo_root / "webapp" / "issues" / problem_id
+        if old_path.exists():
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            old_path.rename(new_path)
+    new_path.mkdir(parents=True, exist_ok=True)
+    return new_path
 
 
 def _short_id(problem_id: str, existing: list[dict]) -> str:
@@ -54,8 +61,8 @@ def _short_id(problem_id: str, existing: list[dict]) -> str:
 
 # ── list / get ──────────────────────────────────────────────────────────────
 
-def list_issues(repo_root: Path, problem_id: str) -> list[dict]:
-    d = _issues_dir(repo_root, problem_id)
+def list_issues(repo_root: Path, problem_id: str, dataset: str = "first_proof_1") -> list[dict]:
+    d = _issues_dir(repo_root, problem_id, dataset)
     issues = []
     for f in sorted(d.glob("*.json"), key=lambda p: p.stat().st_mtime):
         try:
@@ -64,13 +71,13 @@ def list_issues(repo_root: Path, problem_id: str) -> list[dict]:
             pass
     # Seed a default issue if none exist (write directly, no recursion)
     if not issues:
-        issue = _seed_issue_direct(repo_root, problem_id)
+        issue = _seed_issue_direct(repo_root, problem_id, dataset)
         issues.append(issue)
     return issues
 
 
-def get_issue(repo_root: Path, problem_id: str, issue_id: str) -> dict | None:
-    path = _issues_dir(repo_root, problem_id) / f"{issue_id}.json"
+def get_issue(repo_root: Path, problem_id: str, issue_id: str, dataset: str = "first_proof_1") -> dict | None:
+    path = _issues_dir(repo_root, problem_id, dataset) / f"{issue_id}.json"
     if not path.is_file():
         return None
     try:
@@ -83,14 +90,16 @@ def get_issue(repo_root: Path, problem_id: str, issue_id: str) -> dict | None:
 
 def create_issue(repo_root: Path, problem_id: str, title: str,
                  body: str = "", author: str = "human",
-                 labels: list[str] | None = None) -> dict:
-    d = _issues_dir(repo_root, problem_id)
+                 labels: list[str] | None = None,
+                 dataset: str = "first_proof_1") -> dict:
+    d = _issues_dir(repo_root, problem_id, dataset)
     existing = [json.loads(f.read_text()) for f in d.glob("*.json") if f.is_file()]
     issue_id = _short_id(problem_id, existing)
     now = _now()
     issue = {
         "id": issue_id,
         "problem_id": problem_id,
+        "dataset": dataset,
         "title": title,
         "status": "open",
         "labels": labels or [],
@@ -106,13 +115,13 @@ def create_issue(repo_root: Path, problem_id: str, title: str,
             "body": body.strip(),
             "created_at": now,
         })
-    _save(repo_root, problem_id, issue)
+    _save(repo_root, problem_id, issue, dataset)
     return issue
 
 
 def add_comment(repo_root: Path, problem_id: str, issue_id: str,
-                author: str, body: str) -> dict | None:
-    issue = get_issue(repo_root, problem_id, issue_id)
+                author: str, body: str, dataset: str = "first_proof_1") -> dict | None:
+    issue = get_issue(repo_root, problem_id, issue_id, dataset)
     if issue is None:
         return None
     now = _now()
@@ -123,41 +132,41 @@ def add_comment(repo_root: Path, problem_id: str, issue_id: str,
         "body": body.strip(),
         "created_at": now,
     })
-    _save(repo_root, problem_id, issue)
+    _save(repo_root, problem_id, issue, dataset)
     return issue
 
 
 def update_issue(repo_root: Path, problem_id: str, issue_id: str,
-                 **kwargs) -> dict | None:
-    issue = get_issue(repo_root, problem_id, issue_id)
+                 dataset: str = "first_proof_1", **kwargs) -> dict | None:
+    issue = get_issue(repo_root, problem_id, issue_id, dataset)
     if issue is None:
         return None
     for k in ("title", "status", "labels"):
         if k in kwargs:
             issue[k] = kwargs[k]
-    _save(repo_root, problem_id, issue)
+    _save(repo_root, problem_id, issue, dataset)
     return issue
 
 
 # ── legacy: agent run log ───────────────────────────────────────────────────
 
 def append_activity(repo_root: Path, problem_id: str, entry: str,
-                    agent: str = "solver-agent") -> None:
+                    agent: str = "solver-agent", dataset: str = "first_proof_1") -> None:
     """Log a solver run as a comment on the first open issue (or create one)."""
-    issues = list_issues(repo_root, problem_id)
+    issues = list_issues(repo_root, problem_id, dataset)
     open_issues = [i for i in issues if i.get("status") != "resolved"]
     target = open_issues[0] if open_issues else issues[0]
-    add_comment(repo_root, problem_id, target["id"], agent, entry)
+    add_comment(repo_root, problem_id, target["id"], agent, entry, dataset)
 
 
 # ── internal ────────────────────────────────────────────────────────────────
 
-def _save(repo_root: Path, problem_id: str, issue: dict) -> None:
-    path = _issues_dir(repo_root, problem_id) / f"{issue['id']}.json"
+def _save(repo_root: Path, problem_id: str, issue: dict, dataset: str = "first_proof_1") -> None:
+    path = _issues_dir(repo_root, problem_id, dataset) / f"{issue['id']}.json"
     path.write_text(json.dumps(issue, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def _seed_issue_direct(repo_root: Path, problem_id: str) -> dict:
+def _seed_issue_direct(repo_root: Path, problem_id: str, dataset: str = "first_proof_1") -> dict:
     """Create and save the default seed issue without calling list_issues."""
     tex_path = repo_root / "problems" / f"{problem_id}.tex"
     title, author, area = "(untitled)", "(unknown)", "(unspecified)"
@@ -198,7 +207,7 @@ def _seed_issue_direct(repo_root: Path, problem_id: str) -> dict:
             "created_at": now,
         }],
     }
-    _save(repo_root, problem_id, issue)
+    _save(repo_root, problem_id, issue, dataset)
     return issue
 
 
