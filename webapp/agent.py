@@ -183,6 +183,114 @@ def run_agent(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
     yield AgentEvent("done", {"reason": "max_iterations"})
 
 
+def run_agent_vertex(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
+    """Same as run_agent() but authenticates via Google Cloud Application Default Credentials.
+
+    Set up ADC first: bash <(curl -sSL https://storage.googleapis.com/cloud-samples-data/adc/setup_adc.sh)
+    Then set GOOGLE_CLOUD_PROJECT (required) and GOOGLE_CLOUD_REGION (default: global)."""
+    try:
+        from anthropic import AnthropicVertex
+    except ImportError:
+        yield AgentEvent("error", {"message": "anthropic[vertex] is not installed. Run: pip install 'anthropic[vertex]'"})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    if not project_id:
+        try:
+            import google.auth
+            _, project_id = google.auth.default()
+        except Exception:
+            pass
+    if not project_id:
+        yield AgentEvent("error", {"message": "Could not determine Google Cloud project. Set GOOGLE_CLOUD_PROJECT or configure a default project via ADC."})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    region = os.environ.get("GOOGLE_CLOUD_REGION", "global")
+
+    repo_root = cfg.repo_root or Path(__file__).resolve().parents[1]
+    workspace = cfg.workspace or (repo_root / "webapp" / ".runs" / f"{cfg.problem_id}_{int(time.time())}")
+    ctx = ToolContext(repo_root=repo_root, workspace=workspace)
+
+    client = AnthropicVertex(region=region, project_id=project_id)
+
+    system = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
+    create_kwargs: dict = {
+        "model": cfg.model or DEFAULT_MODEL,
+        "max_tokens": MAX_TOKENS,
+        "system": system,
+        "tools": TOOL_DEFINITIONS,
+    }
+    if cfg.thinking:
+        create_kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
+
+    messages: list[dict] = [{"role": "user", "content": _initial_user_message(cfg)}]
+
+    yield AgentEvent("status", {"state": "running", "model": cfg.model,
+                                "workspace": str(workspace.relative_to(repo_root)) if _within(workspace, repo_root) else str(workspace)})
+
+    totals = {"input_tokens": 0, "output_tokens": 0,
+              "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}
+
+    for iteration in range(1, MAX_ITERATIONS + 1):
+        if _cancelled(handle):
+            yield AgentEvent("done", {"reason": "stopped"})
+            return
+        yield AgentEvent("turn_start", {"iteration": iteration})
+        try:
+            final_message, stream_events, cancelled = _stream_turn(
+                client, create_kwargs, messages, handle
+            )
+        except anthropic.APIStatusError as exc:
+            yield AgentEvent("error", {"message": f"Vertex AI API error {exc.status_code}: {exc.message}"})
+            yield AgentEvent("done", {"reason": "error"})
+            return
+        except anthropic.APIError as exc:
+            yield AgentEvent("error", {"message": f"Vertex AI API error: {exc}"})
+            yield AgentEvent("done", {"reason": "error"})
+            return
+
+        yield from stream_events
+        if cancelled or final_message is None:
+            yield AgentEvent("done", {"reason": "stopped"})
+            return
+
+        usage = getattr(final_message, "usage", None)
+        if usage is not None:
+            for k in totals:
+                totals[k] += getattr(usage, k, 0) or 0
+            yield AgentEvent("usage", dict(totals))
+
+        messages.append({"role": "assistant", "content": final_message.content})
+
+        tool_uses = [b for b in final_message.content if getattr(b, "type", None) == "tool_use"]
+        if final_message.stop_reason != "tool_use" or not tool_uses:
+            yield AgentEvent("done", {"reason": final_message.stop_reason or "end_turn"})
+            return
+
+        if _cancelled(handle):
+            yield AgentEvent("done", {"reason": "stopped"})
+            return
+
+        tool_results = []
+        for block in tool_uses:
+            yield AgentEvent("tool_use", {"id": block.id, "name": block.name, "input": block.input})
+            output, is_error = _run_tool(ctx, block.name, block.input)
+            yield AgentEvent("tool_result", {"id": block.id, "name": block.name,
+                                             "output": output, "is_error": is_error})
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": output,
+                "is_error": is_error,
+            })
+        messages.append({"role": "user", "content": tool_results})
+
+    yield AgentEvent("error", {"message": f"Stopped after {MAX_ITERATIONS} turns without finishing."})
+    yield AgentEvent("done", {"reason": "max_iterations"})
+
+
 def _cancelled(handle) -> bool:
     return handle is not None and handle.cancelled
 

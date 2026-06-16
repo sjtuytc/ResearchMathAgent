@@ -32,6 +32,8 @@ from .agent import AgentConfig
 from .documents import write_or_append_report
 from .issue_agents import run_issue_cycle
 from .issues import append_activity
+from .token_log import append_usage
+from .rich_documents import update_discussion_index, update_question_document
 from .runs import REGISTRY, RunHandle
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -92,6 +94,13 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
                     artifact = ev.data
                 elif ev.type == "usage":
                     usage = ev.data
+                    try:
+                        append_usage(repo_root, pid, "daily",
+                                     usage.get("input_tokens", 0),
+                                     usage.get("output_tokens", 0),
+                                     usage.get("cost_usd"))
+                    except Exception:  # noqa: BLE001
+                        pass
                 elif ev.type == "error":
                     transcript.append(f"\n[error] {ev.data.get('message','')}")
                 elif ev.type == "done":
@@ -101,7 +110,8 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
             _current = None
 
         pdf_name = _maybe_compile(repo_root, artifact, f"{date_str}_{pid}")
-        section = _build_section(pid, started, "".join(transcript), artifact, usage, reason, pdf_name)
+        full_transcript = "".join(transcript)
+        section = _build_section(pid, started, full_transcript, artifact, usage, reason, pdf_name)
         report_path = write_or_append_report(repo_root, date_str, section)
         try:
             append_activity(repo_root, pid,
@@ -109,6 +119,18 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
         except Exception:  # noqa: BLE001
             pass
         _log(f"  {pid}: {reason}; report -> documents/{date_str}.md")
+
+        # Update rich per-question document with transcript + outcome
+        try:
+            update_question_document(
+                repo_root, pid,
+                reasoning_trace=full_transcript,
+                model_used=model,
+                run_outcome=reason,
+            )
+            _log(f"  {pid}: updated documents/questions/{pid}.md")
+        except Exception as exc:  # noqa: BLE001
+            _log(f"  {pid}: rich doc update failed: {exc}")
 
         # Run issue discovery + resolution cycle after each solve
         if not _stop:
@@ -118,6 +140,13 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
                 _log(f"  {pid}: issue cycle done ({len(cycle_log)} log lines)")
             except Exception as exc:  # noqa: BLE001
                 _log(f"  {pid}: issue cycle error: {exc}")
+
+    # Refresh the cross-problem discussion index
+    try:
+        update_discussion_index(repo_root)
+        _log("updated documents/discussions/index.md")
+    except Exception as exc:  # noqa: BLE001
+        _log(f"discussion index update failed: {exc}")
 
     _log("daily run complete")
     return report_path

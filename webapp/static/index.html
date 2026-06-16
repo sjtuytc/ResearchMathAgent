@@ -298,6 +298,12 @@ MathJax = {
         <div id="ov-issue-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px"></div>
       </div>
 
+      <!-- Per-question status grid -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">Problem Status</div>
+        <div id="ov-q-grid" style="display:flex;flex-direction:column;gap:7px"></div>
+      </div>
+
       <!-- Token usage daily chart -->
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
@@ -882,6 +888,65 @@ async function loadOverview(){
     };
     grid.appendChild(card);
   }
+
+  // Per-question status grid
+  const qSumms = d.question_summaries || [];
+  const qGrid = $("ov-q-grid"); qGrid.innerHTML = "";
+  const statusLabel = {
+    not_started: {text:"Not started", color:"var(--muted)"},
+    exploring:   {text:"Exploring",   color:"var(--accent)"},
+    open_issues: {text:"Open issues", color:"var(--amber)"},
+    in_progress: {text:"In progress", color:"var(--accent2)"},
+    verified:    {text:"Verified ✓",  color:"var(--green)"},
+  };
+  for(const q of qSumms){
+    const ist = q.issue_stats||{};
+    const sl = statusLabel[q.proof_status] || {text:q.proof_status, color:"var(--muted)"};
+    const accStr = q.accuracy_pct!=null ? q.accuracy_pct+"%" : "—";
+    const solStr = q.solvability_pct!=null ? q.solvability_pct+"%" : "—";
+    const total  = ist.total||0;
+    const row = document.createElement("div");
+    row.style.cssText = "display:grid;grid-template-columns:52px 1fr auto;gap:0;background:var(--panel2);border:1px solid var(--border);border-radius:6px;overflow:hidden;cursor:pointer;transition:border-color .15s";
+    row.onmouseenter = ()=>row.style.borderColor="var(--accent)";
+    row.onmouseleave = ()=>row.style.borderColor="var(--border)";
+    row.innerHTML = `
+      <div style="background:rgba(88,166,255,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border-right:1px solid var(--border)">
+        <span style="font-weight:800;font-size:15px;color:var(--accent)">${esc(q.qid)}</span>
+      </div>
+      <div style="padding:8px 12px;min-width:0">
+        <div style="font-size:11px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">${esc(q.title)}</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:600;color:${sl.color}">${esc(sl.text)}</span>
+          <span style="font-size:10px;color:var(--muted)">issues ${esc(String(ist.resolved||0))}/${esc(String(total))} resolved</span>
+          <span style="font-size:10px;color:var(--muted)" title="Fraction of discovered issues that are resolved">accuracy ${esc(accStr)}</span>
+          <span style="font-size:10px;color:var(--muted)" title="Fraction of AI attempts that produced a verified proof">solvability ${esc(solStr)}</span>
+        </div>
+        <div style="display:flex;height:3px;border-radius:2px;overflow:hidden;gap:1px;margin-top:6px;background:var(--border)">
+          ${ist.resolved?`<div style="flex:${ist.resolved};background:var(--green)"></div>`:""}
+          ${ist.in_progress?`<div style="flex:${ist.in_progress};background:var(--amber)"></div>`:""}
+          ${ist.open?`<div style="flex:${ist.open};background:var(--accent)"></div>`:""}
+          ${!total?`<div style="flex:1;background:var(--border)"></div>`:""}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-left:1px solid var(--border);justify-content:center">
+        <button class="btn-sec" style="font-size:10px;padding:3px 8px;white-space:nowrap" data-qid="${esc(q.qid)}" data-action="doc">Doc ↗</button>
+        <button class="btn-sec" style="font-size:10px;padding:3px 8px;white-space:nowrap" data-qid="${esc(q.qid)}" data-action="issues">Issues</button>
+      </div>`;
+    row.querySelectorAll("button[data-action]").forEach(btn=>{
+      btn.onclick = e => {
+        e.stopPropagation();
+        const qid = btn.dataset.qid;
+        if(btn.dataset.action==="doc") openQuestionDoc(qid);
+        else { selectQuestion(qid,null,selectedDataset||"first_proof_1"); setTab("issue"); }
+      };
+    });
+    row.onclick = e => {
+      if(e.target.tagName==="BUTTON") return;
+      openQuestionDoc(q.qid);
+    };
+    qGrid.appendChild(row);
+  }
+  if(!qSumms.length) qGrid.innerHTML='<span style="color:var(--muted);font-size:12px">Loading…</span>';
 
   // Token usage daily chart
   const daily=d.token_daily||[];
@@ -1675,6 +1740,7 @@ async function loadDocuments(){
   }
   function addDocItem(doc, parent){
     const it=el("div","qitem");
+    it._docPath = doc.path||doc.name;
     it.innerHTML=`<span style="font-size:12px;font-weight:600">${esc(doc.name)}</span><span class="qt">${esc(doc.title)} · ${doc.modified}</span>`;
     it.onclick=()=>selectDocument(doc.path||doc.name, it);
     parent.appendChild(it);
@@ -1694,6 +1760,22 @@ async function loadDocuments(){
     list.appendChild(fold);
     list.appendChild(children);
   }
+}
+async function openQuestionDoc(qid){
+  setTab("documents");
+  await loadDocuments();
+  // Try to find and click the matching doc item in the list
+  const docPath = "questions/" + qid + ".md";
+  const items = document.querySelectorAll("#d-list .qitem");
+  let matched = null;
+  items.forEach(it => {
+    if((it._docPath||"") === docPath) { matched = it; }
+  });
+  if(matched){ matched.click(); return; }
+  // Fallback: fetch directly
+  const r = await fetch(`/api/document/${encodeURIComponent("questions/"+qid+".md")}`);
+  if(r.ok){ const data=await r.json(); renderContent($("d-view"), data.markdown||"_(empty)_"); }
+  else { $("d-view").innerHTML = `<p style="color:var(--muted)">No document yet for ${esc(qid)} — run the daily agent to generate it.</p>`; }
 }
 async function selectDocument(path,node){
   document.querySelectorAll("#d-list .qitem").forEach(n=>n.classList.remove("active"));

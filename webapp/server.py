@@ -40,6 +40,73 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 _PROBLEM_RE = re.compile(r"^q(?:10|[1-9])$")
 
+_Q_TITLES = {
+    "q1":  "Stochastic Analysis — Φ⁴₃ measure equivalence (Hairer)",
+    "q2":  "Representation Theory — Whittaker functions & Rankin–Selberg (Nelson)",
+    "q3":  "Algebraic Combinatorics — Macdonald stationary distribution (Williams)",
+    "q4":  "Spectral Graph Theory — Subharmonicity of 1/Φₙ (Srivastava)",
+    "q5":  "Algebraic Topology — Slice filtration for N∞ operads (Blumberg)",
+    "q6":  "Spectral Graph Theory — ε-light subsets (Spielman)",
+    "q7":  "Lattices in Lie Groups — Uniform lattices with 2-torsion (Weinberger)",
+    "q8":  "Symplectic Geometry — Lagrangian smoothings (Abouzaid)",
+    "q9":  "Tensor Analysis — Algebraic relations on determinantal tensors (Kileel)",
+    "q10": "Numerical Linear Algebra — Preconditioned CG for RKHS-CP (Kolda, Ward)",
+}
+_Q_AREAS = {
+    "q1": "Stochastic Analysis", "q2": "Representation Theory",
+    "q3": "Algebraic Combinatorics", "q4": "Spectral Graph Theory",
+    "q5": "Algebraic Topology", "q6": "Spectral Graph Theory",
+    "q7": "Lattices in Lie Groups", "q8": "Symplectic Geometry",
+    "q9": "Tensor Analysis", "q10": "Numerical Linear Algebra",
+}
+
+
+def _question_summary(repo_root: Path, qid: str) -> dict:
+    """Parse per-question doc for attempt history and candidate answer."""
+    import re as _re
+    base: dict = {
+        "qid": qid,
+        "title": _Q_TITLES.get(qid, qid),
+        "area": _Q_AREAS.get(qid, ""),
+        "has_doc": False,
+        "candidate_answer": None,
+        "total_runs": 0,
+        "success_runs": 0,
+        "fail_runs": 0,
+        "last_outcome": None,
+        "last_run_date": None,
+    }
+    doc_path = repo_root / "documents" / "questions" / f"{qid}.md"
+    if not doc_path.is_file():
+        return base
+    try:
+        text = doc_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        return base
+    base["has_doc"] = True
+    m = _re.search(r"### Candidate Answer\s*\n+>\s*(.+)", text)
+    if m:
+        base["candidate_answer"] = m.group(1).strip()
+    # Attempt history table: | date | **outcome** | issues | runs | model | ... |
+    rows = _re.findall(
+        r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*\*\*(\w+)\*\*\s*\|[^|]*\|\s*(\d+)\s*\|", text
+    )
+    if rows:
+        total, success, fail = 0, 0, 0
+        last_date = last_outcome = None
+        for date, outcome, run_count in rows:
+            n = int(run_count)
+            total += n
+            if outcome.lower() == "success":
+                success += n
+            else:
+                fail += n
+            last_date, last_outcome = date, outcome.lower()
+        base.update(total_runs=total, success_runs=success, fail_runs=fail,
+                    last_run_date=last_date, last_outcome=last_outcome)
+    return base
+
+
 app = FastAPI(title="Research Math Agent", version="0.2.0")
 
 
@@ -625,6 +692,44 @@ def overview_ep() -> JSONResponse:
         top = by_prob[0]
         suggestions.append(f"{top['problem']} consumed the most tokens ({(top['in']+top['out']):,}) — consider shorter prompts or fewer resolve cycles.")
 
+    # Per-question summaries: merge doc info + issue stats
+    question_summaries: list[dict] = []
+    for i in range(1, 11):
+        pid = f"q{i}"
+        qs = _question_summary(REPO_ROOT, pid)
+        ist = issue_stats.get(pid, {"open": 0, "in_progress": 0, "resolved": 0, "total": 0})
+        total_iss = ist["total"]
+        resolved = ist["resolved"]
+        # Proof status from issue stats
+        if total_iss == 0:
+            proof_status = "not_started"
+        elif resolved == total_iss:
+            proof_status = "verified"
+        elif resolved > 0:
+            proof_status = "in_progress"
+        elif ist["in_progress"] > 0:
+            proof_status = "exploring"
+        else:
+            proof_status = "open_issues"
+        # Accuracy = issue resolution rate
+        accuracy_pct = round(resolved / total_iss * 100) if total_iss > 0 else None
+        # Solvability = attempt success rate (from doc) or issue res rate as fallback
+        total_runs = qs["total_runs"]
+        success_runs = qs["success_runs"]
+        if total_runs > 0:
+            solvability_pct = round(success_runs / total_runs * 100)
+        elif total_iss > 0:
+            solvability_pct = accuracy_pct  # use issue resolution as proxy
+        else:
+            solvability_pct = None
+        question_summaries.append({
+            **qs,
+            "issue_stats": ist,
+            "proof_status": proof_status,
+            "accuracy_pct": accuracy_pct,
+            "solvability_pct": solvability_pct,
+        })
+
     return JSONResponse({
         "daemon_running": daemon_pid is not None,
         "daemon_pid": daemon_pid,
@@ -641,6 +746,7 @@ def overview_ep() -> JSONResponse:
         },
         "suggestions": suggestions,
         "today": today_summary(REPO_ROOT),
+        "question_summaries": question_summaries,
     })
 
 

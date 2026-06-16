@@ -121,7 +121,9 @@ _DISCOVERY_SYSTEM = (
     "You are a mathematical critic agent for the First Proof benchmark. "
     "Your workspace contains problem.tex (the problem) and solution.tex (the current "
     "proof attempt, if any). You have Bash available to call the issue tracker API "
-    "via curl. Be precise and mathematical. Only raise genuine gaps, not style issues."
+    "via curl. Be precise and mathematical. Only raise genuine gaps, not style issues. "
+    "Write your full mathematical analysis (background, gap identification, difficulty assessment) "
+    "to analysis.md in the workspace — this feeds the documentation system."
 )
 
 
@@ -151,24 +153,36 @@ def run_discovery_agent(
 Your tasks:
 1. Read problem.tex to understand exactly what must be proved.
 2. {"Read solution.tex and identify mathematical gaps, errors, unproven claims, or missing cases." if has_proof else "Identify the key mathematical sub-lemmas needed to solve the problem."}
-3. For each issue found, create it in the tracker:
+
+3. Write a detailed mathematical analysis to analysis.md in your workspace:
+   - Section "## Background": key theorems, definitions, and tools relevant to this problem
+   - Section "## Proof Structure": outline of what a complete proof requires
+   - Section "## Gap Analysis": specific gaps or open sub-lemmas found
+   - Section "## Difficulty Assessment": why each gap is hard to close
+   - Section "## Suggested Approaches": concrete proof strategies to try
+
+4. For each genuine mathematical gap found, create it in the tracker:
 
    curl -s -X POST {_API_BASE}/api/issues/{problem_id} \\
      -H 'Content-Type: application/json' \\
-     -d '{{"title": "SHORT TITLE", "body": "DETAILED DESCRIPTION", "author": "critic-agent", "labels": ["proof-gap"]}}'
+     -d '{{"title": "SHORT TITLE", "body": "DETAILED DESCRIPTION WITH MATH", "author": "critic-agent", "labels": ["proof-gap"]}}'
 
-4. After creating all issues, post a summary as a comment on the main issue.
+5. Post your full analysis as a comment on the main issue:
    First get the issue list:
    curl -s {_API_BASE}/api/issues/{problem_id}
    Then post to the first issue's id (e.g. {problem_id}-1):
    curl -s -X POST {_API_BASE}/api/issues/{problem_id}/{problem_id}-1/comment \\
      -H 'Content-Type: application/json' \\
-     -d '{{"author": "critic-agent", "body": "SUMMARY OF REVIEW"}}'
+     -d '{{"author": "critic-agent", "body": "## Mathematical Review\\n\\nFull analysis here..."}}'
 
-Be specific. Cite exact steps. Focus on mathematical correctness.
-After all curl calls, summarize what issues you created."""
+Be specific. Cite exact theorems by name. Include the mathematical details that would help
+a solver agent understand exactly what needs to be proved.
+After all curl calls, summarize what you found."""
 
-    yield from _run_agent(ws, prompt, _DISCOVERY_SYSTEM, handle, f"critic/{problem_id}")
+    yield from _run_agent(
+        ws, prompt, _DISCOVERY_SYSTEM, handle, f"critic/{problem_id}",
+        on_done=lambda: _merge_analysis_into_document(repo_root, problem_id, ws),
+    )
 
 
 # ── resolver agent ───────────────────────────────────────────────────────────
@@ -246,6 +260,28 @@ def _save_improved_proof(repo_root: Path, problem_id: str, ws: Path) -> None:
         tex = sol.read_text(encoding="utf-8", errors="replace")
         if tex.strip():
             save_working_proof(repo_root, problem_id, tex)
+
+
+def _merge_analysis_into_document(repo_root: Path, problem_id: str, ws: Path) -> None:
+    """Append the critic agent's analysis.md into the question document."""
+    analysis_path = ws / "analysis.md"
+    if not analysis_path.is_file():
+        return
+    analysis = analysis_path.read_text(encoding="utf-8", errors="replace").strip()
+    if not analysis:
+        return
+    try:
+        from .rich_documents import questions_dir
+        doc_path = questions_dir(repo_root) / f"{problem_id}.md"
+        now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        section = f"\n\n---\n\n## Critic Agent Analysis — {now}\n\n{analysis}\n"
+        if doc_path.is_file():
+            existing = doc_path.read_text(encoding="utf-8", errors="replace")
+            doc_path.write_text(existing.rstrip() + section, encoding="utf-8")
+        else:
+            doc_path.write_text(f"# {problem_id.upper()} Analysis\n{section}", encoding="utf-8")
+    except Exception:
+        pass
 
 
 # ── verifier agent ───────────────────────────────────────────────────────────
