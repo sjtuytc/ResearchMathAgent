@@ -131,6 +131,7 @@ def run_discovery_agent(
     repo_root: Path,
     problem_id: str,
     handle: RunHandle | None = None,
+    dataset: str = "first_proof_1",
 ) -> Iterator[AgentEvent]:
     """Critic agent: reads proof, discovers issues, posts them via the API."""
     ws = _seed_workspace(repo_root, problem_id)
@@ -201,10 +202,11 @@ def run_resolver_agent(
     problem_id: str,
     issue_id: str,
     handle: RunHandle | None = None,
+    dataset: str = "first_proof_1",
 ) -> Iterator[AgentEvent]:
     """Solver agent: works a specific open issue, updates proof, posts resolution."""
     from .issues import get_issue
-    issue = get_issue(repo_root, problem_id, issue_id)
+    issue = get_issue(repo_root, problem_id, issue_id, dataset)
     if issue is None:
         yield AgentEvent("error", {"message": f"Issue {issue_id} not found"})
         yield AgentEvent("done", {"reason": "error"})
@@ -305,10 +307,11 @@ def run_verifier_agent(
     problem_id: str,
     issue_id: str,
     handle: RunHandle | None = None,
+    dataset: str = "first_proof_1",
 ) -> Iterator[AgentEvent]:
     """Verifier agent: checks whether the latest fix on an issue is correct."""
     from .issues import get_issue
-    issue = get_issue(repo_root, problem_id, issue_id)
+    issue = get_issue(repo_root, problem_id, issue_id, dataset)
     if issue is None:
         yield AgentEvent("error", {"message": f"Issue {issue_id} not found"})
         yield AgentEvent("done", {"reason": "error"})
@@ -356,24 +359,25 @@ def run_issue_cycle(
     repo_root: Path,
     problem_id: str,
     max_resolve: int = 2,
+    dataset: str = "first_proof_1",
 ) -> list[str]:
     """Run discovery then resolve up to max_resolve open issues. Returns log lines."""
     from .issues import list_issues
     log: list[str] = []
 
     log.append(f"[issue-cycle] {problem_id}: running discovery agent")
-    for ev in run_discovery_agent(repo_root, problem_id):
+    for ev in run_discovery_agent(repo_root, problem_id, dataset=dataset):
         if ev.type in ("text_delta", "error"):
             log.append(ev.data.get("text", ev.data.get("message", "")))
 
-    issues = list_issues(repo_root, problem_id)
+    issues = list_issues(repo_root, problem_id, dataset)
     open_issues = [i for i in issues if i.get("status") in ("open", "in_progress")]
     log.append(f"[issue-cycle] {problem_id}: {len(open_issues)} open issues")
 
     for issue in open_issues[:max_resolve]:
         iid = issue["id"]
         log.append(f"[issue-cycle] {problem_id}: resolving {iid} — {issue.get('title','')[:60]}")
-        for ev in run_resolver_agent(repo_root, problem_id, iid):
+        for ev in run_resolver_agent(repo_root, problem_id, iid, dataset=dataset):
             if ev.type in ("text_delta", "error"):
                 log.append(ev.data.get("text", ev.data.get("message", "")))
 

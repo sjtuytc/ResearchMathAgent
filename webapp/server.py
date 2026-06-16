@@ -556,7 +556,7 @@ def final_proof_detail(problem_id: str) -> JSONResponse:
 
 @app.get("/api/working-proof/{problem_id}")
 def get_working_proof_ep(problem_id: str) -> JSONResponse:
-    if not _PROBLEM_RE.match(problem_id):
+    if not _ID_RE_LOOSE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
     tex = get_working_proof(REPO_ROOT, problem_id)
     return JSONResponse({"problem_id": problem_id, "tex": tex, "has_proof": bool(tex)})
@@ -564,7 +564,7 @@ def get_working_proof_ep(problem_id: str) -> JSONResponse:
 
 @app.post("/api/working-proof/{problem_id}")
 def save_working_proof_ep(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
-    if not _PROBLEM_RE.match(problem_id):
+    if not _ID_RE_LOOSE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
     tex = str(payload.get("tex", ""))
     save_working_proof(REPO_ROOT, problem_id, tex)
@@ -572,42 +572,45 @@ def save_working_proof_ep(problem_id: str, payload: dict = Body(...)) -> JSONRes
 
 
 @app.get("/api/agent/discover/{problem_id}")
-def agent_discover(problem_id: str, run_id: str = Query("")) -> StreamingResponse:
-    if not _PROBLEM_RE.match(problem_id):
+def agent_discover(problem_id: str, run_id: str = Query(""), dataset: str = Query(None)) -> StreamingResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    ds = _ds_from_query(dataset)
     rid = run_id or uuid.uuid4().hex
     return StreamingResponse(
-        _sse_issue_agent(run_discovery_agent, REPO_ROOT, problem_id, rid),
+        _sse_issue_agent(run_discovery_agent, REPO_ROOT, problem_id, rid, dataset=ds),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
 @app.get("/api/agent/resolve/{problem_id}/{issue_id}")
-def agent_resolve(problem_id: str, issue_id: str, run_id: str = Query("")) -> StreamingResponse:
-    if not _PROBLEM_RE.match(problem_id):
+def agent_resolve(problem_id: str, issue_id: str, run_id: str = Query(""), dataset: str = Query(None)) -> StreamingResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    ds = _ds_from_query(dataset)
     rid = run_id or uuid.uuid4().hex
     return StreamingResponse(
-        _sse_issue_agent(run_resolver_agent, REPO_ROOT, problem_id, rid, issue_id=issue_id),
+        _sse_issue_agent(run_resolver_agent, REPO_ROOT, problem_id, rid, issue_id=issue_id, dataset=ds),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
 @app.get("/api/agent/verify/{problem_id}/{issue_id}")
-def agent_verify(problem_id: str, issue_id: str, run_id: str = Query("")) -> StreamingResponse:
-    if not _PROBLEM_RE.match(problem_id):
+def agent_verify(problem_id: str, issue_id: str, run_id: str = Query(""), dataset: str = Query(None)) -> StreamingResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    ds = _ds_from_query(dataset)
     rid = run_id or uuid.uuid4().hex
     return StreamingResponse(
-        _sse_issue_agent(run_verifier_agent, REPO_ROOT, problem_id, rid, issue_id=issue_id),
+        _sse_issue_agent(run_verifier_agent, REPO_ROOT, problem_id, rid, issue_id=issue_id, dataset=ds),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
-def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None):
+def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None, dataset="first_proof_1"):
     def send(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
 
@@ -621,9 +624,9 @@ def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None):
     yield send({"type": "start", "problem": problem_id, "issue": issue_id, "run_id": run_id})
     try:
         if issue_id:
-            gen = runner_fn(repo_root, problem_id, issue_id, handle)
+            gen = runner_fn(repo_root, problem_id, issue_id, handle, dataset=dataset)
         else:
-            gen = runner_fn(repo_root, problem_id, handle)
+            gen = runner_fn(repo_root, problem_id, handle, dataset=dataset)
         for event in gen:
             if event.type == "usage":
                 try:
