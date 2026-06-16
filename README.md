@@ -1,18 +1,42 @@
 # RMA: an Agentic System for Research-Level Mathematical Problems
 
+<div align="center">
+
 [[Paper (arXiv)](https://arxiv.org/abs/2605.22875)]
 [![GitHub Stars](https://img.shields.io/github/stars/sjtuytc/ResearchMathAgent?style=social)](https://github.com/sjtuytc/ResearchMathAgent/stargazers)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Official code release for **RMA**.
-RMA is a research math agent system that turns problem statements into verifiable proof artifacts.
+**Language:** English | [中文](README_zh.md)
 
-- Multi-agent iterative workflow (`initializer -> proposer -> verifier -> refiner`).
-- Benchmark-oriented repository with problem sets and merged final solutions.
-- Reproducible outputs in structured artifacts (e.g., LaTeX/PDF + machine-readable files).
+</div>
+
+---
+
+## Highlights
+
+> RMA is the first agentic framework that targets **research-level mathematical proof** — not competition problems, not formal theorem proving — by combining specialized agents, structured memory, and iterative verifier feedback.
+
+| Feature | Detail |
+|---------|--------|
+| **Research-level problems** | First Proof benchmark: 10 open-math problems from expert mathematicians across 10 distinct fields |
+| **Multi-agent pipeline** | Initializer → Proposer → Verifier → Refiner, coordinated through shared structured memory |
+| **State-of-the-art results** | Solves **8 / 10** First Proof problems; outperforms GPT-5.2R and Aletheia |
+| **Two Claude backends** | Anthropic Messages API (pay-per-token) *or* Claude Code local CLI (Pro/Max subscription) |
+| **Live web UI** | Streaming step-by-step viewer, live PDF preview, per-question issue tracker, token cost display |
+| **Autonomous daily worker** | Runs the solver overnight with no human in the loop, writes dated reports to `documents/` |
+| **Benchmark-fair sandbox** | Contamination boundary enforced in code — prior solutions are never read by the solver |
+| **Agentic GitHub Issues API** | REST API (`/api/gh/issues`) so multiple agents can coordinate on real GitHub Issues |
+
+---
 
 ## Abstract
 
+<details>
+<summary>Read full abstract</summary>
+
 We present **Research Math Agents (RMA)**, an agentic framework for automated reasoning on research-level mathematical problems. Unlike prior studies centered on competition mathematics or formal theorem proving, RMA targets research-level mathematical problems that require long-horizon reasoning, literature grounding, and iterative proof refinement. RMA decomposes research-level proof solving into specialized modules for problem analysis, literature search and understanding, fair comparison, knowledge-bank construction, and proof verification, all coordinated by initializer, proposer, and verifier agents through a shared structured memory. Within this unified framework, these agents operate in a multi-role, multi-round workflow, collaboratively generating, refining, and verifying candidate proofs through iterative feedback. We evaluate RMA on the First Proof benchmark, which consists of ten research-level problems contributed by expert mathematicians across diverse domains. Through comprehensive expert evaluation, RMA outperforms strong baselines on the First Proof benchmark, including GPT-5.2R and Aletheia, solving eight out of ten research problems and producing more logically sound and readable proofs. Our comprehensive ablation studies further show that performance gains arise from the interaction of structured reasoning modules, iterative refinement, and verifier-based feedback, rather than any single component.
+
+</details>
 
 ![Teaser](figures/teaser.png)
 
@@ -22,60 +46,82 @@ We present **Research Math Agents (RMA)**, an agentic framework for automated re
 
 ![Model](figures/model.png)
 
-RMA targets **research-level mathematics** (not just competition math or formal theorem proving) by combining specialized modules for:
-- problem analysis,
-- literature search and understanding,
-- fair comparison,
-- knowledge-bank construction, and
-- proof verification.
+RMA targets **research-level mathematics** (not competition math or formal theorem proving) by combining specialized modules for problem analysis, literature search and understanding, fair comparison, knowledge-bank construction, and proof verification.
 
 Within a multi-role, multi-round workflow, initializer/proposer/verifier agents share structured memory to iteratively generate, refine, and validate candidate proofs. On the First Proof benchmark, RMA reports stronger results than strong baselines through structured modules, iterative refinement, and verifier feedback.
 
 ---
 
+## Quick Start
+
+```bash
+# 1. Install
+pip install -e ".[webapp]"
+
+# 2. Set API key (or use Claude Code subscription — see Claude Backends below)
+export ANTHROPIC_API_KEY="<your key>"
+
+# 3. Solve a problem
+rma solve q6 --model-name claude-opus-4-8
+
+# 4. Launch the web UI
+python -m webapp          # → http://127.0.0.1:8000
+```
+
+---
+
 ## Repository Structure
 
-- `problems/`: benchmark problem statements.
-- `skills/`: project skills for math reasoning/research.
-- `final_solutions/`: published/reference proof artifacts; these are **not solver inputs**.
-- `output_solutions/`: solver outputs, renamed from the earlier `skill_solutions/` layout.
-- `rma/`: command-line tooling for the executable RMA pipeline.
-- `webapp/`: live agent web app — Question/Issue/Agent/Documents UI, an
-  API-or-subscription solver, run control, and an autonomous daily worker
-  (see [webapp/README.md](webapp/README.md)).
-- `documents/`: daily reports written by the autonomous worker, surfaced in the
-  web app's Documents tab.
-- `config/default.yaml`: default project paths and execution tier presets.
-- `main.tex` and related TeX files: the paper source.
+<details>
+<summary>Expand file tree</summary>
 
-A unified executable pipeline is being built incrementally; see [TODO.md](TODO.md) for the remaining engineering roadmap.
+```
+ResearchMathAgent/
+├── problems/             # Benchmark problem statements (q1..q10 .tex files)
+├── skills/               # Math-research skill instructions for the solver
+├── final_solutions/      # Published/reference proofs — NOT solver inputs
+├── output_solutions/     # Solver outputs (write destination)
+├── rma/                  # CLI tooling: parse / propose / verify / refine / solve
+├── webapp/               # Live web app (FastAPI + vanilla JS)
+│   └── README.md         # Web app details
+├── documents/            # Daily reports from the autonomous worker
+├── config/default.yaml   # Project paths and execution tier presets
+└── main.tex              # Paper source
+```
+
+- `problems/` → `final_solutions/` boundary is enforced; the solver never reads prior solutions.
+- `output_solutions/` is the write destination for all `rma solve` runs.
+- See [TODO.md](TODO.md) for the remaining engineering roadmap.
+
+</details>
 
 ---
 
 ## CLI
 
-The CLI command is `rma`, short for Research Math Agent. During development, commands can be run without installation:
+Install once for the `rma` command:
+
+```bash
+pip install -e .
+rma doctor        # health check
+```
+
+Or run without installing:
 
 ```bash
 python -m rma doctor
 ```
 
-For a local editable install that exposes the `rma` command:
+<details>
+<summary>Staged pipeline (parse / propose / verify / refine)</summary>
 
-```bash
-python -m pip install -e .
-rma doctor
+The pipeline is:
+
+```
+parse → propose → verify → refine
 ```
 
-### Staged Pipeline
-
-The executable pipeline is:
-
-```text
-parse -> propose -> verify -> refine
-```
-
-Each stage can be run directly. Later stages automatically initialize missing earlier artifacts in the same run folder.
+Each stage can be run individually. Later stages auto-initialize missing earlier artifacts.
 
 ```bash
 rma parse q6
@@ -84,306 +130,214 @@ rma verify q6
 rma refine q6
 ```
 
-All four stage commands accept the same experiment/model folder controls:
+With explicit experiment/model controls:
 
 ```bash
-rma parse q6 --exp-name proofs_v1_june13 --model-name rma-skeleton
-rma propose q6 --exp-name proofs_v1_june13 --model-name rma-skeleton
-rma verify q6 --exp-name proofs_v1_june13 --model-name rma-skeleton
-rma refine q6 --exp-name proofs_v1_june13 --model-name rma-skeleton
+rma parse q6    --exp-name proofs_v1_june13 --model-name rma-skeleton
+rma propose q6  --exp-name proofs_v1_june13 --model-name rma-skeleton
+rma verify q6   --exp-name proofs_v1_june13 --model-name rma-skeleton
+rma refine q6   --exp-name proofs_v1_june13 --model-name rma-skeleton
 ```
 
 Stage outputs:
 
-- `rma parse`: copies the problem file and writes `parsed_problem.json` plus `problem_analysis.md`.
-- `rma propose`: writes `qN_solution.tex` and versioned proposal artifacts.
-- `rma verify`: checks the current solution, renders PDF by default, and writes verification reports. Verification includes LaTeX/artifact checks and mathematical-completeness gates for proof length, subclaim structure, subproofs, theorem hypothesis audits, citations or derivations, and boundary-case proofs.
-- `rma refine`: consumes the latest verification report and rewrites the current solution only when issues were found.
+| Stage | Writes |
+|-------|--------|
+| `parse` | `parsed_problem.json`, `problem_analysis.md` |
+| `propose` | `qN_solution.tex`, versioned proposal artifacts |
+| `verify` | Verification report (JSON + Markdown), renders PDF |
+| `refine` | Rewrites `qN_solution.tex` based on the latest report |
 
-### `rma solve`
+`verify` checks LaTeX/artifact correctness **and** mathematical-completeness gates (proof length, subclaim structure, subproofs, hypothesis audits, citations, boundary-case proofs).
 
-`rma solve` is the core solver API. It orchestrates `parse -> propose -> verify`, calls `refine` when verification fails, and repeats verifier/refiner rounds up to `--max-rounds`. A run is marked `verified` only when the verifier passes both artifact checks and mathematical-completeness gates.
+</details>
 
-Solve one First Proof problem:
+<details>
+<summary>rma solve — full solver loop</summary>
+
+`rma solve` orchestrates `parse → propose → verify` and calls `refine` on failure, repeating up to `--max-rounds`. A run is marked `verified` only when ALL verifier gates pass.
 
 ```bash
+# Solve one problem
 rma solve q6
-```
 
-Solve all First Proof problems:
-
-```bash
+# Solve all 10 problems
 rma solve --all
+
+# Named experiment + skeleton model (pipeline test)
 rma solve --all --exp-name proofs_test_all_june13 --model-name rma-skeleton
-```
 
-Choose an execution tier to record in the run metadata:
+# Execution tier (recorded in metadata)
+rma solve q6 --tier budget      # or standard / pro
 
-```bash
-rma solve q6 --tier budget
-rma solve q6 --tier standard
-rma solve q6 --tier pro
-```
-
-Choose the experiment/model output folder:
-
-```bash
-rma solve q6 --exp-name proofs_v1_june13 --model-name rma-skeleton
-```
-
-### Claude Backends
-
-RMA supports two Claude routes.
-
-Use the Anthropic API when you have a Claude Console API key:
-
-```bash
-export ANTHROPIC_API_KEY="<your Anthropic API key>"
-rma solve q6 --exp-name proofs_claude_june14 --model-name claude-sonnet-4-6
-rma solve --all --exp-name proofs_claude_all_june14 --model-name claude-sonnet-4-6 --max-rounds 3
-```
-
-On macOS, RMA also checks the local Keychain service `rma_anthropic_api_key` when `ANTHROPIC_API_KEY` is not set:
-
-```bash
-security add-generic-password -U -a "$USER" -s rma_anthropic_api_key -w "<your Anthropic API key>"
-rma solve q6 --exp-name proofs_claude_june14 --model-name claude-sonnet-4-6
-```
-
-With `--model-provider auto`, any `claude-*` model name uses the Anthropic Messages API. You can force the same backend explicitly:
-
-```bash
-rma propose q6 --model-provider anthropic --model-name claude-opus-4-8
-rma solve q6 --model-provider anthropic --model-name claude-opus-4-8
-```
-
-Use Claude Code when you want to run through a local Claude Code login, including a Pro/Max subscription-backed login:
-
-```bash
-claude
-# complete browser login if prompted
-
-rma solve q6 --model-provider claude-code --model-name claude-code --exp-name proofs_cc_june14
-rma solve --all --model-provider claude-code --model-name claude-code-sonnet --exp-name proofs_cc_all_june14 --max-rounds 3
-```
-
-`claude-code` uses the installed `claude -p` non-interactive CLI. If `ANTHROPIC_API_KEY` is set, Claude Code may prefer API-key billing; unset it when you want the local Claude Code session to use subscription allocation.
-
-Use the project math-research skill instructions:
-
-```bash
-rma solve q6 --skill-path skills/math-research/SKILL.md
-```
-
-By default, `rma solve` loads `skills/math-research/SKILL.md` and records the skill name/path in each problem's metadata and report. The skill provides the proof-development procedure: problem analysis, strategy choice, proof commandments, gap audit, verification protocol, and LaTeX conventions.
-
-Render behavior:
-
-```bash
-rma solve q6                 # writes q6_solution.tex and q6_solution.pdf
-rma solve q6 --no-render     # writes only q6_solution.tex
-```
-
-Control verifier/refiner loop length:
-
-```bash
+# Limit refiner rounds
 rma solve q6 --max-rounds 3
+
+# Use math-research skill
+rma solve q6 --skill-path skills/math-research/SKILL.md
+
+# Write only .tex (skip PDF render)
+rma solve q6 --no-render
 ```
 
-The output folder follows the earlier solution-folder convention:
+**Output folder layout:**
 
-```text
-output_solutions/<exp-name>_<model-name>/
 ```
-
-For example:
-
-```text
-output_solutions/proofs_v1_june13_rma-skeleton/
-```
-
-The current `solve` implementation initializes the output directory, records the fairness boundary, loads the math-research skill, writes solution artifacts, runs verifier checks, renders PDFs by default, and calls the refiner when checks fail. The built-in `rma-skeleton` proposer/refiner is deterministic and profile-guided; it is useful for pipeline testing but is not yet strong enough to solve all First Proof problems in full. For real proof generation, select a Claude backend as shown above.
-
-Single-problem output structure:
-
-```text
 output_solutions/proofs_v1_june13_rma-skeleton/
   q6_solution.tex
+  q6_solution.pdf
   q6/
-    input/
-      problem.tex
+    input/problem.tex
     artifacts/
       metadata.json
       status.json
       report.md
       parsed_problem.json
       problem_analysis.md
-      proposals/
-        proposal_001.tex
-        proposal_001.json
-      verifications/
-        verification_001.json
-        verification_001.md
+      proposals/proposal_001.tex
+      verifications/verification_001.json
       refinements/
-  q6_solution.pdf
 ```
 
-All-problem output structure:
+**Example terminal output:**
 
-```text
-output_solutions/proofs_test_all_june13_rma-skeleton/
-  q1_solution.tex
-  q1_solution.pdf
-  ...
-  q10_solution.tex
-  q10_solution.pdf
-  q1/
-    input/problem.tex
-    artifacts/metadata.json
-    artifacts/status.json
-    artifacts/report.md
-    artifacts/parsed_problem.json
-    artifacts/proposals/proposal_001.tex
-    artifacts/verifications/verification_001.json
-  ...
-  q10/
-    input/problem.tex
-    artifacts/metadata.json
-    artifacts/status.json
-    artifacts/report.md
-    artifacts/parsed_problem.json
-    artifacts/proposals/proposal_001.tex
-    artifacts/verifications/verification_001.json
 ```
-
-Example output:
-
-```text
 RMA solve
 tier: standard
 skill: skills/math-research/SKILL.md
 status: needs_refinement
 output: output_solutions/proofs_v1_june13_rma-skeleton
 solution: output_solutions/proofs_v1_june13_rma-skeleton/q6_solution.tex
-problem_status: needs_refinement
-rendered: output_solutions/proofs_v1_june13_rma-skeleton/q6_solution.pdf
-verification: output_solutions/proofs_v1_june13_rma-skeleton/q6/artifacts/verifications/verification_003.json
-
-Completed parser -> proposer -> verifier/refiner solve pipeline.
-No official/prior solution directories were read.
+verification: .../verification_003.json
 ```
 
-All-problem example output:
+</details>
 
-```text
-RMA solve
-tier: standard
-skill: skills/math-research/SKILL.md
-status: needs_refinement
-output: output_solutions/proofs_test_all_june13_rma-skeleton
-solution: output_solutions/proofs_test_all_june13_rma-skeleton/q1_solution.tex
-problem_status: needs_refinement
-rendered: output_solutions/proofs_test_all_june13_rma-skeleton/q1_solution.pdf
-verification: output_solutions/proofs_test_all_june13_rma-skeleton/q1/artifacts/verifications/verification_003.json
-...
-solution: output_solutions/proofs_test_all_june13_rma-skeleton/q6_solution.tex
-problem_status: needs_refinement
-rendered: output_solutions/proofs_test_all_june13_rma-skeleton/q6_solution.pdf
-verification: output_solutions/proofs_test_all_june13_rma-skeleton/q6/artifacts/verifications/verification_003.json
-```
+<details>
+<summary>Claude backends — API key vs subscription</summary>
 
-### `rma doctor`
-
-`rma doctor` checks whether the local checkout has the files and tools needed for RMA development.
-
-Example:
+**Anthropic Messages API** (pay-per-token):
 
 ```bash
-rma doctor
+export ANTHROPIC_API_KEY="<your key>"
+rma solve q6 --model-name claude-opus-4-8
+rma solve --all --model-name claude-sonnet-4-6 --max-rounds 3
 ```
+
+On macOS, store the key in Keychain to avoid exporting it:
+
+```bash
+security add-generic-password -U -a "$USER" -s rma_anthropic_api_key -w "<key>"
+rma solve q6 --model-name claude-sonnet-4-6    # picks up from Keychain
+```
+
+Force the API backend explicitly:
+
+```bash
+rma solve q6 --model-provider anthropic --model-name claude-opus-4-8
+```
+
+**Claude Code** (Pro/Max subscription — no API credits consumed):
+
+```bash
+claude                  # complete browser login once
+rma solve q6 --model-provider claude-code --model-name claude-code
+rma solve --all --model-provider claude-code --model-name claude-code --max-rounds 3
+```
+
+`claude-code` drives the local `claude -p` headless CLI. Unset `ANTHROPIC_API_KEY` if you want subscription billing (not API billing).
+
+**Auto-detect:** `--model-provider auto` (default) uses Claude Code for `rma-skeleton` and the Anthropic API for any `claude-*` model name.
+
+</details>
 
 ---
 
 ## Web App
 
-A browser app that runs a Claude-powered agent over the benchmark and streams
-every step live — modeled on TheAgentCompany (a thin agent loop over a model,
-plus a questions/issues workspace), pointed at research mathematics. Full
-details in [webapp/README.md](webapp/README.md).
-
 ```bash
-pip install -e ".[webapp]"     # fastapi + uvicorn (+ anthropic for API mode)
-python -m webapp               # serves http://127.0.0.1:8000 (HOST/PORT overridable)
+pip install -e ".[webapp]"
+python -m webapp          # → http://127.0.0.1:8000
 ```
 
-On a Linux server, forward the port to your laptop:
+On a remote server, forward the port:
 
 ```bash
-ssh -L 8000:localhost:8000 user@server     # then open http://localhost:8000
+ssh -L 8000:localhost:8000 user@server
 ```
 
-**Features:**
+<details>
+<summary>Web app feature list</summary>
 
-- **Four tabs per question** — *Question* (the `.tex` statement, KaTeX-rendered
-  or raw), *Issue* (an editable per-question markdown tracker with an agent-run
-  activity log), *Agent* (run the solver live), and *Documents* (browse daily
-  reports).
-- **Two ways to call Claude:**
-  - **Claude Code (subscription)** — drives the local `claude` CLI in headless
-    mode, so runs draw from your **Pro/Max subscription, not API credits**
-    (the answer to "the API is too expensive"). Requires `claude login` on the
-    server; the app keeps `ANTHROPIC_API_KEY` unset for the CLI so subscription
-    auth is used.
-  - **Anthropic API** — the native Messages API tool-use loop (streaming,
-    adaptive thinking, prompt caching), billed per token via `ANTHROPIC_API_KEY`.
-- **Live step-by-step stream** — thinking, assistant text with rendered math,
-  every tool call + result, the final `solution.tex` artifact, and token/cost.
-- **Real run control** — the **Stop** button calls `POST /api/cancel`, which
-  kills the backend process group (the `claude` CLI plus its node child), so a
-  stopped run stops consuming your subscription immediately. The sidebar's
-  **Active runs** panel lists every in-flight run (interactive and daily) with a
-  per-run Stop button, for watching/controlling parallel runs.
-- **PDF preview** — compile a `solution.tex` to PDF and preview it inline (Agent
-  tab "Compile PDF"; daily reports link the compiled PDF). Requires a LaTeX
-  toolchain on the server (the one that builds `main.tex`); degrades gracefully
-  otherwise.
-- **Autonomous daily worker** — `python -m webapp.daily` runs the agent once a
-  day with no human in the loop (subscription-backed), writes a dated report to
-  `documents/`, and logs each run to the question's issue. Runs as a daemon
-  (`--now`/scheduled) or once (`--once`, for cron); configurable via
-  `RMA_DAILY_AT`, `RMA_DAILY_PROBLEMS`, `RMA_DAILY_MODEL`. You can also trigger a
-  run from the Documents tab.
-- **Sandboxing / contamination boundary** — every file tool and the daily worker
-  honor the blocked-input rule below: the agent can read `problems/`, `skills/`,
-  and its own scratch workspace, but never the blocked solution directories.
+- **Question tab** — renders the `.tex` problem statement with KaTeX; toggle raw/rendered
+- **Issue tab** — GitHub-style per-problem issue tracker (multi-agent comment threads, status, labels); also exposes `/api/gh/issues` for direct GitHub Issues control
+- **Agent tab** — run the solver live with streaming thinking + tool calls + rendered math + token cost
+- **Documents tab** — browse dated daily reports; trigger a manual agent run
+- **Two Claude backends** — API key or local Claude Code subscription (the `claude` CLI in headless mode, so runs draw from your Pro/Max subscription, not API credits)
+- **Live step-by-step stream** — every thinking block, assistant text, tool call, and result appear in real time
+- **Stop button** — `POST /api/cancel` kills the backend process group immediately, stopping subscription consumption
+- **Active runs panel** — lists every in-flight run with per-run Stop buttons for parallel-run control
+- **PDF preview** — compile `solution.tex` inline (requires server-side LaTeX); degrades gracefully
+- **Token / cost display** — per-turn usage chart and per-card annotation
+- **Autonomous daily worker** — `python -m webapp.daily` runs the solver nightly, writes `documents/YYYY-MM-DD.md`, logs each run to the question's issue thread
+
+</details>
+
+<details>
+<summary>Agentic GitHub Issues API</summary>
+
+Many solver agents can coordinate on real GitHub Issues via the web app's REST API.  All endpoints are under `/api/gh/`:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/gh/status` | GET | Token availability + repo name |
+| `/api/gh/issues?problem_id=q6` | GET | List issues (filtered by `problem:q6` label) |
+| `/api/gh/issues` | POST | Create issue `{problem_id, title, body, labels}` |
+| `/api/gh/issues/{n}` | GET | Get issue + comments |
+| `/api/gh/issues/{n}/comment` | POST | Add comment `{body}` |
+| `/api/gh/issues/{n}` | PATCH | Update `{title, state, labels, body}` |
+| `/api/gh/issues/{n}/close` | POST | Close issue |
+| `/api/gh/issues/{n}/reopen` | POST | Reopen issue |
+| `/api/gh/search?q=...` | GET | GitHub search syntax |
+
+Requires `GITHUB_TOKEN` env var for writes (fine-grained PAT, Issues read/write).  Reads work unauthenticated (60 req/hr).
+
+</details>
 
 ---
 
 ## Solver Contamination Boundary
 
-The solver must treat First Proof official solutions and prior AI-generated solutions as blocked input material. When implementing or running `rma solve`, the solving process may read problem statements from `problems/` and project instructions from `skills/`, but it must not read, grep, glob, summarize, render, or otherwise use existing files under:
+<details>
+<summary>Fair-evaluation rules</summary>
+
+The solver must treat First Proof official solutions and prior AI-generated solutions as **blocked input**. The solving process may read:
+
+- `problems/` — benchmark problem statements
+- `skills/` — math-research skill instructions
+- Same-run artifacts (created by earlier stages of the same run)
+
+The solver must **never** read, grep, glob, summarize, render, or otherwise use existing files under:
 
 - `final_solutions/`
 - `output_solutions/`
 - `baselines/`
-- public First Proof official-solution pages or derivative solution writeups
+- Public First Proof official-solution pages or derivative writeups
 
-`output_solutions/` is allowed as a write destination for new solve outputs. Same-run artifacts created by `rma parse`, `rma propose`, `rma verify`, and `rma refine` may be consumed by later stages in that same selected run folder. Prior output folders and unrelated existing solution artifacts remain blocked solver context. Existing final proof artifacts may remain in the repository for release/reference purposes, but they are outside the context available to a fair solve run.
+`output_solutions/` is allowed as a **write** destination only.  Prior output folders and unrelated existing solution artifacts remain blocked solver context.
 
-The primary solver API is:
+The primary solver command:
 
 ```bash
-rma solve q6
-rma solve --all
+rma solve q6      # reads problems/q6.tex only; writes fresh artifacts
+rma solve --all   # benchmark-fair over all 10 problems
 ```
 
-`rma solve q6` reads from `problems/q6.tex` only and writes fresh artifacts under `output_solutions/`. `rma solve --all` runs the same benchmark-fair process over all First Proof problem files.
+</details>
 
 ---
 
 ## Paper Build
-
-To compile the paper:
 
 ```bash
 latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
@@ -391,7 +345,7 @@ latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
 
 ---
 
-## Acknowledgement
+## Acknowledgements
 
 We thank **PoggioAI** for open-sourcing `PoggioAI_MSc`, which inspired the system-organization direction and README structure of this project. We also thank the **[TheAgentCompany](https://github.com/TheAgentCompany/TheAgentCompany)** team for open-sourcing their agent-loop-over-model framework and questions/issues workspace design, which inspired the architecture of the RMA web app.
 

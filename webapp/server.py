@@ -36,6 +36,7 @@ from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, s
 from .runs import REGISTRY
 from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
+from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -63,8 +64,10 @@ _Q_AREAS = {
 
 
 def _question_summary(repo_root: Path, qid: str) -> dict:
-    """Build per-question summary from strategy_memory.jsonl + best proof."""
+    """Build per-question summary from strategy_memory.jsonl + best proof + Opus eval."""
     import re as _re
+    # Load cached Opus solvability evaluation (set by background evaluator)
+    opus_eval = load_eval(repo_root, qid)
     base: dict = {
         "qid": qid,
         "title": _Q_TITLES.get(qid, qid),
@@ -76,6 +79,7 @@ def _question_summary(repo_root: Path, qid: str) -> dict:
         "fail_runs": 0,
         "last_outcome": None,
         "last_run_date": None,
+        "opus_eval": opus_eval,
     }
     # Primary source: strategy_memory.jsonl (authoritative run log)
     mem_path = repo_root / "documents" / "strategy_memory.jsonl"
@@ -146,6 +150,9 @@ def _precompile_problems():
 
 
 threading.Thread(target=_precompile_problems, daemon=True).start()
+threading.Thread(
+    target=ensure_all_evaluated, args=(REPO_ROOT,), daemon=True
+).start()
 
 
 @app.get("/api/problems")
@@ -750,16 +757,21 @@ def overview_ep() -> JSONResponse:
             proof_status = "not_started"
         # Accuracy = issue resolution rate
         accuracy_pct = round(resolved / total_iss * 100) if total_iss > 0 else None
-        # Solvability: best proof with 0 issues → 100%; otherwise attempt success rate;
-        # fallback to issue resolution rate as proxy
+        # Solvability: hierarchy of evidence (best first)
+        # 1. Verified proof → 100%
+        # 2. Partial proof progress → heuristic from issue count
+        # 3. Opus evaluation (authoritative AI solvability score)
+        # 4. Run history success rate
+        # 5. Issue resolution rate as proxy
         total_runs = qs["total_runs"]
         success_runs = qs["success_runs"]
+        opus_eval = qs.get("opus_eval")
         if best_verified:
             solvability_pct = 100
         elif best_issues < 99:
-            # Partial progress: score based on best proof's issue count
-            # 0 issues = 100%, 9 issues ≈ 50%, 18+ issues ≈ 0%
             solvability_pct = max(0, round((1 - best_issues / 18) * 100))
+        elif opus_eval and "score" in opus_eval:
+            solvability_pct = int(opus_eval["score"])
         elif total_runs > 0:
             solvability_pct = round(success_runs / total_runs * 100)
         elif total_iss > 0:
@@ -804,6 +816,17 @@ def run_daily() -> JSONResponse:
         return JSONResponse({"started": False, "reason": "a daily run is already in progress"})
     threading.Thread(target=run_daily_job, daemon=True).start()
     return JSONResponse({"started": True})
+
+
+@app.post("/api/eval/solvability/refresh")
+def refresh_solvability_eval(force: bool = Query(False)) -> JSONResponse:
+    """Re-evaluate AI solvability for all q1-q10 using Claude Opus (background)."""
+    from .solvability_eval import evaluate_all as _eval_all
+    def _run():
+        _eval_all(REPO_ROOT, force=force)
+    threading.Thread(target=_run, daemon=True).start()
+    return JSONResponse({"started": True, "force": force,
+                         "message": "Opus solvability evaluation running in background; check /api/overview in ~3 minutes."})
 
 
 def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str, gcp_project: str = ""):
