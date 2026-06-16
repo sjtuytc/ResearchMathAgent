@@ -63,6 +63,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip problems that are already marked verified in the output folder.",
     )
+    solve.add_argument(
+        "--fast",
+        action="store_true",
+        help="Skip verify and refine stages — only parse and propose. Useful for quick first-pass proof generation.",
+    )
     solve.set_defaults(func=run_solve)
 
     diff = subparsers.add_parser(

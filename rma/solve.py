@@ -211,17 +211,16 @@ def run_solve(args: Namespace) -> int:
 
     max_rounds = max(1, int(getattr(args, "max_rounds", 3)))
     resume = getattr(args, "resume", False)
+    fast = getattr(args, "fast", False)
     final_results = []
     all_passed = True
     for problem_id in problems:
-        if resume and _is_already_verified(output_dir, problem_id):
+        if resume and _is_already_proposed(output_dir, problem_id):
             paths = _problem_paths(output_dir, problem_id)
-            latest_v = _latest_file(paths["verifications"], "verification", ".json")
-            verification = _read_json(latest_v) if latest_v else {"passed": True, "report_path": latest_v}
-            verification["report_path"] = latest_v
-            final_results.append((paths["solution"], verification))
-            print(f"  {problem_id}: already verified, skipping")
-            continue
+            if paths["solution"].is_file():
+                final_results.append((paths["solution"], {"passed": False}))
+                print(f"  {problem_id}: already proposed, skipping")
+                continue
 
         _parse_problem(repo_root, output_dir, problem_id, args, skill_info)
         try:
@@ -230,6 +229,12 @@ def run_solve(args: Namespace) -> int:
             print("RMA solve")
             print(f"FAIL model ({problem_id}): {exc}")
             all_passed = False
+            continue
+
+        if fast:
+            solution_path = _problem_paths(output_dir, problem_id)["solution"]
+            final_results.append((solution_path, {"passed": False, "skipped": True}))
+            print(f"  {problem_id}: proposed (fast mode, skipping verify/refine)")
             continue
 
         verification = {"passed": False}
@@ -622,6 +627,11 @@ def _is_already_verified(output_dir: Path, problem_id: str) -> bool:
         return False
     data = _read_json(status_path)
     return bool(data.get("completed")) and data.get("status") == "verified"
+
+
+def _is_already_proposed(output_dir: Path, problem_id: str) -> bool:
+    paths = _problem_paths(output_dir, problem_id)
+    return paths["solution"].is_file()
 
 
 def _normalize_problem_id(problem: str | None) -> str | None:
