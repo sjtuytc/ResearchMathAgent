@@ -408,6 +408,21 @@ def run_solve(args: Namespace) -> int:
     print()
     print("Completed parser -> proposer -> verifier/refiner solve pipeline.")
     print("No official/prior solution directories were read.")
+
+    # Update best/ folder for each solved problem
+    dataset = getattr(args, "dataset", None) or "first_proof_1"
+    try:
+        import sys
+        sys.path.insert(0, str(repo_root))
+        from webapp.proofs import maybe_update_best
+        for solution_path, _ in final_results:
+            pid = solution_path.stem.replace("_solution", "").replace("_proof", "")
+            updated = maybe_update_best(output_dir, pid, dataset)
+            if updated:
+                print(f"best/ updated: {pid}")
+    except Exception as _e:
+        pass  # non-critical
+
     return 0 if all_passed else 1
 
 

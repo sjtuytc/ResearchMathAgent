@@ -65,6 +65,10 @@ MathJax = {
   .pane.active{display:block}
   #pane-issue.active,#pane-final-proof.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
   #pane-overview.active{display:block}
+  /* Cap display math in narrow comment/document views */
+  .body mjx-container[display="true"]{font-size:.88em;overflow-x:auto;max-width:100%;margin:.4em 0}
+  .rendered mjx-container[display="true"]{overflow-x:auto;max-width:100%}
+  .body{overflow-x:auto;overflow-wrap:break-word}
   .ttl{font-size:18px;margin:0 0 6px}
   .bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
   button{padding:8px 14px;border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
@@ -167,6 +171,7 @@ MathJax = {
   <h1>Research Math Agent</h1>
   <span class="sub" id="header-sub">Research-level math problems · multi-dataset · live solver</span>
   <span class="status" id="status">select a question</span>
+  <button id="bug-report-btn" class="btn-sec" style="padding:4px 10px;font-size:11px;font-weight:500;margin-left:8px" title="Report a bug or issue with a proof">Report bug</button>
 </header>
 <div class="layout">
   <aside class="sidebar">
@@ -219,6 +224,51 @@ MathJax = {
     </div>
 
     <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
+
+      <!-- ── Today's usage ─────────────────────────────────────── -->
+      <div class="card" style="margin-bottom:14px;border-color:rgba(88,166,255,.35)">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700">Today's Token Usage</span>
+          <span id="ov-today-date" style="font-size:11px;color:var(--muted)"></span>
+          <span id="ov-today-cost" style="font-size:12px;color:var(--green);margin-left:auto"></span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 10px;margin-bottom:14px;line-height:1.7">
+          Counts tokens from <strong style="color:var(--text)">webapp-launched agents</strong>:
+          daily daemon · Discover · Auto-Resolve · Verify · Solve buttons.
+          <br>Direct Claude Code conversations are not tracked here — see
+          <a href="https://claude.ai/settings/billing" target="_blank" style="color:var(--accent);text-decoration:none">claude.ai/settings/billing ↗</a>
+          for your full account usage.
+        </div>
+
+        <!-- big numbers -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+          <div style="text-align:center;padding:12px 6px;background:var(--panel2);border-radius:6px">
+            <div id="ov-today-in" style="font-size:24px;font-weight:700;color:var(--accent);line-height:1">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">input tokens</div>
+          </div>
+          <div style="text-align:center;padding:12px 6px;background:var(--panel2);border-radius:6px">
+            <div id="ov-today-out" style="font-size:24px;font-weight:700;color:var(--accent2);line-height:1">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">output tokens</div>
+          </div>
+          <div style="text-align:center;padding:12px 6px;background:var(--panel2);border-radius:6px">
+            <div id="ov-today-runs" style="font-size:24px;font-weight:700;color:var(--green);line-height:1">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">agent runs</div>
+          </div>
+        </div>
+
+        <!-- distribution by kind -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">By type</div>
+          <div id="ov-today-kind"><span style="color:var(--muted);font-size:12px">no runs today yet</span></div>
+        </div>
+
+        <!-- distribution by problem -->
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">By problem</div>
+          <div id="ov-today-prob"><span style="color:var(--muted);font-size:12px">—</span></div>
+        </div>
+      </div>
+
       <!-- Schedule card -->
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
@@ -425,13 +475,14 @@ MathJax = {
 
     <section class="pane" id="pane-proofs">
       <div class="bar" style="margin-bottom:14px">
-        <select id="pf-exp" style="min-width:280px"><option value="">Loading experiments…</option></select>
+        <span style="font-size:13px;font-weight:600;color:var(--fg)">Best proofs</span>
+        <button class="btn-sec" id="pf-consolidate" style="margin-left:8px" title="Re-scan all runs and update best proofs">Consolidate</button>
         <button class="btn-sec" id="pf-refresh">Refresh</button>
         <span class="muted" id="pf-status"></span>
       </div>
       <div id="pf-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px"></div>
       <div id="pf-detail" style="display:none">
-        <div class="bar" style="margin-bottom:10px">
+        <div class="bar" style="margin-bottom:6px">
           <h3 id="pf-title" style="margin:0;font-size:15px"></h3>
           <button class="btn-sec" id="pf-zout" style="padding:4px 8px;margin-left:auto">−</button>
           <span id="pf-zoom" style="color:var(--muted);font-size:12px;min-width:40px;text-align:center">150%</span>
@@ -439,11 +490,12 @@ MathJax = {
           <button class="btn-sec" id="pf-toggle-raw">View raw .tex</button>
           <a id="pf-dl" style="font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none;margin-left:4px" target="_blank">⬇ PDF</a>
         </div>
+        <div id="pf-batch-info" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>
         <div id="pf-checks" style="margin-bottom:12px"></div>
         <div id="pf-pdf-wrap" style="background:#404040;border-radius:6px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:200px"></div>
         <pre id="pf-raw" style="display:none;margin-top:12px"><code id="pf-raw-code" class="language-latex"></code></pre>
       </div>
-      <div id="pf-empty" class="empty" style="display:none">No proof results found. Run <code>rma solve --all</code> first.</div>
+      <div id="pf-empty" class="empty" style="display:none">No proof results found. Run <code>rma solve --all</code> then click <b>Consolidate</b>.</div>
     </section>
 
     <section class="pane" id="pane-final-proof" style="padding:0;overflow:hidden">
@@ -475,6 +527,44 @@ MathJax = {
     </section>
   </main>
 </div>
+
+<!-- Bug report modal -->
+<div id="bug-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:22px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
+      <h3 style="margin:0;font-size:15px">Report a Bug / Proof Issue</h3>
+      <span style="font-size:11px;color:var(--muted);margin-left:auto">sjtuytc@gmail.com</span>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      This creates an issue in the tracker for the currently selected problem.
+      If no problem is selected, use the email above to report website/system bugs.
+    </div>
+    <div style="margin-bottom:8px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Problem</label>
+      <div id="bug-problem" style="font-size:13px;color:var(--accent);font-weight:600;margin-top:3px">— none selected —</div>
+    </div>
+    <div style="margin-bottom:8px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Bug title</label>
+      <input id="bug-title" type="text" placeholder="Brief description of the bug or proof error"
+        style="width:100%;box-sizing:border-box;margin-top:4px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Details</label>
+      <textarea id="bug-body" placeholder="Paste the problematic LaTeX, error message, or a clear description. Include:&#10;• Where in the proof the error occurs&#10;• What the error is&#10;• If you have a fix, describe it"
+        style="width:100%;box-sizing:border-box;margin-top:4px;height:160px;resize:vertical;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;line-height:1.5"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn-pri" id="bug-submit" style="padding:7px 16px">Create Issue</button>
+      <button class="btn-sec" id="bug-copy" style="padding:7px 12px">Copy report</button>
+      <button class="btn-sec" id="bug-cancel" style="padding:7px 12px">Cancel</button>
+      <span id="bug-status" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px">
+      Use <strong>Copy report</strong> to copy the formatted bug to clipboard, then paste it in a conversation with Claude.
+    </div>
+  </div>
+</div>
+
 <script>
 const $=(id)=>document.getElementById(id);
 if(typeof pdfjsLib!=="undefined"){
@@ -491,7 +581,24 @@ function esc(s){return (s||"").replace(/[&<>]/g,(c)=>({"&":"&amp;","<":"&lt;",">
 function typeset(node){if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([node]).catch(()=>{});}
 let _tsTimer=null;
 function typesetDebounced(node,delay=600){clearTimeout(_tsTimer);_tsTimer=setTimeout(()=>typeset(node),delay);}
-function md(node,raw,stream=false){node.dataset.raw=raw;node.innerHTML=marked.parse(raw);stream?typesetDebounced(node):typeset(node);}
+function md(node, raw, stream=false){
+  node.dataset.raw = raw || "";
+  if(!raw){ node.innerHTML=""; return; }
+  // Protect math delimiters from marked.js before parsing,
+  // then restore after so MathJax gets the original LaTeX.
+  const saved = [];
+  const protect = m => { const k=`RMAMATH${saved.length}RMAMATH`; saved.push(m); return k; };
+  let s = raw
+    .replace(/\$\$[\s\S]{0,8000}?\$\$/g,    protect)   // display $$
+    .replace(/\\\[[\s\S]{0,8000}?\\\]/g,     protect)   // display \[
+    .replace(/\$[^\n$]{0,1000}\$/g,           protect)   // inline $
+    .replace(/\\\([^\n)]{0,1000}\\\)/g,       protect);  // inline \(
+  let html = marked.parse(s);
+  // Restore (marked wraps in <p> so placeholders land in body text)
+  html = html.replace(/RMAMATH(\d+)RMAMATH/g, (_, i) => saved[+i]);
+  node.innerHTML = html;
+  stream ? typesetDebounced(node) : typeset(node);
+}
 function setStatus(s,cls){$("status").innerHTML=cls?`<span class="dot ${cls}"></span> ${s}`:s;}
 
 // ── Solvability badge ────────────────────────────────────────────────────────
@@ -601,6 +708,7 @@ async function init(){
     const prov=$("provider"); prov.innerHTML="";
     if(claudeCode) prov.appendChild(new Option("Claude Code (subscription)","claude-code"));
     prov.appendChild(new Option("Anthropic API","api"));
+    prov.appendChild(new Option("Google Cloud (Vertex AI)","vertex"));
     prov.value=claudeCode?"claude-code":"api";
     prov.onchange=onProviderChange; onProviderChange();
   }catch(e){
@@ -614,6 +722,8 @@ function onProviderChange(){
   $("model").value = p==="claude-code" ? "sonnet" : "claude-opus-4-8";
   $("prov-note").innerHTML = p==="claude-code"
     ? "Runs the local <code>claude</code> CLI using your Pro/Max subscription — no API credits. Models: <code>sonnet</code>, <code>opus</code>, <code>haiku</code>."
+    : p==="vertex"
+    ? "Uses Claude on Google Cloud Vertex AI via ADC. Run the ADC setup script first, then set <code>GOOGLE_CLOUD_PROJECT</code> and optionally <code>GOOGLE_CLOUD_REGION</code> (default: <code>global</code>) on the server."
     : "Uses the Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
 }
 
@@ -660,10 +770,55 @@ function drawOvChart(daily){
     ctx.fillText((d.date||"").slice(5),x+barW/2,H-padY);
   });
 }
+const KIND_COLORS = {
+  solve:"#58a6ff", daily:"#bc8cff", discover:"#d29922",
+  resolve:"#3fb950", verify:"#f78166", unknown:"#8b949e"
+};
+function kindColor(k){ return KIND_COLORS[k]||"#8b949e"; }
+
+function renderDistBars(container, items, labelKey, colorFn){
+  if(!items||!items.length){
+    container.innerHTML='<span style="color:var(--muted);font-size:12px">no data</span>'; return;
+  }
+  const maxTok = Math.max(...items.map(r=>(r.in||0)+(r.out||0)), 1);
+  container.innerHTML = items.map(r=>{
+    const tok = (r.in||0)+(r.out||0);
+    const inPct  = Math.round(((r.in||0)/maxTok)*100);
+    const outPct = Math.round(((r.out||0)/maxTok)*100);
+    const col = colorFn(r[labelKey]);
+    const label = r[labelKey]||"?";
+    const tokStr = tok>=1000 ? (tok/1000).toFixed(1)+"k" : tok;
+    const costStr = r.cost ? ` · $${r.cost.toFixed(4)}` : "";
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px">
+      <span style="width:72px;flex-shrink:0;font-weight:600;color:${col};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(label)}">${esc(label)}</span>
+      <div style="flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden;position:relative">
+        <div style="position:absolute;left:0;top:0;height:100%;width:${inPct}%;background:${col};opacity:.55;border-radius:5px"></div>
+        <div style="position:absolute;left:${inPct}%;top:0;height:100%;width:${outPct}%;background:${col};opacity:.9;border-radius:5px"></div>
+      </div>
+      <span style="width:46px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${tokStr}</span>
+      <span style="width:22px;text-align:right;color:var(--muted);font-size:10px">${r.runs}×</span>
+    </div>`;
+  }).join("")+
+  `<div style="display:flex;gap:12px;margin-top:6px;font-size:10px;color:var(--muted)">
+     <span style="opacity:.6">■</span> input &nbsp; <span>■</span> output
+   </div>`;
+}
+
 async function loadOverview(){
   let d;
   try{ d=await(await fetch("/api/overview")).json(); }
   catch(e){ return; }
+
+  // ── Today's usage ──
+  const t = d.today||{};
+  const todayDate = t.date ? new Date(t.date+"T12:00:00Z").toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"}) : "";
+  $("ov-today-date").textContent = todayDate;
+  $("ov-today-in").textContent   = (t.total_in||0).toLocaleString();
+  $("ov-today-out").textContent  = (t.total_out||0).toLocaleString();
+  $("ov-today-runs").textContent = t.runs||0;
+  $("ov-today-cost").textContent = t.total_cost ? `est. $${t.total_cost.toFixed(4)}` : "";
+  renderDistBars($("ov-today-kind"), t.by_kind||[], "kind", kindColor);
+  renderDistBars($("ov-today-prob"), t.by_problem||[], "problem", ()=>"var(--accent)");
 
   // Daemon badge
   const running=d.daemon_running;
@@ -1579,81 +1734,137 @@ $("daily-run-btn").onclick = async()=>{
   setTimeout(()=>{ $("daily-run-btn").disabled = false; }, 30000);
 };
 
+// ---- Bug report modal ----
+$("bug-report-btn").onclick = ()=>{
+  $("bug-problem").textContent = selected ? selected : "— none selected —";
+  $("bug-title").value = "";
+  $("bug-body").value = "";
+  $("bug-status").textContent = "";
+  $("bug-modal").style.display = "flex";
+  setTimeout(()=>$("bug-title").focus(), 60);
+};
+$("bug-cancel").onclick = ()=>{ $("bug-modal").style.display = "none"; };
+$("bug-modal").onclick = e=>{ if(e.target===$("bug-modal")) $("bug-modal").style.display="none"; };
+function _bugReportText(){
+  const title = $("bug-title").value.trim();
+  const body = $("bug-body").value.trim();
+  const pid = selected || "n/a";
+  return `**Bug Report — ${pid}**\n\n**Title:** ${title}\n\n${body}`.trim();
+}
+$("bug-copy").onclick = async()=>{
+  const title = $("bug-title").value.trim();
+  if(!title){ $("bug-status").textContent="Add a title first"; return; }
+  try{
+    await navigator.clipboard.writeText(_bugReportText());
+    $("bug-status").textContent="Copied ✓ — paste into Claude";
+    setTimeout(()=>$("bug-status").textContent="", 3000);
+  }catch(e){
+    $("bug-status").textContent="Copy failed — select text manually";
+  }
+};
+$("bug-submit").onclick = async()=>{
+  const title = $("bug-title").value.trim();
+  if(!title){ $("bug-status").textContent="Title required"; return; }
+  const body = $("bug-body").value.trim();
+  const pid = selected;
+  if(!pid){
+    // No problem selected — copy to clipboard instead
+    try{ await navigator.clipboard.writeText(_bugReportText()); }catch(e){}
+    $("bug-status").textContent="No problem selected — report copied to clipboard";
+    return;
+  }
+  $("bug-submit").disabled = true; $("bug-status").textContent = "creating…";
+  try{
+    const ds = selectedDataset || "first_proof_1";
+    const r = await fetch(`/api/issues/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(ds)}`, {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ title, body: body || "(no details)", author:"human", labels:["bug"] })
+    });
+    if(r.ok){
+      $("bug-modal").style.display = "none";
+      // Refresh issue list and switch to issue tab
+      const listR = await (await fetch(`/api/issues/${encodeURIComponent(pid)}`)).json();
+      loadIssueList(pid, listR.issues||[]);
+      setTab("issue");
+      setStatus("Bug report created as new issue ✓","ok");
+    } else {
+      $("bug-status").textContent = "Failed (HTTP "+r.status+")";
+    }
+  }catch(e){
+    $("bug-status").textContent = String(e);
+  }finally{
+    $("bug-submit").disabled = false;
+  }
+};
+
 // ---- Proofs tab ----
 const STATUS_COLOR = {verified:'var(--green)',proposed:'var(--accent)',refined:'var(--accent)',
   parsed:'var(--muted)',not_started:'var(--border)',error:'var(--red)',needs_refinement:'var(--amber)'};
 const STATUS_LABEL = {verified:'✓',proposed:'draft',refined:'refined',parsed:'parsed',
   not_started:'—',error:'err',needs_refinement:'⚠'};
-let pfExps=[], pfSelectedProb=null;
+let pfProbs=[], pfSelectedProb=null;
 
 async function loadProofs(){
   $("pf-status").textContent="loading…";
   try{
-    const r=await fetch("/api/proofs"); const d=await r.json();
-    pfExps=d.experiments||[];
-    const sel=$("pf-exp"); sel.innerHTML="";
-    if(!pfExps.length){ sel.innerHTML='<option value="">No experiments found</option>';
+    const r=await fetch("/api/best-proofs"); const d=await r.json();
+    pfProbs=d.proofs||[];
+    if(!pfProbs.length||pfProbs.every(p=>!p.has_solution)){
       $("pf-grid").innerHTML=""; $("pf-empty").style.display="block"; $("pf-status").textContent=""; return; }
     $("pf-empty").style.display="none";
-    for(const e of pfExps){
-      const o=document.createElement("option"); o.value=e.name;
-      o.textContent=e.is_latest ? `⭐ ${e.name} (latest)` : e.name;
-      if(e.is_latest) o.style.fontWeight="700";
-      sel.appendChild(o);
-    }
     $("pf-status").textContent="";
-    renderProofGrid(pfExps[0]);
+    renderProofGrid(pfProbs);
   }catch(e){ $("pf-status").textContent="error: "+e.message; }
 }
 
-function renderProofGrid(exp){
-  if(!exp){return;}
+function renderProofGrid(probs){
   const grid=$("pf-grid"); grid.innerHTML="";
-  // Sort: problems with solutions first (by sol_mtime desc), then the rest by id
-  const entries=Object.entries(exp.problems).sort(([,a],[,b])=>{
-    if((b.sol_mtime||0)!==(a.sol_mtime||0)) return (b.sol_mtime||0)-(a.sol_mtime||0);
-    return 0;
-  });
-  for(const [qid,info] of entries){
+  for(const info of probs){
+    const pid=info.problem_id;
     const card=el("div","card"); card.style.cssText="cursor:pointer;text-align:center;padding:14px 8px;position:relative";
-    const status=info.status||"not_started";
-    const pdfBadge=info.has_pdf?`<span style="position:absolute;top:4px;right:4px;font-size:9px;background:var(--green);color:#000;border-radius:3px;padding:1px 4px;line-height:1.4">PDF</span>`:'';
-    const newBadge=info.is_new?`<span style="position:absolute;top:4px;left:4px;font-size:9px;background:var(--accent);color:#000;border-radius:3px;padding:1px 4px;line-height:1.4">NEW</span>`:'';
-    if(info.is_new) card.style.boxShadow="0 0 0 2px var(--accent)";
-    card.innerHTML=`${pdfBadge}${newBadge}<div style="font-weight:700;font-size:16px;color:var(--accent)">${esc(qid)}</div>
-      <div style="margin-top:6px;font-size:12px;color:${STATUS_COLOR[status]||'var(--muted)'}">${STATUS_LABEL[status]||status}</div>`;
-    card.onclick=()=>loadProofDetail(exp.name, qid);
+    const passed=info.verification_passed;
+    const hasSol=info.has_solution;
+    const statusColor=hasSol?(passed?'var(--green)':'var(--amber)'):'var(--border)';
+    const statusLabel=hasSol?(passed?'✓':'draft'):'—';
+    if(passed) card.style.boxShadow="0 0 0 2px var(--green)";
+    const model=info.model||"";
+    const modelShort=model.length>18?model.slice(0,16)+"…":model;
+    card.innerHTML=`<div style="font-weight:700;font-size:16px;color:var(--accent)">${esc(pid)}</div>
+      <div style="margin-top:6px;font-size:12px;color:${statusColor}">${statusLabel}</div>
+      ${modelShort?`<div style="margin-top:4px;font-size:10px;color:var(--muted)">${esc(modelShort)}</div>`:''}`;
+    card.onclick=()=>loadProofDetail(pid);
     grid.appendChild(card);
   }
 }
 
-async function loadProofDetail(expName, qid){
-  pfSelectedProb=qid;
+async function loadProofDetail(pid){
+  pfSelectedProb=pid;
   $("pf-detail").style.display="none";
-  $("pf-status").textContent=`loading ${qid}…`;
+  $("pf-status").textContent=`loading ${pid}…`;
   try{
-    const r=await fetch(`/api/proof/${encodeURIComponent(expName)}/${encodeURIComponent(qid)}`);
+    const r=await fetch(`/api/best-proof/${encodeURIComponent(pid)}`);
     const d=await r.json();
     if(d.error){$("pf-status").textContent=d.error;return;}
-    $("pf-title").textContent=`${qid} — ${d.status}`;
-    // Verification checks
+    const passedLabel=d.verification_passed?"✓ verified":(d.issue_count<100?`${d.issue_count} issues`:"draft");
+    $("pf-title").textContent=`${pid} — ${passedLabel}`;
+    // Batch info line
+    const parts=[];
+    if(d.source_run) parts.push(`Batch: ${d.source_run}`);
+    if(d.model) parts.push(`Model: ${d.model}`);
+    if(d.created_at) parts.push(`Date: ${d.created_at}`);
+    $("pf-batch-info").textContent=parts.join("  |  ");
+    // Verification summary
     const checks=$("pf-checks"); checks.innerHTML="";
-    if(d.verification&&d.verification.issues&&d.verification.issues.length){
-      for(const iss of d.verification.issues){
-        const sev=iss.severity==="error"?"var(--red)":"var(--amber)";
-        checks.appendChild(el("div","pill",`<span style="color:${sev}">${esc(iss.code)}</span> ${esc(iss.message)}`));
-        checks.lastChild.style.cssText="display:block;margin-bottom:4px;max-width:100%";
-      }
-    } else if(d.verification&&d.verification.passed){
+    if(d.verification_passed){
       checks.appendChild(el("div","pill on","✓ all checks passed"));
+    } else if(d.issue_count<100){
+      checks.appendChild(el("div","pill",`⚠ ${d.issue_count} issue${d.issue_count!==1?"s":""} remaining`));
     }
-    // Store raw tex for toggle
     const tex=d.solution_tex||"";
     $("pf-raw-code").textContent=tex;
     $("pf-raw").style.display="none";
     $("pf-detail").style.display="block";
     $("pf-status").textContent="";
-    // Show placeholder — PDF is compiled on-demand when user clicks "Load PDF"
     const wrap=$("pf-pdf-wrap");
     pfDoc=null; $("pf-dl").style.display="none";
     wrap.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px">
@@ -1665,7 +1876,7 @@ async function loadProofDetail(expName, qid){
         this.disabled=true; this.textContent="Compiling…";
         wrap.innerHTML=`<div style="color:#aaa;padding:32px">Compiling PDF in backend…</div>`;
         try{
-          const pr=await (await fetch(`/api/proof-pdf/${encodeURIComponent(expName)}/${encodeURIComponent(qid)}`)).json();
+          const pr=await (await fetch(`/api/best-proof-pdf/${encodeURIComponent(pid)}`)).json();
           if(pr.ok && pr.pdf_url){
             $("pf-dl").href=pr.pdf_url; $("pf-dl").style.display="";
             await pdfLoad(pr.pdf_url, wrap, d=>{pfDoc=d;}, pfScale);
@@ -1680,10 +1891,15 @@ async function loadProofDetail(expName, qid){
   }catch(e){$("pf-status").textContent="error: "+e.message;}
 }
 
-$("pf-exp").onchange=function(){
-  const exp=pfExps.find(e=>e.name===this.value);
-  $("pf-detail").style.display="none";
-  if(exp) renderProofGrid(exp);
+$("pf-consolidate").onclick=async function(){
+  this.disabled=true; $("pf-status").textContent="consolidating…";
+  try{
+    const r=await fetch("/api/consolidate-best",{method:"POST"});
+    const d=await r.json();
+    $("pf-status").textContent=`updated ${d.updated} problem${d.updated!==1?"s":""}`;
+    await loadProofs();
+  }catch(e){ $("pf-status").textContent="error: "+e.message; }
+  finally{ this.disabled=false; }
 };
 $("pf-refresh").onclick=loadProofs;
 $("pf-zin").onclick=async()=>{pfScale=Math.min(pfScale+0.25,4);$("pf-zoom").textContent=Math.round(pfScale*100)+"%";if(pfDoc)await pdfRenderAll(pfDoc,pfScale,$("pf-pdf-wrap"));};
@@ -1697,7 +1913,7 @@ $("pf-toggle-raw").onclick=function(){
 };
 
 document.querySelector('.tab[data-tab="proofs"]').addEventListener("click",()=>{
-  if(!pfExps.length) loadProofs();
+  if(!pfProbs.length) loadProofs();
 });
 
 // ---- Final Proof tab (PDF.js) ----

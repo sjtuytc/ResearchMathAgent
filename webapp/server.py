@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 import threading
 import uuid
 
-from .agent import DEFAULT_MODEL, AgentConfig, run_agent
+from .agent import DEFAULT_MODEL, AgentConfig, run_agent, run_agent_vertex
 from .claude_code import claude_code_available, run_claude_code_agent
 from .documents import list_documents, read_document
 from .dataset_store import (
@@ -29,11 +29,11 @@ from .dataset_store import (
     _validate_slug, _validate_id,
 )
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof
-from .proofs import get_proof, list_experiments
+from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, _proof_outputs_root
 from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
-from .token_log import append_usage, read_log, daily_summary, per_problem_summary
+from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -314,7 +314,6 @@ def proof_pdf(exp_name: str, problem_id: str) -> JSONResponse:
     cached = pdf_dir(REPO_ROOT) / (name + ".pdf")
 
     # Check for a pre-compiled PDF sitting next to the .tex in the experiment folder
-    from .proofs import _proof_outputs_root
     prebuilt = _proof_outputs_root() / exp_name / f"{problem_id}_solution.pdf"
     if prebuilt.is_file():
         import shutil as _shutil
@@ -341,6 +340,44 @@ def proof_detail(exp_name: str, problem_id: str) -> JSONResponse:
     if data is None:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse(data)
+
+
+@app.get("/api/best-proofs")
+def best_proofs_list() -> JSONResponse:
+    dataset = "first_proof_1"
+    proofs = list_best_proofs(dataset)
+    return JSONResponse({"proofs": proofs, "dataset": dataset})
+
+
+@app.get("/api/best-proof/{problem_id}")
+def best_proof_detail(problem_id: str) -> JSONResponse:
+    data = get_best_proof(problem_id)
+    if data is None:
+        return JSONResponse({"error": "no best proof found — run consolidate or rma solve first"}, status_code=404)
+    return JSONResponse(data)
+
+
+@app.post("/api/consolidate-best")
+def consolidate_best_ep() -> JSONResponse:
+    result = consolidate_best("first_proof_1")
+    return JSONResponse({"updated": len(result), "problems": list(result.keys())})
+
+
+@app.get("/api/best-proof-pdf/{problem_id}")
+def best_proof_pdf(problem_id: str) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    data = get_best_proof(problem_id)
+    if data is None:
+        return JSONResponse({"ok": False, "pdf_url": None, "log": "no best proof found"})
+    name = f"best_proof_{problem_id}"
+    tex = data.get("solution_tex", "")
+    if not tex:
+        return JSONResponse({"ok": False, "pdf_url": None, "log": "no solution tex"})
+    result = compile_tex(REPO_ROOT, tex, name)
+    if result["ok"]:
+        result["pdf_url"] = f"/api/pdf/{result['pdf']}"
+    return JSONResponse(result)
 
 
 _FINAL_SOLUTIONS_DIR = (
@@ -605,6 +642,7 @@ def overview_ep() -> JSONResponse:
             "cost": round(total_cost, 6), "runs": len(log_entries),
         },
         "suggestions": suggestions,
+        "today": today_summary(REPO_ROOT),
     })
 
 
@@ -638,13 +676,18 @@ def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str):
     cfg = AgentConfig(
         problem_id=problem,
         problem_text=problem_path.read_text(encoding="utf-8", errors="replace"),
-        model=model or (DEFAULT_MODEL if provider == "api" else ""),
+        model=model or (DEFAULT_MODEL if provider in ("api", "vertex") else ""),
         repo_root=REPO_ROOT,
         workspace=REPO_ROOT / "webapp" / ".runs" / f"{problem}_{int(time.time())}",
         thinking=thinking,
         provider=provider,
     )
-    runner = run_claude_code_agent if provider == "claude-code" else run_agent
+    if provider == "claude-code":
+        runner = run_claude_code_agent
+    elif provider == "vertex":
+        runner = run_agent_vertex
+    else:
+        runner = run_agent
     handle = REGISTRY.register(run_id, {"problem": problem, "provider": provider, "model": cfg.model})
 
     yield send({"type": "start", "problem": problem, "model": cfg.model,
