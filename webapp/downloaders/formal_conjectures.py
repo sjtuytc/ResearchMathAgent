@@ -44,28 +44,46 @@ def download(datasets_dir: Path, force: bool = False) -> int:
         return existing
 
     problems_dir.mkdir(parents=True, exist_ok=True)
+    if force:
+        for old in problems_dir.glob("*.json"):
+            old.unlink()
 
     # Try HuggingFace datasets library first (fast, structured)
+    # Columns: statement, proof, type, symbolic_name, library, filename, imports, deps, docstring, source_url, commit
     try:
         from datasets import load_dataset  # type: ignore
         print("[formal_conjectures] Loading from HuggingFace...")
         ds = load_dataset(HF_REPO, split="train", trust_remote_code=True)
         count = 0
         for row in ds:
-            pid = _make_id(row.get("name", "") or row.get("file", f"fc{count:04d}"), count)
+            lean4_code = row.get("statement", "")
+            proof = row.get("proof", "")
+            sym_name = row.get("symbolic_name", "") or row.get("name", "")
+            filename = row.get("filename", "") or row.get("file", "")
+            docstring = row.get("docstring", "")
+
+            # Skip entries without actual Lean4 code
+            if not lean4_code and not proof:
+                continue
+
+            pid = f"fc{count:04d}"
+            # Use docstring as human-readable statement if available
+            human_stmt = docstring if docstring else lean4_code
             record = {
                 "id": pid,
                 "dataset": DATASET_SLUG,
-                "title": row.get("name", pid),
-                "statement": row.get("declaration", ""),
+                "title": sym_name or pid,
+                "statement": human_stmt,
                 "tex": "",
-                "tags": _infer_tags(row.get("file", ""), row.get("declaration", "")),
+                "tags": _infer_tags(filename, lean4_code),
                 "difficulty": None,
                 "solvability_score": None,
-                "source_url": f"{GH_REPO}/blob/main/{row.get('file', '')}",
+                "source_url": f"{GH_REPO}/blob/main/{filename}",
                 "year": 2025,
-                "lean4": row.get("declaration", ""),
-                "lean4_file": row.get("file", ""),
+                "lean4": lean4_code,
+                "lean4_file": filename,
+                "lean4_proof": proof,
+                "has_sorry": "sorry" in proof,
             }
             (problems_dir / f"{pid}.json").write_text(
                 json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"

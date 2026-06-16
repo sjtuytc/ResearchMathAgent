@@ -155,6 +155,9 @@ def download(datasets_dir: Path, force: bool = False, fetch_statements: bool = T
         return existing
 
     problems_dir.mkdir(parents=True, exist_ok=True)
+    if force and not fetch_statements:
+        for old in problems_dir.glob("*.json"):
+            old.unlink()
 
     # 1. Download metadata YAML
     print("[erdos_problems] Downloading metadata YAML...")
@@ -179,11 +182,13 @@ def download(datasets_dir: Path, force: bool = False, fetch_statements: bool = T
         statement = ""
         if fetch_statements:
             existing_path = problems_dir / f"{pid}.json"
-            if existing_path.is_file() and not force:
-                # already have statement, skip
+            # Reuse existing statement if it's a real statement (not a placeholder)
+            if existing_path.is_file():
                 try:
                     existing_rec = json.loads(existing_path.read_text())
-                    statement = existing_rec.get("statement", "")
+                    existing_stmt = existing_rec.get("statement", "")
+                    if existing_stmt and "(Statement not yet fetched" not in existing_stmt:
+                        statement = existing_stmt
                 except Exception:
                     pass
             if not statement:

@@ -61,30 +61,6 @@ _HEADERS = {
 }
 
 
-class _TextExtractor(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.text = []
-        self._skip = False
-
-    def handle_starttag(self, tag, attrs):
-        if tag in ("script", "style", "nav", "footer"):
-            self._skip = True
-
-    def handle_endtag(self, tag):
-        if tag in ("script", "style", "nav", "footer"):
-            self._skip = False
-        if tag in ("p", "div", "h1", "h2", "h3", "li"):
-            self.text.append("\n")
-
-    def handle_data(self, data):
-        if not self._skip:
-            self.text.append(data)
-
-    def get_text(self) -> str:
-        return re.sub(r"\n{3,}", "\n\n", "".join(self.text)).strip()
-
-
 def _fetch(url: str, retries: int = 2) -> str | None:
     for attempt in range(retries + 1):
         try:
@@ -99,6 +75,68 @@ def _fetch(url: str, retries: int = 2) -> str | None:
                 return None
 
 
+def _html_to_text(html_fragment: str) -> str:
+    """Strip HTML tags and normalize whitespace."""
+    text = re.sub(r"<[^>]+>", " ", html_fragment)
+    text = re.sub(r"&amp;", "&", text)
+    text = re.sub(r"&lt;", "<", text)
+    text = re.sub(r"&gt;", ">", text)
+    text = re.sub(r"&nbsp;", " ", text)
+    text = re.sub(r"&#\d+;", "", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def _parse_problems(html: str, slug: str, section: int, list_name: str, url: str) -> list[dict]:
+    """Extract individual problems from an AIM section page.
+
+    AIM pages have this structure:
+      <li class="problem">
+        <div class="probc editable">
+          <div class="render">
+            <h3 ...>TITLE</h3>
+            ...
+            <span class="probbody">STATEMENT</span>
+    """
+    problems = []
+
+    # Find each problem block
+    for prob_m in re.finditer(
+        r'<li[^>]*class="[^"]*problem[^"]*"[^>]*>(.*?)</li>',
+        html, re.DOTALL | re.IGNORECASE
+    ):
+        block = prob_m.group(1)
+
+        # Title from <h3>
+        title_m = re.search(r"<h3[^>]*>(.*?)</h3>", block, re.DOTALL)
+        title = _html_to_text(title_m.group(1)) if title_m else ""
+
+        # Problem number e.g. "Problem 1.3"
+        num_m = re.search(r'<span class="number">([^<]+)</span>', block)
+        prob_num = num_m.group(1).strip() if num_m else ""
+
+        # Statement from <span class="probbody">
+        stmt_m = re.search(r'<span class="probbody">(.*?)</span>', block, re.DOTALL)
+        if stmt_m:
+            statement = _html_to_text(stmt_m.group(1))
+        else:
+            # Fallback: text of the whole block minus nav noise
+            statement = _html_to_text(re.sub(r'<(script|style)[^>]*>.*?</\1>', '', block, flags=re.DOTALL))
+
+        if not statement:
+            continue
+
+        display_title = title if title else (f"Problem {prob_num}" if prob_num else f"{list_name} §{section}")
+        problems.append({
+            "title": display_title[:200],
+            "statement": statement[:4000],
+            "prob_num": prob_num,
+        })
+
+    return problems
+
+
 def _scrape_list(slug: str, list_name: str, problems_dir: Path, start_idx: int) -> int:
     count = 0
     section = 1
@@ -108,41 +146,35 @@ def _scrape_list(slug: str, list_name: str, problems_dir: Path, start_idx: int) 
         if html is None or "Page not found" in html or "404" in html:
             break
 
-        parser = _TextExtractor()
-        parser.feed(html)
-        text = parser.get_text()
+        parsed = _parse_problems(html, slug, section, list_name, url)
+        if not parsed:
+            # No problems found on this page — stop scraping this list
+            break
 
-        # Extract problem title from h2/h3
-        title_m = re.search(r"Problem \d+\.?\d*[.:]\s*(.+)", text)
-        title = title_m.group(1).strip() if title_m else f"{list_name} §{section}"
-        # Clean up title (first line only)
-        title = title.split("\n")[0].strip()[:200]
+        for prob in parsed:
+            # Use per-slug sequential numbering so IDs are stable regardless of scrape order
+            pid = f"aim_{slug}_{count + 1:04d}"
+            record = {
+                "id": pid,
+                "dataset": DATASET_SLUG,
+                "title": prob["title"],
+                "statement": prob["statement"],
+                "tex": "",
+                "tags": ["AIM", "workshop", "open-problem"],
+                "difficulty": None,
+                "solvability_score": None,
+                "source_url": url,
+                "year": 2025,
+                "aim_list": slug,
+                "aim_list_name": list_name,
+                "section": section,
+                "prob_num": prob["prob_num"],
+            }
+            (problems_dir / f"{pid}.json").write_text(
+                json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            count += 1
 
-        # Extract statement (text between title and "Remarks" or end)
-        statement = text
-        if len(statement) > 4000:
-            statement = statement[:4000] + "…"
-
-        pid = f"aim_{slug}_{section:03d}"
-        record = {
-            "id": pid,
-            "dataset": DATASET_SLUG,
-            "title": title,
-            "statement": statement,
-            "tex": "",
-            "tags": ["AIM", "workshop", "open-problem"],
-            "difficulty": None,
-            "solvability_score": None,
-            "source_url": url,
-            "year": 2025,
-            "aim_list": slug,
-            "aim_list_name": list_name,
-            "section": section,
-        }
-        (problems_dir / f"{pid}.json").write_text(
-            json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        count += 1
         section += 1
         time.sleep(0.3)  # polite crawl
 
@@ -159,6 +191,9 @@ def download(datasets_dir: Path, force: bool = False) -> int:
         return existing
 
     problems_dir.mkdir(parents=True, exist_ok=True)
+    if force:
+        for old in problems_dir.glob("*.json"):
+            old.unlink()
 
     # Try to discover lists from the index
     all_lists = _discover_lists() or KNOWN_LISTS
