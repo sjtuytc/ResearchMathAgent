@@ -63,7 +63,7 @@ MathJax = {
   .tab.active{color:var(--text);border-bottom-color:var(--accent)}
   .pane{flex:1;overflow-y:auto;padding:18px 22px;display:none}
   .pane.active{display:block}
-  #pane-question.active,#pane-issue.active,#pane-final-proof.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
+  #pane-issue.active,#pane-final-proof.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
   .ttl{font-size:18px;margin:0 0 6px}
   .bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
   button{padding:8px 14px;border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
@@ -157,20 +157,18 @@ MathJax = {
       <div class="tab" data-tab="final-proof">Final Proof</div>
     </div>
 
-    <section class="pane active" id="pane-question" style="padding:0;overflow:hidden">
-      <div id="q-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Pick a question on the left.</div>
-      <div id="q-body" style="display:none;height:100%;flex-direction:column">
-        <div id="q-toolbar" style="background:var(--panel);border-bottom:1px solid var(--border);padding:6px 14px;display:flex;align-items:center;gap:10px;font-size:13px;flex-shrink:0">
-          <span id="q-title" style="font-weight:600;font-size:14px"></span>
-          <span class="muted" id="q-file" style="font-size:11px"></span>
-          <button class="btn-sec" id="q-zout" style="padding:4px 8px;margin-left:auto">−</button>
-          <span id="q-zoom" style="color:var(--muted);font-size:12px;min-width:40px;text-align:center">100%</span>
-          <button class="btn-sec" id="q-zin" style="padding:4px 8px">+</button>
-          <button class="btn-sec" id="q-toggle" style="padding:4px 10px">View raw .tex</button>
-          <a id="q-dl" style="font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none" target="_blank">⬇ Download</a>
+    <section class="pane active" id="pane-question">
+      <div id="q-empty" class="empty">Pick a question on the left.</div>
+      <div id="q-body" style="display:none">
+        <h2 class="ttl" id="q-title"></h2>
+        <div class="bar">
+          <button class="btn-sec" id="q-toggle">View raw .tex</button>
+          <button class="btn-sec" id="q-pdf-btn">Compile PDF</button>
+          <span class="muted" id="q-file"></span>
         </div>
-        <div id="q-pdf-wrap" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;background:#404040"></div>
-        <pre id="q-raw" style="display:none;margin:16px;overflow:auto"><code id="q-raw-code"></code></pre>
+        <div class="rendered" id="q-rendered"></div>
+        <pre id="q-raw" style="display:none"><code id="q-raw-code"></code></pre>
+        <div id="q-pdf-area" style="display:none;margin-top:12px;background:#404040;border-radius:8px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
       </div>
     </section>
 
@@ -355,21 +353,31 @@ function md(node,raw,stream=false){node.dataset.raw=raw;node.innerHTML=marked.pa
 function setStatus(s,cls){$("status").innerHTML=cls?`<span class="dot ${cls}"></span> ${s}`:s;}
 
 async function init(){
-  const r=await fetch("/api/problems");const d=await r.json();
-  problems=d.problems; claudeCode=d.claude_code;
-  const list=$("qlist"); list.innerHTML="";
-  for(const p of problems){
-    const it=el("div","qitem");
-    it.innerHTML=`<span class="qid">${p.id}</span><span class="qt">${esc(p.title.replace(/^Problem \d+:\s*/,''))}</span>`;
-    it.onclick=()=>selectQuestion(p.id,it);
-    list.appendChild(it);
+  try{
+    const r=await fetch("/api/problems");
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();
+    problems=d.problems||[]; claudeCode=d.claude_code;
+    const list=$("qlist"); list.innerHTML="";
+    if(!problems.length){
+      list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">No problems found.</div>';
+    }
+    for(const p of problems){
+      const it=el("div","qitem");
+      it.innerHTML=`<span class="qid">${p.id}</span><span class="qt">${esc(p.title.replace(/^Problem \d+:\s*/,''))}</span>`;
+      it.onclick=()=>selectQuestion(p.id,it);
+      list.appendChild(it);
+    }
+    // provider options
+    const prov=$("provider"); prov.innerHTML="";
+    if(claudeCode) prov.appendChild(new Option("Claude Code (subscription)","claude-code"));
+    prov.appendChild(new Option("Anthropic API","api"));
+    prov.value=claudeCode?"claude-code":"api";
+    prov.onchange=onProviderChange; onProviderChange();
+  }catch(e){
+    $("qlist").innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed to load questions:<br>${esc(String(e))}<br><br>Is the server running?</div>`;
+    setStatus("server error","err");
   }
-  // provider options
-  const prov=$("provider"); prov.innerHTML="";
-  if(claudeCode) prov.appendChild(new Option("Claude Code (subscription)","claude-code"));
-  prov.appendChild(new Option("Anthropic API","api"));
-  prov.value=claudeCode?"claude-code":"api";
-  prov.onchange=onProviderChange; onProviderChange();
 }
 
 function onProviderChange(){
@@ -436,44 +444,80 @@ async function pdfLoad(url, wrap, onDoc, scale){
 }
 
 // ---- Questions tab ----
+function extractStatement(tex){
+  let m=tex.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+  let body=m?m[1]:tex;
+  body=body.replace(/\\maketitle/g,"").replace(/\\title\{[^}]*\}/g,"")
+           .replace(/\\author\{[^}]*\}/g,"").replace(/\\date\{[^}]*\}/g,"")
+           .replace(/\\input\{[^}]*\}/g,"");
+  return body.trim();
+}
+
 async function selectQuestion(qid,node){
   selected=qid;
   document.querySelectorAll(".qitem").forEach(n=>n.classList.remove("active"));
   if(node)node.classList.add("active");
-  setStatus(`${qid} selected`);
-  // Question — load raw tex for toggle, then compile to PDF
-  const pr=await (await fetch(`/api/problem/${qid}`)).json();
+  setStatus(`${qid} loading…`,"run");
+  // Reset question pane to rendered view
   $("q-empty").style.display="none";
-  const body=$("q-body"); body.style.display="flex";
-  $("q-title").textContent=pr.title; $("q-file").textContent=`problems/${qid}.tex`;
-  $("q-raw-code").textContent=pr.tex; $("q-raw").style.display="none";
-  $("q-pdf-wrap").style.display="flex";
-  // trigger PDF compile
-  const pdfRes=await (await fetch(`/api/problem-pdf/${qid}`)).json();
-  if(pdfRes.ok){
-    $("q-dl").href=pdfRes.pdf_url;
-    await pdfLoad(pdfRes.pdf_url, $("q-pdf-wrap"), d=>{qDoc=d;}, qScale);
-  } else {
-    $("q-pdf-wrap").innerHTML=`<div style="color:#f88;padding:32px">PDF compile failed:<br><pre style="font-size:11px;color:#aaa">${esc(pdfRes.log||"")}</pre></div>`;
+  $("q-body").style.display="block";
+  $("q-rendered").innerHTML='<span class="muted">Loading…</span>';
+  $("q-rendered").style.display="block";
+  $("q-raw").style.display="none";
+  $("q-pdf-area").style.display="none";
+  $("q-toggle").textContent="View raw .tex";
+  $("q-pdf-btn").textContent="Compile PDF";
+  $("q-pdf-btn").disabled=false;
+  try{
+    const pr=await (await fetch(`/api/problem/${qid}`)).json();
+    if(pr.error) throw new Error(pr.error);
+    $("q-title").textContent=pr.title;
+    $("q-file").textContent=`problems/${qid}.tex`;
+    $("q-raw-code").textContent=pr.tex||"";
+    // Show rendered LaTeX immediately — no PDF compile needed
+    const r=$("q-rendered");
+    md(r, extractStatement(pr.tex||""));
+    setStatus(`${qid} selected`);
+  }catch(e){
+    $("q-rendered").innerHTML=`<span style="color:var(--red)">Failed to load question: ${esc(String(e))}</span>`;
+    setStatus("load error","err");
   }
-  // Issue
-  const issueList=await (await fetch(`/api/issues/${qid}`)).json();
-  loadIssueList(qid, issueList.issues||[]);
-  // Agent
+  // Load issues (non-blocking)
+  fetch(`/api/issues/${qid}`).then(r=>r.json()).then(d=>loadIssueList(qid,d.issues||[])).catch(()=>{});
+  // Agent pane
   $("a-empty").style.display="none"; $("a-body").style.display="block";
   $("stream").innerHTML=""; $("usage").textContent=""; lastArtifact=null;
 }
 
 $("q-toggle").onclick=()=>{
-  const raw=$("q-raw"), wrap=$("q-pdf-wrap"), b=$("q-toggle");
+  const raw=$("q-raw"), ren=$("q-rendered"), b=$("q-toggle");
   const showRaw=raw.style.display==="none";
   raw.style.display=showRaw?"block":"none";
-  wrap.style.display=showRaw?"none":"flex";
-  b.textContent=showRaw?"View rendered PDF":"View raw .tex";
+  ren.style.display=showRaw?"none":"block";
+  b.textContent=showRaw?"View rendered":"View raw .tex";
 };
-$("q-zin").onclick=async()=>{qScale=Math.min(qScale+0.25,4);$("q-zoom").textContent=Math.round(qScale*100)+"%";if(qDoc)await pdfRenderAll(qDoc,qScale,$("q-pdf-wrap"));};
-$("q-zout").onclick=async()=>{qScale=Math.max(qScale-0.25,0.5);$("q-zoom").textContent=Math.round(qScale*100)+"%";if(qDoc)await pdfRenderAll(qDoc,qScale,$("q-pdf-wrap"));};
-$("q-zoom").textContent=Math.round(qScale*100)+"%";
+
+// PDF compile is optional / on-demand — doesn't block question viewing
+$("q-pdf-btn").onclick=async function(){
+  if(!selected)return;
+  this.disabled=true; this.textContent="Compiling…";
+  const area=$("q-pdf-area");
+  area.style.display="flex"; area.innerHTML=`<div style="color:#aaa;padding:20px">Compiling PDF…</div>`;
+  try{
+    const res=await (await fetch(`/api/problem-pdf/${selected}`)).json();
+    if(res.ok){
+      this.textContent="PDF ready";
+      await pdfLoad(res.pdf_url, area, d=>{qDoc=d;}, qScale);
+    } else {
+      this.textContent="Compile PDF";
+      this.disabled=false;
+      area.innerHTML=`<details style="padding:12px;width:100%"><summary style="color:var(--red);cursor:pointer">PDF compile failed</summary><pre style="font-size:11px;color:#aaa;white-space:pre-wrap;margin-top:8px">${esc(res.log||"no log")}</pre></details>`;
+    }
+  }catch(e){
+    this.textContent="Compile PDF"; this.disabled=false;
+    area.innerHTML=`<div style="color:var(--red);padding:20px">${esc(String(e))}</div>`;
+  }
+};
 
 // ---- Multi-agent Issue tracker ----
 const AGENT_COLORS = {
