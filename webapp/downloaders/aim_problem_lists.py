@@ -88,6 +88,29 @@ def _html_to_text(html_fragment: str) -> str:
     return text.strip()
 
 
+def _extract_li_blocks(html: str, cls: str) -> list[str]:
+    """Extract top-level <li class=cls> blocks, handling nested <li>."""
+    blocks = []
+    pattern = re.compile(r'<li[^>]*class="[^"]*' + re.escape(cls) + r'[^"]*"[^>]*>', re.IGNORECASE)
+    for m in pattern.finditer(html):
+        start = m.start()
+        depth = 0
+        i = m.start()
+        while i < len(html):
+            if html[i:i+3].lower() == "<li":
+                depth += 1
+                i += 3
+            elif html[i:i+5].lower() == "</li>":
+                depth -= 1
+                if depth == 0:
+                    blocks.append(html[start:i+5])
+                    break
+                i += 5
+            else:
+                i += 1
+    return blocks
+
+
 def _parse_problems(html: str, slug: str, section: int, list_name: str, url: str) -> list[dict]:
     """Extract individual problems from an AIM section page.
 
@@ -101,30 +124,32 @@ def _parse_problems(html: str, slug: str, section: int, list_name: str, url: str
     """
     problems = []
 
-    # Find each problem block
-    for prob_m in re.finditer(
-        r'<li[^>]*class="[^"]*problem[^"]*"[^>]*>(.*?)</li>',
-        html, re.DOTALL | re.IGNORECASE
-    ):
-        block = prob_m.group(1)
-
+    for block in _extract_li_blocks(html, "problem"):
         # Title from <h3>
         title_m = re.search(r"<h3[^>]*>(.*?)</h3>", block, re.DOTALL)
         title = _html_to_text(title_m.group(1)) if title_m else ""
 
-        # Problem number e.g. "Problem 1.3"
+        # Problem number e.g. "1.3"
         num_m = re.search(r'<span class="number">([^<]+)</span>', block)
         prob_num = num_m.group(1).strip() if num_m else ""
 
-        # Statement from <span class="probbody">
-        stmt_m = re.search(r'<span class="probbody">(.*?)</span>', block, re.DOTALL)
+        # Statement: extract <span class="probbody">...</span> (may contain nested HTML)
+        stmt_m = re.search(r'<span class="probbody">(.*?)</span\s*>', block, re.DOTALL)
         if stmt_m:
             statement = _html_to_text(stmt_m.group(1))
         else:
-            # Fallback: text of the whole block minus nav noise
-            statement = _html_to_text(re.sub(r'<(script|style)[^>]*>.*?</\1>', '', block, flags=re.DOTALL))
+            # Fallback: strip admin links and render only problem content
+            clean = re.sub(r'<a[^>]*class="[^"]*edit[^"]*"[^>]*>.*?</a>', '', block, flags=re.DOTALL)
+            clean = re.sub(r'<div[^>]*class="[^"]*edit-delete[^"]*"[^>]*>.*?</div>', '', clean, flags=re.DOTALL)
+            clean = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', clean, flags=re.DOTALL)
+            statement = _html_to_text(clean)
 
-        if not statement:
+        # Remove admin noise phrases that slip through
+        statement = re.sub(r"\s*Add remark\s*", " ", statement)
+        statement = re.sub(r"\s*Log in\s*\|\s*Register\s*", " ", statement)
+        statement = re.sub(r"\s+", " ", statement).strip()
+
+        if not statement or len(statement) < 10:
             continue
 
         display_title = title if title else (f"Problem {prob_num}" if prob_num else f"{list_name} §{section}")
