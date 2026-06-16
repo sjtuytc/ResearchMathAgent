@@ -1,6 +1,0 @@
-{
-  "instance_type": "r7i.2xlarge",
-  "timeout_minutes": 1440,
-  "env_vars": true,
-  "rationale": "The harness delegates all heavy inference to the OpenAI API (gpt-5.5-pro at xhigh reasoning) and only needs CPU + RAM locally to orchestrate the advisor-solver loop and worker threads. All input problems are processed concurrently via a ThreadPoolExecutor in entrypoint.py (PROBLEM_PARALLEL defaults to the number of problems), so the total wall-clock equals the per-problem budget rather than its sum. Each problem runs a single harness subprocess with literature-research / solver / writeup / verifier worker threads inside. r7i.2xlarge is a decent instance that fits this orchestration footprint once ~10 Python interpreters overlap. No GPU is required. The 1440-minute (24-hour) timeout is sized for a single problem; because problems run in parallel, the same budget covers the whole batch. env_vars=true is required for OPENAI_API_KEY (and optional OPENAI_ORG_ID)."
-}
