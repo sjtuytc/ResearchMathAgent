@@ -309,11 +309,21 @@ def proof_pdf(exp_name: str, problem_id: str) -> JSONResponse:
     data = get_proof(exp_name, problem_id)
     if data is None:
         return JSONResponse({"error": "not found"}, status_code=404)
+    safe_exp = re.sub(r"[^A-Za-z0-9_-]", "_", exp_name)
+    name = f"proof_{safe_exp}_{problem_id}"
+    cached = pdf_dir(REPO_ROOT) / (name + ".pdf")
+
+    # Check for a pre-compiled PDF sitting next to the .tex in the experiment folder
+    from .proofs import _proof_outputs_root
+    prebuilt = _proof_outputs_root() / exp_name / f"{problem_id}_solution.pdf"
+    if prebuilt.is_file():
+        import shutil as _shutil
+        _shutil.copyfile(prebuilt, cached)
+        return JSONResponse({"ok": True, "pdf_url": f"/api/pdf/{name}.pdf", "log": "pre-compiled"})
+
     tex = data.get("solution_tex", "")
     if not tex:
         return JSONResponse({"ok": False, "pdf_url": None, "log": "no solution tex"})
-    safe_exp = re.sub(r"[^A-Za-z0-9_-]", "_", exp_name)
-    name = f"proof_{safe_exp}_{problem_id}"
     result = compile_tex(REPO_ROOT, tex, name)
     if result["ok"]:
         result["pdf_url"] = f"/api/pdf/{result['pdf']}"

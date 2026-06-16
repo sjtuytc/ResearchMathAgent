@@ -1596,7 +1596,10 @@ async function loadProofs(){
       $("pf-grid").innerHTML=""; $("pf-empty").style.display="block"; $("pf-status").textContent=""; return; }
     $("pf-empty").style.display="none";
     for(const e of pfExps){
-      const o=document.createElement("option"); o.value=e.name; o.textContent=e.name; sel.appendChild(o);
+      const o=document.createElement("option"); o.value=e.name;
+      o.textContent=e.is_latest ? `⭐ ${e.name} (latest)` : e.name;
+      if(e.is_latest) o.style.fontWeight="700";
+      sel.appendChild(o);
     }
     $("pf-status").textContent="";
     renderProofGrid(pfExps[0]);
@@ -1606,10 +1609,18 @@ async function loadProofs(){
 function renderProofGrid(exp){
   if(!exp){return;}
   const grid=$("pf-grid"); grid.innerHTML="";
-  for(const [qid,info] of Object.entries(exp.problems)){
-    const card=el("div","card"); card.style.cssText="cursor:pointer;text-align:center;padding:14px 8px";
+  // Sort: problems with solutions first (by sol_mtime desc), then the rest by id
+  const entries=Object.entries(exp.problems).sort(([,a],[,b])=>{
+    if((b.sol_mtime||0)!==(a.sol_mtime||0)) return (b.sol_mtime||0)-(a.sol_mtime||0);
+    return 0;
+  });
+  for(const [qid,info] of entries){
+    const card=el("div","card"); card.style.cssText="cursor:pointer;text-align:center;padding:14px 8px;position:relative";
     const status=info.status||"not_started";
-    card.innerHTML=`<div style="font-weight:700;font-size:16px;color:var(--accent)">${esc(qid)}</div>
+    const pdfBadge=info.has_pdf?`<span style="position:absolute;top:4px;right:4px;font-size:9px;background:var(--green);color:#000;border-radius:3px;padding:1px 4px;line-height:1.4">PDF</span>`:'';
+    const newBadge=info.is_new?`<span style="position:absolute;top:4px;left:4px;font-size:9px;background:var(--accent);color:#000;border-radius:3px;padding:1px 4px;line-height:1.4">NEW</span>`:'';
+    if(info.is_new) card.style.boxShadow="0 0 0 2px var(--accent)";
+    card.innerHTML=`${pdfBadge}${newBadge}<div style="font-weight:700;font-size:16px;color:var(--accent)">${esc(qid)}</div>
       <div style="margin-top:6px;font-size:12px;color:${STATUS_COLOR[status]||'var(--muted)'}">${STATUS_LABEL[status]||status}</div>`;
     card.onclick=()=>loadProofDetail(exp.name, qid);
     grid.appendChild(card);
