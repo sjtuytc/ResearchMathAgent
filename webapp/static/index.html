@@ -232,8 +232,42 @@ MathJax = {
         <button onclick="clearOvFilter()" style="margin-left:auto;font-size:11px;padding:2px 10px;background:var(--panel2);color:var(--muted);border:1px solid var(--border);border-radius:5px;cursor:pointer">✕ Show all</button>
       </div>
 
+      <!-- ── Focused question panel (shown when a question is selected) ── -->
+      <div id="ov-q-focus" style="display:none;margin-bottom:16px">
+        <div class="card" style="border-color:rgba(88,166,255,.5);background:rgba(88,166,255,.04)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <span id="ov-qf-id" style="font-size:22px;font-weight:800;color:var(--accent)"></span>
+            <span id="ov-qf-title" style="font-size:13px;color:var(--text);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <span id="ov-qf-status" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)"></span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+            <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
+              <div id="ov-qf-solv" style="font-size:20px;font-weight:700;color:var(--accent)">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">solvability</div>
+            </div>
+            <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
+              <div id="ov-qf-acc" style="font-size:20px;font-weight:700;color:var(--accent2)">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">accuracy</div>
+            </div>
+            <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
+              <div id="ov-qf-issues" style="font-size:20px;font-weight:700;color:var(--amber)">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">open issues</div>
+            </div>
+            <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
+              <div id="ov-qf-runs" style="font-size:20px;font-weight:700;color:var(--green)">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">total runs</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-sec" style="font-size:11px" onclick="setTab('documents')">Documents ↗</button>
+            <button class="btn-sec" style="font-size:11px" onclick="setTab('proofs')">Proof ↗</button>
+            <button class="btn-sec" style="font-size:11px" onclick="setTab('issue')">Issues ↗</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── Today's usage ─────────────────────────────────────── -->
-      <div class="card" style="margin-bottom:14px;border-color:rgba(88,166,255,.35)">
+      <div id="ov-card-tokens" class="card" style="margin-bottom:14px;border-color:rgba(88,166,255,.35)">
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">
           <span style="font-size:13px;font-weight:700">Today's Token Usage</span>
           <span id="ov-today-date" style="font-size:11px;color:var(--muted)"></span>
@@ -277,7 +311,7 @@ MathJax = {
       </div>
 
       <!-- Schedule card -->
-      <div class="card" style="margin-bottom:14px">
+      <div id="ov-card-schedule" class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
           <span style="font-size:13px;font-weight:700">Auto-Run Schedule</span>
           <span id="ov-daemon-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)">checking…</span>
@@ -294,13 +328,13 @@ MathJax = {
       </div>
 
       <!-- Active runs -->
-      <div class="card" style="margin-bottom:14px">
+      <div id="ov-card-active" class="card" style="margin-bottom:14px">
         <div style="font-size:13px;font-weight:700;margin-bottom:8px">Active Runs <span id="ov-active-count" style="color:var(--muted);font-size:12px;font-weight:400"></span></div>
         <div id="ov-active-runs" style="font-size:12px;color:var(--muted)">none</div>
       </div>
 
       <!-- Issue progress -->
-      <div class="card" style="margin-bottom:14px">
+      <div id="ov-card-issues" class="card" style="margin-bottom:14px">
         <div style="font-size:13px;font-weight:700;margin-bottom:12px">Issue Progress — click any problem to view issues</div>
         <div id="ov-issue-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px"></div>
       </div>
@@ -312,7 +346,7 @@ MathJax = {
       </div>
 
       <!-- Token usage daily chart -->
-      <div class="card" style="margin-bottom:14px">
+      <div id="ov-card-chart" class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
           <span style="font-size:13px;font-weight:700">Token Usage — Day by Day (14 days)</span>
           <span id="ov-token-total" style="font-size:12px;color:var(--muted)"></span>
@@ -326,19 +360,19 @@ MathJax = {
       </div>
 
       <!-- Per-problem token breakdown -->
-      <div class="card" style="margin-bottom:14px">
+      <div id="ov-card-prob-tokens" class="card" style="margin-bottom:14px">
         <div style="font-size:13px;font-weight:700;margin-bottom:10px">Token Spend by Problem</div>
         <div id="ov-prob-tokens" style="color:var(--muted);font-size:12px">No data yet.</div>
       </div>
 
       <!-- Improvement suggestions -->
-      <div class="card" style="margin-bottom:14px">
+      <div id="ov-card-suggestions" class="card" style="margin-bottom:14px">
         <div style="font-size:13px;font-weight:700;margin-bottom:10px">Improvement Suggestions</div>
         <div id="ov-suggestions" style="color:var(--muted);font-size:12px">Computing…</div>
       </div>
 
       <!-- Recent activity -->
-      <div class="card">
+      <div id="ov-card-activity" class="card">
         <div style="font-size:13px;font-weight:700;margin-bottom:10px">Recent Agent Activity</div>
         <div id="ov-activity" style="font-size:12px;display:flex;flex-direction:column;gap:5px"></div>
       </div>
@@ -860,16 +894,42 @@ function clearOvFilter(){
   renderOverview(ovData, null);
 }
 
+// IDs of global-only overview cards to hide when a question is focused
+const _OV_GLOBAL_CARDS = ["ov-card-tokens","ov-card-schedule","ov-card-active",
+  "ov-card-issues","ov-card-chart","ov-card-prob-tokens","ov-card-suggestions","ov-card-activity"];
+
 function renderOverview(d, pid){
   if(!d) return;
 
-  // ── Filter banner ──
+  // ── Question focus vs. global mode ──
   const filterBar=$("ov-filter-bar");
+  const focusPanel=$("ov-q-focus");
   if(pid){
     filterBar.style.display="flex";
     $("ov-filter-label").textContent=pid;
+    focusPanel.style.display="block";
+    // Hide global cards
+    _OV_GLOBAL_CARDS.forEach(id=>{ const el=$( id); if(el) el.style.display="none"; });
+    // Populate focus panel
+    const q=(d.question_summaries||[]).find(q=>q.qid===pid)||{};
+    const ist=q.issue_stats||{};
+    const statusColors={not_started:"var(--muted)",exploring:"var(--accent)",open_issues:"var(--amber)",in_progress:"var(--accent2)",verified:"var(--green)"};
+    const statusTexts={not_started:"Not started",exploring:"Exploring",open_issues:"Open issues",in_progress:"In progress",verified:"Verified ✓"};
+    $("ov-qf-id").textContent=pid.toUpperCase();
+    $("ov-qf-title").textContent=q.title||"";
+    const sc=statusColors[q.proof_status]||"var(--muted)";
+    $("ov-qf-status").textContent=statusTexts[q.proof_status]||"";
+    $("ov-qf-status").style.color=sc;
+    $("ov-qf-status").style.borderColor=sc;
+    $("ov-qf-solv").textContent=q.solvability_pct!=null?q.solvability_pct+"%":"—";
+    $("ov-qf-acc").textContent=q.accuracy_pct!=null?q.accuracy_pct+"%":"—";
+    $("ov-qf-issues").textContent=ist.open!=null?ist.open:"—";
+    $("ov-qf-runs").textContent=q.total_runs||"—";
   } else {
     filterBar.style.display="none";
+    focusPanel.style.display="none";
+    // Show all global cards
+    _OV_GLOBAL_CARDS.forEach(id=>{ const el=$(id); if(el) el.style.display=""; });
   }
 
   // ── Today's usage ──
@@ -1163,32 +1223,48 @@ async function pdfLoad(url, wrap, onDoc, scale){
   }
 }
 
-// ---- Macro check: is this LaTeX document source or markdown? ----
-function hasMacros(text){
-  if(!text) return false;
-  // Strip math-mode content so math-mode macros don't count
-  const stripped = text
-    .replace(/\$\$[\s\S]*?\$\$/g,'')
-    .replace(/\\\[[\s\S]*?\\\]/g,'')
-    .replace(/\$[^$\n]{0,200}\$/g,'')
-    .replace(/\\\([^)]{0,200}\\\)/g,'');
-  // Count structural LaTeX commands outside math mode
-  const n = (stripped.match(/\\(?:begin|end|section|subsection|paragraph|textbf|textit|emph|newcommand|renewcommand|usepackage|documentclass|includegraphics|label|ref|cite|item|enumerate|itemize|theorem|proof|lemma|corollary|definition|remark|equation|align|gather|multline|cases)\b/gi)||[]).length;
-  return n > 2;
+// Convert LaTeX structural commands to markdown so MathJax can typeset the math
+function cleanLatexForDisplay(s){
+  if(!s) return "";
+  const cap = e => e.charAt(0).toUpperCase()+e.slice(1).toLowerCase();
+  // Named theorem-like environments → bold labels
+  s = s.replace(/\\begin\{(theorem|lemma|proposition|corollary|claim|conjecture)\}(\s*\[[^\]]*\])?/gi,
+    (_, e, opt) => `\n\n**${cap(e)}${opt?' '+opt.trim():''}.**\n`);
+  s = s.replace(/\\begin\{(definition|example|remark|question|problem|exercise)\}(\s*\[[^\]]*\])?/gi,
+    (_, e, opt) => `\n\n**${cap(e)}${opt?' '+opt.trim():''}.**\n`);
+  s = s.replace(/\\begin\{proof\}(\s*\[[^\]]*\])?/gi,
+    (_, opt) => `\n\n*Proof${opt?' '+opt.trim():''}.*\n`);
+  s = s.replace(/\\end\{(theorem|lemma|proposition|corollary|claim|conjecture|definition|example|remark|question|problem|exercise|proof)\}/gi, '\n\n');
+  // Lists
+  s = s.replace(/\\begin\{(enumerate|itemize)\}/gi, '\n');
+  s = s.replace(/\\end\{(enumerate|itemize)\}/gi, '\n');
+  s = s.replace(/\\item(\[[^\]]*\])?\s*/g, '\n- ');
+  // Sections
+  s = s.replace(/\\section\*?\{([^}]+)\}/g, '\n\n## $1\n\n');
+  s = s.replace(/\\subsection\*?\{([^}]+)\}/g, '\n\n### $1\n\n');
+  s = s.replace(/\\paragraph\*?\{([^}]+)\}\s*/g, '\n\n**$1**\n\n');
+  // Text formatting
+  s = s.replace(/\\textbf\{([^}]+)\}/g, '**$1**');
+  s = s.replace(/\\(?:emph|textit)\{([^}]+)\}/g, '*$1*');
+  s = s.replace(/\\textrm\{([^}]+)\}/g, '$1');
+  // Strip structural noise
+  s = s.replace(/\\label\{[^}]*\}/g, '');
+  s = s.replace(/\\(?:maketitle|noindent|medskip|bigskip|smallskip|newpage|clearpage|hfill|vfill)\b/g, '');
+  s = s.replace(/\\title\{[^}]+\}/g, '');
+  s = s.replace(/\\author\{[^}]+\}/g, '');
+  s = s.replace(/\\date\{[^}]+\}/g, '');
+  s = s.replace(/\\input\{[^}]+\}/g, '');
+  s = s.replace(/~?\\(?:cite|ref|eqref)(?:\[[^\]]*\])?\{[^}]*\}/g, '');
+  s = s.replace(/\\protect\b/g, '');
+  s = s.replace(/\\(?:newcommand|renewcommand)\{[^}]+\}(?:\[[^\]]*\])?\{[^}]*\}/g, '');
+  s = s.replace(/\n{3,}/g, '\n\n').trim();
+  return s;
 }
 
-// Render content: use markdown for prose, plain pre for LaTeX documents
+// Render content: always use markdown+MathJax; strip structural LaTeX first
 function renderContent(node, text, stream=false){
   node.dataset.raw = text||"";
-  if(hasMacros(text)){
-    // LaTeX document source – don't mangle with markdown parser
-    const escaped = (text||"").replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-    node.innerHTML = `<pre style="white-space:pre-wrap;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6;margin:0;border:none;background:transparent;padding:0">${escaped}</pre>`;
-    // Math inside $...$ will NOT be typeset here (pre is skipped by MathJax).
-    // For full typeset, use the PDF view.
-  } else {
-    md(node, text||"*(empty)*", stream);
-  }
+  md(node, cleanLatexForDisplay(text)||"*(empty)*", stream);
 }
 
 // ---- Questions tab ----
@@ -1230,7 +1306,8 @@ async function selectQuestion(qid, node, dataset){
     if(pr.error) throw new Error(pr.error);
     $("q-title").textContent=pr.title||qid;
     $("q-file").textContent=`${ds}/${qid}`;
-    _qTex=pr.tex||pr.statement||"";
+    _qTex=pr.tex||pr.statement||"";        // raw .tex view shows full source
+    const _displayTex=pr.statement||extractStatement(pr.tex||"")||_qTex; // rendered view uses statement
     $("q-raw-code").textContent=_qTex;
     // Show solvability + tags in a metadata bar (append later)
     const metaHtml=(()=>{
@@ -1252,13 +1329,12 @@ async function selectQuestion(qid, node, dataset){
         $("q-view-mode").textContent="PDF";
         $("q-toggle").textContent="View raw .tex";
       } else {
-        // PDF not ready — show LaTeX source as fallback, offer compile button
+        // PDF not ready — show rendered markdown with MathJax
         area.style.display="none";
         const r=$("q-rendered");
         r.style.display="block";
         r.innerHTML=metaHtml;
-        const content=extractStatement(_qTex)||"*(no statement)*";
-        renderContent(r, content);
+        renderContent(r, _displayTex||"*(no statement)*");
         $("q-view-mode").textContent="source (PDF unavailable)";
         $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="Compile PDF";
       }
@@ -1267,7 +1343,7 @@ async function selectQuestion(qid, node, dataset){
       const r=$("q-rendered");
       r.style.display="block";
       r.innerHTML=metaHtml;
-      renderContent(r, extractStatement(_qTex)||"");
+      renderContent(r, _displayTex||"");
       $("q-view-mode").textContent="source";
       $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="Compile PDF";
     }
@@ -2081,7 +2157,17 @@ async function loadProofDetail(pid){
   try{
     const r=await fetch(`/api/best-proof/${encodeURIComponent(pid)}`);
     const d=await r.json();
-    if(d.error){$("pf-status").textContent=d.error;return;}
+    if(d.error){
+      // Show a clear "no proof yet" panel inside pf-detail instead of just a status bar message
+      $("pf-title").textContent=`${pid} — no best proof yet`;
+      $("pf-batch-info").textContent="";
+      $("pf-checks").innerHTML=`<div style="color:var(--muted);font-size:13px;padding:16px 0">No best proof stored for ${esc(pid)} yet. Run <code>rma solve ${esc(pid)}</code> or click <b>Consolidate</b> to scan existing runs.</div>`;
+      $("pf-pdf-wrap").innerHTML="";
+      $("pf-raw").style.display="none";
+      $("pf-detail").style.display="block";
+      $("pf-status").textContent="";
+      return;
+    }
     const passedLabel=d.verification_passed?"✓ verified":(d.issue_count<100?`${d.issue_count} issues`:"draft");
     $("pf-title").textContent=`${pid} — ${passedLabel}`;
     const parts=[];
