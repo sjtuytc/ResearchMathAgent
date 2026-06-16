@@ -23,6 +23,12 @@ import uuid
 from .agent import DEFAULT_MODEL, AgentConfig, run_agent
 from .claude_code import claude_code_available, run_claude_code_agent
 from .documents import list_documents, read_document
+from .dataset_store import (
+    list_datasets, get_dataset_meta, list_problems as ds_list_problems,
+    get_problem as ds_get_problem, compute_solvability_scores, get_solvability_scores,
+    _validate_slug, _validate_id,
+)
+from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof
 from .proofs import get_proof, list_experiments
 from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
@@ -61,6 +67,79 @@ def list_problems() -> JSONResponse:
     return JSONResponse({"problems": items, "claude_code": bool(claude_code_available())})
 
 
+# ── Multi-dataset API ────────────────────────────────────────────────────────
+
+@app.get("/api/datasets")
+def api_list_datasets() -> JSONResponse:
+    return JSONResponse({"datasets": list_datasets()})
+
+
+@app.get("/api/datasets/{slug}")
+def api_dataset_meta(slug: str) -> JSONResponse:
+    try:
+        _validate_slug(slug)
+    except ValueError:
+        return JSONResponse({"error": "invalid slug"}, status_code=400)
+    meta = get_dataset_meta(slug)
+    if meta is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(meta)
+
+
+@app.get("/api/ds/problems")
+def api_ds_problems(
+    dataset: str = Query(None),
+    sort: str = Query("id"),
+    tags: str = Query(None),          # comma-separated
+    min_difficulty: float = Query(None),
+    max_difficulty: float = Query(None),
+    min_solvability: float = Query(None),
+    max_solvability: float = Query(None),
+    search: str = Query(None),
+) -> JSONResponse:
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
+    if dataset:
+        try:
+            _validate_slug(dataset)
+        except ValueError:
+            return JSONResponse({"error": "invalid dataset slug"}, status_code=400)
+    problems = ds_list_problems(
+        dataset=dataset, sort=sort, tags=tag_list,
+        min_difficulty=min_difficulty, max_difficulty=max_difficulty,
+        min_solvability=min_solvability, max_solvability=max_solvability,
+        search=search,
+    )
+    return JSONResponse({"problems": problems, "claude_code": bool(claude_code_available())})
+
+
+@app.get("/api/ds/problem/{dataset}/{problem_id}")
+def api_ds_problem(dataset: str, problem_id: str) -> JSONResponse:
+    try:
+        _validate_slug(dataset)
+        _validate_id(problem_id)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    p = ds_get_problem(dataset, problem_id)
+    if p is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(p)
+
+
+@app.post("/api/ds/solvability/{dataset}/refresh")
+def api_refresh_solvability(dataset: str) -> JSONResponse:
+    try:
+        _validate_slug(dataset)
+    except ValueError:
+        return JSONResponse({"error": "invalid slug"}, status_code=400)
+    scores = compute_solvability_scores(dataset)
+    return JSONResponse({"dataset": dataset, "scores": scores})
+
+
+@app.get("/api/ds/solvability")
+def api_solvability(dataset: str = Query(None)) -> JSONResponse:
+    return JSONResponse({"solvability": get_solvability_scores(dataset)})
+
+
 @app.get("/api/problem/{problem_id}")
 def get_problem(problem_id: str) -> JSONResponse:
     if not _PROBLEM_RE.match(problem_id):
@@ -75,45 +154,58 @@ def get_problem(problem_id: str) -> JSONResponse:
     })
 
 
+_ID_RE_LOOSE = re.compile(r"^[A-Za-z0-9_.-]{1,120}$")
+
+
+def _ds_from_query(dataset: str | None) -> str:
+    return dataset if dataset and re.match(r"^[A-Za-z0-9_-]{1,80}$", dataset) else "first_proof_1"
+
+
 @app.get("/api/issues/{problem_id}")
-def list_issues_ep(problem_id: str) -> JSONResponse:
-    if not _PROBLEM_RE.match(problem_id):
+def list_issues_ep(problem_id: str, dataset: str = Query(None)) -> JSONResponse:
+    ds = _ds_from_query(dataset)
+    pid = problem_id
+    if ds == "first_proof_1" and not _PROBLEM_RE.match(pid):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    return JSONResponse({"issues": list_issues(REPO_ROOT, problem_id)})
+    elif not _ID_RE_LOOSE.match(pid):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    return JSONResponse({"issues": list_issues(REPO_ROOT, pid, ds)})
 
 
 @app.post("/api/issues/{problem_id}")
-def create_issue_ep(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
-    if not _PROBLEM_RE.match(problem_id):
+def create_issue_ep(problem_id: str, payload: dict = Body(...), dataset: str = Query(None)) -> JSONResponse:
+    ds = _ds_from_query(dataset)
+    pid = problem_id
+    if ds == "first_proof_1" and not _PROBLEM_RE.match(pid):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
     issue = create_issue(
-        REPO_ROOT, problem_id,
+        REPO_ROOT, pid,
         title=str(payload.get("title", "Untitled")),
         body=str(payload.get("body", "")),
         author=str(payload.get("author", "human")),
         labels=payload.get("labels", []),
+        dataset=ds,
     )
     return JSONResponse(issue)
 
 
 @app.get("/api/issues/{problem_id}/{issue_id}")
-def get_issue_ep(problem_id: str, issue_id: str) -> JSONResponse:
-    if not _PROBLEM_RE.match(problem_id):
-        return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    issue = get_issue(REPO_ROOT, problem_id, issue_id)
+def get_issue_ep(problem_id: str, issue_id: str, dataset: str = Query(None)) -> JSONResponse:
+    ds = _ds_from_query(dataset)
+    issue = get_issue(REPO_ROOT, problem_id, issue_id, ds)
     if issue is None:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse(issue)
 
 
 @app.post("/api/issues/{problem_id}/{issue_id}/comment")
-def add_comment_ep(problem_id: str, issue_id: str, payload: dict = Body(...)) -> JSONResponse:
-    if not _PROBLEM_RE.match(problem_id):
-        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+def add_comment_ep(problem_id: str, issue_id: str, payload: dict = Body(...), dataset: str = Query(None)) -> JSONResponse:
+    ds = _ds_from_query(dataset)
     issue = add_comment(
         REPO_ROOT, problem_id, issue_id,
         author=str(payload.get("author", "human")),
         body=str(payload.get("body", "")),
+        dataset=ds,
     )
     if issue is None:
         return JSONResponse({"error": "not found"}, status_code=404)
@@ -121,21 +213,19 @@ def add_comment_ep(problem_id: str, issue_id: str, payload: dict = Body(...)) ->
 
 
 @app.patch("/api/issues/{problem_id}/{issue_id}")
-def update_issue_ep(problem_id: str, issue_id: str, payload: dict = Body(...)) -> JSONResponse:
-    if not _PROBLEM_RE.match(problem_id):
-        return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    issue = update_issue(REPO_ROOT, problem_id, issue_id, **payload)
+def update_issue_ep(problem_id: str, issue_id: str, payload: dict = Body(...), dataset: str = Query(None)) -> JSONResponse:
+    ds = _ds_from_query(dataset)
+    issue = update_issue(REPO_ROOT, problem_id, issue_id, ds, **payload)
     if issue is None:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse(issue)
 
 
 @app.post("/api/issues/{problem_id}/activity")
-def log_activity(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
-    if not _PROBLEM_RE.match(problem_id):
-        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+def log_activity(problem_id: str, payload: dict = Body(...), dataset: str = Query(None)) -> JSONResponse:
+    ds = _ds_from_query(dataset)
     append_activity(REPO_ROOT, problem_id, str(payload.get("entry", "")),
-                    agent=str(payload.get("agent", "solver-agent")))
+                    agent=str(payload.get("agent", "solver-agent")), dataset=ds)
     return JSONResponse({"ok": True})
 
 
@@ -325,6 +415,83 @@ def final_proof_detail(problem_id: str) -> JSONResponse:
     if problem_id not in problems:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse(problems[problem_id])
+
+
+@app.get("/api/working-proof/{problem_id}")
+def get_working_proof_ep(problem_id: str) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    tex = get_working_proof(REPO_ROOT, problem_id)
+    return JSONResponse({"problem_id": problem_id, "tex": tex, "has_proof": bool(tex)})
+
+
+@app.post("/api/working-proof/{problem_id}")
+def save_working_proof_ep(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    tex = str(payload.get("tex", ""))
+    save_working_proof(REPO_ROOT, problem_id, tex)
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/agent/discover/{problem_id}")
+def agent_discover(problem_id: str, run_id: str = Query("")) -> StreamingResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    rid = run_id or uuid.uuid4().hex
+    return StreamingResponse(
+        _sse_issue_agent(run_discovery_agent, REPO_ROOT, problem_id, rid),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/agent/resolve/{problem_id}/{issue_id}")
+def agent_resolve(problem_id: str, issue_id: str, run_id: str = Query("")) -> StreamingResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    rid = run_id or uuid.uuid4().hex
+    return StreamingResponse(
+        _sse_issue_agent(run_resolver_agent, REPO_ROOT, problem_id, rid, issue_id=issue_id),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/agent/verify/{problem_id}/{issue_id}")
+def agent_verify(problem_id: str, issue_id: str, run_id: str = Query("")) -> StreamingResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    rid = run_id or uuid.uuid4().hex
+    return StreamingResponse(
+        _sse_issue_agent(run_verifier_agent, REPO_ROOT, problem_id, rid, issue_id=issue_id),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None):
+    def send(event: dict) -> str:
+        return f"data: {json.dumps(event)}\n\n"
+
+    handle = REGISTRY.register(run_id, {
+        "problem": problem_id,
+        "issue": issue_id or "",
+        "kind": "issue-agent",
+    })
+    yield send({"type": "start", "problem": problem_id, "issue": issue_id, "run_id": run_id})
+    try:
+        if issue_id:
+            gen = runner_fn(repo_root, problem_id, issue_id, handle)
+        else:
+            gen = runner_fn(repo_root, problem_id, handle)
+        for event in gen:
+            yield send(event.to_dict())
+    except Exception as exc:  # noqa: BLE001
+        yield send({"type": "error", "message": f"Server error: {exc}"})
+        yield send({"type": "done", "reason": "error"})
+    finally:
+        REGISTRY.unregister(run_id)
 
 
 @app.post("/api/run-daily")

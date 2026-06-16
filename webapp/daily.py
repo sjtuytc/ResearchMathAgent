@@ -30,6 +30,7 @@ from pathlib import Path
 
 from .agent import AgentConfig
 from .documents import write_or_append_report
+from .issue_agents import run_issue_cycle
 from .issues import append_activity
 from .runs import REGISTRY, RunHandle
 
@@ -108,6 +109,15 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
         except Exception:  # noqa: BLE001
             pass
         _log(f"  {pid}: {reason}; report -> documents/{date_str}.md")
+
+        # Run issue discovery + resolution cycle after each solve
+        if not _stop:
+            _log(f"  {pid}: running issue cycle (discovery + resolution)…")
+            try:
+                cycle_log = run_issue_cycle(repo_root, pid, max_resolve=2)
+                _log(f"  {pid}: issue cycle done ({len(cycle_log)} log lines)")
+            except Exception as exc:  # noqa: BLE001
+                _log(f"  {pid}: issue cycle error: {exc}")
 
     _log("daily run complete")
     return report_path
