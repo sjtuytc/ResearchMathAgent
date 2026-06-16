@@ -1052,57 +1052,108 @@ function renderOverview(d, pid){
     verified:    {text:"Verified ✓",  color:"var(--green)"},
   };
   let evalledCount = 0;
+  let openDetailQid = null; // track which row's detail panel is open
+
   for(const q of qSumms){
     const ist = q.issue_stats||{};
     const sl = statusLabel[q.proof_status] || {text:q.proof_status, color:"var(--muted)"};
     const accStr = q.accuracy_pct!=null ? q.accuracy_pct+"%" : "—";
     const total  = ist.total||0;
     const ev = q.opus_eval;
-    // Prefer Opus score, fallback to heuristic solvability_pct
     const score = (ev && ev.score!=null) ? ev.score : q.solvability_pct;
     if(ev && ev.score!=null) evalledCount++;
     const solColor = score==null ? "var(--muted)" :
                      score>=70 ? "var(--green)" :
                      score>=40 ? "var(--amber)" : "var(--red)";
     const solStr = score!=null ? score+"%" : "pending…";
-    const solTitle = ev ? `Opus eval (${ev.model||"claude-opus-4-8"}, ${(ev.evaluated_at||"").slice(0,10)})\n${ev.reasoning||""}\nObstacles: ${(ev.key_obstacles||[]).join("; ")}` : "Opus evaluation pending — will appear after background job completes (~3 min)";
-    const barFill = score!=null
-      ? `<div style="width:${score}%;height:100%;background:${solColor};border-radius:2px;transition:width .5s"></div>`
-      : `<div style="width:100%;height:100%;background:repeating-linear-gradient(45deg,var(--border),var(--border) 3px,transparent 3px,transparent 8px);border-radius:2px;opacity:.4"></div>`;
+    const labels = q.labels||[];
+
+    // ── main row ──
     const row = document.createElement("div");
     row.style.cssText = "display:grid;grid-template-columns:52px 1fr 104px auto;gap:0;background:var(--panel2);border:1px solid var(--border);border-radius:6px;overflow:hidden;cursor:pointer;transition:border-color .15s";
     row.onmouseenter = ()=>row.style.borderColor="var(--accent)";
-    row.onmouseleave = ()=>row.style.borderColor="var(--border)";
+    row.onmouseleave = ()=>{ if(openDetailQid!==q.qid) row.style.borderColor="var(--border)"; };
+
+    const barFill = score!=null
+      ? `<div style="width:${score}%;height:100%;background:${solColor};border-radius:2px;transition:width .5s"></div>`
+      : `<div style="width:100%;height:100%;background:repeating-linear-gradient(45deg,var(--border),var(--border) 3px,transparent 3px,transparent 8px);border-radius:2px;opacity:.4"></div>`;
+    const labelChips = labels.map(l=>`<span class="tag-chip" style="font-size:9px;padding:1px 5px">${esc(l)}</span>`).join("");
+
     row.innerHTML = `
       <div style="background:rgba(88,166,255,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border-right:1px solid var(--border)">
         <span style="font-weight:800;font-size:15px;color:var(--accent)">${esc(q.qid)}</span>
       </div>
       <div style="padding:8px 12px;min-width:0">
-        <div style="font-size:11px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">${esc(q.title)}</div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="font-size:11px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px">${esc(q.title)}</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
           <span style="font-size:11px;font-weight:600;color:${sl.color}">${esc(sl.text)}</span>
           <span style="font-size:10px;color:var(--muted)">issues ${esc(String(ist.resolved||0))}/${esc(String(total))} resolved</span>
-          <span style="font-size:10px;color:var(--muted)" title="Fraction of discovered issues that are resolved">accuracy ${esc(accStr)}</span>
+          <span style="font-size:10px;color:var(--muted)">accuracy ${esc(accStr)}</span>
         </div>
-        <div style="display:flex;height:3px;border-radius:2px;overflow:hidden;gap:1px;margin-top:6px;background:var(--border)">
+        ${labelChips?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">${labelChips}</div>`:""}
+        <div style="display:flex;height:3px;border-radius:2px;overflow:hidden;gap:1px;background:var(--border)">
           ${ist.resolved?`<div style="flex:${ist.resolved};background:var(--green)"></div>`:""}
           ${ist.in_progress?`<div style="flex:${ist.in_progress};background:var(--amber)"></div>`:""}
           ${ist.open?`<div style="flex:${ist.open};background:var(--accent)"></div>`:""}
           ${!total?`<div style="flex:1;background:var(--border)"></div>`:""}
         </div>
       </div>
-      <div style="padding:8px 10px;border-left:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;gap:4px;cursor:help" title="${esc(solTitle)}">
+      <div class="solv-cell" style="padding:8px 10px;border-left:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;gap:4px;cursor:pointer;transition:background .15s" title="Click to see Opus rationale">
         <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">AI Solv.</span>
+          <span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">AI Solv. ▾</span>
           <span style="font-size:15px;font-weight:900;color:${solColor}">${esc(solStr)}</span>
         </div>
         <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">${barFill}</div>
-        ${ev&&ev.confidence?`<span style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">${esc(ev.confidence)} confidence</span>`:`<span style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px;font-style:italic">Opus pending</span>`}
+        ${ev&&ev.confidence?`<span style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">${esc(ev.confidence)} conf.</span>`:`<span style="font-size:9px;color:var(--muted);text-align:right;font-style:italic">Opus pending</span>`}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-left:1px solid var(--border);justify-content:center">
         <button class="btn-sec" style="font-size:10px;padding:3px 8px;white-space:nowrap" data-qid="${esc(q.qid)}" data-action="doc">Doc ↗</button>
         <button class="btn-sec" style="font-size:10px;padding:3px 8px;white-space:nowrap" data-qid="${esc(q.qid)}" data-action="issues">Issues</button>
       </div>`;
+
+    // ── Opus detail panel (hidden by default) ──
+    const detail = document.createElement("div");
+    detail.style.cssText = "display:none;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--bg);padding:14px 16px;font-size:12px";
+    if(ev){
+      const obstacles = (ev.key_obstacles||[]).map(o=>`<li style="margin-bottom:3px">${esc(o)}</li>`).join("");
+      const factors   = (ev.positive_factors||[]).map(f=>`<li style="margin-bottom:3px">${esc(f)}</li>`).join("");
+      detail.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <span style="font-size:18px;font-weight:900;color:${solColor}">${score}%</span>
+          <span style="font-size:12px;color:var(--text);font-weight:600">AI Solvability — Opus Evaluation</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--muted)">${esc(ev.model||"")} · ${(ev.evaluated_at||"").slice(0,10)} · ${esc(ev.confidence||"")} confidence · ${esc(ev.estimated_proof_length||"")} proof</span>
+        </div>
+        <div style="margin-bottom:10px;line-height:1.6;color:var(--text)">${esc(ev.reasoning||"")}</div>
+        ${obstacles?`<div style="margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Key obstacles</div><ul style="margin:0;padding-left:18px;color:var(--muted)">${obstacles}</ul></div>`:""}
+        ${factors?`<div><div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Positive factors</div><ul style="margin:0;padding-left:18px;color:var(--muted)">${factors}</ul></div>`:""}`;
+    } else {
+      detail.innerHTML = `<span style="color:var(--muted);font-style:italic">Opus evaluation is running in the background — refresh in a few minutes.</span>`;
+    }
+
+    // Wire up solvability cell click → toggle detail
+    const solvCell = row.querySelector(".solv-cell");
+    solvCell.onclick = e => {
+      e.stopPropagation();
+      const isOpen = detail.style.display !== "none";
+      // Close any other open detail
+      qGrid.querySelectorAll(".solv-detail-panel").forEach(p=>{
+        if(p!==detail){ p.style.display="none"; p.previousElementSibling.style.borderRadius="6px"; p.previousElementSibling.style.borderColor="var(--border)"; }
+      });
+      if(isOpen){
+        detail.style.display="none";
+        row.style.borderRadius="6px";
+        row.style.borderColor="var(--border)";
+        openDetailQid=null;
+      } else {
+        detail.style.display="block";
+        row.style.borderRadius="6px 6px 0 0";
+        row.style.borderColor="var(--accent)";
+        solvCell.style.background="rgba(88,166,255,.06)";
+        openDetailQid=q.qid;
+      }
+    };
+    detail.className="solv-detail-panel";
+
     row.querySelectorAll("button[data-action]").forEach(btn=>{
       btn.onclick = e => {
         e.stopPropagation();
@@ -1112,10 +1163,11 @@ function renderOverview(d, pid){
       };
     });
     row.onclick = e => {
-      if(e.target.tagName==="BUTTON") return;
+      if(e.target.tagName==="BUTTON" || e.target.closest(".solv-cell")) return;
       openQuestionDoc(q.qid);
     };
     qGrid.appendChild(row);
+    qGrid.appendChild(detail);
   }
   // Show eval status header
   if($("ov-eval-status")){
@@ -1369,11 +1421,19 @@ async function selectQuestion(qid, node, dataset){
     _qTex=pr.tex||pr.statement||"";        // raw .tex view shows full source
     const _displayTex=pr.statement||extractStatement(pr.tex||"")||_qTex; // rendered view uses statement
     $("q-raw-code").textContent=_qTex;
-    // Show solvability + tags in a metadata bar (append later)
+    // Show solvability + tags + Opus labels in a metadata bar
     const metaHtml=(()=>{
       let h="";
-      if(pr.solvability_score!=null) h+=`${solvBadge(pr.solvability_score)} `;
+      // Solvability from dataset store or from Opus eval (prefer Opus)
+      const qSum = (ovData&&ovData.question_summaries||[]).find(s=>s.qid===qid);
+      const opusScore = qSum?.opus_eval?.score;
+      const dispScore = opusScore!=null ? opusScore : pr.solvability_score;
+      if(dispScore!=null) h+=`${solvBadge(dispScore)} `;
+      // Tags from dataset API
       if(pr.tags&&pr.tags.length) h+=pr.tags.slice(0,4).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("");
+      // Curated labels from overview data
+      const labs = qSum?.labels||[];
+      if(labs.length) h+=labs.map(l=>`<span class="tag-chip">${esc(l)}</span>`).join("");
       return h ? `<div class="tag-strip" style="margin-bottom:8px">${h}</div>` : "";
     })();
     // Auto-load pre-compiled PDF (backend pre-compiles at startup)
