@@ -18,8 +18,14 @@ _NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 _TIMEOUT = 240
 
 
+_TECTONIC = "/projects/bhov/zzhao18/software/bin/tectonic"
+
+
 def latex_available() -> str | None:
-    return shutil.which("latexmk") or shutil.which("pdflatex")
+    import os
+    if os.path.isfile(_TECTONIC) and os.access(_TECTONIC, os.X_OK):
+        return _TECTONIC
+    return shutil.which("tectonic") or shutil.which("latexmk") or shutil.which("pdflatex")
 
 
 def pdf_dir(repo_root: Path) -> Path:
@@ -76,7 +82,10 @@ def compile_tex(repo_root: Path, content: str, name: str) -> dict:
             shutil.copyfile(preamble, build / "preamble.tex")
         (build / "main.tex").write_text(build_main_tex(content, has_preamble), encoding="utf-8")
 
-        if shutil.which("latexmk"):
+        tool = latex_available()
+        if tool and ("tectonic" in tool):
+            cmd = [tool, "main.tex"]
+        elif shutil.which("latexmk"):
             cmd = ["latexmk", "-pdf", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
         else:
             cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
@@ -92,3 +101,44 @@ def compile_tex(repo_root: Path, content: str, name: str) -> dict:
             shutil.copyfile(out_pdf, dest)
             return {"ok": True, "pdf": pdf_name, "log": "BUILD OK"}
         return {"ok": False, "pdf": None, "log": f"BUILD FAILED (exit {proc.returncode})\n{log_tail}"}
+
+
+def compile_problem_pdf(repo_root: Path, problem_id: str) -> dict:
+    """Compile problems/{problem_id}.tex to a cached PDF. Returns {ok, pdf_url, log}."""
+    pdf_name = f"problem_{problem_id}.pdf"
+    dest = pdf_dir(repo_root) / pdf_name
+    if dest.is_file():
+        return {"ok": True, "pdf_url": f"/api/pdf/{pdf_name}", "log": "cached"}
+
+    tool = latex_available()
+    if not tool:
+        return {"ok": False, "pdf_url": None, "log": "No LaTeX toolchain available."}
+
+    tex_path = repo_root / "problems" / f"{problem_id}.tex"
+    preamble_path = repo_root / "problems" / "preamble.tex"
+    if not tex_path.is_file():
+        return {"ok": False, "pdf_url": None, "log": f"{problem_id}.tex not found"}
+
+    with tempfile.TemporaryDirectory(prefix="rma_prob_") as tmp:
+        build = Path(tmp)
+        if preamble_path.is_file():
+            shutil.copyfile(preamble_path, build / "preamble.tex")
+        shutil.copyfile(tex_path, build / "main.tex")
+
+        if "tectonic" in tool:
+            cmd = [tool, "main.tex"]
+        elif shutil.which("latexmk"):
+            cmd = ["latexmk", "-pdf", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
+        else:
+            cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
+        try:
+            proc = subprocess.run(cmd, cwd=build, text=True, capture_output=True, timeout=_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "pdf_url": None, "log": "Compilation timed out."}
+
+        out_pdf = build / "main.pdf"
+        log_tail = (proc.stdout or "")[-2000:]
+        if proc.returncode == 0 and out_pdf.is_file():
+            shutil.copyfile(out_pdf, dest)
+            return {"ok": True, "pdf_url": f"/api/pdf/{pdf_name}", "log": "BUILD OK"}
+        return {"ok": False, "pdf_url": None, "log": f"BUILD FAILED\n{log_tail}"}

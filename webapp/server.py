@@ -25,7 +25,7 @@ from .claude_code import claude_code_available, run_claude_code_agent
 from .documents import list_documents, read_document
 from .proofs import get_proof, list_experiments
 from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue
-from .latex import compile_tex, latex_available, pdf_dir, safe_pdf_name
+from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
 
@@ -34,6 +34,21 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 _PROBLEM_RE = re.compile(r"^q(?:10|[1-9])$")
 
 app = FastAPI(title="Research Math Agent", version="0.2.0")
+
+
+def _precompile_problems():
+    """Compile all problem PDFs in the background at startup so first click is fast."""
+    import re as _re
+    problems_dir = REPO_ROOT / "problems"
+    if not problems_dir.is_dir():
+        return
+    for tex in sorted(problems_dir.glob("q*.tex")):
+        pid = tex.stem
+        if _re.match(r"^q(?:10|[1-9])$", pid):
+            compile_problem_pdf(REPO_ROOT, pid)
+
+
+threading.Thread(target=_precompile_problems, daemon=True).start()
 
 
 @app.get("/api/problems")
@@ -161,12 +176,20 @@ def documents() -> JSONResponse:
     return JSONResponse({"documents": list_documents(REPO_ROOT)})
 
 
-@app.get("/api/document/{name}")
+@app.get("/api/document/{name:path}")
 def document(name: str) -> JSONResponse:
     content = read_document(REPO_ROOT, name)
     if content is None:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse({"name": name, "markdown": content})
+
+
+@app.get("/api/problem-pdf/{problem_id}")
+def problem_pdf(problem_id: str) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    result = compile_problem_pdf(REPO_ROOT, problem_id)
+    return JSONResponse(result)
 
 
 @app.post("/api/compile")
@@ -186,6 +209,24 @@ def get_pdf(name: str):
     if not path.is_file():
         return JSONResponse({"error": "not found"}, status_code=404)
     return FileResponse(path, media_type="application/pdf", filename=safe)
+
+
+@app.get("/api/proof-pdf/{exp_name}/{problem_id}")
+def proof_pdf(exp_name: str, problem_id: str) -> JSONResponse:
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    data = get_proof(exp_name, problem_id)
+    if data is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    tex = data.get("solution_tex", "")
+    if not tex:
+        return JSONResponse({"ok": False, "pdf_url": None, "log": "no solution tex"})
+    safe_exp = re.sub(r"[^A-Za-z0-9_-]", "_", exp_name)
+    name = f"proof_{safe_exp}_{problem_id}"
+    result = compile_tex(REPO_ROOT, tex, name)
+    if result["ok"]:
+        result["pdf_url"] = f"/api/pdf/{result['pdf']}"
+    return JSONResponse(result)
 
 
 @app.get("/api/proofs")
