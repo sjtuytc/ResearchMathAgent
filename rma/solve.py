@@ -6,10 +6,12 @@ import re
 import shutil
 import subprocess
 from argparse import Namespace
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
 from .doctor import _resolve_repo_root
+from .memory import format_memory_context, query_memory, record_attempt
 from .models import (
     ModelConfigurationError,
     ModelRequestError,
@@ -126,6 +128,140 @@ PROBLEM_PROFILES = {
 }
 
 
+def _documents_dir(repo_root: Path) -> Path:
+    return repo_root / "documents"
+
+
+def _write_run_meta(output_dir: Path, args: Namespace, n_strategies: int) -> None:
+    meta = {
+        "run_id": output_dir.name,
+        "parent_run_id": getattr(args, "parent_run", None),
+        "n_strategies": n_strategies,
+        "model": getattr(args, "model_name", "rma-skeleton"),
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "created_at": _timestamp(),
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+
+
+def _plan_strategies(
+    parsed: dict,
+    profile: dict,
+    memory_context: str,
+    n: int,
+    args: Namespace,
+) -> list[str]:
+    """Generate n distinct proof strategy descriptions using a cheap model call."""
+    default = profile["strategy"]
+    if n <= 1:
+        return [default]
+
+    model_name = getattr(args, "model_name", "rma-skeleton")
+    provider = getattr(args, "model_provider", "auto")
+    if not should_use_anthropic(model_name, provider):
+        return [default] * n
+
+    prompt = (
+        f"You are a math research strategist. "
+        f"Generate exactly {n} DISTINCT proof strategies for the following problem.\n\n"
+        f"Problem area: {parsed.get('area', 'mathematics')}\n"
+        f"Problem type: {parsed.get('problem_type', 'proof')}\n"
+        f"Default strategy: {default}\n"
+        f"\n{memory_context}\n"
+        f"Return a JSON array of {n} strings. Each string is a different high-level proof strategy "
+        f"(2-4 sentences). Vary the approach significantly — algebraic, probabilistic, analytic, "
+        f"constructive, etc. The first entry may refine the default strategy; others must be genuinely different.\n"
+        f"Return ONLY the JSON array, no prose."
+    )
+    try:
+        response = call_anthropic(
+            model="claude-haiku-4-5-20251001",
+            system="You are a concise mathematics strategy planner.",
+            prompt=prompt,
+            max_tokens=800,
+            temperature=0.9,
+        )
+        raw = response.text.strip()
+        fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", raw, re.DOTALL)
+        if fence:
+            raw = fence.group(1).strip()
+        strategies = json.loads(raw)
+        if isinstance(strategies, list) and strategies:
+            return [str(s) for s in strategies[:n]]
+    except Exception:
+        pass
+    return [default] * n
+
+
+def _sanity_check_strategy(problem_area: str, strategy_text: str, args: Namespace) -> bool:
+    """Quick cheap check: is this strategy plausible? Returns True to proceed."""
+    model_name = getattr(args, "model_name", "rma-skeleton")
+    provider = getattr(args, "model_provider", "auto")
+    if not should_use_anthropic(model_name, provider):
+        return True
+    try:
+        response = call_anthropic(
+            model="claude-haiku-4-5-20251001",
+            system="You assess if a math proof strategy is plausible. Reply only PROCEED or STOP.",
+            prompt=f"Area: {problem_area}\nStrategy: {strategy_text[:600]}\n\nIs this mathematically plausible? PROCEED or STOP.",
+            max_tokens=5,
+            temperature=0.0,
+        )
+        return "STOP" not in response.text.upper()
+    except Exception:
+        return True
+
+
+def _run_parallel_strategies(
+    repo_root: Path,
+    parsed: dict,
+    profile: dict,
+    skill_info: dict,
+    args: Namespace,
+    paths: dict,
+    strategies: list[str],
+    base_iteration: int,
+) -> list[tuple[int, str, dict, list, str]]:
+    """Run each strategy in parallel; return list of (idx, text, backend, issues, strategy)."""
+
+    def _try_one(idx: int, strategy: str) -> tuple[int, str, dict, list, str]:
+        strategy_dir = paths["proposals"] / f"candidate_{base_iteration:03d}_s{idx:02d}"
+        strategy_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            text, backend = _generate_solution_text(
+                repo_root, parsed, profile, skill_info, base_iteration, args,
+                strategy_override=strategy,
+                partial_output_dir=strategy_dir,
+                fallback_file=None,
+            )
+        except Exception as exc:
+            return (idx, "", {"provider": "error", "model": "", "method": "error"}, [{"code": "generation_error", "severity": "error", "message": str(exc), "detail": ""}], strategy)
+
+        issues = _collect_verification_issues(parsed, text)
+        candidate_path = strategy_dir / "solution.tex"
+        if text:
+            candidate_path.write_text(text, encoding="utf-8")
+        return (idx, text, backend, issues, strategy)
+
+    workers = min(len(strategies), 4)
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_try_one, i, s): i for i, s in enumerate(strategies)}
+        results = [f.result() for f in as_completed(futures)]
+
+    results.sort(key=lambda r: r[0])
+    return results
+
+
+def _pick_best_result(results: list[tuple]) -> tuple:
+    """Return the result with fewest error-severity issues; prefer non-empty text."""
+    def _score(r):
+        _, text, _, issues, _ = r
+        errors = sum(1 for i in issues if i.get("severity") == "error")
+        return (0 if text else 1, errors)
+    return min(results, key=_score)
+
+
 def run_parse(args: Namespace) -> int:
     context = _build_context("parse", args)
     if context is None:
@@ -212,6 +348,8 @@ def run_solve(args: Namespace) -> int:
     max_rounds = max(1, int(getattr(args, "max_rounds", 3)))
     resume = getattr(args, "resume", False)
     fast = getattr(args, "fast", False)
+    n_strategies = max(1, int(getattr(args, "strategies", 1)))
+    _write_run_meta(output_dir, args, n_strategies)
     final_results = []
     all_passed = True
     for problem_id in problems:
@@ -374,14 +512,27 @@ def _parse_problem(
 ) -> Path:
     paths = _problem_paths(output_dir, problem_id)
     problem_path = repo_root / PROBLEMS_DIR / f"{problem_id}.tex"
-    _ensure_allowed_input(repo_root, problem_path)
-    if not problem_path.is_file():
-        raise FileNotFoundError(f"Missing problem file: {problem_path}")
 
     _ensure_problem_dirs(paths)
-    shutil.copy2(problem_path, paths["input"] / "problem.tex")
-    problem_source = problem_path.read_text(encoding="utf-8")
-    problem_meta = _extract_problem_metadata(problem_id, problem_source)
+
+    # Try .tex first (first_proof_1); fall back to dataset store for other datasets
+    if problem_path.is_file():
+        _ensure_allowed_input(repo_root, problem_path)
+        shutil.copy2(problem_path, paths["input"] / "problem.tex")
+        problem_source = problem_path.read_text(encoding="utf-8")
+        problem_meta = _extract_problem_metadata(problem_id, problem_source)
+    else:
+        # Load from dataset store
+        dataset = getattr(args, "dataset", None)
+        problem_meta = _extract_problem_metadata_from_store(repo_root, problem_id, dataset)
+        problem_source = problem_meta.get("statement_excerpt", "")
+        # Write a plain-text stand-in so downstream steps have something to read
+        stub = (
+            f"% Problem: {problem_meta['title']}\n"
+            f"% Author: {problem_meta.get('author', '')}\n\n"
+            f"{problem_source}"
+        )
+        (paths["input"] / "problem.tex").write_text(stub, encoding="utf-8")
     parsed = _build_parsed_problem(problem_meta, problem_source, output_dir)
     parsed["skill"] = skill_info
 
@@ -420,10 +571,38 @@ def _propose_solution(
         _parse_problem(repo_root, output_dir, problem_id, args, skill_info)
 
     parsed = _read_json(parsed_path)
+    profile = PROBLEM_PROFILES[problem_id]
+    n_strategies = max(1, int(getattr(args, "strategies", 1)))
+
+    # Load memory context for prompt injection
+    docs_dir = _documents_dir(repo_root)
+    memory_entries = query_memory(docs_dir, problem_id=problem_id)
+    memory_ctx = format_memory_context(memory_entries)
+
     iteration = _next_iteration(paths["proposals"], "proposal", ".tex")
     proposal_path = paths["proposals"] / f"proposal_{iteration:03d}.tex"
     proposal_meta_path = paths["proposals"] / f"proposal_{iteration:03d}.json"
-    solution_text, model_backend = _generate_solution_text(repo_root, parsed, PROBLEM_PROFILES[problem_id], skill_info, iteration, args, partial_output_dir=paths["problem"], fallback_file=paths["solution"])
+
+    if n_strategies > 1:
+        # Plan N strategies, sanity-check each, run in parallel, pick best
+        strategies = _plan_strategies(parsed, profile, memory_ctx, n_strategies, args)
+        strategies = [s for s in strategies if _sanity_check_strategy(str(parsed.get("area", "")), s, args)]
+        if not strategies:
+            strategies = [profile["strategy"]]
+
+        results = _run_parallel_strategies(repo_root, parsed, profile, skill_info, args, paths, strategies, iteration)
+        best = _pick_best_result(results)
+        _, solution_text, model_backend, _, chosen_strategy = best
+        extra_meta: dict = {"n_strategies_tried": len(strategies), "chosen_strategy": chosen_strategy}
+    else:
+        solution_text, model_backend = _generate_solution_text(
+            repo_root, parsed, profile, skill_info, iteration, args,
+            memory_context=memory_ctx,
+            partial_output_dir=paths["problem"],
+            fallback_file=paths["solution"],
+        )
+        extra_meta = {}
+
     # If model wrote the file directly via tools and returned no text, use what it wrote
     if not solution_text and paths["solution"].is_file():
         solution_text = paths["solution"].read_text(encoding="utf-8")
@@ -441,6 +620,7 @@ def _propose_solution(
         "method": model_backend["method"],
         "model_backend": model_backend,
         "created_at": _timestamp(),
+        **extra_meta,
     }
     proposal_meta_path.write_text(json.dumps(proposal_meta, indent=2) + "\n", encoding="utf-8")
     _write_state(
@@ -531,6 +711,28 @@ def _verify_solution(
         },
         verification_summary={"passed": passed, "issue_count": len(issues)},
     )
+    # Record outcome to strategy memory
+    try:
+        parsed_for_mem = _read_json(paths["artifacts"] / "parsed_problem.json")
+        profile_for_mem = PROBLEM_PROFILES[problem_id]
+        proposal_meta_path = _latest_file(paths["proposals"], "proposal", ".json")
+        strategy_used = profile_for_mem["strategy"]
+        if proposal_meta_path is not None:
+            pmeta = _read_json(proposal_meta_path)
+            strategy_used = pmeta.get("chosen_strategy", strategy_used)
+        outcome = "success" if passed else "fail"
+        record_attempt(
+            _documents_dir(repo_root),
+            problem_id=problem_id,
+            problem_area=str(parsed_for_mem.get("area", "")),
+            strategy_summary=strategy_used,
+            outcome=outcome,
+            issue_count=len(issues),
+            model=getattr(args, "model_name", ""),
+        )
+    except Exception:
+        pass  # memory recording is best-effort
+
     return {"passed": passed, "report_path": report_path, "issues": issues, "render": render_info}
 
 
@@ -873,14 +1075,20 @@ def _generate_solution_text(
     verification: dict[str, object] | None = None,
     partial_output_dir: Path | None = None,
     fallback_file: Path | None = None,
+    memory_context: str = "",
+    strategy_override: str | None = None,
 ) -> tuple[str, dict[str, str]]:
     model_name = getattr(args, "model_name", "rma-skeleton")
     provider = getattr(args, "model_provider", "auto")
+    prompt = _model_user_prompt(
+        repo_root, parsed, profile, skill_info, iteration, verification,
+        memory_context=memory_context, strategy_override=strategy_override,
+    )
     if should_use_claude_code(model_name, provider):
         response = call_claude_code(
             model=model_name,
             system=_model_system_prompt(),
-            prompt=_model_user_prompt(repo_root, parsed, profile, skill_info, iteration, verification),
+            prompt=prompt,
             cwd=repo_root,
             partial_output_dir=partial_output_dir,
             fallback_file=fallback_file,
@@ -895,7 +1103,7 @@ def _generate_solution_text(
         response = call_anthropic(
             model=model_name,
             system=_model_system_prompt(),
-            prompt=_model_user_prompt(repo_root, parsed, profile, skill_info, iteration, verification),
+            prompt=prompt,
             max_tokens=max_tokens,
         )
         return _strip_markdown_fences(response.text), {
@@ -927,6 +1135,8 @@ def _model_user_prompt(
     skill_info: dict[str, str],
     iteration: int,
     verification: dict[str, object] | None,
+    memory_context: str = "",
+    strategy_override: str | None = None,
 ) -> str:
     verification_block = "No verifier feedback yet. This is the initial complete solution pass."
     if verification is not None:
@@ -952,13 +1162,15 @@ def _model_user_prompt(
         "quantifier_summary": parsed.get("quantifier_summary"),
         "boundary_cases": parsed.get("boundary_cases"),
     }
+    effective_strategy = strategy_override if strategy_override else profile["strategy"]
     profile_payload = {
         "candidate": profile["candidate"],
         "construction_seed": profile["construction"],
-        "strategy_seed": profile["strategy"],
+        "strategy_seed": effective_strategy,
         "verification_seed": profile["verification"],
     }
 
+    memory_block = f"\n### Strategy memory\n{memory_context}" if memory_context else ""
     return f"""Generate iteration {iteration} of the complete proof for this First Proof research problem.
 
 ## Context
@@ -971,7 +1183,7 @@ def _model_user_prompt(
 
 ### Math research skill
 {_skill_prompt_excerpt(repo_root, skill_info)}
-
+{memory_block}
 ### Verifier feedback from previous iteration
 {verification_block}
 
@@ -1548,6 +1760,38 @@ def _extract_problem_metadata(problem_id: str, source: str) -> dict[str, str]:
         "title": title,
         "author": author,
         "statement_excerpt": body,
+    }
+
+
+def _extract_problem_metadata_from_store(repo_root: Path, problem_id: str, dataset: str | None) -> dict[str, str]:
+    """Load problem metadata from the dataset JSON store (for non-first_proof_1 problems)."""
+    import sys
+    sys.path.insert(0, str(repo_root))
+    try:
+        from webapp.dataset_store import get_problem as _ds_get, list_datasets as _ds_list
+        # If no dataset specified, search all datasets
+        if dataset:
+            rec = _ds_get(dataset, problem_id)
+        else:
+            rec = None
+            for ds_meta in _ds_list():
+                rec = _ds_get(ds_meta["slug"], problem_id)
+                if rec:
+                    dataset = ds_meta["slug"]
+                    break
+    except Exception:
+        rec = None
+    if not rec:
+        return {"id": problem_id, "title": problem_id, "author": "", "statement_excerpt": ""}
+    tags = rec.get("tags", [])
+    return {
+        "id": problem_id,
+        "title": rec.get("title", problem_id),
+        "author": rec.get("source_url", ""),
+        "area": ", ".join(tags) if tags else "mathematics",
+        "statement_excerpt": rec.get("statement", ""),
+        "dataset": dataset or rec.get("dataset", ""),
+        "source_url": rec.get("source_url", ""),
     }
 
 

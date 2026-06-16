@@ -68,6 +68,29 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip verify and refine stages — only parse and propose. Useful for quick first-pass proof generation.",
     )
+    solve.add_argument(
+        "--strategies",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Number of parallel proof strategies to attempt per problem (default: 1). "
+            "When N > 1, a planner proposes N distinct approaches, sanity-checks each, "
+            "runs them in parallel, and picks the best result by verifier score."
+        ),
+    )
+    solve.add_argument(
+        "--parent-run",
+        default=None,
+        metavar="RUN_ID",
+        help="Parent experiment run ID for DAG lineage tracking (written to meta.json).",
+    )
+    solve.add_argument(
+        "--dataset",
+        default=None,
+        metavar="SLUG",
+        help="Dataset slug (e.g. aim_problem_lists, erdos_problems) when solving non-first_proof_1 problems.",
+    )
     solve.set_defaults(func=run_solve)
 
     diff = subparsers.add_parser(

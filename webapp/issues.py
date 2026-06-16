@@ -168,33 +168,54 @@ def _save(repo_root: Path, problem_id: str, issue: dict, dataset: str = "first_p
 
 def _seed_issue_direct(repo_root: Path, problem_id: str, dataset: str = "first_proof_1") -> dict:
     """Create and save the default seed issue without calling list_issues."""
-    tex_path = repo_root / "problems" / f"{problem_id}.tex"
-    title, author, area = "(untitled)", "(unknown)", "(unspecified)"
-    if tex_path.is_file():
-        text = tex_path.read_text(encoding="utf-8", errors="replace")
-        m = _TITLE_RE.search(text)
-        if m:
-            title = re.sub(r"\s+", " ", m.group(1)).strip()
-        m = _AUTHOR_RE.search(text)
-        if m:
-            author = re.sub(r"\s+", " ", m.group(1)).strip()
-        for line in text.splitlines():
-            line = line.strip()
-            if line.startswith("%") and "—" in line:
-                area = line.lstrip("% ").split("—", 1)[1].strip()
-                break
+    title, author, area, statement = "(untitled)", "(unknown)", "(unspecified)", ""
+
+    # Try dataset store first (works for all datasets)
+    try:
+        from .dataset_store import get_problem as _ds_get_problem
+        rec = _ds_get_problem(dataset, problem_id)
+        if rec:
+            title = rec.get("title", problem_id) or problem_id
+            statement = rec.get("statement", "") or ""
+            tags = rec.get("tags", [])
+            area = ", ".join(tags) if tags else area
+    except Exception:
+        pass
+
+    # Fallback: read .tex for first_proof_1
+    if not statement or dataset == "first_proof_1":
+        tex_path = repo_root / "problems" / f"{problem_id}.tex"
+        if tex_path.is_file():
+            text = tex_path.read_text(encoding="utf-8", errors="replace")
+            m = _TITLE_RE.search(text)
+            if m:
+                title = re.sub(r"\s+", " ", m.group(1)).strip()
+            m = _AUTHOR_RE.search(text)
+            if m:
+                author = re.sub(r"\s+", " ", m.group(1)).strip()
+            for line in text.splitlines():
+                line = line.strip()
+                if line.startswith("%") and "—" in line:
+                    area = line.lstrip("% ").split("—", 1)[1].strip()
+                    break
+            if not statement:
+                statement = text.strip()
+
     issue_id = f"{problem_id}-1"
     now = _now()
+
+    # Build body: include the actual problem statement
+    stmt_block = f"\n\n**Problem statement:**\n{statement[:2000]}" if statement else ""
     body = (
-        f"Produce a correct, rigorous, self-contained proof for `{problem_id}`.\n\n"
-        f"**Area:** {area}  \n**Problem author:** {author}\n\n"
+        f"**Area:** {area}  \n**Problem author:** {author}{stmt_block}\n\n"
+        "---\n"
         "Agents should post sub-lemma proposals, proof sketches, or blockers as "
         "comments. When a complete proof is agreed upon, mark this issue resolved."
     )
     issue = {
         "id": issue_id,
         "problem_id": problem_id,
-        "title": f"Proof of {problem_id}: {title}",
+        "title": f"Proof: {title}",
         "status": "open",
         "labels": ["proof-task"],
         "created_at": now,
