@@ -76,6 +76,7 @@ class AgentConfig:
     repo_root: Path | None = None
     thinking: bool = True
     provider: str = "api"
+    gcp_project: str = ""
 
 
 def _initial_user_message(cfg: AgentConfig) -> str:
@@ -195,7 +196,7 @@ def run_agent_vertex(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
         yield AgentEvent("done", {"reason": "error"})
         return
 
-    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    project_id = cfg.gcp_project or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
     if not project_id:
         try:
             import google.auth
@@ -203,7 +204,7 @@ def run_agent_vertex(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
         except Exception:
             pass
     if not project_id:
-        yield AgentEvent("error", {"message": "Could not determine Google Cloud project. Set GOOGLE_CLOUD_PROJECT or configure a default project via ADC."})
+        yield AgentEvent("error", {"message": "GCP project not set. Enter your Project ID in the UI or set GOOGLE_CLOUD_PROJECT on the server."})
         yield AgentEvent("done", {"reason": "error"})
         return
 

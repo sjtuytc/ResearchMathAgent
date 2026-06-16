@@ -307,12 +307,13 @@ def log_activity_legacy(problem_id: str, payload: dict = Body(...)) -> JSONRespo
 def solve(
     problem: str = Query(..., description="Problem id, e.g. q6"),
     model: str = Query(""),
-    provider: str = Query("claude-code", description="claude-code | api"),
+    provider: str = Query("claude-code", description="claude-code | api | vertex"),
     thinking: int = Query(1),
     run_id: str = Query(""),
+    gcp_project: str = Query("", description="GCP project ID for Vertex AI provider"),
 ) -> StreamingResponse:
     return StreamingResponse(
-        _sse(problem, model, provider, bool(thinking), run_id or uuid.uuid4().hex),
+        _sse(problem, model, provider, bool(thinking), run_id or uuid.uuid4().hex, gcp_project=gcp_project),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -762,7 +763,7 @@ def run_daily() -> JSONResponse:
     return JSONResponse({"started": True})
 
 
-def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str):
+def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str, gcp_project: str = ""):
     def send(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
 
@@ -785,6 +786,7 @@ def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str):
         workspace=REPO_ROOT / "webapp" / ".runs" / f"{problem}_{int(time.time())}",
         thinking=thinking,
         provider=provider,
+        gcp_project=gcp_project,
     )
     if provider == "claude-code":
         runner = run_claude_code_agent

@@ -444,6 +444,9 @@ MathJax = {
           <label class="inline">Model
             <input type="text" id="model" style="width:170px" />
           </label>
+          <label class="inline" id="gcp-project-wrap" style="display:none">GCP Project
+            <input type="text" id="gcp-project" style="width:160px" placeholder="your-project-id" />
+          </label>
           <label class="inline"><input type="checkbox" id="thinking" checked /> show thinking</label>
           <button class="btn-pri" id="run">Solve</button>
           <button class="btn-sec" id="stop" style="display:none">Stop</button>
@@ -726,10 +729,12 @@ async function init(){
 function onProviderChange(){
   const p=$("provider").value;
   $("model").value = p==="claude-code" ? "sonnet" : "claude-opus-4-8";
+  const isVertex = p==="vertex";
+  $("gcp-project-wrap").style.display = isVertex ? "" : "none";
   $("prov-note").innerHTML = p==="claude-code"
     ? "Runs the local <code>claude</code> CLI using your Pro/Max subscription — no API credits. Models: <code>sonnet</code>, <code>opus</code>, <code>haiku</code>."
-    : p==="vertex"
-    ? "Uses Claude on Google Cloud Vertex AI via ADC. Run the ADC setup script first, then set <code>GOOGLE_CLOUD_PROJECT</code> and optionally <code>GOOGLE_CLOUD_REGION</code> (default: <code>global</code>) on the server."
+    : isVertex
+    ? "Uses Claude on Google Cloud Vertex AI via ADC. Enter your GCP Project ID above. Run the ADC setup script first; optionally set <code>GOOGLE_CLOUD_REGION</code> on the server (default: <code>global</code>)."
     : "Uses the Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
 }
 
@@ -1645,10 +1650,18 @@ function start(){
     return;
   }
   const provider=$("provider").value, model=$("model").value.trim(), thinking=$("thinking").checked?1:0;
+  const gcpProject=$("gcp-project").value.trim();
+  if(provider==="vertex" && !gcpProject){
+    $("a-empty").style.display="block";
+    $("a-empty").textContent="Enter your GCP Project ID in the field above before running Vertex AI.";
+    setStatus("GCP project required");
+    return;
+  }
   runId=newRunId();
   $("run").style.display="none"; $("stop").style.display="inline-block"; setStatus("connecting…","run");
-  const q=`/api/solve?problem=${encodeURIComponent(selected)}&provider=${encodeURIComponent(provider)}`
+  let q=`/api/solve?problem=${encodeURIComponent(selected)}&provider=${encodeURIComponent(provider)}`
         +`&model=${encodeURIComponent(model)}&thinking=${thinking}&run_id=${encodeURIComponent(runId)}`;
+  if(gcpProject) q+=`&gcp_project=${encodeURIComponent(gcpProject)}`;
   es=new EventSource(q);
   es.onmessage=(e)=>handle(JSON.parse(e.data));
   es.onerror=()=>{setStatus("connection closed");cancelBackend();finish("disconnected");};
