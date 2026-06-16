@@ -1,0 +1,35 @@
+{
+  "id": "q6-1",
+  "problem_id": "q6",
+  "dataset": "first_proof_1",
+  "title": "Ky Fan subadditivity applied to non-Hermitian product in eq. (split)",
+  "status": "open",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-16T04:25:05Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "cc7d10e93",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "In Step 4 (Barrier Averaging), equation (split) claims:\n\n  Tr_sigma(M^p tL_{S,t}) <= Tr_sigma((u+delta)^p Pi_S^perp tL_{S,t}) + Tr_sigma(((u+delta)Pi_S - tL_S)^p tL_{S,t})\n\nattributed to 'Ky Fan subadditivity [Thm 4.3.47a HJ12].' That theorem bounds Tr_sigma(A+B) <= Tr_sigma(A) + Tr_sigma(B) for HERMITIAN matrices A, B. But M^p * tL_{S,t} is a product of two PSD matrices that generically do not commute, hence is not symmetric. The eigenvalues of such a product are real and non-negative (they equal those of M^{p/2} tL_{S,t} M^{p/2}), but Ky Fan's eigenvalue inequality as cited requires Hermitian inputs.\n\nThe correct fix is to symmetrize: Tr_sigma(M^p tL_{S,t}) = Tr_sigma(tL_{S,t}^{1/2} M^p tL_{S,t}^{1/2}) since similar matrices share eigenvalues. One then decomposes M^p = X + Y with X = (u+delta)^p Pi_S^perp and Y = ((u+delta)Pi_S - tL_S)^p and applies Ky Fan to the symmetric matrices tL_{S,t}^{1/2} X tL_{S,t}^{1/2} and tL_{S,t}^{1/2} Y tL_{S,t}^{1/2}, which ARE PSD. However the resulting bound involves Tr_sigma((u+delta)^p Pi_S^perp tL_{S,t} Pi_S^perp), NOT Tr_sigma((u+delta)^p Pi_S^perp tL_{S,t}) as written. The Pi_S^perp-piece bound then requires the separate inequality Tr_sigma(Pi_S^perp tL_{S,t} Pi_S^perp) <= Tr(tL_{S,t}) = ell(S,t), which holds but is unproven. The proof as written omits the symmetrization step and invokes Ky Fan incorrectly.",
+      "created_at": "2026-06-16T04:25:05Z"
+    },
+    {
+      "id": "cb815fb04",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Critic-Agent Review Summary for Problem 6\n\nThe proof strategy is correct and the overall approach (greedy barrier method with bounded-rank top-sigma tracking) works. However, five mathematical gaps require repair:\n\n**q6-1 [Severe]: Ky Fan applied to non-Hermitian products.**\nEq. (split) in Step 4 invokes Ky Fan subadditivity on Tr_sigma(M^p tL_{S,t}), a product of two PSD matrices that is not Hermitian. Ky Fan's eigenvalue inequality requires Hermitian inputs. The fix requires symmetrizing to Tr_sigma(tL_{S,t}^{1/2} M^p tL_{S,t}^{1/2}) before splitting; the resulting terms differ from what is written and carry their own additional obligations.\n\n**q6-2 [Significant]: Barrier Update Lemma needs rank(B) <= sigma.**\nThe lemma is stated for arbitrary B >= 0, but (i) the implication Tr_sigma(M^{-1}B) < 1 => ||C^T M^{-1}C||_op < 1 (needed for SMW invertibility) and (ii) cyclicity of Tr_sigma inside the SMW expression both require rank(B) <= sigma. This holds in every call (rank(tL_{S,t}) <= |S| <= sigma), but is never stated.\n\n**q6-3 [Definite error]: Tr_sigma(M^{-1}) = B^u_sigma(S) is wrong.**\nM = (u+delta)I - tL_S, so Tr_sigma(M^{-1}) = B^{u+delta}_sigma(S), not B^u_sigma(S). The inequality <= phi remains valid (B^{u+delta}_sigma <= B^u_sigma <= phi), but the equality as written is false.\n\n**q6-4 [Significant]: No proof that top-sigma barrier implies all eigenvalues below u_sigma.**\nStep 1's conclusion that 'every eigenvalue of tL_S lies below eps' requires the rank argument: rank(L_S) <= |S|-1 = sigma at termination, so tL_S has at most sigma nonzero eigenvalues, and the top-sigma barrier covers all of them. This key fact is mentioned only in the Remarks, never in the proof body.\n\n**q6-5 [Moderate]: Pi_S piece bookkeeping in Step 4.**\nThe switch from sum of Tr_sigma to Tr (requiring Tr_sigma <= Tr on non-Hermitian products) and the final Ky Fan max-principle step (Tr(Pi_S M^p Pi_S) <= Tr_sigma(M^p), which needs rank(Pi_S) <= sigma-1) are each stated without proof. Both are fixable with the rank argument from q6-4.",
+      "created_at": "2026-06-16T04:26:19Z"
+    },
+    {
+      "id": "cede94790",
+      "author": "system",
+      "role": "agent",
+      "body": "**Proof file:** `webapp/issues/first_proof_1/q6/working_solution.tex`\n\nThe issue described above occurs in this working solution file. Reviewers should consult the file at that path for the exact context.",
+      "created_at": "2026-06-16T21:59:46Z"
+    }
+  ]
+}

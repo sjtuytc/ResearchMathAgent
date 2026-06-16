@@ -1,0 +1,28 @@
+{
+  "id": "q4-2",
+  "problem_id": "q4",
+  "dataset": "first_proof_1",
+  "title": "Dimensional error: JJ* vs J*J in Hessian identity (Lemma 3)",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-16T14:36:18Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "c2b99007d",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "In Lemma 3 (Hessian identity), the solution states\n\n  w* J J* w = w*(I_n⊕I_n − Σ_i γ_i H^(i)) w\n\nwhere w ∈ R^{2n} and J = D Ψ_{⊞n} is the Jacobian of the root map Ψ_{⊞n}: R^n × R^n → R^n.\n\nSince Ψ_{⊞n} maps R^{2n} → R^n, J is an n × 2n matrix. Then J J* is n × n, and the expression w* (J J*) w is dimensionally ill-typed for w ∈ R^{2n}.\n\nThe correct expression is w* J* J w = ‖Jw‖², where J* J is 2n × 2n. The stated identity should read\n\n  w* J* J w = w*(I_{2n} − Σ_i γ_i H^(i)) w.\n\nThe same error appears in the Proposition 2 (contraction) proof: \"‖J(u,v)‖² = (u,v)* J J* (u,v)\" should be \"= (u,v)* J* J (u,v)\".\n\nThe inconsistency is confirmed by the Observation (Step 1) proof, where J acts on a 2n-vector (J∈R^{n×2n}), contradicting the JJ* usage which would require J∈R^{2n×n}.\n\nThe final contraction inequality is correct (the mathematics goes through with J*J in place of JJ*), but the Lemma as stated is dimensionally inconsistent.",
+      "created_at": "2026-06-16T14:36:18Z"
+    },
+    {
+      "id": "c3c8d8161",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Fix: JJ* → J*J dimensional correction\n\n**Confirmed error.** The Jacobian J = D Ψ_{⊞n} of the root map Ψ_{⊞n}: R^n × R^n → R^n is an n × 2n matrix. For w ∈ R^{2n}:\n\n- JJ* is n × n — the expression w* JJ* w is dimensionally ill-typed for w ∈ R^{2n}\n- J*J is 2n × 2n — the expression w* J*J w = ||Jw||² is well-typed\n\nThis was verified numerically (a 3×6 random Jacobian reproduces the exact shape mismatch).\n\n**Three corrections made to solution.tex:**\n\n1. **Lemma 3 statement** (Hessian identity): `w* J J* w = w*(I_n⊕I_n - Σ γ_i H^(i)) w` corrected to `w* J*J w = w*(I_n⊕I_n - Σ γ_i H^(i)) w`. The identity matrix I_n⊕I_n = I_{2n} is already the correct 2n×2n matrix.\n\n2. **Lemma 3 proof** (variance computation): The intermediate line `(2/n)(w* J J* w + Σ γ_i w* H^(i) w)` corrected to `(2/n)(w* J*J w + Σ γ_i w* H^(i) w)`. This is consistent with the derivation: ∂_t γ_i = [Jw]_i, so Σ_i (∂_t γ_i)² = ||Jw||² = w* J*J w.\n\n3. **Proposition 2 proof** (contraction): `||J(u,v)||² = (u,v)* J J* (u,v)` corrected to `||J(u,v)||² = (u,v)* J*J (u,v)`.\n\nThe mathematics (contraction inequality, Blachman argument, final Stam inequality) is entirely correct. The only error was notational: JJ* and J*J were swapped throughout. All three fixes have been applied in-place.",
+      "created_at": "2026-06-16T14:39:56Z"
+    }
+  ]
+}

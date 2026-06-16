@@ -698,13 +698,22 @@ def update_timeline(repo_root: Path, problem_id: str) -> Path:
             section_lines.append("")
         dated_sections.append("\n".join(section_lines))
 
+    # Issue history section
+    issue_events: list[str] = []
+    for iss in _load_issues(repo_root, problem_id):
+        for c in iss.get("comments", []):
+            if c.get("role") == "event":
+                ts = c.get("created_at", "")[:16].replace("T", " ")
+                issue_events.append(f"- `{ts}` [{iss['id']}] {c.get('body', '')}")
+    issue_history_block = "\n".join(issue_events) if issue_events else "_No issue events recorded yet._"
+
     doc = f"""# {problem_id.upper()}: Attempt Timeline
 
 **Total attempts:** {total} | **Successes:** {successes} | **Failures:** {fails}
 **Best result:** {f'{best_issues} verifier issues' if best_issues is not None else 'no attempts yet'}
 **Last updated:** {_now()}
 
-> This document records every proof attempt in chronological order.
+> This document records every proof attempt and issue event in chronological order.
 > Each entry shows the model, strategy used, and verifier outcome.
 
 ---
@@ -723,7 +732,13 @@ def update_timeline(repo_root: Path, problem_id: str) -> Path:
 
 ---
 
-*Auto-generated from `documents/strategy_memory.jsonl`. New entries appear after each `rma solve` run.*
+## Issue Activity Log
+
+{issue_history_block}
+
+---
+
+*Auto-generated from `documents/strategy_memory.jsonl` and issue tracker. New entries appear after each run.*
 """
     out.write_text(doc, encoding="utf-8")
     return out
@@ -758,11 +773,29 @@ def update_progress(
     open_issues = [i for i in issues if i.get("status") in ("open", "in_progress")]
     resolved_issues = [i for i in issues if i.get("status") == "resolved"]
 
-    open_block = ""
-    for iss in open_issues:
-        comments = iss.get("comments", [])
-        last_comment = comments[-1].get("body", "")[:300] if comments else ""
-        open_block += f"\n### 🔴 [{iss['id']}] {iss.get('title', '')}\n**Status:** {iss.get('status')} | **Labels:** {', '.join(iss.get('labels', []))}\n\n{last_comment}\n"
+    def _issue_thread_md(iss: dict) -> str:
+        """Render an issue's full comment thread as markdown."""
+        lines = []
+        status_icon = {"open": "🔴", "in_progress": "🟡", "resolved": "✅"}.get(iss.get("status", ""), "⚪")
+        lines.append(f"\n### {status_icon} [{iss['id']}] {iss.get('title', '')}")
+        lines.append(f"**Status:** {iss.get('status')} | **Labels:** {', '.join(iss.get('labels', []))}")
+        lines.append("")
+        for c in iss.get("comments", []):
+            role = c.get("role", "human")
+            author = c.get("author", "?")
+            ts = c.get("created_at", "")[:16].replace("T", " ")
+            body = c.get("body", "").strip()
+            if role == "event":
+                lines.append(f"> _{body}_ — {ts}")
+            else:
+                author_label = f"**{author}**" if role in ("agent", "solver") else author
+                lines.append(f"**{author_label}** ({ts}):")
+                for ln in body.splitlines():
+                    lines.append(f"  {ln}")
+                lines.append("")
+        return "\n".join(lines)
+
+    open_block = "".join(_issue_thread_md(i) for i in open_issues) or "_No open issues._"
 
     resolved_block = "\n".join(
         f"- ✅ [{i['id']}] {i.get('title','')}" for i in resolved_issues

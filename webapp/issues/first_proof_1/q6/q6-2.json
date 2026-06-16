@@ -1,0 +1,28 @@
+{
+  "id": "q6-2",
+  "problem_id": "q6",
+  "dataset": "first_proof_1",
+  "title": "Barrier Update Lemma: implicit rank <= sigma assumption on B is unverified",
+  "status": "open",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-16T04:25:54Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "c36a922fe",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "Lemma (Barrier Update) is stated for arbitrary B >= 0, but the proof implicitly requires rank(B) <= sigma. Two steps fail without this:\n\n1. The proof equates Tr_sigma(M^{-1}B) = Tr_sigma(C^T M^{-1} C), then uses this being < 1 to infer that (I - C^T M^{-1} C) is invertible, which requires ||C^T M^{-1} C||_op < 1. The only available bound is Tr_sigma(C^T M^{-1} C) < 1. If rank(C^T M^{-1} C) > sigma, the top-sigma trace can be < 1 while some eigenvalue outside the top sigma equals 1, so the operator norm could equal 1 and (I - C^T M^{-1} C) could be singular. The implication Tr_sigma < 1 => ||.||_op < 1 requires rank(C) <= sigma, so that Tr_sigma = Tr.\n\n2. Later the proof uses cyclicity of Tr_sigma to write Tr_sigma(M^{-1}C(I - C^T M^{-1}C)^{-1}C^T M^{-1}) = Tr_sigma((I - C^T M^{-1}C)^{-1} C^T M^{-2} C). Cyclicity of the TOP-sigma trace is NOT valid in general; it only holds when the matrix whose Tr_sigma is taken has rank <= sigma (making Tr_sigma = Tr, for which ordinary cyclicity applies).\n\nIn the application B = tL_{S,t} = L^{dag/2} L_{S,{t}} L^{dag/2}, and rank(L_{S,{t}}) <= |S| <= sigma (since we iterate while |S| <= sigma). So the assumption holds in the actual use, but the lemma as stated does not impose it. The proof should either restrict the lemma to rank(B) <= sigma, or prove that rank(B) <= sigma is automatically satisfied in every call.",
+      "created_at": "2026-06-16T04:25:54Z"
+    },
+    {
+      "id": "ce3ecc883",
+      "author": "system",
+      "role": "agent",
+      "body": "**Proof file:** `webapp/issues/first_proof_1/q6/working_solution.tex`\n\nThe issue described above occurs in this working solution file. Reviewers should consult the file at that path for the exact context.",
+      "created_at": "2026-06-16T21:59:46Z"
+    }
+  ]
+}

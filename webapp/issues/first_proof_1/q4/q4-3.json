@@ -1,0 +1,35 @@
+{
+  "id": "q4-3",
+  "problem_id": "q4",
+  "dataset": "first_proof_1",
+  "title": "Abel summation in Corollary 1 fails when c_n < 0",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-16T14:36:31Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "cd16f2cd1",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "In Corollary 1, the proof argues:\n\n  \"Since the c_i are ordered, L = Σ c_i λ_i is a nonneg combination of the σ_k (by Abel summation), hence convex.\"\n\nAbel summation gives:\n\n  L = Σ_{k=1}^{n-1} (c_k − c_{k+1}) σ_k + c_n σ_n\n\nwhere σ_k = Σ_{i=1}^k λ_i. The coefficients (c_k − c_{k+1}) ≥ 0 since c_1 ≥ … ≥ c_n. However, the last coefficient is c_n, which can be NEGATIVE (e.g., when used in Proposition 2 with c_i = γ_i, the smallest root γ_n may be negative). So L is NOT a nonneg linear combination of {σ_k} in general.\n\nThe argument is nonetheless salvageable: σ_n = Σ_i λ_i(x,a,b) = Σ_i γ_i(a,b) − nx = Σ_i a_i + Σ_i b_i − nx, which is AFFINE (linear) in (x, a_1,…,b_n). An affine function has zero Hessian. Therefore:\n\n  Hess L = Σ_{k=1}^{n-1} (c_k−c_{k+1}) Hess σ_k + c_n · 0 ⪰ 0\n\nwhere each Hess σ_k ⪰ 0 by BGLS and c_k−c_{k+1} ≥ 0.\n\nThe solution neither states that σ_n is affine nor invokes its zero Hessian. Without this, the phrase \"nonneg combination, hence convex\" is incorrect for c_n < 0. The key missing step is: by the additivity of roots (Proposition 1), Σ_i γ_i = Σ_i α_i + Σ_i β_i, making σ_n affine and Hess σ_n = 0.",
+      "created_at": "2026-06-16T14:36:31Z"
+    },
+    {
+      "id": "cb8f74aa1",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Analysis and Fix\n\nThe critic is correct. The original proof of Corollary 1 claimed:\n\n> \"$L = \\sum_i c_i \\lambda_i$ is a nonneg combination of the $\\sigma_k$ (by Abel summation), hence convex.\"\n\nThis is wrong when $c_n < 0$. Abel summation gives:\n$$L = \\sum_{k=1}^{n-1}(c_k - c_{k+1})\\sigma_k + c_n\\,\\sigma_n$$\nThe coefficients $c_k - c_{k+1} \\geq 0$ for $k=1,\\ldots,n-1$ (since $c_1 \\geq \\ldots \\geq c_n$), but the last coefficient $c_n$ can be negative (e.g., when $c_i = \\gamma_i$ in Proposition 2).\n\n## The Fix\n\nThe key missing step: $\\sigma_n(x,a,b) = \\sum_{i=1}^n \\lambda_i(x,a,b)$ is **affine** in $(x,a,b)$.\n\nProof of affineness: The $\\lambda_i(x,a,b)$ are the roots in $t$ of $(p \\boxplus_n q)(x+t) = 0$, i.e., $\\lambda_i = \\gamma_i(a,b) - x$. By Proposition 1(i) (additivity of roots), $\\sum_i \\gamma_i = \\sum_i \\alpha_i + \\sum_i \\beta_i = \\sum_i a_i + \\sum_i b_i$. Therefore:\n$$\\sigma_n(x,a,b) = \\sum_i a_i + \\sum_i b_i - nx$$\nwhich is affine, so $\\operatorname{Hess}(\\sigma_n) = 0$.\n\nThe Hessian of $L$ is then:\n$$\\operatorname{Hess}(L) = \\sum_{k=1}^{n-1}(c_k-c_{k+1})\\,\\operatorname{Hess}(\\sigma_k) + c_n \\cdot 0 \\succeq 0$$\nsince each $c_k - c_{k+1} \\geq 0$ and each $\\operatorname{Hess}(\\sigma_k) \\succeq 0$ by BGLS. The sign of $c_n$ is irrelevant.\n\n## Changes Made\n\nReplaced the incorrect \"nonneg combination, hence convex\" claim in the proof of Corollary 1 with the corrected argument: (1) write out the Abel summation formula explicitly, (2) note $c_k - c_{k+1} \\geq 0$ for the $\\sigma_k$ terms with $k < n$, (3) invoke Proposition 1(i) to show $\\sigma_n$ is affine with zero Hessian, (4) conclude $\\operatorname{Hess}(L) \\succeq 0$ even when $c_n < 0$.",
+      "created_at": "2026-06-16T14:41:50Z"
+    },
+    {
+      "id": "c73bf9214",
+      "author": "system",
+      "role": "agent",
+      "body": "**Proof file:** `webapp/issues/q4/working_solution.tex`\n\nThe issue described above occurs in this working solution file. Reviewers should consult the file at that path for the exact context.",
+      "created_at": "2026-06-16T21:59:46Z"
+    }
+  ]
+}

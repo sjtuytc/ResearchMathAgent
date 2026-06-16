@@ -216,6 +216,11 @@ MathJax = {
       <button class="btn-sec" id="daily-run-btn" style="width:100%;font-size:12px;margin-bottom:6px">Run daily cycle now</button>
       <div id="daily-status" style="font-size:11px;color:var(--muted)"></div>
     </div>
+    <h2 style="margin-top:14px">Issue evolution</h2>
+    <div style="padding:6px 10px">
+      <button class="btn-sec" id="evolve-issues-btn" style="width:100%;font-size:12px;margin-bottom:6px">Evolve issues now</button>
+      <div id="evolve-issues-status" style="font-size:11px;color:var(--muted)">Auto-runs every 6 h. Discovers + resolves open issues across all problems.</div>
+    </div>
   </aside>
   <main class="main">
     <div class="tabs">
@@ -420,14 +425,24 @@ MathJax = {
           <pre id="iss-agent-log" style="margin:0;padding:10px 14px;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word"></pre>
         </div>
         <div style="display:grid;grid-template-columns:260px 1fr;flex:1;overflow:hidden">
-          <!-- sidebar: issue list -->
-          <div id="iss-sidebar" style="border-right:1px solid var(--border);overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px">
-            <div style="display:flex;gap:4px;margin-bottom:4px">
-              <button class="btn-pri" id="i-new-btn" style="flex:1;font-size:12px;padding:6px 8px">+ New Issue</button>
-              <button class="btn-sec" id="i-discover-btn" title="Run critic agent to discover issues" style="font-size:11px;padding:6px 8px">Discover</button>
+          <!-- sidebar: issue list + activity toggle -->
+          <div id="iss-sidebar" style="border-right:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column">
+            <div style="padding:10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+              <div style="display:flex;gap:4px">
+                <button class="btn-pri" id="i-new-btn" style="flex:1;font-size:12px;padding:6px 8px">+ New Issue</button>
+                <button class="btn-sec" id="i-discover-btn" title="Run critic agent to discover issues" style="font-size:11px;padding:6px 8px">Discover</button>
+              </div>
+              <!-- View toggle: Issues / Activity Log -->
+              <div style="display:flex;gap:2px;background:var(--panel2);border-radius:6px;padding:2px">
+                <button id="iss-view-issues" class="btn-sec" onclick="issShowView('issues')" style="flex:1;font-size:11px;padding:4px 0;border-radius:4px;border:none">Issues</button>
+                <button id="iss-view-log" class="btn-sec" onclick="issShowView('log')" style="flex:1;font-size:11px;padding:4px 0;border-radius:4px;border:none">Activity Log</button>
+              </div>
+              <div style="font-size:10px;color:var(--muted);text-align:center" id="iss-refresh-status"></div>
             </div>
-            <div style="font-size:10px;color:var(--muted);text-align:center" id="iss-refresh-status"></div>
-            <div id="iss-list"></div>
+            <div id="iss-view-issues-wrap" style="overflow-y:auto;padding:0 10px 10px;flex:1"><div id="iss-list"></div></div>
+            <div id="iss-view-log-wrap" style="display:none;overflow-y:auto;padding:8px 10px;flex:1">
+              <div id="iss-actlog" style="display:flex;flex-direction:column;gap:1px;font-size:12px"></div>
+            </div>
           </div>
           <!-- thread -->
           <div id="iss-thread-wrap" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
@@ -1479,7 +1494,11 @@ async function selectQuestion(qid, node, dataset){
   }
   // Load issues (non-blocking) — scoped to dataset
   const ds2=selectedDataset||"first_proof_1";
-  fetch(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`).then(r=>r.json()).then(d=>loadIssueList(qid,d.issues||[])).catch(()=>{});
+  fetch(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`).then(r=>r.json()).then(d=>{
+    loadIssueList(qid,d.issues||[]);
+    // If activity log is visible, refresh it too
+    if(_issCurrentView==="log") loadActivityLog(qid);
+  }).catch(()=>{});
   // Agent pane — hide hint, clear previous stream
   $("a-empty").style.display="none";
   $("stream").innerHTML=""; $("usage").textContent=""; lastArtifact=null;
@@ -1544,8 +1563,20 @@ const AGENT_COLORS = {
   'critic-agent':'#ffa657', coordinator:'#f78166', system:'#8b949e'
 };
 let issSelectedId=null;
+let _issCurrentView = "issues";
 
 function agentColor(author){ return AGENT_COLORS[author]||'#8b949e'; }
+
+function issShowView(view){
+  _issCurrentView=view;
+  $("iss-view-issues-wrap").style.display=view==="issues"?"block":"none";
+  $("iss-view-log-wrap").style.display=view==="log"?"block":"none";
+  $("iss-view-issues").style.background=view==="issues"?"var(--accent)":"";
+  $("iss-view-issues").style.color=view==="issues"?"#07101f":"";
+  $("iss-view-log").style.background=view==="log"?"var(--accent)":"";
+  $("iss-view-log").style.color=view==="log"?"#07101f":"";
+  if(view==="log" && selected) loadActivityLog(selected);
+}
 
 function loadIssueList(qid, issues){
   $("i-empty").style.display="none"; $("i-body").style.display="block";
@@ -1582,17 +1613,94 @@ function renderIssueThread(issue){
   $("iss-status-msg").textContent="";
   const comments=$("iss-comments"); comments.innerHTML="";
   for(const c of (issue.comments||[])){
-    const card=el("div","card");
-    const color=agentColor(c.author);
-    card.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="width:22px;height:22px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0d1117">${esc((c.author||"?")[0].toUpperCase())}</span>
-      <span style="font-weight:600;font-size:12px;color:${color}">${esc(c.author)}</span>
-      <span class="muted" style="font-size:11px;margin-left:auto">${esc((c.created_at||"").slice(0,16).replace("T"," "))}</span>
-    </div>`;
-    const body=el("div","body"); renderContent(body, c.body); card.appendChild(body);
-    comments.appendChild(card);
+    if(c.role==="event"){
+      // Render as a compact event chip — not a full card
+      const chip=el("div","iss-event-chip");
+      chip.style.cssText="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:var(--muted)";
+      chip.innerHTML=`<span style="flex:1;border-top:1px solid var(--border)"></span><span style="white-space:nowrap;padding:0 8px">${marked.parseInline(c.body||"")}</span><span style="font-size:10px">${esc((c.created_at||"").slice(0,16).replace("T"," "))}</span><span style="flex:1;border-top:1px solid var(--border)"></span>`;
+      comments.appendChild(chip);
+    } else {
+      const card=el("div","card");
+      const color=agentColor(c.author);
+      const roleLabel=c.role==="agent"?"agent":"human";
+      card.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="width:22px;height:22px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0d1117">${esc((c.author||"?")[0].toUpperCase())}</span>
+        <span style="font-weight:600;font-size:12px;color:${color}">${esc(c.author)}</span>
+        <span class="pill" style="font-size:10px;padding:1px 5px">${roleLabel}</span>
+        <span class="muted" style="font-size:11px;margin-left:auto">${esc((c.created_at||"").slice(0,16).replace("T"," "))}</span>
+      </div>`;
+      const body=el("div","body"); renderContent(body, c.body); card.appendChild(body);
+      comments.appendChild(card);
+    }
   }
   comments.scrollTop=comments.scrollHeight;
+}
+
+// ---- Unified activity log ----
+let _actLogLoaded = false;
+async function loadActivityLog(qid){
+  if(!qid) return;
+  const ds=selectedDataset||"first_proof_1";
+  $("iss-actlog").innerHTML=`<div style="padding:20px;color:var(--muted);font-size:12px">Loading activity…</div>`;
+  try{
+    const d=await (await fetch(`/api/activity/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds)}&limit=150`)).json();
+    const entries=d.entries||[];
+    const wrap=$("iss-actlog");
+    wrap.innerHTML="";
+    if(!entries.length){
+      wrap.innerHTML=`<div style="padding:20px;color:var(--muted);font-size:12px">No activity yet for ${esc(qid)}.</div>`;
+      return;
+    }
+    let lastDate="";
+    for(const e of entries){
+      const date=(e.ts||"").slice(0,10);
+      if(date && date!==lastDate){
+        const sep=el("div");
+        sep.style.cssText="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 0 2px;border-top:1px solid var(--border);margin-top:4px";
+        sep.textContent=date;
+        wrap.appendChild(sep);
+        lastDate=date;
+      }
+      const row=el("div");
+      const ts=(e.ts||"").slice(11,16);
+      if(e.role==="event"||e.source==="solver"){
+        const icon=e.source==="solver"?(e.outcome==="success"?"✅":"❌"):"⚙";
+        row.style.cssText="display:flex;gap:6px;align-items:flex-start;padding:3px 0;font-size:11px;color:var(--muted)";
+        const bodyDiv=el("div"); bodyDiv.style.flex="1";
+        renderContent(bodyDiv, e.body||"");
+        row.innerHTML=`<span style="min-width:30px;font-size:10px;padding-top:1px">${ts}</span><span style="min-width:16px">${icon}</span>`;
+        row.appendChild(bodyDiv);
+      } else {
+        const color=agentColor(e.author||"?");
+        row.style.cssText="display:flex;gap:6px;align-items:flex-start;padding:4px 0";
+        const bodyDiv=el("div"); bodyDiv.style.cssText="flex:1;min-width:0";
+        renderContent(bodyDiv, e.body||"");
+        const meta=el("div"); meta.innerHTML=`<span style="width:18px;height:18px;border-radius:50%;background:${color};display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0d1117;flex-shrink:0">${esc((e.author||"?")[0].toUpperCase())}</span>`;
+        meta.style.cssText="display:flex;gap:4px;align-items:center;min-width:0";
+        row.innerHTML=`<span style="min-width:30px;font-size:10px;color:var(--muted);padding-top:2px">${ts}</span>`;
+        row.appendChild(meta);
+        row.appendChild(bodyDiv);
+      }
+      if(e.issue_id){
+        const lnk=el("a"); lnk.href="#"; lnk.textContent=e.issue_id;
+        lnk.style.cssText="font-size:10px;color:var(--accent);opacity:.7;margin-left:4px;text-decoration:none";
+        lnk.onclick=(ev)=>{
+          ev.preventDefault();
+          setTab("issue");
+          setTimeout(()=>{
+            const items=[...$("iss-list").querySelectorAll(".qitem")];
+            const m=items.find(i=>i.textContent.includes(e.issue_id));
+            if(m)m.click();
+          },300);
+        };
+        row.appendChild(lnk);
+      }
+      wrap.appendChild(row);
+    }
+    wrap.scrollTop=wrap.scrollHeight;
+  }catch(err){
+    $("iss-actlog").innerHTML=`<div style="padding:12px;color:var(--red);font-size:12px">Failed to load activity log.</div>`;
+  }
 }
 
 $("iss-status-sel").onchange=async function(){
@@ -2153,6 +2261,37 @@ $("daily-run-btn").onclick = async()=>{
     }
   }, 10000);
   setTimeout(()=>{ $("daily-run-btn").disabled = false; }, 30000);
+};
+
+// ---- Evolve issues button ----
+$("evolve-issues-btn").onclick = async()=>{
+  $("evolve-issues-btn").disabled = true;
+  $("evolve-issues-status").textContent = "starting…";
+  try{
+    const r = await (await fetch("/api/evolve-issues", {method:"POST"})).json();
+    if(!r.started){
+      $("evolve-issues-status").textContent = r.reason || "already running";
+      $("evolve-issues-btn").disabled = false;
+      return;
+    }
+    $("evolve-issues-status").textContent = "running…";
+    let polls = 0;
+    const iv = setInterval(async()=>{
+      polls++;
+      try{
+        const ov = await (await fetch("/api/runs")).json();
+        const active = (ov.runs||[]).filter(r=>r.kind==="issue-loop");
+        if(!active.length || polls > 120){
+          clearInterval(iv);
+          $("evolve-issues-status").textContent = polls > 120 ? "timed out" : "done ✓";
+          $("evolve-issues-btn").disabled = false;
+        }
+      }catch(_){ /* ignore poll errors */ }
+    }, 5000);
+  }catch(e){
+    $("evolve-issues-status").textContent = "error: "+e.message;
+    $("evolve-issues-btn").disabled = false;
+  }
 };
 
 // ---- Re-evaluate solvability button ----

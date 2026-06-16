@@ -30,13 +30,15 @@ from .dataset_store import (
 )
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof
 from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
-from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue
+from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log
 from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
 from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
 from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
+from .literature import load_index as lit_load, add_paper as lit_add, update_paper as lit_update, delete_paper as lit_delete, discover_literature
+from .concepts import load_concepts, save_concepts, generate_concepts
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -166,6 +168,8 @@ threading.Thread(target=_precompile_problems, daemon=True).start()
 threading.Thread(
     target=ensure_all_evaluated, args=(REPO_ROOT,), daemon=True
 ).start()
+from .issue_loop import run_issue_loop, evolve_once as _evolve_issues_once
+threading.Thread(target=run_issue_loop, args=(REPO_ROOT,), daemon=True).start()
 
 
 @app.get("/api/problems")
@@ -344,6 +348,74 @@ def log_activity(problem_id: str, payload: dict = Body(...), dataset: str = Quer
 @app.post("/api/issue/{problem_id}/activity")
 def log_activity_legacy(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
     return log_activity(problem_id, payload)
+
+
+@app.get("/api/activity/{problem_id}")
+def unified_activity(problem_id: str, dataset: str = Query(None), limit: int = Query(200)) -> JSONResponse:
+    """Unified chronological activity log: issue comments/events + strategy_memory runs."""
+    ds = _ds_from_query(dataset)
+    entries: list[dict] = []
+
+    # Issue events and comments
+    for entry in get_activity_log(REPO_ROOT, problem_id, ds, limit=limit):
+        entries.append({
+            "source": "issue",
+            "ts": entry.get("created_at", ""),
+            "author": entry.get("author", ""),
+            "role": entry.get("role", "human"),
+            "event_type": entry.get("event_type", ""),
+            "body": entry.get("body", ""),
+            "issue_id": entry.get("issue_id", ""),
+            "issue_title": entry.get("issue_title", ""),
+        })
+
+    # Strategy memory runs
+    mem = REPO_ROOT / "documents" / "strategy_memory.jsonl"
+    if mem.is_file():
+        for line in mem.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                e = json.loads(line)
+            except Exception:
+                continue
+            if e.get("problem_id") != problem_id:
+                continue
+            icon = "✅" if e.get("outcome") == "success" else "❌"
+            issues_n = e.get("issue_count", "?")
+            model = e.get("model", "skeleton")
+            strategy_short = (e.get("strategy", "")[:120] + "…") if len(e.get("strategy", "")) > 120 else e.get("strategy", "")
+            entries.append({
+                "source": "solver",
+                "ts": e.get("date", ""),
+                "author": model,
+                "role": "solver",
+                "event_type": "solver_run",
+                "body": f"{icon} **{model}** — {e.get('outcome','?')} — {issues_n} verifier issues\n\n{strategy_short}",
+                "issue_id": "",
+                "issue_title": "",
+                "outcome": e.get("outcome"),
+                "issue_count": e.get("issue_count"),
+            })
+
+    entries.sort(key=lambda e: e.get("ts", ""))
+    return JSONResponse({"entries": entries[-limit:]})
+
+
+@app.post("/api/activity/{problem_id}/event")
+def post_event(problem_id: str, payload: dict = Body(...), dataset: str = Query(None)) -> JSONResponse:
+    """Post a structured event to the activity log (writes into the relevant issue)."""
+    ds = _ds_from_query(dataset)
+    log_event(
+        REPO_ROOT, problem_id,
+        event_type=str(payload.get("event_type", "note")),
+        description=str(payload.get("description", "")),
+        author=str(payload.get("author", "system")),
+        dataset=ds,
+        issue_id=payload.get("issue_id"),
+    )
+    return JSONResponse({"ok": True})
 
 
 @app.get("/api/solve")
@@ -851,6 +923,23 @@ def run_daily() -> JSONResponse:
     return JSONResponse({"started": True})
 
 
+@app.post("/api/evolve-issues")
+def api_evolve_issues() -> JSONResponse:
+    """Trigger a one-shot issue-evolution pass: discover + resolve for all open issues."""
+    active = [r for r in REGISTRY.active() if r.get("kind") == "issue-loop"]
+    if active:
+        return JSONResponse({"started": False, "reason": "issue evolution already running"})
+    def _run():
+        handle = REGISTRY.register(f"issue-loop-{int(__import__('time').time())}",
+                                   {"kind": "issue-loop"})
+        try:
+            _evolve_issues_once(REPO_ROOT)
+        finally:
+            REGISTRY.unregister(handle.run_id)
+    threading.Thread(target=_run, daemon=True).start()
+    return JSONResponse({"started": True})
+
+
 @app.post("/api/eval/solvability/refresh")
 def refresh_solvability_eval(force: bool = Query(False)) -> JSONResponse:
     """Re-evaluate AI solvability for all q1-q10 using Claude Opus (background)."""
@@ -1060,6 +1149,107 @@ def gh_search_issues(q: str = Query(...)) -> JSONResponse:
         return JSONResponse({"issues": issues, "count": len(issues)})
     except Exception as e:
         return _gh_error(e)
+
+
+# ── Literature ──────────────────────────────────────────────────────────────
+
+@app.get("/api/literature/{problem_id}")
+def lit_list(problem_id: str) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    return JSONResponse({"papers": lit_load(REPO_ROOT, problem_id)})
+
+
+@app.post("/api/literature/{problem_id}")
+def lit_add_ep(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    paper = lit_add(
+        REPO_ROOT, problem_id,
+        url=str(payload.get("url", "")),
+        title=str(payload.get("title", "Untitled")),
+        authors=payload.get("authors", []),
+        year=payload.get("year"),
+        abstract=str(payload.get("abstract", "")),
+        tags=payload.get("tags", []),
+        relevance=str(payload.get("relevance", "medium")),
+        notes=str(payload.get("notes", "")),
+        added_by="human",
+    )
+    return JSONResponse(paper)
+
+
+@app.patch("/api/literature/{problem_id}/{paper_id}")
+def lit_update_ep(problem_id: str, paper_id: str, payload: dict = Body(...)) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    result = lit_update(REPO_ROOT, problem_id, paper_id, **payload)
+    if result is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(result)
+
+
+@app.delete("/api/literature/{problem_id}/{paper_id}")
+def lit_delete_ep(problem_id: str, paper_id: str) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    ok = lit_delete(REPO_ROOT, problem_id, paper_id)
+    return JSONResponse({"ok": ok})
+
+
+@app.get("/api/literature/{problem_id}/discover")
+def lit_discover_ep(problem_id: str) -> StreamingResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    title = _Q_TITLES.get(problem_id, problem_id)
+
+    def _gen():
+        def send(e): return f"data: {json.dumps(e)}\n\n"
+        try:
+            for ev in discover_literature(REPO_ROOT, problem_id, title):
+                yield send(ev.to_dict())
+        except Exception as exc:
+            yield send({"type": "error", "message": str(exc)})
+            yield send({"type": "done", "reason": "error"})
+
+    return StreamingResponse(_gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ── Concepts ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/concepts/{problem_id}")
+def concepts_list(problem_id: str) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    return JSONResponse({"concepts": load_concepts(REPO_ROOT, problem_id)})
+
+
+@app.post("/api/concepts/{problem_id}")
+def concepts_save(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    save_concepts(REPO_ROOT, problem_id, payload.get("concepts", []))
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/concepts/{problem_id}/generate")
+def concepts_generate_ep(problem_id: str) -> StreamingResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    title = _Q_TITLES.get(problem_id, problem_id)
+
+    def _gen():
+        def send(e): return f"data: {json.dumps(e)}\n\n"
+        try:
+            for ev in generate_concepts(REPO_ROOT, problem_id, title):
+                yield send(ev.to_dict())
+        except Exception as exc:
+            yield send({"type": "error", "message": str(exc)})
+            yield send({"type": "done", "reason": "error"})
+
+    return StreamingResponse(_gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # Serve the SPA. Mounted last so /api/* routes take precedence.

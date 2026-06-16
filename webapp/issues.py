@@ -86,6 +86,19 @@ def get_issue(repo_root: Path, problem_id: str, issue_id: str, dataset: str = "f
         return None
 
 
+# ── event helpers ────────────────────────────────────────────────────────────
+
+def _make_event(event_type: str, description: str, author: str = "system") -> dict:
+    return {
+        "id": f"ev{uuid.uuid4().hex[:8]}",
+        "author": author,
+        "role": "event",
+        "event_type": event_type,
+        "body": description,
+        "created_at": _now(),
+    }
+
+
 # ── create / update ─────────────────────────────────────────────────────────
 
 def create_issue(repo_root: Path, problem_id: str, title: str,
@@ -105,7 +118,7 @@ def create_issue(repo_root: Path, problem_id: str, title: str,
         "labels": labels or [],
         "created_at": now,
         "created_by": author,
-        "comments": [],
+        "comments": [_make_event("opened", f"Issue opened by **{author}**", author)],
     }
     if body.strip():
         issue["comments"].append({
@@ -141,11 +154,57 @@ def update_issue(repo_root: Path, problem_id: str, issue_id: str,
     issue = get_issue(repo_root, problem_id, issue_id, dataset)
     if issue is None:
         return None
+    old_status = issue.get("status")
     for k in ("title", "status", "labels"):
         if k in kwargs:
             issue[k] = kwargs[k]
+    if "status" in kwargs and kwargs["status"] != old_status:
+        icon = {"open": "🔵", "in_progress": "🟡", "resolved": "✅"}.get(kwargs["status"], "⚪")
+        issue["comments"].append(
+            _make_event("status_changed", f"{icon} Status changed: **{old_status}** → **{kwargs['status']}**")
+        )
     _save(repo_root, problem_id, issue, dataset)
     return issue
+
+
+def log_event(
+    repo_root: Path,
+    problem_id: str,
+    event_type: str,
+    description: str,
+    author: str = "system",
+    dataset: str = "first_proof_1",
+    issue_id: str | None = None,
+) -> None:
+    """Append a structured event to an issue's log. Uses first open issue if issue_id not given."""
+    issues = list_issues(repo_root, problem_id, dataset)
+    if issue_id:
+        target = get_issue(repo_root, problem_id, issue_id, dataset)
+        if target is None:
+            target = issues[0] if issues else None
+    else:
+        open_issues = [i for i in issues if i.get("status") != "resolved"]
+        target = open_issues[0] if open_issues else (issues[0] if issues else None)
+    if target is None:
+        return
+    target.setdefault("comments", []).append(_make_event(event_type, description, author))
+    _save(repo_root, problem_id, target, dataset)
+
+
+def get_activity_log(
+    repo_root: Path,
+    problem_id: str,
+    dataset: str = "first_proof_1",
+    limit: int = 200,
+) -> list[dict]:
+    """Return all comments/events across all issues, sorted chronologically."""
+    issues = list_issues(repo_root, problem_id, dataset)
+    entries: list[dict] = []
+    for iss in issues:
+        for c in iss.get("comments", []):
+            entries.append({**c, "issue_id": iss["id"], "issue_title": iss.get("title", "")})
+    entries.sort(key=lambda e: e.get("created_at", ""))
+    return entries[-limit:]
 
 
 # ── legacy: agent run log ───────────────────────────────────────────────────
