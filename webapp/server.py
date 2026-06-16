@@ -31,6 +31,7 @@ from .dataset_store import (
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof
 from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
 from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue
+from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
 from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary
@@ -816,14 +817,161 @@ def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str, g
         REGISTRY.unregister(run_id)
 
 
+# ── GitHub Issues agentic API ────────────────────────────────────────────────
+# Agents can call these endpoints to fully control GitHub Issues on the repo.
+# All write endpoints require GITHUB_TOKEN env var on the server.
+
+import requests as _requests
+
+
+def _gh_error(e: Exception) -> JSONResponse:
+    if isinstance(e, _requests.HTTPError) and e.response is not None:
+        try:
+            msg = e.response.json().get("message", str(e))
+        except Exception:
+            msg = str(e)
+        return JSONResponse({"error": msg, "gh_status": e.response.status_code},
+                            status_code=e.response.status_code)
+    return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/gh/status")
+def gh_status() -> JSONResponse:
+    """Check GitHub API connectivity and token availability."""
+    return JSONResponse({
+        "token_available": _gh.token_available(),
+        "repo": _gh.REPO,
+    })
+
+
+@app.get("/api/gh/issues")
+def gh_list_issues(
+    problem_id: str = Query(None),
+    state: str = Query("open"),
+    per_page: int = Query(30),
+    page: int = Query(1),
+) -> JSONResponse:
+    """List GitHub issues, optionally filtered by problem_id (e.g. q1)."""
+    try:
+        issues = _gh.list_issues(problem_id=problem_id, state=state,
+                                 per_page=per_page, page=page)
+        return JSONResponse({"issues": issues, "count": len(issues)})
+    except Exception as e:
+        return _gh_error(e)
+
+
+@app.post("/api/gh/issues")
+def gh_create_issue(payload: dict = Body(...)) -> JSONResponse:
+    """Create a GitHub issue.
+
+    Body: {problem_id, title, body?, labels?}
+    Requires GITHUB_TOKEN.
+    """
+    problem_id = str(payload.get("problem_id", ""))
+    title = str(payload.get("title", ""))
+    if not title:
+        return JSONResponse({"error": "title is required"}, status_code=400)
+    try:
+        issue = _gh.create_issue(
+            problem_id=problem_id,
+            title=title,
+            body=str(payload.get("body", "")),
+            labels=payload.get("labels"),
+        )
+        return JSONResponse(issue)
+    except Exception as e:
+        return _gh_error(e)
+
+
+@app.get("/api/gh/issues/{issue_number}")
+def gh_get_issue(issue_number: int, comments: bool = Query(True)) -> JSONResponse:
+    """Get a specific GitHub issue by number, with optional comments."""
+    try:
+        issue = _gh.get_issue(issue_number, include_comments=comments)
+        return JSONResponse(issue)
+    except Exception as e:
+        return _gh_error(e)
+
+
+@app.post("/api/gh/issues/{issue_number}/comment")
+def gh_add_comment(issue_number: int, payload: dict = Body(...)) -> JSONResponse:
+    """Post a comment on a GitHub issue.
+
+    Body: {body}
+    Requires GITHUB_TOKEN.
+    """
+    body = str(payload.get("body", "")).strip()
+    if not body:
+        return JSONResponse({"error": "body is required"}, status_code=400)
+    try:
+        comment = _gh.add_comment(issue_number, body)
+        return JSONResponse(comment)
+    except Exception as e:
+        return _gh_error(e)
+
+
+@app.patch("/api/gh/issues/{issue_number}")
+def gh_update_issue(issue_number: int, payload: dict = Body(...)) -> JSONResponse:
+    """Update a GitHub issue (title, state, labels, body).
+
+    Body: {title?, state?, labels?, body?}
+    state: "open" | "closed"
+    Requires GITHUB_TOKEN.
+    """
+    try:
+        issue = _gh.update_issue(
+            issue_number,
+            title=payload.get("title"),
+            state=payload.get("state"),
+            labels=payload.get("labels"),
+            body=payload.get("body"),
+        )
+        return JSONResponse(issue)
+    except Exception as e:
+        return _gh_error(e)
+
+
+@app.post("/api/gh/issues/{issue_number}/close")
+def gh_close_issue(issue_number: int) -> JSONResponse:
+    """Close a GitHub issue (mark resolved). Requires GITHUB_TOKEN."""
+    try:
+        issue = _gh.close_issue(issue_number)
+        return JSONResponse(issue)
+    except Exception as e:
+        return _gh_error(e)
+
+
+@app.post("/api/gh/issues/{issue_number}/reopen")
+def gh_reopen_issue(issue_number: int) -> JSONResponse:
+    """Reopen a closed GitHub issue. Requires GITHUB_TOKEN."""
+    try:
+        issue = _gh.reopen_issue(issue_number)
+        return JSONResponse(issue)
+    except Exception as e:
+        return _gh_error(e)
+
+
+@app.get("/api/gh/search")
+def gh_search_issues(q: str = Query(...)) -> JSONResponse:
+    """Search GitHub issues using GitHub search syntax.
+
+    Example: ?q=q1+prove+epsilon-light
+    """
+    try:
+        issues = _gh.search_issues(q)
+        return JSONResponse({"issues": issues, "count": len(issues)})
+    except Exception as e:
+        return _gh_error(e)
+
+
 # Serve the SPA. Mounted last so /api/* routes take precedence.
 if STATIC_DIR.is_dir():
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
-    @app.get("/favicon.ico", include_in_schema=False)
+    @app.api_route("/favicon.ico", methods=["GET", "HEAD"], include_in_schema=False)
     def favicon() -> FileResponse:
-        return FileResponse(STATIC_DIR / "favicon.ico")
+        return FileResponse(STATIC_DIR / "favicon.ico", headers={"Cache-Control": "public, max-age=86400"})
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

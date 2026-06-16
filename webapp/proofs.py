@@ -28,8 +28,19 @@ def _proof_outputs_root(dataset: str = "first_proof_1") -> Path:
     return REPO_ROOT / "outputs" / dataset
 
 
-def _is_skeleton(name: str) -> bool:
-    return "rma-skeleton" in name
+def _is_skeleton(name: str, exp_dir: Path | None = None) -> bool:
+    if "rma-skeleton" in name:
+        return True
+    if exp_dir is not None:
+        meta = exp_dir / "meta.json"
+        if meta.is_file():
+            try:
+                m = json.loads(meta.read_text())
+                if "rma-skeleton" in str(m.get("model", "")):
+                    return True
+            except Exception:
+                pass
+    return False
 
 
 _MIN_TEX_BYTES = 500  # files smaller than this are stubs/placeholders
@@ -184,7 +195,7 @@ def consolidate_best(dataset: str = "first_proof_1",
             continue
         if exp_dir.name == "best":
             continue
-        if _is_skeleton(exp_dir.name):
+        if _is_skeleton(exp_dir.name, exp_dir):
             continue
         for pid in problems:
             score, info = _score_problem_in_run(exp_dir, pid)
@@ -265,7 +276,7 @@ def _discover_problems(root: Path) -> list[str]:
     """Collect all problem IDs seen across non-skeleton run dirs."""
     pids: set[str] = set()
     for exp_dir in root.iterdir():
-        if not exp_dir.is_dir() or exp_dir.name == "best" or _is_skeleton(exp_dir.name):
+        if not exp_dir.is_dir() or exp_dir.name == "best" or _is_skeleton(exp_dir.name, exp_dir):
             continue
         for p in exp_dir.iterdir():
             if p.is_dir() and not p.name.startswith("."):
@@ -358,7 +369,7 @@ def get_best_proof(problem_id: str, dataset: str = "first_proof_1") -> dict | No
 def maybe_update_best(exp_dir: Path, problem_id: str, dataset: str = "first_proof_1") -> bool:
     """Check if this run is better than current best; if so, update best/ folder.
     Returns True if best was updated."""
-    if _is_skeleton(exp_dir.name):
+    if _is_skeleton(exp_dir.name, exp_dir):
         return False
     new_score, new_info = _score_problem_in_run(exp_dir, problem_id)
     if not new_info["has_solution"]:
@@ -400,7 +411,7 @@ def list_experiments(dataset: str = "first_proof_1") -> list[dict]:
     now = time.time()
     exps = []
     dirs = sorted(
-        (d for d in root.iterdir() if d.is_dir() and d.name != "best" and not _is_skeleton(d.name)),
+        (d for d in root.iterdir() if d.is_dir() and d.name != "best" and not _is_skeleton(d.name, d)),
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )

@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Research Math Agent</title>
-<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico?v=3" />
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script>
 MathJax = {
@@ -224,6 +224,13 @@ MathJax = {
     </div>
 
     <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
+
+      <!-- ── Question filter banner ──────────────────────────────── -->
+      <div id="ov-filter-bar" style="display:none;align-items:center;gap:10px;margin-bottom:14px;padding:8px 12px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.3);border-radius:7px">
+        <span style="font-size:12px;color:var(--muted)">Filtered to:</span>
+        <span id="ov-filter-label" style="font-size:13px;font-weight:700;color:var(--accent)"></span>
+        <button onclick="clearOvFilter()" style="margin-left:auto;font-size:11px;padding:2px 10px;background:var(--panel2);color:var(--muted);border:1px solid var(--border);border-radius:5px;cursor:pointer">✕ Show all</button>
+      </div>
 
       <!-- ── Today's usage ─────────────────────────────────────── -->
       <div class="card" style="margin-bottom:14px;border-color:rgba(88,166,255,.35)">
@@ -834,10 +841,31 @@ function renderDistBars(container, items, labelKey, colorFn){
    </div>`;
 }
 
+let ovData=null;
+
 async function loadOverview(){
   let d;
   try{ d=await(await fetch("/api/overview")).json(); }
   catch(e){ return; }
+  ovData=d;
+  renderOverview(d, selected);
+}
+
+function clearOvFilter(){
+  renderOverview(ovData, null);
+}
+
+function renderOverview(d, pid){
+  if(!d) return;
+
+  // ── Filter banner ──
+  const filterBar=$("ov-filter-bar");
+  if(pid){
+    filterBar.style.display="flex";
+    $("ov-filter-label").textContent=pid;
+  } else {
+    filterBar.style.display="none";
+  }
 
   // ── Today's usage ──
   const t = d.today||{};
@@ -866,7 +894,7 @@ async function loadOverview(){
   $("ov-daemon-pid").textContent=d.daemon_pid?`#${d.daemon_pid}`:"not found";
 
   // Active runs
-  const runs=d.active_runs||[];
+  const runs=(d.active_runs||[]).filter(r=>!pid||r.problem===pid);
   $("ov-active-count").textContent=runs.length?`(${runs.length})`:"";
   if(runs.length){
     $("ov-active-runs").innerHTML=runs.map(r=>`
