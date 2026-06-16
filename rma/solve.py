@@ -1503,19 +1503,31 @@ def _is_relative_to(path: Path, parent: Path) -> bool:
     return True
 
 
+def _find_latex_compiler() -> list[str] | None:
+    for candidate in (
+        "/projects/bhov/zzhao18/software/bin/tectonic",
+        "/usr/local/bin/tectonic",
+    ):
+        if Path(candidate).is_file():
+            return [candidate, "{file}", "--outdir", "{outdir}"]
+    for name in ("latexmk", "pdflatex", "xelatex", "lualatex"):
+        binary = shutil.which(name)
+        if binary:
+            if name == "latexmk":
+                return [binary, "-pdf", "-interaction=nonstopmode", "-halt-on-error", "{file}"]
+            return [binary, "-interaction=nonstopmode", "{file}"]
+    return None
+
+
 def _render_solution(solution_path: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [
-            "latexmk",
-            "-pdf",
-            "-interaction=nonstopmode",
-            "-halt-on-error",
-            solution_path.name,
-        ],
-        cwd=solution_path.parent,
-        text=True,
-        capture_output=True,
-    )
+    compiler_template = _find_latex_compiler()
+    if compiler_template is None:
+        return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="No LaTeX compiler found.")
+    cmd = [
+        part.replace("{file}", solution_path.name).replace("{outdir}", str(solution_path.parent))
+        for part in compiler_template
+    ]
+    return subprocess.run(cmd, cwd=solution_path.parent, text=True, capture_output=True)
 
 
 def _cleanup_latex_artifacts(solution_path: Path) -> None:

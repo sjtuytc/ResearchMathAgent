@@ -323,6 +323,16 @@ def _try_compile_latex(tex_path: Path) -> None:
     if r"\begin{document}" not in text or r"\end{document}" not in text:
         return
     # Try PDF compilers first
+    tectonic = shutil.which("tectonic") or _find_tectonic()
+    if tectonic is not None:
+        try:
+            subprocess.run(
+                [tectonic, str(tex_path), "--outdir", str(tex_path.parent)],
+                capture_output=True, timeout=120, cwd=tex_path.parent,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        return
     for compiler in ("pdflatex", "xelatex", "lualatex", "latexmk"):
         binary = shutil.which(compiler)
         if binary is None:
@@ -344,6 +354,16 @@ def _try_compile_latex(tex_path: Path) -> None:
         subprocess.run(cmd, capture_output=True, timeout=60, cwd=tex_path.parent)
     except (OSError, subprocess.TimeoutExpired):
         pass
+
+
+def _find_tectonic() -> str | None:
+    for candidate in (
+        "/projects/bhov/zzhao18/software/bin/tectonic",
+        "/usr/local/bin/tectonic",
+    ):
+        if Path(candidate).is_file():
+            return candidate
+    return None
 
 
 def _find_pandoc() -> str | None:
