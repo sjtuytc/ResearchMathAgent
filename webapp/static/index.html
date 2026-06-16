@@ -341,7 +341,13 @@ MathJax = {
 
       <!-- Per-question status grid -->
       <div class="card" style="margin-bottom:14px">
-        <div style="font-size:13px;font-weight:700;margin-bottom:12px">Problem Status</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700">Problem Status &amp; AI Solvability</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="ov-eval-status" style="font-size:11px;color:var(--muted)"></span>
+            <button class="btn-sec" id="ov-eval-btn" style="font-size:11px;padding:3px 10px" title="Re-evaluate AI solvability using Claude Opus for all 10 problems">Re-evaluate (Opus)</button>
+          </div>
+        </div>
         <div id="ov-q-grid" style="display:flex;flex-direction:column;gap:7px"></div>
       </div>
 
@@ -566,6 +572,21 @@ MathJax = {
         </div>
         <div id="pf-batch-info" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>
         <div id="pf-checks" style="margin-bottom:12px"></div>
+        <!-- Evaluation panel -->
+        <div id="pf-eval-section" style="margin-bottom:14px;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel2)">
+            <span style="font-size:12px;font-weight:600;color:var(--fg)">Proof Evaluation</span>
+            <button class="btn-sec" id="pf-eval-btn" style="font-size:11px;padding:3px 10px">Evaluate</button>
+            <span id="pf-eval-status" style="font-size:11px;color:var(--muted)"></span>
+            <button class="btn-sec" id="pf-eval-stop" style="display:none;font-size:11px;padding:3px 8px">Stop</button>
+            <button class="btn-sec" id="pf-eval-toggle-log" style="display:none;font-size:11px;padding:3px 8px;margin-left:auto">Show log</button>
+          </div>
+          <div id="pf-eval-log-wrap" style="display:none;background:#0a0e14;border-top:1px solid var(--border);max-height:160px;overflow-y:auto">
+            <pre id="pf-eval-log" style="margin:0;padding:10px 14px;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word"></pre>
+          </div>
+          <div id="pf-eval-issues" style="display:none;padding:10px 12px;border-top:1px solid var(--border)"></div>
+          <div id="pf-eval-hint" style="padding:10px 12px;font-size:12px;color:var(--muted)">Run <strong>Evaluate</strong> to have the critic agent read this proof, identify problems, and file them as issues.</div>
+        </div>
         <div id="pf-pdf-wrap" style="background:#404040;border-radius:6px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:200px"></div>
         <pre id="pf-raw" style="display:none;margin-top:12px"><code id="pf-raw-code" class="language-latex"></code></pre>
       </div>
@@ -2157,6 +2178,16 @@ async function loadProofDetail(pid){
   pfSelectedProb=pid;
   $("pf-detail").style.display="none";
   $("pf-status").textContent=`loading ${pid}…`;
+  // Reset evaluation panel
+  if(pfEvalEs){ pfEvalEs.close(); pfEvalEs=null; }
+  $("pf-eval-btn").disabled=false;
+  $("pf-eval-stop").style.display="none";
+  $("pf-eval-toggle-log").style.display="none";
+  $("pf-eval-log-wrap").style.display="none";
+  $("pf-eval-log").textContent="";
+  $("pf-eval-issues").style.display="none";
+  $("pf-eval-hint").style.display="block";
+  $("pf-eval-status").textContent="";
   try{
     const r=await fetch(`/api/best-proof/${encodeURIComponent(pid)}`);
     const d=await r.json();
@@ -2189,6 +2220,11 @@ async function loadProofDetail(pid){
     $("pf-raw").style.display="none";
     $("pf-detail").style.display="block";
     $("pf-status").textContent="";
+    // Pre-load any existing issues into the eval panel (non-blocking)
+    const evalDs=selectedDataset||"first_proof_1";
+    fetch(`/api/issues/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(evalDs)}`)
+      .then(r=>r.json()).then(iss=>{ if((iss.issues||[]).length) renderEvalIssues(pid,iss.issues); })
+      .catch(()=>{});
     const wrap=$("pf-pdf-wrap");
     pfDoc=null;
     const pdfUrl=`/api/best-proof-pdf/${encodeURIComponent(pid)}`;
@@ -2218,6 +2254,97 @@ $("pf-toggle-raw").onclick=function(){
   raw.style.display=showRaw?"block":"none";
   wrap.style.display=showRaw?"none":"flex";
   this.textContent=showRaw?"View rendered PDF":"View raw .tex";
+};
+
+// ---- Proof Evaluation panel ----
+let pfEvalEs = null;
+
+function pfEvalLogAppend(text){
+  const log=$("pf-eval-log");
+  log.textContent += text;
+  log.parentElement.scrollTop = log.parentElement.scrollHeight;
+}
+
+function pfEvalStart(){
+  $("pf-eval-btn").disabled = true;
+  $("pf-eval-stop").style.display = "";
+  $("pf-eval-toggle-log").style.display = "";
+  $("pf-eval-toggle-log").textContent = "Hide log";
+  $("pf-eval-log-wrap").style.display = "block";
+  $("pf-eval-log").textContent = "";
+  $("pf-eval-hint").style.display = "none";
+  $("pf-eval-issues").style.display = "none";
+  $("pf-eval-status").textContent = "running critic…";
+}
+
+async function pfEvalStop(reason){
+  $("pf-eval-btn").disabled = false;
+  $("pf-eval-stop").style.display = "none";
+  $("pf-eval-status").textContent = reason === "done" ? "done" : (reason || "");
+  if(pfEvalEs){ pfEvalEs.close(); pfEvalEs = null; }
+  // Fetch and display issues for the evaluated problem
+  const pid = pfSelectedProb;
+  if(!pid) return;
+  try{
+    const ds = selectedDataset || "first_proof_1";
+    const d = await (await fetch(`/api/issues/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(ds)}`)).json();
+    const issues = d.issues || [];
+    renderEvalIssues(pid, issues);
+  }catch(_){}
+}
+
+function renderEvalIssues(pid, issues){
+  const el_ = $("pf-eval-issues");
+  if(!issues.length){
+    el_.innerHTML = '<span style="font-size:12px;color:var(--muted)">No issues found yet for this proof.</span>';
+    el_.style.display = "block";
+    return;
+  }
+  const statusColor = {open:"var(--accent)", in_progress:"var(--amber)", resolved:"var(--green)"};
+  const statusIcon  = {open:"●", in_progress:"◑", resolved:"✓"};
+  el_.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">
+    ${issues.length} issue${issues.length!==1?"s":""} — <a href="#" onclick="event.preventDefault();selectQuestion('${esc(pid)}',null,selectedDataset||'first_proof_1');setTab('issue')" style="color:var(--accent)">open in Issue tab ↗</a>
+  </div>
+  ${issues.map(iss=>{
+    const col = statusColor[iss.status] || "var(--muted)";
+    const icon = statusIcon[iss.status] || "●";
+    const title = esc((iss.title||iss.id||"").slice(0,90));
+    return `<div onclick="selectQuestion('${esc(pid)}',null,selectedDataset||'first_proof_1');setTab('issue');setTimeout(()=>{const items=[...$('iss-list').querySelectorAll('.qitem')];const m=items.find(i=>i.textContent.includes('${esc(iss.id||"")}'));if(m)m.click();},400)"
+      style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:3px;background:var(--panel);border-radius:5px;cursor:pointer;font-size:12px;border:1px solid transparent"
+      onmouseenter="this.style.borderColor='var(--border)'" onmouseleave="this.style.borderColor='transparent'">
+      <span style="color:${col};font-size:13px;flex-shrink:0">${icon}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${title}</span>
+      <span style="flex-shrink:0;font-size:10px;color:${col}">${esc(iss.status||"open")}</span>
+    </div>`;
+  }).join("")}`;
+  el_.style.display = "block";
+}
+
+$("pf-eval-btn").onclick = ()=>{
+  const pid = pfSelectedProb;
+  if(!pid){ $("pf-eval-status").textContent="Select a proof first"; return; }
+  if(pfEvalEs){ pfEvalEs.close(); }
+  pfEvalStart();
+  pfEvalLogAppend(`[evaluate] starting critic on ${pid}…\n`);
+  const ds = selectedDataset || "first_proof_1";
+  pfEvalEs = new EventSource(`/api/agent/discover/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(ds)}`);
+  pfEvalEs.onmessage = (e)=>{
+    const ev = JSON.parse(e.data);
+    if(ev.type === "text_delta") pfEvalLogAppend(ev.text||"");
+    else if(ev.type === "tool_use") pfEvalLogAppend(`\n[tool: ${ev.name}]\n`);
+    else if(ev.type === "tool_result") pfEvalLogAppend(`→ ${(ev.output||"").slice(0,200)}\n`);
+    else if(ev.type === "error") pfEvalLogAppend(`\n[error] ${ev.message||""}\n`);
+    else if(ev.type === "done") pfEvalStop(ev.reason||"done");
+    else if(ev.type === "status") pfEvalLogAppend(`[${ev.state||""}]\n`);
+  };
+  pfEvalEs.onerror = ()=>{ pfEvalLogAppend("\n[stream error]\n"); pfEvalStop("error"); };
+};
+$("pf-eval-stop").onclick = ()=>{ if(pfEvalEs){pfEvalEs.close();pfEvalEs=null;} pfEvalStop("stopped"); };
+$("pf-eval-toggle-log").onclick = ()=>{
+  const w=$("pf-eval-log-wrap");
+  const show=w.style.display==="none";
+  w.style.display=show?"block":"none";
+  $("pf-eval-toggle-log").textContent=show?"Hide log":"Show log";
 };
 
 // proofs tab click is handled by setTab above
