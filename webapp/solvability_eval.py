@@ -22,7 +22,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-_EVAL_MODEL = "claude-opus-4-8"
+_EVAL_MODEL = "claude-sonnet-4-6"
 _EVAL_TIMEOUT = 180  # seconds per problem
 
 _SYSTEM_PROMPT = (
