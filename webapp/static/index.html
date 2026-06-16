@@ -795,9 +795,9 @@ async function compilePdf(content,name,card,btn){
 // ---- Documents tab ----
 let docPoll=null;
 async function loadDocuments(){
-  const r=await fetch(“/api/documents”); const {documents}=await r.json();
-  const list=$(“d-list”); list.innerHTML=””;
-  if(!documents.length){ list.innerHTML='<div class=”muted” style=”padding:10px”>No reports yet.</div>'; return; }
+  const r=await fetch("/api/documents"); const {documents}=await r.json();
+  const list=$("d-list"); list.innerHTML="";
+  if(!documents.length){ list.innerHTML='<div class="muted" style="padding:10px">No reports yet.</div>'; return; }
   // Build tree: group by folder
   const rootItems=documents.filter(d=>!d.folder);
   const folders={};
@@ -808,8 +808,8 @@ async function loadDocuments(){
     }
   }
   function addDocItem(doc, parent){
-    const it=el(“div”,”qitem”);
-    it.innerHTML=`<span style=”font-size:12px;font-weight:600”>${esc(doc.name)}</span><span class=”qt”>${esc(doc.title)} · ${doc.modified}</span>`;
+    const it=el("div","qitem");
+    it.innerHTML=`<span style="font-size:12px;font-weight:600">${esc(doc.name)}</span><span class="qt">${esc(doc.title)} · ${doc.modified}</span>`;
     it.onclick=()=>selectDocument(doc.path||doc.name, it);
     parent.appendChild(it);
   }
@@ -817,23 +817,23 @@ async function loadDocuments(){
   for(const d of rootItems) addDocItem(d, list);
   // Folders (collapsible)
   for(const [folderName, items] of Object.entries(folders).sort()){
-    const fold=el(“div”,”doc-folder”);
-    fold.innerHTML=`<span class=”doc-folder-arrow”>▾</span> 📁 ${esc(folderName)} <span style=”color:var(--muted);font-weight:400;font-size:10px”>(${items.length})</span>`;
-    const children=el(“div”,”doc-folder-children”);
+    const fold=el("div","doc-folder");
+    fold.innerHTML=`<span class="doc-folder-arrow">▾</span> 📁 ${esc(folderName)} <span style="color:var(--muted);font-weight:400;font-size:10px">(${items.length})</span>`;
+    const children=el("div","doc-folder-children");
     for(const d of items) addDocItem(d, children);
     fold.onclick=()=>{
-      fold.classList.toggle(“collapsed”);
-      children.style.display=fold.classList.contains(“collapsed”)?”none”:””;
+      fold.classList.toggle("collapsed");
+      children.style.display=fold.classList.contains("collapsed")?"none":"";
     };
     list.appendChild(fold);
     list.appendChild(children);
   }
 }
 async function selectDocument(path,node){
-  document.querySelectorAll(“#d-list .qitem”).forEach(n=>n.classList.remove(“active”));
-  if(node)node.classList.add(“active”);
-  const r=await fetch(`/api/document/${path.split(“/”).map(encodeURIComponent).join(“/”)}`); const d=await r.json();
-  md($(“d-view”), d.markdown||”_(empty)_”);
+  document.querySelectorAll("#d-list .qitem").forEach(n=>n.classList.remove("active"));
+  if(node)node.classList.add("active");
+  const r=await fetch(`/api/document/${path.split("/").map(encodeURIComponent).join("/")}`); const d=await r.json();
+  md($("d-view"), d.markdown||"_(empty)_");
 }
 $("d-refresh").onclick=loadDocuments;
 $("d-run").onclick=async()=>{
