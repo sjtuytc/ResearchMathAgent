@@ -64,6 +64,7 @@ MathJax = {
   .pane{flex:1;overflow-y:auto;padding:18px 22px;display:none}
   .pane.active{display:block}
   #pane-issue.active,#pane-final-proof.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
+  #pane-overview.active{display:block}
   .ttl{font-size:18px;margin:0 0 6px}
   .bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
   button{padding:8px 14px;border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
@@ -208,7 +209,8 @@ MathJax = {
   </aside>
   <main class="main">
     <div class="tabs">
-      <div class="tab active" data-tab="question">Question</div>
+      <div class="tab active" data-tab="overview">Overview</div>
+      <div class="tab" data-tab="question">Question</div>
       <div class="tab" data-tab="issue">Issue</div>
       <div class="tab" data-tab="agent">Agent</div>
       <div class="tab" data-tab="documents">Documents</div>
@@ -216,18 +218,82 @@ MathJax = {
       <div class="tab" data-tab="final-proof">Final Proof</div>
     </div>
 
-    <section class="pane active" id="pane-question">
+    <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
+      <!-- Schedule card -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700">Auto-Run Schedule</span>
+          <span id="ov-daemon-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)">checking…</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+          <div><span class="muted">Next run:</span> <span id="ov-next-run" style="font-weight:600">—</span></div>
+          <div><span class="muted">Countdown:</span> <span id="ov-countdown" style="font-weight:600;color:var(--accent)">—</span></div>
+          <div><span class="muted">Schedule:</span> <span style="color:var(--green)">09:00 daily (automatic)</span></div>
+          <div><span class="muted">Daemon PID:</span> <span id="ov-daemon-pid" style="color:var(--muted)">—</span></div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px">
+          The daemon runs automatically every day at 09:00: <strong>solve → discover issues → resolve open issues</strong>. No manual action needed.
+        </div>
+      </div>
+
+      <!-- Active runs -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">Active Runs <span id="ov-active-count" style="color:var(--muted);font-size:12px;font-weight:400"></span></div>
+        <div id="ov-active-runs" style="font-size:12px;color:var(--muted)">none</div>
+      </div>
+
+      <!-- Issue progress -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">Issue Progress — click any problem to view issues</div>
+        <div id="ov-issue-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px"></div>
+      </div>
+
+      <!-- Token usage daily chart -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700">Token Usage — Day by Day (14 days)</span>
+          <span id="ov-token-total" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <canvas id="ov-tok-chart" style="width:100%;display:none"></canvas>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;display:flex;gap:12px" id="ov-chart-legend" style="display:none">
+          <span><svg width="9" height="9"><rect width="9" height="9" rx="2" fill="rgba(88,166,255,0.45)"/></svg> input tokens</span>
+          <span><svg width="9" height="9"><rect width="9" height="9" rx="2" fill="rgba(188,140,255,0.7)"/></svg> output tokens</span>
+        </div>
+        <div id="ov-no-usage" style="color:var(--muted);font-size:12px;text-align:center;padding:16px 0">No usage tracked yet — usage is recorded when agents run.</div>
+      </div>
+
+      <!-- Per-problem token breakdown -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Token Spend by Problem</div>
+        <div id="ov-prob-tokens" style="color:var(--muted);font-size:12px">No data yet.</div>
+      </div>
+
+      <!-- Improvement suggestions -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Improvement Suggestions</div>
+        <div id="ov-suggestions" style="color:var(--muted);font-size:12px">Computing…</div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Recent Agent Activity</div>
+        <div id="ov-activity" style="font-size:12px;display:flex;flex-direction:column;gap:5px"></div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-question" style="display:none">
       <div id="q-empty" class="empty">Pick a question on the left.</div>
       <div id="q-body" style="display:none">
         <h2 class="ttl" id="q-title"></h2>
         <div class="bar">
           <button class="btn-sec" id="q-toggle">View raw .tex</button>
-          <button class="btn-sec" id="q-pdf-btn">Compile PDF</button>
+          <button class="btn-sec" id="q-pdf-btn" style="display:none">Compile PDF</button>
           <span class="muted" id="q-file"></span>
+          <span class="muted" id="q-view-mode" style="font-size:11px"></span>
         </div>
-        <div class="rendered" id="q-rendered"></div>
+        <div class="rendered" id="q-rendered" style="display:none"></div>
         <pre id="q-raw" style="display:none"><code id="q-raw-code"></code></pre>
-        <div id="q-pdf-area" style="display:none;margin-top:12px;background:#404040;border-radius:8px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
+        <div id="q-pdf-area" style="display:none;margin-top:12px;background:#404040;border-radius:8px;padding:16px;flex-direction:column;align-items:center;gap:12px"></div>
       </div>
     </section>
 
@@ -523,7 +589,8 @@ function renderProblemList(ps){
 
 async function init(){
   try{
-    // Load datasets and initial problem list
+    // Load datasets, initial problem list, and start overview
+    startOvRefresh();
     await loadDatasets();
     await loadProblems();
     // provider options (from legacy endpoint)
@@ -550,9 +617,221 @@ function onProviderChange(){
     : "Uses the Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
 }
 
+// ---- Overview tab ----
+let ovTimer=null;
+
+function agentColor(author){
+  const colors={"critic-agent":"#d29922","solver-agent":"#58a6ff","verifier-agent":"#3fb950","coordinator":"#bc8cff","human":"#8b949e"};
+  return colors[(author||"").toLowerCase()]||"#8b949e";
+}
+function _timeAgo(iso){
+  if(!iso) return "";
+  const diff=(Date.now()-new Date(iso.endsWith("Z")?iso:iso+"Z").getTime())/1000;
+  if(diff<60) return `${Math.round(diff)}s ago`;
+  if(diff<3600) return `${Math.round(diff/60)}m ago`;
+  if(diff<86400) return `${Math.round(diff/3600)}h ago`;
+  return `${Math.round(diff/86400)}d ago`;
+}
+function drawOvChart(daily){
+  const canvas=$("ov-tok-chart");
+  if(!canvas||!daily.length) return;
+  canvas.style.display="block";
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth||600, H=80;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px";
+  const ctx=canvas.getContext("2d"); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const maxTok=Math.max(...daily.map(d=>(d.in||0)+(d.out||0)),1);
+  const n=daily.length;
+  const padX=4,padY=4,gap=2,labelH=14;
+  const barW=Math.max(6,Math.min(48,(W-padX*2-(n-1)*gap)/n));
+  daily.forEach((d,i)=>{
+    const x=padX+i*(barW+gap);
+    const avail=H-padY*2-labelH;
+    const inH=Math.round(((d.in||0)/maxTok)*avail);
+    const outH=Math.round(((d.out||0)/maxTok)*avail);
+    const base=H-padY-labelH;
+    ctx.fillStyle="rgba(88,166,255,0.45)";
+    ctx.fillRect(x,base-inH,barW,inH);
+    ctx.fillStyle="rgba(188,140,255,0.7)";
+    ctx.fillRect(x,base-inH-outH,barW,outH);
+    ctx.fillStyle="#8b949e"; ctx.font=`${Math.min(9,barW+2)}px system-ui`; ctx.textAlign="center";
+    ctx.fillText((d.date||"").slice(5),x+barW/2,H-padY);
+  });
+}
+async function loadOverview(){
+  let d;
+  try{ d=await(await fetch("/api/overview")).json(); }
+  catch(e){ return; }
+
+  // Daemon badge
+  const running=d.daemon_running;
+  const badge=$("ov-daemon-badge");
+  badge.textContent=running?"● RUNNING":"○ STOPPED";
+  badge.style.background=running?"rgba(63,185,80,.15)":"rgba(248,81,73,.15)";
+  badge.style.color=running?"var(--green)":"var(--red)";
+  badge.style.border=running?"1px solid rgba(63,185,80,.4)":"1px solid rgba(248,81,73,.4)";
+
+  // Schedule
+  const secs=d.seconds_until_next||0;
+  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60);
+  $("ov-countdown").textContent=`${h}h ${m}m`;
+  $("ov-next-run").textContent=(d.next_run_iso||"").replace("T"," ");
+  $("ov-daemon-pid").textContent=d.daemon_pid?`#${d.daemon_pid}`:"not found";
+
+  // Active runs
+  const runs=d.active_runs||[];
+  $("ov-active-count").textContent=runs.length?`(${runs.length})`:"";
+  if(runs.length){
+    $("ov-active-runs").innerHTML=runs.map(r=>`
+      <div style="padding:4px 8px;background:var(--panel2);border-radius:4px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span class="dot run"></span>
+        <span style="color:var(--accent2)">${esc(r.kind||"run")}</span>
+        <span style="color:var(--muted)">·</span>
+        <span>${esc(r.problem||"")}${r.issue?" #"+esc(r.issue):""}</span>
+        <span style="margin-left:auto;color:var(--muted)">${r.age_s}s</span>
+      </div>`).join("");
+  } else {
+    $("ov-active-runs").innerHTML='<span style="color:var(--muted)">none</span>';
+  }
+
+  // Issue grid
+  const stats=d.issue_stats||{};
+  const grid=$("ov-issue-grid"); grid.innerHTML="";
+  for(const [pid,s] of Object.entries(stats)){
+    const total=s.total||0;
+    const card=document.createElement("div");
+    card.style.cssText="background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;transition:border-color .15s";
+    card.onmouseenter=()=>card.style.borderColor="var(--accent)";
+    card.onmouseleave=()=>card.style.borderColor="var(--border)";
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-weight:700;color:var(--accent);font-size:14px">${esc(pid)}</span>
+        <span style="font-size:11px;color:var(--muted)">${total} issue${total!==1?"s":""}</span>
+      </div>
+      <div style="display:flex;height:5px;border-radius:3px;overflow:hidden;gap:1px;margin-bottom:7px">
+        ${s.open?`<div style="flex:${s.open};background:var(--accent)"></div>`:""}
+        ${s.in_progress?`<div style="flex:${s.in_progress};background:var(--amber)"></div>`:""}
+        ${s.resolved?`<div style="flex:${s.resolved};background:var(--green)"></div>`:""}
+        ${!total?`<div style="flex:1;background:var(--border)"></div>`:""}
+      </div>
+      <div style="display:flex;gap:8px;font-size:11px">
+        <span style="color:var(--accent)">● ${s.open} open</span>
+        ${s.in_progress?`<span style="color:var(--amber)">◑ ${s.in_progress} active</span>`:""}
+        <span style="color:var(--green)">✓ ${s.resolved} done</span>
+      </div>`;
+    card.onclick=()=>{
+      selectQuestion(pid,null,selectedDataset||"first_proof_1");
+      setTab("issue");
+    };
+    grid.appendChild(card);
+  }
+
+  // Token usage daily chart
+  const daily=d.token_daily||[];
+  const tot=d.token_total||{};
+  if(daily.length){
+    $("ov-no-usage").style.display="none";
+    const costStr=tot.cost?` · est. $${tot.cost.toFixed(4)}`:"";
+    $("ov-token-total").textContent=`${(tot.in||0).toLocaleString()} in / ${(tot.out||0).toLocaleString()} out · ${tot.runs||0} runs${costStr}`;
+    if($("ov-chart-legend")) $("ov-chart-legend").style.display="flex";
+    drawOvChart(daily);
+  } else {
+    $("ov-no-usage").style.display="block";
+    $("ov-tok-chart").style.display="none";
+    $("ov-token-total").textContent="";
+  }
+
+  // Per-problem token breakdown
+  const byProb=d.token_by_problem||[];
+  const probEl=$("ov-prob-tokens");
+  if(byProb.length){
+    const maxTok=Math.max(...byProb.map(r=>r.in+r.out),1);
+    probEl.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="color:var(--muted);font-size:11px">
+        <th style="text-align:left;padding:3px 6px;width:60px">Problem</th>
+        <th style="text-align:right;padding:3px 6px">In</th>
+        <th style="text-align:right;padding:3px 6px">Out</th>
+        <th style="text-align:right;padding:3px 6px">Runs</th>
+        <th style="padding:3px 6px;min-width:120px">Usage</th>
+        ${byProb[0].cost!=null?'<th style="text-align:right;padding:3px 6px">Est. Cost</th>':''}
+      </tr></thead>
+      <tbody>${byProb.map((r,i)=>{
+        const total=r.in+r.out;
+        const pct=Math.round((total/maxTok)*100);
+        const isTop=i===0;
+        return `<tr style="${isTop?"color:var(--text)":"color:var(--muted)"}">
+          <td style="padding:4px 6px;font-weight:${isTop?700:400};color:var(--accent)">${esc(r.problem)}</td>
+          <td style="text-align:right;padding:4px 6px">${(r.in||0).toLocaleString()}</td>
+          <td style="text-align:right;padding:4px 6px">${(r.out||0).toLocaleString()}</td>
+          <td style="text-align:right;padding:4px 6px">${r.runs||0}</td>
+          <td style="padding:4px 6px">
+            <div style="background:var(--border);border-radius:3px;height:6px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${isTop?"var(--accent2)":"var(--accent)"};border-radius:3px;opacity:${isTop?1:0.6}"></div>
+            </div>
+          </td>
+          ${r.cost!=null?`<td style="text-align:right;padding:4px 6px">$${r.cost.toFixed(4)}</td>`:''}
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
+  } else {
+    probEl.textContent="No token data yet. Run an agent to start tracking.";
+  }
+
+  // Improvement suggestions
+  const suggs=d.suggestions||[];
+  const suggEl=$("ov-suggestions");
+  if(suggs.length){
+    suggEl.innerHTML=suggs.map((s,i)=>`
+      <div style="display:flex;gap:8px;padding:6px 8px;background:var(--panel2);border-radius:5px;margin-bottom:5px;align-items:flex-start">
+        <span style="color:var(--amber);font-size:13px;flex-shrink:0">${i===0?"★":"·"}</span>
+        <span style="color:var(--text)">${esc(s)}</span>
+      </div>`).join("");
+  } else {
+    suggEl.textContent="Everything looks healthy! Run more agents to get personalized suggestions.";
+  }
+
+  // Recent activity
+  const acts=d.recent_activity||[];
+  const actEl=$("ov-activity");
+  if(acts.length){
+    actEl.innerHTML=acts.slice(0,20).map(a=>{
+      const col=agentColor(a.author);
+      return `<div style="display:flex;gap:8px;padding:7px 9px;background:var(--panel2);border-radius:5px;align-items:flex-start">
+        <div style="width:22px;height:22px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0d1117;flex-shrink:0">${esc((a.author||"?")[0].toUpperCase())}</div>
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;margin-bottom:2px">
+            <span style="font-weight:600;color:${col};font-size:11px">${esc(a.author)}</span>
+            <span style="color:var(--accent);font-size:11px">${esc(a.problem)}</span>
+            <span style="color:var(--muted);font-size:10px">#${esc(a.issue_id)}</span>
+            <span style="color:var(--muted);font-size:10px;margin-left:auto">${_timeAgo(a.ts)}</span>
+          </div>
+          <div style="color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((a.body||"").slice(0,120))}</div>
+        </div>
+      </div>`;
+    }).join("");
+  } else {
+    actEl.innerHTML='<div style="color:var(--muted);font-size:12px">No agent activity yet — run the daily cycle or click Discover in the Issue tab.</div>';
+  }
+}
+function startOvRefresh(){ loadOverview(); if(!ovTimer) ovTimer=setInterval(loadOverview,30000); }
+function stopOvRefresh(){ if(ovTimer){clearInterval(ovTimer);ovTimer=null;} }
+
+// Panes that use display:flex via CSS .pane.active selector — don't override with inline style
+const _CSS_FLEX_PANES = new Set(["pane-issue","pane-final-proof","pane-overview"]);
 function setTab(name){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
-  document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("active",p.id==="pane-"+name));
+  document.querySelectorAll(".pane").forEach(p=>{
+    const active=p.id==="pane-"+name;
+    p.classList.toggle("active",active);
+    if(!_CSS_FLEX_PANES.has(p.id)){
+      p.style.display=active?"block":"none";
+    } else {
+      p.style.removeProperty("display"); // let CSS class control display:flex
+    }
+  });
+  if(name==="overview") startOvRefresh(); else stopOvRefresh();
   if(name==="documents") loadDocuments();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
@@ -605,6 +884,34 @@ async function pdfLoad(url, wrap, onDoc, scale){
   }
 }
 
+// ---- Macro check: is this LaTeX document source or markdown? ----
+function hasMacros(text){
+  if(!text) return false;
+  // Strip math-mode content so math-mode macros don't count
+  const stripped = text
+    .replace(/\$\$[\s\S]*?\$\$/g,'')
+    .replace(/\\\[[\s\S]*?\\\]/g,'')
+    .replace(/\$[^$\n]{0,200}\$/g,'')
+    .replace(/\\\([^)]{0,200}\\\)/g,'');
+  // Count structural LaTeX commands outside math mode
+  const n = (stripped.match(/\\(?:begin|end|section|subsection|paragraph|textbf|textit|emph|newcommand|renewcommand|usepackage|documentclass|includegraphics|label|ref|cite|item|enumerate|itemize|theorem|proof|lemma|corollary|definition|remark|equation|align|gather|multline|cases)\b/gi)||[]).length;
+  return n > 2;
+}
+
+// Render content: use markdown for prose, plain pre for LaTeX documents
+function renderContent(node, text, stream=false){
+  node.dataset.raw = text||"";
+  if(hasMacros(text)){
+    // LaTeX document source – don't mangle with markdown parser
+    const escaped = (text||"").replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    node.innerHTML = `<pre style="white-space:pre-wrap;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6;margin:0;border:none;background:transparent;padding:0">${escaped}</pre>`;
+    // Math inside $...$ will NOT be typeset here (pre is skipped by MathJax).
+    // For full typeset, use the PDF view.
+  } else {
+    md(node, text||"*(empty)*", stream);
+  }
+}
+
 // ---- Questions tab ----
 function extractStatement(tex){
   let m=tex.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
@@ -625,53 +932,71 @@ async function selectQuestion(qid, node, dataset){
   // Reset question pane to rendered view
   $("q-empty").style.display="none";
   $("q-body").style.display="block";
-  $("q-rendered").innerHTML='<span class="muted">Loading…</span>';
-  $("q-rendered").style.display="block";
+  $("q-rendered").style.display="none";
   $("q-raw").style.display="none";
   $("q-pdf-area").style.display="none";
   $("q-toggle").textContent="View raw .tex";
-  $("q-pdf-btn").textContent="Compile PDF";
+  $("q-pdf-btn").style.display="none";
   $("q-pdf-btn").disabled=false;
+  $("q-view-mode").textContent="loading…";
+  let _qTex="";
   try{
-    // Try new multi-dataset endpoint first; fall back to legacy for first_proof_1
     let pr;
     const dsUrl=`/api/ds/problem/${encodeURIComponent(ds)}/${encodeURIComponent(qid)}`;
     const legUrl=`/api/problem/${encodeURIComponent(qid)}`;
     const res=await fetch(dsUrl);
-    if(res.ok){
-      pr=await res.json();
-    } else if(ds==="first_proof_1"){
-      pr=await (await fetch(legUrl)).json();
-    } else {
-      pr=await res.json();
-    }
+    if(res.ok){ pr=await res.json(); }
+    else if(ds==="first_proof_1"){ pr=await (await fetch(legUrl)).json(); }
+    else { pr=await res.json(); }
     if(pr.error) throw new Error(pr.error);
     $("q-title").textContent=pr.title||qid;
     $("q-file").textContent=`${ds}/${qid}`;
-    $("q-raw-code").textContent=pr.tex||pr.statement||"";
-    // Show rendered content immediately
-    const r=$("q-rendered");
-    const content=pr.tex?extractStatement(pr.tex):pr.statement||"*(no statement available)*";
-    md(r, content);
-    // Show solvability if available
-    if(pr.solvability_score!=null){
-      const pct=Math.round(pr.solvability_score*100);
-      const badge=document.createElement("div");
-      badge.style.cssText="margin-top:8px;font-size:12px;color:var(--muted)";
-      badge.innerHTML=`Solvability: ${solvBadge(pr.solvability_score)} (${pct}% of runs succeeded)`;
-      r.appendChild(badge);
-    }
-    // Show tags
-    if(pr.tags&&pr.tags.length){
-      const tagDiv=document.createElement("div");
-      tagDiv.className="tag-strip";
-      tagDiv.style.marginTop="8px";
-      tagDiv.innerHTML=pr.tags.map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("");
-      r.appendChild(tagDiv);
+    _qTex=pr.tex||pr.statement||"";
+    $("q-raw-code").textContent=_qTex;
+    // Show solvability + tags in a metadata bar (append later)
+    const metaHtml=(()=>{
+      let h="";
+      if(pr.solvability_score!=null) h+=`${solvBadge(pr.solvability_score)} `;
+      if(pr.tags&&pr.tags.length) h+=pr.tags.slice(0,4).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("");
+      return h ? `<div class="tag-strip" style="margin-bottom:8px">${h}</div>` : "";
+    })();
+    // Auto-load pre-compiled PDF (backend pre-compiles at startup)
+    const area=$("q-pdf-area");
+    area.style.display="flex";
+    area.innerHTML=`${metaHtml}<div style="color:#aaa;padding:20px;font-size:13px">Loading PDF…</div>`;
+    setStatus(`${qid} loading PDF…`,"run");
+    try{
+      const pdfRes=await (await fetch(`/api/problem-pdf/${encodeURIComponent(qid)}`)).json();
+      if(pdfRes.ok && pdfRes.pdf_url){
+        area.innerHTML=metaHtml; // clear the "loading" message; pdfLoad fills the rest
+        await pdfLoad(pdfRes.pdf_url, area, d=>{qDoc=d;}, qScale);
+        $("q-view-mode").textContent="PDF";
+        $("q-toggle").textContent="View raw .tex";
+      } else {
+        // PDF not ready — show LaTeX source as fallback, offer compile button
+        area.style.display="none";
+        const r=$("q-rendered");
+        r.style.display="block";
+        r.innerHTML=metaHtml;
+        const content=extractStatement(_qTex)||"*(no statement)*";
+        renderContent(r, content);
+        $("q-view-mode").textContent="source (PDF unavailable)";
+        $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="Compile PDF";
+      }
+    }catch(pdfErr){
+      area.style.display="none";
+      const r=$("q-rendered");
+      r.style.display="block";
+      r.innerHTML=metaHtml;
+      renderContent(r, extractStatement(_qTex)||"");
+      $("q-view-mode").textContent="source";
+      $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="Compile PDF";
     }
     setStatus(`${qid} selected`);
   }catch(e){
+    $("q-rendered").style.display="block";
     $("q-rendered").innerHTML=`<span style="color:var(--red)">Failed to load question: ${esc(String(e))}</span>`;
+    $("q-view-mode").textContent="error";
     setStatus("load error","err");
   }
   // Load issues (non-blocking) — scoped to dataset
@@ -683,32 +1008,45 @@ async function selectQuestion(qid, node, dataset){
 }
 
 $("q-toggle").onclick=()=>{
-  const raw=$("q-raw"), ren=$("q-rendered"), b=$("q-toggle");
-  const showRaw=raw.style.display==="none";
-  raw.style.display=showRaw?"block":"none";
-  ren.style.display=showRaw?"none":"block";
-  b.textContent=showRaw?"View rendered":"View raw .tex";
+  const raw=$("q-raw"), area=$("q-pdf-area"), ren=$("q-rendered"), b=$("q-toggle");
+  const pdfShowing = area.style.display!=="none" || ren.style.display!=="none";
+  const rawShowing = raw.style.display!=="none";
+  if(rawShowing){
+    // Currently in raw view — go back to PDF/rendered view
+    raw.style.display="none";
+    const wasInPdf = $("q-view-mode").textContent.includes("PDF") || $("q-view-mode").textContent==="PDF";
+    if(wasInPdf){ area.style.display="flex"; ren.style.display="none"; }
+    else { area.style.display="none"; ren.style.display="block"; }
+    b.textContent="View raw .tex";
+  } else {
+    // Currently in PDF/rendered view — switch to raw .tex
+    area.style.display="none"; ren.style.display="none";
+    raw.style.display="block";
+    b.textContent="View PDF";
+  }
 };
 
-// PDF compile is optional / on-demand — doesn't block question viewing
+// On-demand fallback compile (only shown when PDF not pre-available)
 $("q-pdf-btn").onclick=async function(){
   if(!selected)return;
   this.disabled=true; this.textContent="Compiling…";
   const area=$("q-pdf-area");
   area.style.display="flex"; area.innerHTML=`<div style="color:#aaa;padding:20px">Compiling PDF…</div>`;
+  $("q-rendered").style.display="none"; $("q-raw").style.display="none";
   try{
-    const res=await (await fetch(`/api/problem-pdf/${selected}`)).json();
-    if(res.ok){
-      this.textContent="PDF ready";
+    const res=await (await fetch(`/api/problem-pdf/${encodeURIComponent(selected)}`)).json();
+    if(res.ok && res.pdf_url){
+      this.textContent="PDF ready"; this.style.display="none";
+      $("q-view-mode").textContent="PDF"; $("q-toggle").textContent="View raw .tex";
       await pdfLoad(res.pdf_url, area, d=>{qDoc=d;}, qScale);
     } else {
-      this.textContent="Compile PDF";
-      this.disabled=false;
+      this.disabled=false; this.textContent="Compile PDF";
+      area.style.display="none"; $("q-rendered").style.display="block";
       area.innerHTML=`<details style="padding:12px;width:100%"><summary style="color:var(--red);cursor:pointer">PDF compile failed</summary><pre style="font-size:11px;color:#aaa;white-space:pre-wrap;margin-top:8px">${esc(res.log||"no log")}</pre></details>`;
     }
   }catch(e){
-    this.textContent="Compile PDF"; this.disabled=false;
-    area.innerHTML=`<div style="color:var(--red);padding:20px">${esc(String(e))}</div>`;
+    this.disabled=false; this.textContent="Compile PDF";
+    area.style.display="none"; $("q-rendered").style.display="block";
   }
 };
 
@@ -763,7 +1101,7 @@ function renderIssueThread(issue){
       <span style="font-weight:600;font-size:12px;color:${color}">${esc(c.author)}</span>
       <span class="muted" style="font-size:11px;margin-left:auto">${esc((c.created_at||"").slice(0,16).replace("T"," "))}</span>
     </div>`;
-    const body=el("div","body"); md(body,c.body); card.appendChild(body);
+    const body=el("div","body"); renderContent(body, c.body); card.appendChild(body);
     comments.appendChild(card);
   }
   comments.scrollTop=comments.scrollHeight;
@@ -1201,7 +1539,7 @@ async function selectDocument(path,node){
   document.querySelectorAll("#d-list .qitem").forEach(n=>n.classList.remove("active"));
   if(node)node.classList.add("active");
   const r=await fetch(`/api/document/${path.split("/").map(encodeURIComponent).join("/")}`); const d=await r.json();
-  md($("d-view"), d.markdown||"_(empty)_");
+  renderContent($("d-view"), d.markdown||"_(empty)_");
 }
 $("d-refresh").onclick=loadDocuments;
 $("d-run").onclick=async()=>{
@@ -1304,15 +1642,29 @@ async function loadProofDetail(expName, qid){
     $("pf-raw").style.display="none";
     $("pf-detail").style.display="block";
     $("pf-status").textContent="";
-    // Compile to PDF
+    // Show placeholder — PDF is compiled on-demand when user clicks "Load PDF"
     const wrap=$("pf-pdf-wrap");
-    wrap.innerHTML=`<div style="color:#aaa;padding:32px">Compiling PDF…</div>`;
-    const pr=await (await fetch(`/api/proof-pdf/${encodeURIComponent(expName)}/${encodeURIComponent(qid)}`)).json();
-    if(pr.ok){
-      $("pf-dl").href=pr.pdf_url; $("pf-dl").style.display="";
-      await pdfLoad(pr.pdf_url, wrap, d=>{pfDoc=d;}, pfScale);
-    } else {
-      wrap.innerHTML=`<div style="color:#f88;padding:32px">PDF compile failed:<br><pre style="font-size:11px;color:#aaa;white-space:pre-wrap">${esc(pr.log||"")}</pre></div>`;
+    pfDoc=null; $("pf-dl").style.display="none";
+    wrap.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px">
+      <div style="color:#aaa;font-size:13px">${tex?tex.length+' chars of LaTeX ready':'No solution .tex available'}</div>
+      ${tex?`<button class="btn-sec" id="pf-load-pdf-btn" style="padding:8px 18px">Load PDF</button>`:''}
+    </div>`;
+    if(tex){
+      document.getElementById("pf-load-pdf-btn").onclick=async function(){
+        this.disabled=true; this.textContent="Compiling…";
+        wrap.innerHTML=`<div style="color:#aaa;padding:32px">Compiling PDF in backend…</div>`;
+        try{
+          const pr=await (await fetch(`/api/proof-pdf/${encodeURIComponent(expName)}/${encodeURIComponent(qid)}`)).json();
+          if(pr.ok && pr.pdf_url){
+            $("pf-dl").href=pr.pdf_url; $("pf-dl").style.display="";
+            await pdfLoad(pr.pdf_url, wrap, d=>{pfDoc=d;}, pfScale);
+          } else {
+            wrap.innerHTML=`<div style="color:#f88;padding:32px">PDF compile failed:<br><pre style="font-size:11px;color:#aaa;white-space:pre-wrap">${esc(pr.log||"")}</pre></div>`;
+          }
+        }catch(e){
+          wrap.innerHTML=`<div style="color:#f88;padding:32px">${esc(String(e))}</div>`;
+        }
+      };
     }
   }catch(e){$("pf-status").textContent="error: "+e.message;}
 }

@@ -33,6 +33,7 @@ from .proofs import get_proof, list_experiments
 from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
+from .token_log import append_usage, read_log, daily_summary, per_problem_summary
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -474,6 +475,8 @@ def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None):
     def send(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
 
+    fn_name = getattr(runner_fn, "__name__", "")
+    kind = "discover" if "discovery" in fn_name else "resolve" if "resolver" in fn_name else "verify"
     handle = REGISTRY.register(run_id, {
         "problem": problem_id,
         "issue": issue_id or "",
@@ -486,12 +489,113 @@ def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None):
         else:
             gen = runner_fn(repo_root, problem_id, handle)
         for event in gen:
+            if event.type == "usage":
+                try:
+                    d = event.data or {}
+                    append_usage(repo_root, problem_id, kind,
+                                 d.get("input_tokens", 0), d.get("output_tokens", 0),
+                                 d.get("cost_usd"))
+                except Exception:  # noqa: BLE001
+                    pass
             yield send(event.to_dict())
     except Exception as exc:  # noqa: BLE001
         yield send({"type": "error", "message": f"Server error: {exc}"})
         yield send({"type": "done", "reason": "error"})
     finally:
         REGISTRY.unregister(run_id)
+
+
+@app.get("/api/overview")
+def overview_ep() -> JSONResponse:
+    import subprocess as _sp
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    nxt = now.replace(hour=9, minute=0, second=0, microsecond=0)
+    if nxt <= now:
+        nxt += timedelta(days=1)
+    seconds_until = int((nxt - now).total_seconds())
+
+    daemon_pid = None
+    try:
+        r = _sp.run(["pgrep", "-f", "webapp.daily"], capture_output=True, text=True)
+        pids = [p.strip() for p in r.stdout.splitlines() if p.strip()]
+        daemon_pid = int(pids[0]) if pids else None
+    except Exception:  # noqa: BLE001
+        pass
+
+    issue_stats: dict[str, dict] = {}
+    for i in range(1, 11):
+        pid = f"q{i}"
+        try:
+            issues = list_issues(REPO_ROOT, pid)
+        except Exception:  # noqa: BLE001
+            issues = []
+        issue_stats[pid] = {
+            "open": sum(1 for x in issues if x.get("status") == "open"),
+            "in_progress": sum(1 for x in issues if x.get("status") == "in_progress"),
+            "resolved": sum(1 for x in issues if x.get("status") == "resolved"),
+            "total": len(issues),
+        }
+
+    recent: list[dict] = []
+    for i in range(1, 11):
+        pid = f"q{i}"
+        try:
+            for iss in list_issues(REPO_ROOT, pid):
+                for c in iss.get("comments", []):
+                    recent.append({
+                        "problem": pid,
+                        "issue_id": iss.get("id", ""),
+                        "issue_title": (iss.get("title") or "")[:60],
+                        "author": c.get("author", ""),
+                        "body": (c.get("body") or "")[:200],
+                        "ts": c.get("created_at", ""),
+                    })
+        except Exception:  # noqa: BLE001
+            pass
+    recent.sort(key=lambda x: x["ts"], reverse=True)
+    recent = recent[:30]
+
+    log_entries = read_log(REPO_ROOT, days=14)
+    daily = daily_summary(log_entries)
+    by_prob = per_problem_summary(log_entries)
+    total_in = sum(e.get("in", 0) for e in log_entries)
+    total_out = sum(e.get("out", 0) for e in log_entries)
+    total_cost = sum(e.get("cost") or 0.0 for e in log_entries)
+
+    # Simple improvement suggestions based on issue stats
+    suggestions: list[str] = []
+    most_open = sorted(issue_stats.items(), key=lambda x: x[1]["open"], reverse=True)
+    if most_open and most_open[0][1]["open"] > 0:
+        pid, s = most_open[0]
+        suggestions.append(f"{pid} has {s['open']} open issue(s) — run Auto-Resolve to tackle them.")
+    unresolved = [(p, s) for p, s in issue_stats.items() if s["total"] > 0 and s["resolved"] == 0]
+    if unresolved:
+        pids = ", ".join(p for p, _ in unresolved[:3])
+        suggestions.append(f"{pids}: issues exist but none resolved — verifier may need more passes.")
+    zero_issues = [p for p, s in issue_stats.items() if s["total"] == 0]
+    if zero_issues:
+        suggestions.append(f"{', '.join(zero_issues[:5])}: no issues discovered yet — run Discover on these problems.")
+    if by_prob:
+        top = by_prob[0]
+        suggestions.append(f"{top['problem']} consumed the most tokens ({(top['in']+top['out']):,}) — consider shorter prompts or fewer resolve cycles.")
+
+    return JSONResponse({
+        "daemon_running": daemon_pid is not None,
+        "daemon_pid": daemon_pid,
+        "next_run_iso": nxt.strftime("%Y-%m-%dT%H:%M:%S"),
+        "seconds_until_next": seconds_until,
+        "active_runs": REGISTRY.active(),
+        "issue_stats": issue_stats,
+        "recent_activity": recent,
+        "token_daily": daily,
+        "token_by_problem": by_prob,
+        "token_total": {
+            "in": total_in, "out": total_out,
+            "cost": round(total_cost, 6), "runs": len(log_entries),
+        },
+        "suggestions": suggestions,
+    })
 
 
 @app.post("/api/run-daily")
@@ -537,6 +641,14 @@ def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str):
                 "provider": provider, "run_id": run_id})
     try:
         for event in runner(cfg, handle):
+            if event.type == "usage":
+                try:
+                    d = event.data or {}
+                    append_usage(REPO_ROOT, problem, "solve",
+                                 d.get("input_tokens", 0), d.get("output_tokens", 0),
+                                 d.get("cost_usd"))
+                except Exception:  # noqa: BLE001
+                    pass
             yield send(event.to_dict())
     except Exception as exc:  # noqa: BLE001 - keep the stream well-formed
         yield send({"type": "error", "message": f"Server error: {exc}"})
