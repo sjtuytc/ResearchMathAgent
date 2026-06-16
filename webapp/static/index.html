@@ -68,7 +68,12 @@ MathJax = {
   /* Cap display math in narrow comment/document views */
   .body mjx-container[display="true"]{font-size:.88em;overflow-x:auto;max-width:100%;margin:.4em 0}
   .rendered mjx-container[display="true"]{overflow-x:auto;max-width:100%}
-  .body{overflow-x:auto;overflow-wrap:break-word}
+  .body{overflow-x:auto;overflow-wrap:break-word;font-size:13px;line-height:1.55}
+  .body h1,.body h2,.body h3,.body h4,.body h5,.body h6{font-size:13px;font-weight:700;margin:.5em 0 .2em;line-height:1.3}
+  .body p{margin:.3em 0}
+  .body ul,.body ol{margin:.3em 0;padding-left:1.4em}
+  .body pre{margin:.4em 0;font-size:11.5px}
+  .body code:not(pre code){font-size:11.5px}
   .ttl{font-size:18px;margin:0 0 6px}
   .bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
   button{padding:8px 14px;border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
@@ -258,6 +263,7 @@ MathJax = {
               <div style="font-size:10px;color:var(--muted);margin-top:3px">total runs</div>
             </div>
           </div>
+          <div id="ov-qf-labels" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn-sec" style="font-size:11px" onclick="setTab('documents')">Documents ↗</button>
             <button class="btn-sec" style="font-size:11px" onclick="setTab('proofs')">Proof ↗</button>
@@ -946,6 +952,13 @@ function renderOverview(d, pid){
     $("ov-qf-acc").textContent=q.accuracy_pct!=null?q.accuracy_pct+"%":"—";
     $("ov-qf-issues").textContent=ist.open!=null?ist.open:"—";
     $("ov-qf-runs").textContent=q.total_runs||"—";
+    // Labels
+    const labelsEl=$("ov-qf-labels");
+    if(labelsEl){
+      const labs=q.labels||[];
+      labelsEl.innerHTML=labs.map(l=>`<span class="tag-chip">${esc(l)}</span>`).join("");
+      labelsEl.style.display=labs.length?"flex":"none";
+    }
   } else {
     filterBar.style.display="none";
     focusPanel.style.display="none";
@@ -1369,7 +1382,10 @@ async function selectQuestion(qid, node, dataset){
     area.innerHTML=`${metaHtml}<div style="color:#aaa;padding:20px;font-size:13px">Loading PDF…</div>`;
     setStatus(`${qid} loading PDF…`,"run");
     try{
-      const pdfRes=await (await fetch(`/api/problem-pdf/${encodeURIComponent(qid)}`)).json();
+      const pdfEndpoint = (ds==="first_proof_1")
+        ? `/api/problem-pdf/${encodeURIComponent(qid)}`
+        : `/api/ds/problem-pdf/${encodeURIComponent(ds)}/${encodeURIComponent(qid)}`;
+      const pdfRes=await (await fetch(pdfEndpoint)).json();
       if(pdfRes.ok && pdfRes.pdf_url){
         area.innerHTML=metaHtml; // clear the "loading" message; pdfLoad fills the rest
         await pdfLoad(pdfRes.pdf_url, area, d=>{qDoc=d;}, qScale);
@@ -1442,7 +1458,11 @@ $("q-pdf-btn").onclick=async function(){
   area.style.display="flex"; area.innerHTML=`<div style="color:#aaa;padding:20px">Compiling PDF…</div>`;
   $("q-rendered").style.display="none"; $("q-raw").style.display="none";
   try{
-    const res=await (await fetch(`/api/problem-pdf/${encodeURIComponent(selected)}`)).json();
+    const _ds2=selectedDataset||"first_proof_1";
+    const _ep2=(_ds2==="first_proof_1")
+      ? `/api/problem-pdf/${encodeURIComponent(selected)}`
+      : `/api/ds/problem-pdf/${encodeURIComponent(_ds2)}/${encodeURIComponent(selected)}`;
+    const res=await (await fetch(_ep2)).json();
     if(res.ok && res.pdf_url){
       this.textContent="PDF ready"; this.style.display="none";
       $("q-view-mode").textContent="PDF"; $("q-toggle").textContent="View raw .tex";

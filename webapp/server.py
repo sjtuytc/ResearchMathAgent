@@ -61,6 +61,18 @@ _Q_AREAS = {
     "q7": "Lattices in Lie Groups", "q8": "Symplectic Geometry",
     "q9": "Tensor Analysis", "q10": "Numerical Linear Algebra",
 }
+_Q_LABELS: dict[str, list[str]] = {
+    "q1":  ["open problem", "stochastic PDE", "measure theory", "quantum field theory", "frontier"],
+    "q2":  ["open problem", "automorphic forms", "L-functions", "representation theory", "frontier"],
+    "q3":  ["open problem", "algebraic combinatorics", "Markov chains", "symmetric functions"],
+    "q4":  ["open problem", "spectral graph theory", "free probability", "polynomial methods"],
+    "q5":  ["open problem", "algebraic topology", "equivariant homotopy", "operads"],
+    "q6":  ["open problem", "spectral graph theory", "graph theory", "linear algebra", "current focus"],
+    "q7":  ["open problem", "geometric topology", "Lie groups", "lattices"],
+    "q8":  ["open problem", "symplectic geometry", "Floer theory", "tropical geometry"],
+    "q9":  ["open problem", "algebraic geometry", "tensor decomposition", "matrix theory"],
+    "q10": ["open problem", "numerical linear algebra", "optimization", "algorithmic", "machine learning"],
+}
 
 
 def _question_summary(repo_root: Path, qid: str) -> dict:
@@ -80,6 +92,7 @@ def _question_summary(repo_root: Path, qid: str) -> dict:
         "last_outcome": None,
         "last_run_date": None,
         "opus_eval": opus_eval,
+        "labels": _Q_LABELS.get(qid, []),
     }
     # Primary source: strategy_memory.jsonl (authoritative run log)
     mem_path = repo_root / "documents" / "strategy_memory.jsonl"
@@ -378,6 +391,26 @@ def problem_pdf(problem_id: str) -> JSONResponse:
     if not _PROBLEM_RE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
     result = compile_problem_pdf(REPO_ROOT, problem_id)
+    return JSONResponse(result)
+
+
+@app.get("/api/ds/problem-pdf/{dataset}/{problem_id}")
+def ds_problem_pdf(dataset: str, problem_id: str) -> JSONResponse:
+    try:
+        _validate_slug(dataset)
+        _validate_id(problem_id)
+    except ValueError:
+        return JSONResponse({"error": "invalid"}, status_code=400)
+    p = ds_get_problem(dataset, problem_id)
+    if p is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    tex = p.get("tex") or p.get("statement", "")
+    if not tex:
+        return JSONResponse({"ok": False, "pdf_url": None, "log": "no tex source"})
+    safe_name = re.sub(r"[^A-Za-z0-9_-]", "_", f"{dataset}_{problem_id}")
+    result = compile_tex(REPO_ROOT, tex, safe_name)
+    if result["ok"]:
+        result["pdf_url"] = f"/api/pdf/{result['pdf']}"
     return JSONResponse(result)
 
 
