@@ -63,7 +63,7 @@ MathJax = {
   .tab.active{color:var(--text);border-bottom-color:var(--accent)}
   .pane{flex:1;overflow-y:auto;padding:18px 22px;display:none}
   .pane.active{display:block}
-  #pane-question.active,#pane-issue.active,#pane-final-proof.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
+  #pane-issue.active,#pane-final-proof.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
   .ttl{font-size:18px;margin:0 0 6px}
   .bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
   button{padding:8px 14px;border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
@@ -146,6 +146,11 @@ MathJax = {
   <aside class="sidebar">
     <h2>Questions</h2><div id="qlist"></div>
     <h2 style="margin-top:18px">Active runs</h2><div id="runlist"><div class="muted" style="padding:6px 10px;font-size:12px">none</div></div>
+    <h2 style="margin-top:18px">Daily cycle</h2>
+    <div style="padding:6px 10px">
+      <button class="btn-sec" id="daily-run-btn" style="width:100%;font-size:12px;margin-bottom:6px">Run daily cycle now</button>
+      <div id="daily-status" style="font-size:11px;color:var(--muted)"></div>
+    </div>
   </aside>
   <main class="main">
     <div class="tabs">
@@ -157,45 +162,59 @@ MathJax = {
       <div class="tab" data-tab="final-proof">Final Proof</div>
     </div>
 
-    <section class="pane active" id="pane-question" style="padding:0;overflow:hidden">
-      <div id="q-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Pick a question on the left.</div>
-      <div id="q-body" style="display:none;height:100%;flex-direction:column">
-        <div id="q-toolbar" style="background:var(--panel);border-bottom:1px solid var(--border);padding:6px 14px;display:flex;align-items:center;gap:10px;font-size:13px;flex-shrink:0">
-          <span id="q-title" style="font-weight:600;font-size:14px"></span>
-          <span class="muted" id="q-file" style="font-size:11px"></span>
-          <button class="btn-sec" id="q-zout" style="padding:4px 8px;margin-left:auto">−</button>
-          <span id="q-zoom" style="color:var(--muted);font-size:12px;min-width:40px;text-align:center">100%</span>
-          <button class="btn-sec" id="q-zin" style="padding:4px 8px">+</button>
-          <button class="btn-sec" id="q-toggle" style="padding:4px 10px">View raw .tex</button>
-          <a id="q-dl" style="font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none" target="_blank">⬇ Download</a>
+    <section class="pane active" id="pane-question">
+      <div id="q-empty" class="empty">Pick a question on the left.</div>
+      <div id="q-body" style="display:none">
+        <h2 class="ttl" id="q-title"></h2>
+        <div class="bar">
+          <button class="btn-sec" id="q-toggle">View raw .tex</button>
+          <button class="btn-sec" id="q-pdf-btn">Compile PDF</button>
+          <span class="muted" id="q-file"></span>
         </div>
-        <div id="q-pdf-wrap" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;background:#404040"></div>
-        <pre id="q-raw" style="display:none;margin:16px;overflow:auto"><code id="q-raw-code"></code></pre>
+        <div class="rendered" id="q-rendered"></div>
+        <pre id="q-raw" style="display:none"><code id="q-raw-code"></code></pre>
+        <div id="q-pdf-area" style="display:none;margin-top:12px;background:#404040;border-radius:8px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
       </div>
     </section>
 
     <section class="pane" id="pane-issue" style="padding:0;overflow:hidden">
       <div id="i-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Pick a question to see its issues.</div>
-      <div id="i-body" style="display:none;height:100%;overflow:hidden">
-        <div style="display:grid;grid-template-columns:260px 1fr;height:100%">
+      <div id="i-body" style="display:none;height:100%;overflow:hidden;flex-direction:column">
+        <!-- Agent log panel (collapsible, shown when an agent is running) -->
+        <div id="iss-agent-bar" style="display:none;background:var(--panel2);border-bottom:1px solid var(--border);padding:6px 12px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <span id="iss-agent-label" style="font-weight:600;color:var(--accent)">Agent running…</span>
+          <button class="btn-sec" id="iss-agent-stop" style="padding:3px 10px;font-size:11px">Stop</button>
+          <button class="btn-sec" id="iss-agent-toggle-log" style="padding:3px 10px;font-size:11px">Show log</button>
+          <span id="iss-agent-status" style="margin-left:auto;color:var(--muted)"></span>
+        </div>
+        <div id="iss-agent-log-wrap" style="display:none;background:#0a0e14;border-bottom:1px solid var(--border);max-height:180px;overflow-y:auto;flex-shrink:0">
+          <pre id="iss-agent-log" style="margin:0;padding:10px 14px;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word"></pre>
+        </div>
+        <div style="display:grid;grid-template-columns:260px 1fr;flex:1;overflow:hidden">
           <!-- sidebar: issue list -->
           <div id="iss-sidebar" style="border-right:1px solid var(--border);overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px">
-            <button class="btn-pri" id="i-new-btn" style="margin-bottom:4px">+ New Issue</button>
+            <div style="display:flex;gap:4px;margin-bottom:4px">
+              <button class="btn-pri" id="i-new-btn" style="flex:1;font-size:12px;padding:6px 8px">+ New Issue</button>
+              <button class="btn-sec" id="i-discover-btn" title="Run critic agent to discover issues" style="font-size:11px;padding:6px 8px">Discover</button>
+            </div>
+            <div style="font-size:10px;color:var(--muted);text-align:center" id="iss-refresh-status"></div>
             <div id="iss-list"></div>
           </div>
           <!-- thread -->
           <div id="iss-thread-wrap" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
             <div id="iss-thread-empty" class="empty" style="flex:1;display:flex;align-items:center;justify-content:center">Select an issue.</div>
             <div id="iss-thread" style="display:none;flex-direction:column;height:100%;overflow:hidden">
-              <div class="bar" style="padding:10px 14px;flex-shrink:0;border-bottom:1px solid var(--border)">
-                <span id="iss-title" style="font-weight:600;font-size:14px"></span>
-                <span id="iss-status-badge" style="margin-left:8px;font-size:11px;padding:2px 8px;border-radius:12px;background:var(--panel)"></span>
-                <select id="iss-status-sel" style="margin-left:auto;font-size:12px;background:var(--panel);border:1px solid var(--border);color:var(--fg);padding:2px 6px;border-radius:4px">
+              <div class="bar" style="padding:8px 12px;flex-shrink:0;border-bottom:1px solid var(--border);gap:6px">
+                <span id="iss-title" style="font-weight:600;font-size:13px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                <span id="iss-status-badge" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--panel);flex-shrink:0"></span>
+                <select id="iss-status-sel" style="font-size:12px;background:var(--panel);border:1px solid var(--border);color:var(--fg);padding:2px 6px;border-radius:4px;flex-shrink:0">
                   <option value="open">open</option>
                   <option value="in_progress">in_progress</option>
                   <option value="resolved">resolved</option>
                 </select>
-                <span class="muted" id="iss-status-msg" style="font-size:11px;margin-left:6px"></span>
+                <button class="btn-sec" id="iss-resolve-btn" title="Run solver agent on this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Auto-Resolve</button>
+                <button class="btn-sec" id="iss-verify-btn" title="Run verifier agent on this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Verify</button>
+                <span class="muted" id="iss-status-msg" style="font-size:11px;flex-shrink:0"></span>
               </div>
               <div id="iss-comments" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px"></div>
               <div style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0">
@@ -209,7 +228,7 @@ MathJax = {
                     <option value="coordinator">Coordinator</option>
                   </select>
                 </div>
-                <textarea id="iss-reply" placeholder="Write a comment…" spellcheck="false" style="width:100%;box-sizing:border-box;height:80px;resize:vertical"></textarea>
+                <textarea id="iss-reply" placeholder="Write a comment…" spellcheck="false" style="width:100%;box-sizing:border-box;height:70px;resize:vertical"></textarea>
                 <div style="display:flex;gap:8px;margin-top:6px">
                   <button class="btn-pri" id="iss-post">Post Comment</button>
                   <span class="muted" id="iss-post-status" style="font-size:12px;align-self:center"></span>
@@ -355,21 +374,31 @@ function md(node,raw,stream=false){node.dataset.raw=raw;node.innerHTML=marked.pa
 function setStatus(s,cls){$("status").innerHTML=cls?`<span class="dot ${cls}"></span> ${s}`:s;}
 
 async function init(){
-  const r=await fetch("/api/problems");const d=await r.json();
-  problems=d.problems; claudeCode=d.claude_code;
-  const list=$("qlist"); list.innerHTML="";
-  for(const p of problems){
-    const it=el("div","qitem");
-    it.innerHTML=`<span class="qid">${p.id}</span><span class="qt">${esc(p.title.replace(/^Problem \d+:\s*/,''))}</span>`;
-    it.onclick=()=>selectQuestion(p.id,it);
-    list.appendChild(it);
+  try{
+    const r=await fetch("/api/problems");
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();
+    problems=d.problems||[]; claudeCode=d.claude_code;
+    const list=$("qlist"); list.innerHTML="";
+    if(!problems.length){
+      list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">No problems found.</div>';
+    }
+    for(const p of problems){
+      const it=el("div","qitem");
+      it.innerHTML=`<span class="qid">${p.id}</span><span class="qt">${esc(p.title.replace(/^Problem \d+:\s*/,''))}</span>`;
+      it.onclick=()=>selectQuestion(p.id,it);
+      list.appendChild(it);
+    }
+    // provider options
+    const prov=$("provider"); prov.innerHTML="";
+    if(claudeCode) prov.appendChild(new Option("Claude Code (subscription)","claude-code"));
+    prov.appendChild(new Option("Anthropic API","api"));
+    prov.value=claudeCode?"claude-code":"api";
+    prov.onchange=onProviderChange; onProviderChange();
+  }catch(e){
+    $("qlist").innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed to load questions:<br>${esc(String(e))}<br><br>Is the server running?</div>`;
+    setStatus("server error","err");
   }
-  // provider options
-  const prov=$("provider"); prov.innerHTML="";
-  if(claudeCode) prov.appendChild(new Option("Claude Code (subscription)","claude-code"));
-  prov.appendChild(new Option("Anthropic API","api"));
-  prov.value=claudeCode?"claude-code":"api";
-  prov.onchange=onProviderChange; onProviderChange();
 }
 
 function onProviderChange(){
@@ -436,44 +465,80 @@ async function pdfLoad(url, wrap, onDoc, scale){
 }
 
 // ---- Questions tab ----
+function extractStatement(tex){
+  let m=tex.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+  let body=m?m[1]:tex;
+  body=body.replace(/\\maketitle/g,"").replace(/\\title\{[^}]*\}/g,"")
+           .replace(/\\author\{[^}]*\}/g,"").replace(/\\date\{[^}]*\}/g,"")
+           .replace(/\\input\{[^}]*\}/g,"");
+  return body.trim();
+}
+
 async function selectQuestion(qid,node){
   selected=qid;
   document.querySelectorAll(".qitem").forEach(n=>n.classList.remove("active"));
   if(node)node.classList.add("active");
-  setStatus(`${qid} selected`);
-  // Question — load raw tex for toggle, then compile to PDF
-  const pr=await (await fetch(`/api/problem/${qid}`)).json();
+  setStatus(`${qid} loading…`,"run");
+  // Reset question pane to rendered view
   $("q-empty").style.display="none";
-  const body=$("q-body"); body.style.display="flex";
-  $("q-title").textContent=pr.title; $("q-file").textContent=`problems/${qid}.tex`;
-  $("q-raw-code").textContent=pr.tex; $("q-raw").style.display="none";
-  $("q-pdf-wrap").style.display="flex";
-  // trigger PDF compile
-  const pdfRes=await (await fetch(`/api/problem-pdf/${qid}`)).json();
-  if(pdfRes.ok){
-    $("q-dl").href=pdfRes.pdf_url;
-    await pdfLoad(pdfRes.pdf_url, $("q-pdf-wrap"), d=>{qDoc=d;}, qScale);
-  } else {
-    $("q-pdf-wrap").innerHTML=`<div style="color:#f88;padding:32px">PDF compile failed:<br><pre style="font-size:11px;color:#aaa">${esc(pdfRes.log||"")}</pre></div>`;
+  $("q-body").style.display="block";
+  $("q-rendered").innerHTML='<span class="muted">Loading…</span>';
+  $("q-rendered").style.display="block";
+  $("q-raw").style.display="none";
+  $("q-pdf-area").style.display="none";
+  $("q-toggle").textContent="View raw .tex";
+  $("q-pdf-btn").textContent="Compile PDF";
+  $("q-pdf-btn").disabled=false;
+  try{
+    const pr=await (await fetch(`/api/problem/${qid}`)).json();
+    if(pr.error) throw new Error(pr.error);
+    $("q-title").textContent=pr.title;
+    $("q-file").textContent=`problems/${qid}.tex`;
+    $("q-raw-code").textContent=pr.tex||"";
+    // Show rendered LaTeX immediately — no PDF compile needed
+    const r=$("q-rendered");
+    md(r, extractStatement(pr.tex||""));
+    setStatus(`${qid} selected`);
+  }catch(e){
+    $("q-rendered").innerHTML=`<span style="color:var(--red)">Failed to load question: ${esc(String(e))}</span>`;
+    setStatus("load error","err");
   }
-  // Issue
-  const issueList=await (await fetch(`/api/issues/${qid}`)).json();
-  loadIssueList(qid, issueList.issues||[]);
-  // Agent
+  // Load issues (non-blocking)
+  fetch(`/api/issues/${qid}`).then(r=>r.json()).then(d=>loadIssueList(qid,d.issues||[])).catch(()=>{});
+  // Agent pane
   $("a-empty").style.display="none"; $("a-body").style.display="block";
   $("stream").innerHTML=""; $("usage").textContent=""; lastArtifact=null;
 }
 
 $("q-toggle").onclick=()=>{
-  const raw=$("q-raw"), wrap=$("q-pdf-wrap"), b=$("q-toggle");
+  const raw=$("q-raw"), ren=$("q-rendered"), b=$("q-toggle");
   const showRaw=raw.style.display==="none";
   raw.style.display=showRaw?"block":"none";
-  wrap.style.display=showRaw?"none":"flex";
-  b.textContent=showRaw?"View rendered PDF":"View raw .tex";
+  ren.style.display=showRaw?"none":"block";
+  b.textContent=showRaw?"View rendered":"View raw .tex";
 };
-$("q-zin").onclick=async()=>{qScale=Math.min(qScale+0.25,4);$("q-zoom").textContent=Math.round(qScale*100)+"%";if(qDoc)await pdfRenderAll(qDoc,qScale,$("q-pdf-wrap"));};
-$("q-zout").onclick=async()=>{qScale=Math.max(qScale-0.25,0.5);$("q-zoom").textContent=Math.round(qScale*100)+"%";if(qDoc)await pdfRenderAll(qDoc,qScale,$("q-pdf-wrap"));};
-$("q-zoom").textContent=Math.round(qScale*100)+"%";
+
+// PDF compile is optional / on-demand — doesn't block question viewing
+$("q-pdf-btn").onclick=async function(){
+  if(!selected)return;
+  this.disabled=true; this.textContent="Compiling…";
+  const area=$("q-pdf-area");
+  area.style.display="flex"; area.innerHTML=`<div style="color:#aaa;padding:20px">Compiling PDF…</div>`;
+  try{
+    const res=await (await fetch(`/api/problem-pdf/${selected}`)).json();
+    if(res.ok){
+      this.textContent="PDF ready";
+      await pdfLoad(res.pdf_url, area, d=>{qDoc=d;}, qScale);
+    } else {
+      this.textContent="Compile PDF";
+      this.disabled=false;
+      area.innerHTML=`<details style="padding:12px;width:100%"><summary style="color:var(--red);cursor:pointer">PDF compile failed</summary><pre style="font-size:11px;color:#aaa;white-space:pre-wrap;margin-top:8px">${esc(res.log||"no log")}</pre></details>`;
+    }
+  }catch(e){
+    this.textContent="Compile PDF"; this.disabled=false;
+    area.innerHTML=`<div style="color:var(--red);padding:20px">${esc(String(e))}</div>`;
+  }
+};
 
 // ---- Multi-agent Issue tracker ----
 const AGENT_COLORS = {
@@ -581,6 +646,137 @@ $("iss-modal-ok").onclick=async()=>{
   const items=[...$("iss-list").querySelectorAll(".qitem")];
   const last=items[items.length-1]; if(last)last.click();
 };
+
+// ---- Issue agent runner ----
+let issAgentEs = null;
+let issAutoRefresh = null;
+
+function issAgentLogAppend(text){
+  const log = $("iss-agent-log");
+  log.textContent += text;
+  log.parentElement.scrollTop = log.parentElement.scrollHeight;
+}
+
+function issAgentStart(label){
+  $("iss-agent-bar").style.display = "flex";
+  $("iss-agent-label").textContent = label + " running…";
+  $("iss-agent-status").textContent = "";
+  $("iss-agent-log").textContent = "";
+  $("iss-resolve-btn").disabled = true;
+  $("iss-verify-btn").disabled = true;
+  $("i-discover-btn").disabled = true;
+}
+
+function issAgentStop(reason){
+  $("iss-agent-label").textContent = "Agent done";
+  $("iss-agent-status").textContent = reason || "";
+  $("iss-resolve-btn").disabled = false;
+  $("iss-verify-btn").disabled = false;
+  $("i-discover-btn").disabled = false;
+  if(issAgentEs){ issAgentEs.close(); issAgentEs = null; }
+  // Refresh the issue list after agent finishes
+  if(selected){
+    setTimeout(async()=>{
+      const d = await (await fetch(`/api/issues/${selected}`)).json();
+      const oldId = issSelectedId;
+      loadIssueList(selected, d.issues||[]);
+      // Re-select same issue if still there
+      if(oldId){
+        const items = [...$("iss-list").querySelectorAll(".qitem")];
+        const match = items.find(i=>i.innerHTML.includes(oldId));
+        if(match) match.click();
+      }
+    }, 500);
+  }
+}
+
+function issAgentToggleLog(){
+  const wrap = $("iss-agent-log-wrap");
+  if(wrap.style.display === "none"){
+    wrap.style.display = "block";
+    $("iss-agent-toggle-log").textContent = "Hide log";
+  } else {
+    wrap.style.display = "none";
+    $("iss-agent-toggle-log").textContent = "Show log";
+  }
+}
+
+async function runIssueAgent(url, label){
+  if(issAgentEs){ issAgentEs.close(); }
+  issAgentStart(label);
+  issAgentLogAppend(`[${label}] starting…\n`);
+  issAgentEs = new EventSource(url);
+  issAgentEs.onmessage = (e)=>{
+    const ev = JSON.parse(e.data);
+    if(ev.type === "text_delta") issAgentLogAppend(ev.text||"");
+    else if(ev.type === "tool_use") issAgentLogAppend(`\n[tool: ${ev.name}]\n`);
+    else if(ev.type === "tool_result") issAgentLogAppend(`→ ${(ev.output||"").slice(0,300)}\n`);
+    else if(ev.type === "error") issAgentLogAppend(`\n[error] ${ev.message||""}\n`);
+    else if(ev.type === "done") issAgentStop(ev.reason||"done");
+    else if(ev.type === "status") issAgentLogAppend(`[${ev.label||"agent"}] ${ev.state}\n`);
+    else if(ev.type === "usage") issAgentLogAppend(`\n[usage] in=${ev.input_tokens} out=${ev.output_tokens}\n`);
+  };
+  issAgentEs.onerror = ()=>{ issAgentLogAppend("\n[stream error]\n"); issAgentStop("error"); };
+}
+
+$("iss-agent-toggle-log").onclick = issAgentToggleLog;
+$("iss-agent-stop").onclick = ()=>{
+  if(issAgentEs){ issAgentEs.close(); issAgentEs = null; }
+  issAgentStop("stopped");
+};
+
+$("i-discover-btn").onclick = ()=>{
+  if(!selected) return;
+  $("iss-agent-log-wrap").style.display = "block";
+  $("iss-agent-toggle-log").textContent = "Hide log";
+  runIssueAgent(`/api/agent/discover/${selected}`, `critic/${selected}`);
+};
+
+$("iss-resolve-btn").onclick = ()=>{
+  if(!selected || !issSelectedId) return;
+  $("iss-agent-log-wrap").style.display = "block";
+  $("iss-agent-toggle-log").textContent = "Hide log";
+  runIssueAgent(`/api/agent/resolve/${selected}/${issSelectedId}`, `solver/${issSelectedId}`);
+};
+
+$("iss-verify-btn").onclick = ()=>{
+  if(!selected || !issSelectedId) return;
+  $("iss-agent-log-wrap").style.display = "block";
+  $("iss-agent-toggle-log").textContent = "Hide log";
+  runIssueAgent(`/api/agent/verify/${selected}/${issSelectedId}`, `verifier/${issSelectedId}`);
+};
+
+// Auto-refresh issues every 12s when on the issue tab and an agent is running
+function startIssueAutoRefresh(){
+  if(issAutoRefresh) return;
+  issAutoRefresh = setInterval(async()=>{
+    if(!selected || !issAgentEs) return;
+    const d = await (await fetch(`/api/issues/${selected}`)).json();
+    const oldId = issSelectedId;
+    const oldCount = $("iss-list").querySelectorAll(".qitem").length;
+    if((d.issues||[]).length !== oldCount){
+      loadIssueList(selected, d.issues||[]);
+      if(oldId){
+        const items=[...$("iss-list").querySelectorAll(".qitem")];
+        const match=items.find(i=>i.innerHTML.includes(oldId));
+        if(match) match.click();
+      }
+    }
+    $("iss-refresh-status").textContent = "auto-refresh " + new Date().toLocaleTimeString();
+  }, 12000);
+}
+function stopIssueAutoRefresh(){
+  if(issAutoRefresh){ clearInterval(issAutoRefresh); issAutoRefresh=null; }
+  $("iss-refresh-status").textContent = "";
+}
+
+// Hook into tab switching to start/stop auto-refresh
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click", ()=>{
+    if(t.dataset.tab === "issue") startIssueAutoRefresh();
+    else stopIssueAutoRefresh();
+  });
+});
 
 // ---- Token chart ----
 function drawTokenChart(){
@@ -795,9 +991,9 @@ async function compilePdf(content,name,card,btn){
 // ---- Documents tab ----
 let docPoll=null;
 async function loadDocuments(){
-  const r=await fetch(“/api/documents”); const {documents}=await r.json();
-  const list=$(“d-list”); list.innerHTML=””;
-  if(!documents.length){ list.innerHTML='<div class=”muted” style=”padding:10px”>No reports yet.</div>'; return; }
+  const r=await fetch("/api/documents"); const {documents}=await r.json();
+  const list=$("d-list"); list.innerHTML="";
+  if(!documents.length){ list.innerHTML='<div class="muted" style="padding:10px">No reports yet.</div>'; return; }
   // Build tree: group by folder
   const rootItems=documents.filter(d=>!d.folder);
   const folders={};
@@ -808,8 +1004,8 @@ async function loadDocuments(){
     }
   }
   function addDocItem(doc, parent){
-    const it=el(“div”,”qitem”);
-    it.innerHTML=`<span style=”font-size:12px;font-weight:600”>${esc(doc.name)}</span><span class=”qt”>${esc(doc.title)} · ${doc.modified}</span>`;
+    const it=el("div","qitem");
+    it.innerHTML=`<span style="font-size:12px;font-weight:600">${esc(doc.name)}</span><span class="qt">${esc(doc.title)} · ${doc.modified}</span>`;
     it.onclick=()=>selectDocument(doc.path||doc.name, it);
     parent.appendChild(it);
   }
@@ -817,23 +1013,23 @@ async function loadDocuments(){
   for(const d of rootItems) addDocItem(d, list);
   // Folders (collapsible)
   for(const [folderName, items] of Object.entries(folders).sort()){
-    const fold=el(“div”,”doc-folder”);
-    fold.innerHTML=`<span class=”doc-folder-arrow”>▾</span> 📁 ${esc(folderName)} <span style=”color:var(--muted);font-weight:400;font-size:10px”>(${items.length})</span>`;
-    const children=el(“div”,”doc-folder-children”);
+    const fold=el("div","doc-folder");
+    fold.innerHTML=`<span class="doc-folder-arrow">▾</span> 📁 ${esc(folderName)} <span style="color:var(--muted);font-weight:400;font-size:10px">(${items.length})</span>`;
+    const children=el("div","doc-folder-children");
     for(const d of items) addDocItem(d, children);
     fold.onclick=()=>{
-      fold.classList.toggle(“collapsed”);
-      children.style.display=fold.classList.contains(“collapsed”)?”none”:””;
+      fold.classList.toggle("collapsed");
+      children.style.display=fold.classList.contains("collapsed")?"none":"";
     };
     list.appendChild(fold);
     list.appendChild(children);
   }
 }
 async function selectDocument(path,node){
-  document.querySelectorAll(“#d-list .qitem”).forEach(n=>n.classList.remove(“active”));
-  if(node)node.classList.add(“active”);
-  const r=await fetch(`/api/document/${path.split(“/”).map(encodeURIComponent).join(“/”)}`); const d=await r.json();
-  md($(“d-view”), d.markdown||”_(empty)_”);
+  document.querySelectorAll("#d-list .qitem").forEach(n=>n.classList.remove("active"));
+  if(node)node.classList.add("active");
+  const r=await fetch(`/api/document/${path.split("/").map(encodeURIComponent).join("/")}`); const d=await r.json();
+  md($("d-view"), d.markdown||"_(empty)_");
 }
 $("d-refresh").onclick=loadDocuments;
 $("d-run").onclick=async()=>{
@@ -846,6 +1042,31 @@ $("d-run").onclick=async()=>{
     if(n>=40){ clearInterval(docPoll); $("d-status").textContent="done polling — click Refresh to update"; $("d-run").disabled=false; }
   },15000);
   setTimeout(()=>{ $("d-run").disabled=false; },20000);
+};
+
+// ---- Daily run button (sidebar) ----
+$("daily-run-btn").onclick = async()=>{
+  $("daily-run-btn").disabled = true;
+  $("daily-status").textContent = "starting…";
+  const r = await (await fetch("/api/run-daily", {method:"POST"})).json();
+  if(!r.started){
+    $("daily-status").textContent = r.reason || "already running";
+    $("daily-run-btn").disabled = false;
+    return;
+  }
+  $("daily-status").textContent = "running (solve + discover + resolve)…";
+  let polls = 0;
+  const poll = setInterval(async()=>{
+    polls++;
+    const runs = await (await fetch("/api/runs")).json();
+    const daily = (runs.runs||[]).filter(r=>r.kind==="daily");
+    if(!daily.length || polls > 120){
+      clearInterval(poll);
+      $("daily-status").textContent = polls > 120 ? "timed out" : "done ✓";
+      $("daily-run-btn").disabled = false;
+    }
+  }, 10000);
+  setTimeout(()=>{ $("daily-run-btn").disabled = false; }, 30000);
 };
 
 // ---- Proofs tab ----

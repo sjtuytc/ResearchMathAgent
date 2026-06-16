@@ -11,7 +11,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+\.md$")
+_NAME_RE = re.compile(r"^[A-Za-z0-9._/-]+\.md$")
 
 
 def documents_dir(repo_root: Path) -> Path:
@@ -21,25 +21,36 @@ def documents_dir(repo_root: Path) -> Path:
 
 
 def list_documents(repo_root: Path) -> list[dict]:
+    """Return all .md files under documents/, recursively, with folder metadata."""
     d = documents_dir(repo_root)
     items = []
-    for path in d.glob("*.md"):
+    for path in sorted(d.rglob("*.md")):
+        rel = path.relative_to(d)
+        parts = rel.parts
+        folder = "/".join(parts[:-1]) if len(parts) > 1 else ""
         text = path.read_text(encoding="utf-8", errors="replace")
         items.append({
             "name": path.name,
+            "path": str(rel),      # relative path from documents/ root
+            "folder": folder,       # "" for root-level files
             "title": _title(text, path.stem),
             "modified": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "size": path.stat().st_size,
         })
-    # Newest first (report names are date-prefixed, so name sort works; mtime breaks ties).
-    items.sort(key=lambda it: (it["name"], it["modified"]), reverse=True)
+    # Sort: newest first within each folder (date-prefixed names sort lexically)
+    items.sort(key=lambda it: (it["folder"], it["name"]), reverse=True)
     return items
 
 
-def read_document(repo_root: Path, name: str) -> str | None:
-    if not _NAME_RE.match(name):
+def read_document(repo_root: Path, rel_path: str) -> str | None:
+    if not _NAME_RE.match(rel_path):
         return None
-    path = documents_dir(repo_root) / name
+    path = documents_dir(repo_root) / rel_path
+    # Prevent path traversal
+    try:
+        path.resolve().relative_to(documents_dir(repo_root).resolve())
+    except ValueError:
+        return None
     if not path.is_file():
         return None
     return path.read_text(encoding="utf-8", errors="replace")
