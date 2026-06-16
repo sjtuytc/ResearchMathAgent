@@ -2,9 +2,14 @@
 
 <div align="center">
 
-[[Paper (arXiv)](https://arxiv.org/abs/2605.22875)]
-[![GitHub Stars](https://img.shields.io/github/stars/sjtuytc/ResearchMathAgent?style=social)](https://github.com/sjtuytc/ResearchMathAgent/stargazers)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2605.22875-b31b1b.svg)](https://arxiv.org/abs/2605.22875)
+[![GitHub Stars](https://img.shields.io/github/stars/sjtuytc/ResearchMathAgent?style=flat-square)](https://github.com/sjtuytc/ResearchMathAgent/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/sjtuytc/ResearchMathAgent?style=flat-square)](https://github.com/sjtuytc/ResearchMathAgent/network/members)
+[![GitHub Issues](https://img.shields.io/github/issues/sjtuytc/ResearchMathAgent?style=flat-square)](https://github.com/sjtuytc/ResearchMathAgent/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/sjtuytc/ResearchMathAgent?style=flat-square)](https://github.com/sjtuytc/ResearchMathAgent/commits/main)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square)](https://python.org)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/sjtuytc/ResearchMathAgent/pulls)
 
 **Language:** English | [中文](README_zh.md)
 
@@ -347,7 +352,7 @@ latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
 
 ## Acknowledgements
 
-We thank **PoggioAI** for open-sourcing `PoggioAI_MSc`, which inspired the system-organization direction and README structure of this project. We also thank the **[TheAgentCompany](https://github.com/TheAgentCompany/TheAgentCompany)** team for open-sourcing their agent-loop-over-model framework and questions/issues workspace design, which inspired the architecture of the RMA web app.
+We thank **PoggioAI** for open-sourcing `PoggioAI_MSc`, which inspired the system-organization direction and README structure of this project. We also thank the **[TheAgentCompany](https://github.com/TheAgentCompany/TheAgentCompany)** team for open-sourcing their agent-loop-over-model framework and questions/issues workspace design, which inspired the architecture of the RMA web app. We additionally acknowledge **[Andrej Karpathy](https://github.com/karpathy)**'s [auto-research](https://github.com/karpathy/auto-research) project for pioneering the idea of fully automated AI-driven scientific discovery, which served as an important conceptual inspiration for RMA's autonomous solver pipeline.
 
 ---
 
