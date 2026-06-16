@@ -231,6 +231,8 @@ MathJax = {
       <div class="tab" data-tab="documents">Documents</div>
       <div class="tab" data-tab="proofs">Proofs</div>
       <div class="tab" data-tab="final-proof">Final Proof</div>
+      <div class="tab" data-tab="literature">Literature</div>
+      <div class="tab" data-tab="concepts">Concepts</div>
     </div>
 
     <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
@@ -641,6 +643,122 @@ MathJax = {
         </div>
       </div>
     </section>
+
+    <section class="pane" id="pane-literature">
+      <div id="lit-empty" class="empty">Pick a question to see its literature.</div>
+      <div id="lit-body" style="display:none">
+        <div class="bar" style="margin-bottom:14px">
+          <span style="font-size:13px;font-weight:700;color:var(--accent)" id="lit-q-label"></span>
+          <button class="btn-pri" id="lit-discover-btn" style="font-size:12px;padding:5px 12px">Discover with AI</button>
+          <button class="btn-sec" id="lit-add-btn" style="font-size:12px;padding:5px 12px">+ Add Paper</button>
+          <span id="lit-status" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <!-- AI discover log -->
+        <div id="lit-agent-bar" style="display:none;background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span id="lit-agent-label" style="font-weight:600;color:var(--accent)">Discovering literature…</span>
+            <button class="btn-sec" id="lit-agent-stop" style="padding:2px 8px;font-size:11px">Stop</button>
+            <button class="btn-sec" id="lit-agent-toggle" style="padding:2px 8px;font-size:11px">Hide log</button>
+          </div>
+          <pre id="lit-agent-log" style="margin:0;max-height:140px;overflow-y:auto;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word;background:#0a0e14;border-radius:5px;padding:8px"></pre>
+        </div>
+        <!-- Add paper form -->
+        <div id="lit-add-form" style="display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">Add Paper</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">URL (arXiv / DOI)</label>
+              <input type="text" id="lit-f-url" placeholder="https://arxiv.org/abs/…" style="width:100%" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Title</label>
+              <input type="text" id="lit-f-title" placeholder="Paper title" style="width:100%" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Authors (comma-separated)</label>
+              <input type="text" id="lit-f-authors" placeholder="Smith, J., Doe, A." style="width:100%" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Year</label>
+              <input type="text" id="lit-f-year" placeholder="2024" style="width:100%" />
+            </div>
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Abstract (optional)</label>
+            <textarea id="lit-f-abstract" style="min-height:72px;font-size:12px" placeholder="Brief abstract or summary…"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="lit-f-relevance" style="font-size:12px;padding:5px 8px">
+              <option value="high">High relevance</option>
+              <option value="medium" selected>Medium relevance</option>
+              <option value="low">Low relevance</option>
+            </select>
+            <button class="btn-pri" id="lit-f-submit" style="font-size:12px;padding:5px 14px">Add Paper</button>
+            <button class="btn-sec" id="lit-f-cancel" style="font-size:12px;padding:5px 14px">Cancel</button>
+            <span id="lit-f-status" style="font-size:12px;color:var(--muted)"></span>
+          </div>
+        </div>
+        <!-- Two-column: paper list + paper detail -->
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:14px">
+          <div id="lit-list" style="display:flex;flex-direction:column;gap:6px"></div>
+          <div id="lit-detail">
+            <div id="lit-detail-empty" class="empty" style="padding:30px;text-align:center">Select a paper on the left.</div>
+            <div id="lit-detail-content" style="display:none">
+              <h3 id="lit-d-title" style="margin:0 0 6px;font-size:15px"></h3>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+                <span id="lit-d-authors"></span>
+                <span id="lit-d-year" style="margin-left:10px;font-weight:600;color:var(--accent)"></span>
+                <span id="lit-d-relevance" style="margin-left:10px"></span>
+              </div>
+              <div id="lit-d-tags" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px"></div>
+              <div id="lit-d-abstract" class="rendered" style="font-size:12px;margin-bottom:14px;min-height:50px"></div>
+              <div style="margin-bottom:8px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:6px">Research Notes</div>
+                <textarea id="lit-d-notes" style="min-height:160px;font-size:12px" placeholder="Key lemmas used, how this paper is relevant, your reading notes…"></textarea>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn-pri" id="lit-d-save" style="font-size:12px;padding:5px 14px">Save Notes</button>
+                <a id="lit-d-url" href="#" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none">Open ↗</a>
+                <button class="btn-sec" id="lit-d-delete" style="font-size:12px;padding:5px 14px;color:var(--red);border-color:var(--red);margin-left:auto">Delete</button>
+                <span id="lit-d-status" style="font-size:12px;color:var(--muted)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-concepts">
+      <div id="con-empty" class="empty">Pick a question to see its concepts.</div>
+      <div id="con-body" style="display:none">
+        <div class="bar" style="margin-bottom:14px">
+          <span style="font-size:13px;font-weight:700;color:var(--accent)" id="con-q-label"></span>
+          <button class="btn-pri" id="con-generate-btn" style="font-size:12px;padding:5px 12px">Generate with AI</button>
+          <span id="con-status" style="font-size:12px;color:var(--muted)"></span>
+          <span id="con-count" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
+        </div>
+        <!-- AI generation log -->
+        <div id="con-agent-bar" style="display:none;background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-weight:600;color:var(--accent)">Extracting concepts…</span>
+            <button class="btn-sec" id="con-agent-stop" style="padding:2px 8px;font-size:11px">Stop</button>
+            <button class="btn-sec" id="con-agent-toggle" style="padding:2px 8px;font-size:11px">Hide log</button>
+          </div>
+          <pre id="con-agent-log" style="margin:0;max-height:120px;overflow-y:auto;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word;background:#0a0e14;border-radius:5px;padding:8px"></pre>
+        </div>
+        <!-- Category legend -->
+        <div style="display:flex;gap:12px;margin-bottom:14px;font-size:11px;align-items:center">
+          <span style="color:var(--accent)">■ Core</span>
+          <span style="color:var(--muted)">■ Background</span>
+          <span style="color:var(--amber)">■ Notation</span>
+          <span style="color:var(--green)">■ Theorem</span>
+        </div>
+        <!-- Cards grid -->
+        <div id="con-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+        <div id="con-none" class="empty" style="display:none">No concepts extracted yet. Click <b>Generate with AI</b> to extract core concepts from this problem.</div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -1299,6 +1417,8 @@ function setTab(name){
   if(name==="overview"){ startOvRefresh(); if(ovData && selected) renderOverview(ovData, selected); } else stopOvRefresh();
   if(name==="documents"){ if(selected) loadQuestionDocs(selected); else loadDocuments(); }
   if(name==="proofs"){ if(selected) loadProofForQuestion(selected); else if(!pfProbs.length) loadProofs(); }
+  if(name==="literature"){ if(selected) loadLiterature(selected); }
+  if(name==="concepts"){ if(selected) loadConcepts(selected); }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -1508,6 +1628,8 @@ async function selectQuestion(qid, node, dataset){
   if(document.querySelector(".tab.active[data-tab='proofs']")) loadProofForQuestion(qid);
   // If overview tab is active, re-render filtered to this question
   if(document.querySelector(".tab.active[data-tab='overview']") && ovData) renderOverview(ovData, qid);
+  if(document.querySelector(".tab.active[data-tab='literature']")) loadLiterature(qid);
+  if(document.querySelector(".tab.active[data-tab='concepts']")) loadConcepts(qid);
 }
 
 $("q-toggle").onclick=()=>{
@@ -2731,6 +2853,254 @@ document.querySelector('.tab[data-tab="final-proof"]').addEventListener("click",
 });
 document.querySelectorAll('.tab:not([data-tab="final-proof"])').forEach(t=>
   t.addEventListener("click",()=>fpfViewerActive=false));
+
+// ─── Literature Tab ──────────────────────────────────────────────────────────
+
+let litEs = null;
+let litSelected = null;
+let litCurrentPaperId = null;
+let litPapers = [];
+
+function litLogAppend(txt){ const el=$("lit-agent-log"); el.textContent+=txt; el.scrollTop=el.scrollHeight; }
+
+function litAgentStart(){
+  $("lit-agent-bar").style.display="block";
+  $("lit-agent-toggle").textContent="Hide log";
+  $("lit-discover-btn").disabled=true;
+}
+function litAgentStop(){
+  if(litEs){ litEs.close(); litEs=null; }
+  $("lit-discover-btn").disabled=false;
+  if(litSelected) loadLiterature(litSelected);
+}
+
+$("lit-agent-stop").onclick=()=>litAgentStop();
+$("lit-agent-toggle").onclick=()=>{
+  const log=$("lit-agent-log");
+  const show=log.style.display==="none";
+  log.style.display=show?"block":"none";
+  $("lit-agent-toggle").textContent=show?"Hide log":"Show log";
+};
+
+$("lit-discover-btn").onclick=()=>{
+  if(!litSelected) return;
+  $("lit-agent-log").textContent="";
+  litAgentStart();
+  litEs=new EventSource(`/api/literature/${encodeURIComponent(litSelected)}/discover`);
+  litEs.onmessage=(e)=>{
+    const ev=JSON.parse(e.data);
+    if(ev.type==="text_delta") litLogAppend(ev.text||"");
+    else if(ev.type==="error") litLogAppend(`\n[error] ${ev.message||""}\n`);
+    else if(ev.type==="status") litLogAppend(`[${ev.state||""}] ${ev.message||""}\n`);
+    else if(ev.type==="done") litAgentStop();
+  };
+  litEs.onerror=()=>{ litLogAppend("\n[stream error]\n"); litAgentStop(); };
+};
+
+$("lit-add-btn").onclick=()=>{
+  const f=$("lit-add-form");
+  f.style.display=f.style.display==="none"?"block":"none";
+};
+$("lit-f-cancel").onclick=()=>{ $("lit-add-form").style.display="none"; };
+$("lit-f-submit").onclick=async()=>{
+  if(!litSelected) return;
+  const url=$("lit-f-url").value.trim();
+  const title=$("lit-f-title").value.trim();
+  if(!url||!title){ $("lit-f-status").textContent="URL and title are required."; return; }
+  $("lit-f-status").textContent="Adding…";
+  $("lit-f-submit").disabled=true;
+  try{
+    const body={
+      url, title,
+      authors:$("lit-f-authors").value.trim().split(",").map(s=>s.trim()).filter(Boolean),
+      year:parseInt($("lit-f-year").value)||null,
+      abstract:$("lit-f-abstract").value.trim(),
+      relevance:$("lit-f-relevance").value,
+      notes:"", added_by:"human"
+    };
+    const r=await fetch(`/api/literature/${encodeURIComponent(litSelected)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(r.ok){
+      $("lit-f-status").textContent="Added!";
+      ["lit-f-url","lit-f-title","lit-f-authors","lit-f-year","lit-f-abstract"].forEach(id=>{$(id).value="";});
+      $("lit-add-form").style.display="none";
+      loadLiterature(litSelected);
+    } else { $("lit-f-status").textContent=`Error: ${r.status}`; }
+  } catch(err){ $("lit-f-status").textContent=`Error: ${err.message}`; }
+  $("lit-f-submit").disabled=false;
+};
+
+function litRenderPapers(papers){
+  litPapers=papers;
+  const list=$("lit-list");
+  list.innerHTML="";
+  if(!papers.length){
+    list.innerHTML="<div class='empty' style='padding:20px;text-align:center'>No papers yet.<br><span style='font-size:11px'>Use <b>Discover with AI</b> or add a paper manually.</span></div>";
+    return;
+  }
+  papers.forEach(p=>{
+    const rc=p.relevance==="high"?"var(--green)":p.relevance==="low"?"var(--red)":"var(--amber)";
+    const div=document.createElement("div");
+    div.className="qitem"+(litCurrentPaperId===p.id?" active":"");
+    div.innerHTML=`
+      <div style="font-size:12px;font-weight:600;line-height:1.3;margin-bottom:3px">${esc(p.title)}</div>
+      <div style="font-size:11px;color:var(--muted)">${esc((p.authors||[]).slice(0,2).join(", ")+(p.authors&&p.authors.length>2?" et al.":""))}${p.year?` <span style="color:var(--accent)">${p.year}</span>`:""}
+      </div>
+      <span style="font-size:10px;color:${rc};text-transform:uppercase;letter-spacing:.04em">${esc(p.relevance||"")}</span>
+    `;
+    div.onclick=()=>litShowDetail(p);
+    list.appendChild(div);
+  });
+}
+
+function litShowDetail(p){
+  litCurrentPaperId=p.id;
+  litRenderPapers(litPapers);
+  $("lit-detail-empty").style.display="none";
+  $("lit-detail-content").style.display="block";
+  $("lit-d-title").textContent=p.title||"";
+  $("lit-d-authors").textContent=(p.authors||[]).join(", ");
+  $("lit-d-year").textContent=p.year||"";
+  const rlMap={high:"● High",medium:"◐ Medium",low:"○ Low"};
+  $("lit-d-relevance").textContent=rlMap[p.relevance]||p.relevance||"";
+  $("lit-d-relevance").style.color=p.relevance==="high"?"var(--green)":p.relevance==="low"?"var(--red)":"var(--amber)";
+  $("lit-d-tags").innerHTML=(p.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join("");
+  $("lit-d-abstract").textContent=p.abstract||"No abstract.";
+  $("lit-d-notes").value=p.notes||"";
+  $("lit-d-url").href=p.url||"#";
+  $("lit-d-status").textContent="";
+}
+
+$("lit-d-save").onclick=async()=>{
+  if(!litSelected||!litCurrentPaperId) return;
+  $("lit-d-save").disabled=true;
+  $("lit-d-status").textContent="Saving…";
+  try{
+    const r=await fetch(`/api/literature/${encodeURIComponent(litSelected)}/${litCurrentPaperId}`,{
+      method:"PATCH",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({notes:$("lit-d-notes").value})
+    });
+    $("lit-d-status").textContent=r.ok?"Saved ✓":`Error ${r.status}`;
+    if(r.ok) setTimeout(()=>{ $("lit-d-status").textContent=""; },2500);
+  } catch(e){ $("lit-d-status").textContent="Error"; }
+  $("lit-d-save").disabled=false;
+};
+
+$("lit-d-delete").onclick=async()=>{
+  if(!litSelected||!litCurrentPaperId) return;
+  if(!confirm("Delete this paper from the list?")) return;
+  const r=await fetch(`/api/literature/${encodeURIComponent(litSelected)}/${litCurrentPaperId}`,{method:"DELETE"});
+  if(r.ok){
+    litCurrentPaperId=null;
+    $("lit-detail-empty").style.display="block";
+    $("lit-detail-content").style.display="none";
+    loadLiterature(litSelected);
+  }
+};
+
+async function loadLiterature(qid){
+  litSelected=qid;
+  litCurrentPaperId=null;
+  $("lit-empty").style.display="none";
+  $("lit-body").style.display="block";
+  $("lit-q-label").textContent=qid.toUpperCase();
+  $("lit-status").textContent="Loading…";
+  $("lit-detail-empty").style.display="block";
+  $("lit-detail-content").style.display="none";
+  try{
+    const r=await fetch(`/api/literature/${encodeURIComponent(qid)}`);
+    const data=await r.json();
+    const papers=data.papers||[];
+    litRenderPapers(papers);
+    $("lit-status").textContent=`${papers.length} paper${papers.length!==1?"s":""}`;
+  } catch(e){ $("lit-status").textContent="Error loading"; }
+}
+
+// ─── Concepts Tab ────────────────────────────────────────────────────────────
+
+let conEs = null;
+let conSelected = null;
+
+function conLogAppend(txt){ const el=$("con-agent-log"); el.textContent+=txt; el.scrollTop=el.scrollHeight; }
+
+function conAgentStart(){
+  $("con-agent-bar").style.display="block";
+  $("con-agent-toggle").textContent="Hide log";
+  $("con-generate-btn").disabled=true;
+}
+function conAgentStop(){
+  if(conEs){ conEs.close(); conEs=null; }
+  $("con-generate-btn").disabled=false;
+  if(conSelected) loadConcepts(conSelected);
+}
+
+$("con-agent-stop").onclick=()=>conAgentStop();
+$("con-agent-toggle").onclick=()=>{
+  const log=$("con-agent-log");
+  const show=log.style.display==="none";
+  log.style.display=show?"block":"none";
+  $("con-agent-toggle").textContent=show?"Hide log":"Show log";
+};
+
+$("con-generate-btn").onclick=()=>{
+  if(!conSelected) return;
+  $("con-agent-log").textContent="";
+  conAgentStart();
+  conEs=new EventSource(`/api/concepts/${encodeURIComponent(conSelected)}/generate`);
+  conEs.onmessage=(e)=>{
+    const ev=JSON.parse(e.data);
+    if(ev.type==="text_delta") conLogAppend(ev.text||"");
+    else if(ev.type==="error") conLogAppend(`\n[error] ${ev.message||""}\n`);
+    else if(ev.type==="status") conLogAppend(`[${ev.state||""}] ${ev.message||""}\n`);
+    else if(ev.type==="done") conAgentStop();
+  };
+  conEs.onerror=()=>{ conLogAppend("\n[stream error]\n"); conAgentStop(); };
+};
+
+const _CAT_COLOR={core:"var(--accent)",background:"var(--muted)",notation:"var(--amber)",theorem:"var(--green)"};
+
+function conRenderCards(concepts){
+  const grid=$("con-grid"), none=$("con-none");
+  grid.innerHTML="";
+  if(!concepts.length){ grid.style.display="none"; none.style.display="block"; $("con-count").textContent=""; return; }
+  grid.style.display="grid"; none.style.display="none";
+  $("con-count").textContent=`${concepts.length} concept${concepts.length!==1?"s":""}`;
+  concepts.forEach(c=>{
+    const cc=_CAT_COLOR[c.category]||"var(--muted)";
+    const card=document.createElement("div");
+    card.className="card";
+    card.style.cssText=`padding:12px 14px;border-left:3px solid ${cc}`;
+    const notation=c.notation?`<div style="font-family:'SF Mono',Menlo,monospace;font-size:13px;color:${cc};margin:4px 0 8px;padding:4px 8px;background:var(--panel2);border-radius:4px;display:inline-block">${esc(c.notation)}</div>`:"";
+    const related=(c.related&&c.related.length)?`<div style="margin-top:8px;font-size:11px;color:var(--muted)">Related: ${esc(c.related.join(", "))}</div>`:"";
+    card.innerHTML=`
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700;color:${cc}">${esc(c.name)}</span>
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:${cc};opacity:.7">${esc(c.category)}</span>
+      </div>
+      ${notation}
+      <div style="font-size:12px;line-height:1.55;margin-bottom:6px">${esc(c.definition)}</div>
+      <div style="font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:6px;margin-top:6px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.04em">Example: </span>${esc(c.example)}
+      </div>
+      ${related}
+    `;
+    grid.appendChild(card);
+  });
+  if(typeof MathJax!=="undefined"&&MathJax.typesetPromise) MathJax.typesetPromise([grid]).catch(()=>{});
+}
+
+async function loadConcepts(qid){
+  conSelected=qid;
+  $("con-empty").style.display="none";
+  $("con-body").style.display="block";
+  $("con-q-label").textContent=qid.toUpperCase();
+  $("con-status").textContent="Loading…";
+  try{
+    const r=await fetch(`/api/concepts/${encodeURIComponent(qid)}`);
+    const data=await r.json();
+    $("con-status").textContent="";
+    conRenderCards(data.concepts||[]);
+  } catch(e){ $("con-status").textContent="Error loading"; }
+}
 
 init();
 </script>
