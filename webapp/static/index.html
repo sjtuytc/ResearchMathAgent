@@ -364,7 +364,7 @@ MathJax = {
       <div id="i-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Pick a question to see its issues.</div>
       <div id="i-body" style="display:none;height:100%;overflow:hidden;flex-direction:column">
         <!-- Agent log panel (collapsible, shown when an agent is running) -->
-        <div id="iss-agent-bar" style="display:none;background:var(--panel2);border-bottom:1px solid var(--border);padding:6px 12px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div id="iss-agent-bar" style="display:none;background:var(--panel2);border-bottom:1px solid var(--border);padding:6px 12px;font-size:11px;color:var(--muted);align-items:center;gap:10px;flex-shrink:0">
           <span id="iss-agent-label" style="font-weight:600;color:var(--accent)">Agent running…</span>
           <button class="btn-sec" id="iss-agent-stop" style="padding:3px 10px;font-size:11px">Stop</button>
           <button class="btn-sec" id="iss-agent-toggle-log" style="padding:3px 10px;font-size:11px">Show log</button>
@@ -514,6 +514,11 @@ MathJax = {
         <button class="btn-sec" id="pf-consolidate" style="margin-left:8px" title="Re-scan all runs and update best proofs">Consolidate</button>
         <button class="btn-sec" id="pf-refresh">Refresh</button>
         <span class="muted" id="pf-status"></span>
+        <button class="btn-sec" id="pf-show-all" style="display:none;margin-left:auto;font-size:11px">All proofs ↗</button>
+      </div>
+      <div id="pf-q-header" style="display:none;align-items:center;gap:8px;margin-bottom:12px">
+        <span id="pf-q-label" style="font-size:13px;font-weight:700;color:var(--accent)"></span>
+        <span style="font-size:12px;color:var(--muted)">— best proof</span>
       </div>
       <div id="pf-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px"></div>
       <div id="pf-detail" style="display:none">
@@ -1106,6 +1111,7 @@ function setTab(name){
   });
   if(name==="overview"){ startOvRefresh(); if(ovData && selected) renderOverview(ovData, selected); } else stopOvRefresh();
   if(name==="documents"){ if(selected) loadQuestionDocs(selected); else loadDocuments(); }
+  if(name==="proofs"){ if(selected) loadProofForQuestion(selected); else if(!pfProbs.length) loadProofs(); }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -1280,6 +1286,8 @@ async function selectQuestion(qid, node, dataset){
   $("stream").innerHTML=""; $("usage").textContent=""; lastArtifact=null;
   // If documents tab is active, load this question's docs
   if(document.querySelector(".tab.active[data-tab='documents']")) loadQuestionDocs(qid);
+  // If proofs tab is active, load this question's proof
+  if(document.querySelector(".tab.active[data-tab='proofs']")) loadProofForQuestion(qid);
   // If overview tab is active, re-render filtered to this question
   if(document.querySelector(".tab.active[data-tab='overview']") && ovData) renderOverview(ovData, qid);
 }
@@ -1994,9 +2002,26 @@ const STATUS_COLOR = {verified:'var(--green)',proposed:'var(--accent)',refined:'
   parsed:'var(--muted)',not_started:'var(--border)',error:'var(--red)',needs_refinement:'var(--amber)'};
 const STATUS_LABEL = {verified:'✓',proposed:'draft',refined:'refined',parsed:'parsed',
   not_started:'—',error:'err',needs_refinement:'⚠'};
-let pfProbs=[], pfSelectedProb=null;
+let pfProbs=[], pfSelectedProb=null, _pfAllMode=false;
+
+function _pfShowGrid(){
+  $("pf-q-header").style.display="none";
+  $("pf-grid").style.display="grid";
+  $("pf-show-all").style.display="none";
+  _pfAllMode=true;
+}
+function _pfShowQuestion(qid){
+  $("pf-q-label").textContent=qid.toUpperCase();
+  $("pf-q-header").style.display="flex";
+  $("pf-grid").style.display="none";
+  $("pf-show-all").style.display="";
+  $("pf-detail").style.display="none";
+  $("pf-empty").style.display="none";
+  _pfAllMode=false;
+}
 
 async function loadProofs(){
+  _pfShowGrid();
   $("pf-status").textContent="loading…";
   try{
     const r=await fetch("/api/best-proofs"); const d=await r.json();
@@ -2007,6 +2032,11 @@ async function loadProofs(){
     $("pf-status").textContent="";
     renderProofGrid(pfProbs);
   }catch(e){ $("pf-status").textContent="error: "+e.message; }
+}
+
+async function loadProofForQuestion(qid){
+  _pfShowQuestion(qid);
+  await loadProofDetail(qid);
 }
 
 function renderProofGrid(probs){
@@ -2039,13 +2069,11 @@ async function loadProofDetail(pid){
     if(d.error){$("pf-status").textContent=d.error;return;}
     const passedLabel=d.verification_passed?"✓ verified":(d.issue_count<100?`${d.issue_count} issues`:"draft");
     $("pf-title").textContent=`${pid} — ${passedLabel}`;
-    // Batch info line
     const parts=[];
     if(d.source_run) parts.push(`Batch: ${d.source_run}`);
     if(d.model) parts.push(`Model: ${d.model}`);
     if(d.created_at) parts.push(`Date: ${d.created_at}`);
     $("pf-batch-info").textContent=parts.join("  |  ");
-    // Verification summary
     const checks=$("pf-checks"); checks.innerHTML="";
     if(d.verification_passed){
       checks.appendChild(el("div","pill on","✓ all checks passed"));
@@ -2062,22 +2090,22 @@ async function loadProofDetail(pid){
     const pdfUrl=`/api/best-proof-pdf/${encodeURIComponent(pid)}`;
     $("pf-dl").href=pdfUrl; $("pf-dl").style.display="";
     $("pf-dl").download=`${pid}_best_proof.pdf`;
-    // Auto-load the PDF (compiled and stored server-side)
     await pdfLoad(pdfUrl, wrap, d=>{pfDoc=d;}, pfScale);
   }catch(e){$("pf-status").textContent="error: "+e.message;}
 }
 
+$("pf-show-all").onclick=loadProofs;
 $("pf-consolidate").onclick=async function(){
   this.disabled=true; $("pf-status").textContent="consolidating…";
   try{
     const r=await fetch("/api/consolidate-best",{method:"POST"});
     const d=await r.json();
     $("pf-status").textContent=`updated ${d.updated} problem${d.updated!==1?"s":""}`;
-    await loadProofs();
+    if(selected && !_pfAllMode) await loadProofForQuestion(selected); else await loadProofs();
   }catch(e){ $("pf-status").textContent="error: "+e.message; }
   finally{ this.disabled=false; }
 };
-$("pf-refresh").onclick=loadProofs;
+$("pf-refresh").onclick=()=>{ if(selected && !_pfAllMode) loadProofForQuestion(selected); else loadProofs(); };
 $("pf-zin").onclick=async()=>{pfScale=Math.min(pfScale+0.25,4);$("pf-zoom").textContent=Math.round(pfScale*100)+"%";if(pfDoc)await pdfRenderAll(pfDoc,pfScale,$("pf-pdf-wrap"));};
 $("pf-zout").onclick=async()=>{pfScale=Math.max(pfScale-0.25,0.5);$("pf-zoom").textContent=Math.round(pfScale*100)+"%";if(pfDoc)await pdfRenderAll(pfDoc,pfScale,$("pf-pdf-wrap"));};
 $("pf-toggle-raw").onclick=function(){
@@ -2088,9 +2116,7 @@ $("pf-toggle-raw").onclick=function(){
   this.textContent=showRaw?"View rendered PDF":"View raw .tex";
 };
 
-document.querySelector('.tab[data-tab="proofs"]').addEventListener("click",()=>{
-  if(!pfProbs.length) loadProofs();
-});
+// proofs tab click is handled by setTab above
 
 // ---- Final Proof tab (PDF.js) ----
 let fpfLoaded=false, fpfDoc=null, fpfScale=1.5, fpfCurrentUrl=null, fpfViewerActive=false;
