@@ -63,7 +63,7 @@ _Q_AREAS = {
 
 
 def _question_summary(repo_root: Path, qid: str) -> dict:
-    """Parse per-question doc for attempt history and candidate answer."""
+    """Build per-question summary from strategy_memory.jsonl + best proof."""
     import re as _re
     base: dict = {
         "qid": qid,
@@ -77,34 +77,56 @@ def _question_summary(repo_root: Path, qid: str) -> dict:
         "last_outcome": None,
         "last_run_date": None,
     }
-    doc_path = repo_root / "documents" / "questions" / f"{qid}.md"
-    if not doc_path.is_file():
-        return base
+    # Primary source: strategy_memory.jsonl (authoritative run log)
+    mem_path = repo_root / "documents" / "strategy_memory.jsonl"
+    if mem_path.is_file():
+        entries = []
+        for line in mem_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                e = json.loads(line)
+            except Exception:  # noqa: BLE001
+                continue
+            if e.get("problem_id") == qid:
+                entries.append(e)
+        if entries:
+            base["has_doc"] = True
+            total = len(entries)
+            success = sum(1 for e in entries if e.get("outcome") == "success")
+            last = entries[-1]
+            base.update(
+                total_runs=total,
+                success_runs=success,
+                fail_runs=total - success,
+                last_run_date=last.get("date"),
+                last_outcome=last.get("outcome"),
+            )
+    # Secondary: best proof — if verified, that counts as at least one success
     try:
-        text = doc_path.read_text(encoding="utf-8", errors="replace")
+        best = get_best_proof(qid)
+        if best and best.get("verification_passed"):
+            base["has_doc"] = True
+            if base["success_runs"] == 0:
+                base["success_runs"] = 1
+                base["total_runs"] = max(base["total_runs"], 1)
+            base["last_outcome"] = "success"
+        elif best and best.get("issue_count", 99) < 99:
+            base["has_doc"] = True
     except Exception:  # noqa: BLE001
-        return base
-    base["has_doc"] = True
-    m = _re.search(r"### Candidate Answer\s*\n+>\s*(.+)", text)
-    if m:
-        base["candidate_answer"] = m.group(1).strip()
-    # Attempt history table: | date | **outcome** | issues | runs | model | ... |
-    rows = _re.findall(
-        r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*\*\*(\w+)\*\*\s*\|[^|]*\|\s*(\d+)\s*\|", text
-    )
-    if rows:
-        total, success, fail = 0, 0, 0
-        last_date = last_outcome = None
-        for date, outcome, run_count in rows:
-            n = int(run_count)
-            total += n
-            if outcome.lower() == "success":
-                success += n
-            else:
-                fail += n
-            last_date, last_outcome = date, outcome.lower()
-        base.update(total_runs=total, success_runs=success, fail_runs=fail,
-                    last_run_date=last_date, last_outcome=last_outcome)
+        pass
+    # Candidate answer from overview.md (new hierarchy)
+    overview = repo_root / "documents" / "questions" / qid / "overview.md"
+    if overview.is_file():
+        try:
+            text = overview.read_text(encoding="utf-8", errors="replace")
+            m = _re.search(r"##+ Candidate Answer\s*\n+(.+)", text)
+            if m:
+                base["candidate_answer"] = _re.sub(r"\*+", "", m.group(1)).strip()
+            base["has_doc"] = True
+        except Exception:  # noqa: BLE001
+            pass
     return base
 
 
@@ -702,26 +724,43 @@ def overview_ep() -> JSONResponse:
         ist = issue_stats.get(pid, {"open": 0, "in_progress": 0, "resolved": 0, "total": 0})
         total_iss = ist["total"]
         resolved = ist["resolved"]
-        # Proof status from issue stats
-        if total_iss == 0:
+        # Proof status: best proof verification takes priority over issue counts
+        try:
+            best = get_best_proof(pid)
+            best_verified = bool(best and best.get("verification_passed"))
+            best_issues = int(best.get("issue_count", 99)) if best else 99
+        except Exception:  # noqa: BLE001
+            best_verified, best_issues = False, 99
+        if best_verified:
+            proof_status = "verified"
+        elif total_iss == 0 and not qs["has_doc"]:
             proof_status = "not_started"
-        elif resolved == total_iss:
+        elif resolved == total_iss and total_iss > 0:
             proof_status = "verified"
         elif resolved > 0:
             proof_status = "in_progress"
         elif ist["in_progress"] > 0:
             proof_status = "exploring"
-        else:
+        elif qs["has_doc"]:
             proof_status = "open_issues"
+        else:
+            proof_status = "not_started"
         # Accuracy = issue resolution rate
         accuracy_pct = round(resolved / total_iss * 100) if total_iss > 0 else None
-        # Solvability = attempt success rate (from doc) or issue res rate as fallback
+        # Solvability: best proof with 0 issues → 100%; otherwise attempt success rate;
+        # fallback to issue resolution rate as proxy
         total_runs = qs["total_runs"]
         success_runs = qs["success_runs"]
-        if total_runs > 0:
+        if best_verified:
+            solvability_pct = 100
+        elif best_issues < 99:
+            # Partial progress: score based on best proof's issue count
+            # 0 issues = 100%, 9 issues ≈ 50%, 18+ issues ≈ 0%
+            solvability_pct = max(0, round((1 - best_issues / 18) * 100))
+        elif total_runs > 0:
             solvability_pct = round(success_runs / total_runs * 100)
         elif total_iss > 0:
-            solvability_pct = accuracy_pct  # use issue resolution as proxy
+            solvability_pct = accuracy_pct
         else:
             solvability_pct = None
         question_summaries.append({
