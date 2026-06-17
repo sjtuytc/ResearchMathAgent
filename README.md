@@ -71,6 +71,9 @@ rma solve q6 --model-name claude-opus-4-8
 python -m webapp          # → http://127.0.0.1:8000
 ```
 
+![Web UI Overview](figures/web1.png)
+*Overview tab: problem listing, solvability metrics, solver status, and daily worker controls.*
+
 ---
 
 ## Repository Structure
@@ -83,7 +86,7 @@ ResearchMathAgent/
 ├── problems/             # Benchmark problem statements (q1..q10 .tex files)
 ├── skills/               # Math-research skill instructions for the solver
 ├── final_solutions/      # Published/reference proofs — NOT solver inputs
-├── output_solutions/     # Solver outputs (write destination)
+├── outputs/              # Solver outputs (write destination, on shared storage)
 ├── rma/                  # CLI tooling: parse / propose / verify / refine / solve
 ├── webapp/               # Live web app (FastAPI + vanilla JS)
 │   └── README.md         # Web app details
@@ -93,7 +96,7 @@ ResearchMathAgent/
 ```
 
 - `problems/` → `final_solutions/` boundary is enforced; the solver never reads prior solutions.
-- `output_solutions/` is the write destination for all `rma solve` runs.
+- `outputs/` (symlink to shared storage) is the write destination for all `rma solve` runs.
 - See [TODO.md](TODO.md) for the remaining engineering roadmap.
 
 </details>
@@ -186,7 +189,7 @@ rma solve q6 --no-render
 **Output folder layout:**
 
 ```
-output_solutions/proofs_v1_june13_rma-skeleton/
+outputs/first_proof_1/proofs_v1_june13_rma-skeleton/
   q6_solution.tex
   q6_solution.pdf
   q6/
@@ -209,8 +212,8 @@ RMA solve
 tier: standard
 skill: skills/math-research/SKILL.md
 status: needs_refinement
-output: output_solutions/proofs_v1_june13_rma-skeleton
-solution: output_solutions/proofs_v1_june13_rma-skeleton/q6_solution.tex
+output: outputs/first_proof_1/proofs_v1_june13_rma-skeleton
+solution: outputs/first_proof_1/proofs_v1_june13_rma-skeleton/q6_solution.tex
 verification: .../verification_003.json
 ```
 
@@ -323,11 +326,11 @@ The solver must treat First Proof official solutions and prior AI-generated solu
 The solver must **never** read, grep, glob, summarize, render, or otherwise use existing files under:
 
 - `final_solutions/`
-- `output_solutions/`
+- `outputs/`
 - `baselines/`
 - Public First Proof official-solution pages or derivative writeups
 
-`output_solutions/` is allowed as a **write** destination only.  Prior output folders and unrelated existing solution artifacts remain blocked solver context.
+`outputs/` is allowed as a **write** destination only.  Prior output folders and unrelated existing solution artifacts remain blocked solver context.
 
 The primary solver command:
 

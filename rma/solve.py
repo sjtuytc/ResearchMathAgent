@@ -1138,7 +1138,7 @@ def _model_system_prompt() -> str:
         "You are the proof-construction backend for Research Math Agent. "
         "Produce rigorous, self-contained research mathematics in LaTeX. "
         "You must not consult, infer from, or mention official solutions, prior AI solutions, baselines, final_solutions, "
-        "output_solutions, or skill_solutions. Use only the problem statement, allowed skill instructions, and same-run "
+        "outputs, or skill_solutions. Use only the problem statement, allowed skill instructions, and same-run "
         "verifier feedback supplied in the prompt. The output must be a single compilable LaTeX article, not Markdown."
     )
 

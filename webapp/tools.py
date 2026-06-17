@@ -5,7 +5,7 @@ the file/bash tools TheAgentCompany's OpenHands agent uses. Every filesystem
 access is sandboxed: the agent may read ``problems/`` and ``skills/`` and read
 or write inside a per-session scratch workspace, but it may **never** read the
 benchmark solution directories listed in ``config/default.yaml``
-(``output_solutions``, ``final_solutions``, ``baselines``, ...). That blocklist
+(``outputs``, ``final_solutions``, ``baselines``, ...). That blocklist
 is the STRICT RULE from CLAUDE.md, enforced here in code rather than by trust.
 """
 
@@ -21,7 +21,7 @@ from pathlib import Path
 # Directories the agent must never read from. Kept in sync with
 # config/default.yaml -> project.blocked_input_dirs.
 BLOCKED_INPUT_DIRS = (
-    "output_solutions",
+    "outputs",
     "final_solutions",
     "skill_solutions",
     "baselines",

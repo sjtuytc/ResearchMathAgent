@@ -83,7 +83,7 @@ ResearchMathAgent/
 ├── problems/             # 基准问题陈述（q1..q10 .tex 文件）
 ├── skills/               # 求解器使用的数学研究技能指令
 ├── final_solutions/      # 已发布/参考证明——不作为求解器输入
-├── output_solutions/     # 求解器输出目录（写入目标）
+├── outputs/              # 求解器输出目录（写入目标，位于共享存储）
 ├── rma/                  # CLI 工具：parse / propose / verify / refine / solve
 ├── webapp/               # 实时 Web 应用（FastAPI + 原生 JS）
 │   └── README.md         # Web 应用详细说明
@@ -93,7 +93,7 @@ ResearchMathAgent/
 ```
 
 - `problems/` → `final_solutions/` 的边界在代码层面强制执行；求解器绝不读取历史解答。
-- `output_solutions/` 是所有 `rma solve` 运行的写入目标。
+- `outputs/`（指向共享存储的符号链接）是所有 `rma solve` 运行的写入目标。
 - 剩余工程路线图见 [TODO.md](TODO.md)。
 
 </details>
@@ -186,7 +186,7 @@ rma solve q6 --no-render
 **输出目录结构：**
 
 ```
-output_solutions/proofs_v1_june13_rma-skeleton/
+outputs/first_proof_1/proofs_v1_june13_rma-skeleton/
   q6_solution.tex
   q6_solution.pdf
   q6/
@@ -209,8 +209,8 @@ RMA solve
 tier: standard
 skill: skills/math-research/SKILL.md
 status: needs_refinement
-output: output_solutions/proofs_v1_june13_rma-skeleton
-solution: output_solutions/proofs_v1_june13_rma-skeleton/q6_solution.tex
+output: outputs/first_proof_1/proofs_v1_june13_rma-skeleton
+solution: outputs/first_proof_1/proofs_v1_june13_rma-skeleton/q6_solution.tex
 verification: .../verification_003.json
 ```
 
@@ -323,11 +323,11 @@ ssh -L 8000:localhost:8000 user@server
 求解器**绝不**读取、grep、glob、摘要、渲染或以任何方式使用以下目录中的已有文件：
 
 - `final_solutions/`
-- `output_solutions/`
+- `outputs/`
 - `baselines/`
 - First Proof 官方解答页面或衍生解答材料
 
-`output_solutions/` 仅允许作为**写入**目标。历史输出目录和无关现有解答产物仍属封锁范围。
+`outputs/` 仅允许作为**写入**目标。历史输出目录和无关现有解答产物仍属封锁范围。
 
 主要求解器命令：
 
