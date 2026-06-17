@@ -97,6 +97,17 @@ def _call_claude_json(prompt: str, system: str, model: str = "claude-sonnet-4-6"
         return None
 
 
+def ensure_all_concepts(repo_root: Path, q_titles: dict | None = None) -> None:
+    """Background: extract concepts for any question missing a concepts file."""
+    for i in range(1, 11):
+        qid = f"q{i}"
+        if load_concepts(repo_root, qid):
+            continue
+        title = (q_titles or {}).get(qid, qid)
+        for _ in generate_concepts(repo_root, qid, title):
+            pass
+
+
 def generate_concepts(repo_root: Path, qid: str, title: str) -> Iterator[AgentEvent]:
     """Call Claude to extract concepts from the problem, save and yield AgentEvents."""
     problem_path = repo_root / "problems" / f"{qid}.tex"

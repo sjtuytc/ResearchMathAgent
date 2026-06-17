@@ -160,6 +160,17 @@ def _call_claude_json(prompt: str, system: str, model: str = "claude-sonnet-4-6"
         return None
 
 
+def ensure_all_lit(repo_root: Path, q_titles: dict | None = None) -> None:
+    """Background: discover literature for any question missing a paper index."""
+    for i in range(1, 11):
+        qid = f"q{i}"
+        if load_index(repo_root, qid):
+            continue
+        title = (q_titles or {}).get(qid, qid)
+        for _ in discover_literature(repo_root, qid, title):
+            pass
+
+
 def discover_literature(repo_root: Path, qid: str, title: str) -> Iterator[AgentEvent]:
     """Call Claude to discover relevant papers, save them, yield AgentEvents."""
     problem_path = repo_root / "problems" / f"{qid}.tex"

@@ -649,18 +649,8 @@ MathJax = {
       <div id="lit-body" style="display:none">
         <div class="bar" style="margin-bottom:14px">
           <span style="font-size:13px;font-weight:700;color:var(--accent)" id="lit-q-label"></span>
-          <button class="btn-pri" id="lit-discover-btn" style="font-size:12px;padding:5px 12px">Discover with AI</button>
           <button class="btn-sec" id="lit-add-btn" style="font-size:12px;padding:5px 12px">+ Add Paper</button>
           <span id="lit-status" style="font-size:12px;color:var(--muted)"></span>
-        </div>
-        <!-- AI discover log -->
-        <div id="lit-agent-bar" style="display:none;background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span id="lit-agent-label" style="font-weight:600;color:var(--accent)">Discovering literature…</span>
-            <button class="btn-sec" id="lit-agent-stop" style="padding:2px 8px;font-size:11px">Stop</button>
-            <button class="btn-sec" id="lit-agent-toggle" style="padding:2px 8px;font-size:11px">Hide log</button>
-          </div>
-          <pre id="lit-agent-log" style="margin:0;max-height:140px;overflow-y:auto;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word;background:#0a0e14;border-radius:5px;padding:8px"></pre>
         </div>
         <!-- Add paper form -->
         <div id="lit-add-form" style="display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
@@ -733,18 +723,8 @@ MathJax = {
       <div id="con-body" style="display:none">
         <div class="bar" style="margin-bottom:14px">
           <span style="font-size:13px;font-weight:700;color:var(--accent)" id="con-q-label"></span>
-          <button class="btn-pri" id="con-generate-btn" style="font-size:12px;padding:5px 12px">Generate with AI</button>
           <span id="con-status" style="font-size:12px;color:var(--muted)"></span>
           <span id="con-count" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
-        </div>
-        <!-- AI generation log -->
-        <div id="con-agent-bar" style="display:none;background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="font-weight:600;color:var(--accent)">Extracting concepts…</span>
-            <button class="btn-sec" id="con-agent-stop" style="padding:2px 8px;font-size:11px">Stop</button>
-            <button class="btn-sec" id="con-agent-toggle" style="padding:2px 8px;font-size:11px">Hide log</button>
-          </div>
-          <pre id="con-agent-log" style="margin:0;max-height:120px;overflow-y:auto;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word;background:#0a0e14;border-radius:5px;padding:8px"></pre>
         </div>
         <!-- Category legend -->
         <div style="display:flex;gap:12px;margin-bottom:14px;font-size:11px;align-items:center">
@@ -755,7 +735,7 @@ MathJax = {
         </div>
         <!-- Cards grid -->
         <div id="con-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
-        <div id="con-none" class="empty" style="display:none">No concepts extracted yet. Click <b>Generate with AI</b> to extract core concepts from this problem.</div>
+        <div id="con-none" class="empty" style="display:none">No concepts extracted yet. Extraction runs automatically at server startup.</div>
       </div>
     </section>
 
@@ -2856,46 +2836,9 @@ document.querySelectorAll('.tab:not([data-tab="final-proof"])').forEach(t=>
 
 // ─── Literature Tab ──────────────────────────────────────────────────────────
 
-let litEs = null;
 let litSelected = null;
 let litCurrentPaperId = null;
 let litPapers = [];
-
-function litLogAppend(txt){ const el=$("lit-agent-log"); el.textContent+=txt; el.scrollTop=el.scrollHeight; }
-
-function litAgentStart(){
-  $("lit-agent-bar").style.display="block";
-  $("lit-agent-toggle").textContent="Hide log";
-  $("lit-discover-btn").disabled=true;
-}
-function litAgentStop(){
-  if(litEs){ litEs.close(); litEs=null; }
-  $("lit-discover-btn").disabled=false;
-  if(litSelected) loadLiterature(litSelected);
-}
-
-$("lit-agent-stop").onclick=()=>litAgentStop();
-$("lit-agent-toggle").onclick=()=>{
-  const log=$("lit-agent-log");
-  const show=log.style.display==="none";
-  log.style.display=show?"block":"none";
-  $("lit-agent-toggle").textContent=show?"Hide log":"Show log";
-};
-
-$("lit-discover-btn").onclick=()=>{
-  if(!litSelected) return;
-  $("lit-agent-log").textContent="";
-  litAgentStart();
-  litEs=new EventSource(`/api/literature/${encodeURIComponent(litSelected)}/discover`);
-  litEs.onmessage=(e)=>{
-    const ev=JSON.parse(e.data);
-    if(ev.type==="text_delta") litLogAppend(ev.text||"");
-    else if(ev.type==="error") litLogAppend(`\n[error] ${ev.message||""}\n`);
-    else if(ev.type==="status") litLogAppend(`[${ev.state||""}] ${ev.message||""}\n`);
-    else if(ev.type==="done") litAgentStop();
-  };
-  litEs.onerror=()=>{ litLogAppend("\n[stream error]\n"); litAgentStop(); };
-};
 
 $("lit-add-btn").onclick=()=>{
   const f=$("lit-add-form");
@@ -2934,7 +2877,7 @@ function litRenderPapers(papers){
   const list=$("lit-list");
   list.innerHTML="";
   if(!papers.length){
-    list.innerHTML="<div class='empty' style='padding:20px;text-align:center'>No papers yet.<br><span style='font-size:11px'>Use <b>Discover with AI</b> or add a paper manually.</span></div>";
+    list.innerHTML="<div class='empty' style='padding:20px;text-align:center'>No papers yet.<br><span style='font-size:11px'>Literature discovery runs automatically at server startup.</span></div>";
     return;
   }
   papers.forEach(p=>{
@@ -3017,44 +2960,7 @@ async function loadLiterature(qid){
 
 // ─── Concepts Tab ────────────────────────────────────────────────────────────
 
-let conEs = null;
 let conSelected = null;
-
-function conLogAppend(txt){ const el=$("con-agent-log"); el.textContent+=txt; el.scrollTop=el.scrollHeight; }
-
-function conAgentStart(){
-  $("con-agent-bar").style.display="block";
-  $("con-agent-toggle").textContent="Hide log";
-  $("con-generate-btn").disabled=true;
-}
-function conAgentStop(){
-  if(conEs){ conEs.close(); conEs=null; }
-  $("con-generate-btn").disabled=false;
-  if(conSelected) loadConcepts(conSelected);
-}
-
-$("con-agent-stop").onclick=()=>conAgentStop();
-$("con-agent-toggle").onclick=()=>{
-  const log=$("con-agent-log");
-  const show=log.style.display==="none";
-  log.style.display=show?"block":"none";
-  $("con-agent-toggle").textContent=show?"Hide log":"Show log";
-};
-
-$("con-generate-btn").onclick=()=>{
-  if(!conSelected) return;
-  $("con-agent-log").textContent="";
-  conAgentStart();
-  conEs=new EventSource(`/api/concepts/${encodeURIComponent(conSelected)}/generate`);
-  conEs.onmessage=(e)=>{
-    const ev=JSON.parse(e.data);
-    if(ev.type==="text_delta") conLogAppend(ev.text||"");
-    else if(ev.type==="error") conLogAppend(`\n[error] ${ev.message||""}\n`);
-    else if(ev.type==="status") conLogAppend(`[${ev.state||""}] ${ev.message||""}\n`);
-    else if(ev.type==="done") conAgentStop();
-  };
-  conEs.onerror=()=>{ conLogAppend("\n[stream error]\n"); conAgentStop(); };
-};
 
 const _CAT_COLOR={core:"var(--accent)",background:"var(--muted)",notation:"var(--amber)",theorem:"var(--green)"};
 

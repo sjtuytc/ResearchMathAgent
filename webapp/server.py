@@ -37,8 +37,8 @@ from .runs import REGISTRY
 from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary
 from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
 from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
-from .literature import load_index as lit_load, add_paper as lit_add, update_paper as lit_update, delete_paper as lit_delete, discover_literature
-from .concepts import load_concepts, save_concepts, generate_concepts
+from .literature import load_index as lit_load, add_paper as lit_add, update_paper as lit_update, delete_paper as lit_delete, discover_literature, ensure_all_lit
+from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -167,6 +167,12 @@ def _precompile_problems():
 threading.Thread(target=_precompile_problems, daemon=True).start()
 threading.Thread(
     target=ensure_all_evaluated, args=(REPO_ROOT,), daemon=True
+).start()
+threading.Thread(
+    target=ensure_all_lit, args=(REPO_ROOT, _Q_TITLES), daemon=True
+).start()
+threading.Thread(
+    target=ensure_all_concepts, args=(REPO_ROOT, _Q_TITLES), daemon=True
 ).start()
 from .issue_loop import run_issue_loop, evolve_once as _evolve_issues_once
 threading.Thread(target=run_issue_loop, args=(REPO_ROOT,), daemon=True).start()

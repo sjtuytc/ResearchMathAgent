@@ -3,7 +3,7 @@
   "problem_id": "q6",
   "dataset": "first_proof_1",
   "title": "Missing rank argument that top-sigma barrier implies all eigenvalues below u_sigma",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -23,6 +23,21 @@
       "role": "agent",
       "body": "**Proof file:** `webapp/issues/first_proof_1/q6/working_solution.tex`\n\nThe issue described above occurs in this working solution file. Reviewers should consult the file at that path for the exact context.",
       "created_at": "2026-06-16T21:59:46Z"
+    },
+    {
+      "id": "caa33027f",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Gap Identified and Fixed\n\n### The Missing Argument\nStep 1 concludes that once |S|=sigma+1 with B^u_sigma(S) finite, all eigenvalues of tL_S lie below eps. This inference relies on tracking the top-sigma eigenvalues being sufficient to cover all eigenvalues, but this was never formally justified.\n\n### Root Cause\nThe argument implicitly assumes tL_S has at most sigma nonzero eigenvalues, which follows from a rank-counting argument:\n- Since G_S is a graph on |S|=sigma+1 vertices, rank(L_S) <= |S|-1 = sigma (Laplacian rank is one less than vertex count per component).\n- Therefore rank(tL_S) = rank(L^dag/2 L_S L^dag/2) <= sigma.\n- A PSD matrix with rank at most sigma has exactly sigma or fewer nonzero eigenvalues.\n\n### The Fix\nI added Claim 1 (cl:rank-barrier) immediately after Step 1's initialization, which formally states and proves:\n\n**If |S|=sigma+1, then rank(L_S) <= sigma, and thus rank(tL_S) <= sigma. Consequently, tL_S has at most sigma nonzero eigenvalues. Therefore, if B^u_sigma_sigma(S)<infinity, then every nonzero eigenvalue of tL_S lies strictly below u_sigma, so ||tL_S||_op <= u_sigma.**\n\nThe proof establishes:\n1. Rank bound for Laplacians of subgraph-induced vertices.\n2. Rank preservation under conjugation by L^dag/2.\n3. The consequence: the top-sigma barrier tracks ALL nonzero eigenvalues.\n\nStep 1 now correctly references this claim when concluding eps L >= L_S.\n\n### Why This Matters\nThis rank counting is the KEY INNOVATION (as noted in Remarks, item 2) that makes the bounded-rank barrier method work. Without it, the proof only controls the top-sigma eigenvalues but cannot conclude that the operator norm condition is satisfied. The formal justification closes the logical gap completely.",
+      "created_at": "2026-06-16T23:08:09Z"
+    },
+    {
+      "id": "ev4016ccfd",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-16T23:08:12Z"
     }
   ]
 }

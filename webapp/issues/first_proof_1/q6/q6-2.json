@@ -3,7 +3,7 @@
   "problem_id": "q6",
   "dataset": "first_proof_1",
   "title": "Barrier Update Lemma: implicit rank <= sigma assumption on B is unverified",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -23,6 +23,21 @@
       "role": "agent",
       "body": "**Proof file:** `webapp/issues/first_proof_1/q6/working_solution.tex`\n\nThe issue described above occurs in this working solution file. Reviewers should consult the file at that path for the exact context.",
       "created_at": "2026-06-16T21:59:46Z"
+    },
+    {
+      "id": "c95107085",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Analysis and Resolution\n\n### Problem Confirmed\n\nThe critic correctly identified two gaps in the Barrier Update Lemma proof:\n\n**Gap 1 (Line 296):** The proof claims that $\\operatorname{Tr}_{\\sigma}(C^T M^{-1}C) < 1$ implies $(I - C^T M^{-1}C)^{-1}$ exists. This requires all eigenvalues of $C^T M^{-1}C$ to be strictly less than 1. However, $\\operatorname{Tr}_{\\sigma} < 1$ only bounds the sum of the top-$\\sigma$ eigenvalues, not the maximum eigenvalue.\n\n**Pathological example:** Matrix with eigenvalues $[0.5, 0.4, 1.0]$ and $\\sigma=2$:\n- $\\operatorname{Tr}_{\\sigma}(A) = 0.5 + 0.4 = 0.9 < 1$ ✓\n- But $\\lambda_3(A) = 1.0$, making $(I - A)$ singular ✗\n\n**Gap 2 (Line 304):** The proof uses $||C^T M^{-1}C||_{op} \\leq \\operatorname{Tr}_{\\sigma}(C^T M^{-1}C)$, which is false. The operator norm (maximum eigenvalue) cannot be bounded by the top-$\\sigma$ trace sum.\n\n### Solution Implemented\n\nAdded the assumption **$\\operatorname{rank}(B) \\leq \\sigma$** to the lemma statement. This ensures:\n\n1. $\\operatorname{rank}(C) \\leq \\operatorname{rank}(B) \\leq \\sigma$\n2. $\\operatorname{rank}(C^T M^{-1}C) \\leq \\sigma$, so all nonzero eigenvalues are in the top-$\\sigma$ spectrum\n3. Therefore $\\operatorname{Tr}_{\\sigma}(C^T M^{-1}C) = \\operatorname{Tr}(C^T M^{-1}C)$\n4. For PSD matrix: $\\operatorname{Tr}(C^T M^{-1}C) < 1 \\Rightarrow ||C^T M^{-1}C||_{op} < 1$ ✓\n\nThe proof now correctly:\n- Establishes that $(I - C^T M^{-1}C)^{-1}$ exists (lines 293-298)\n- Uses $||C^T M^{-1}C||_{op} \\leq \\operatorname{Tr}(C^T M^{-1}C) < 1$ (line 311, with $\\operatorname{Tr}$ instead of $\\operatorname{Tr}_{\\sigma}$)\n\n### Verification at Call Site\n\nThe condition $\\operatorname{rank}(B) \\leq \\sigma$ is automatically satisfied in the application (Step 4). When the lemma is invoked with $B = \\widetilde{L}_{S,t}$:\n- Maintained invariant: $|S| \\leq \\sigma$\n- $L_{S,t}$ is the Laplacian of a graph on at most $\\sigma+1$ vertices\n- $\\operatorname{rank}(L_{S,t}) \\leq (\\sigma+1) - 1 = \\sigma$ (Laplacian rank bound)\n- $\\operatorname{rank}(\\widetilde{L}_{S,t}) \\leq \\sigma$ (rank preserved by conjugation with $L^{†/2}$)\n\n**Changes made:**\n1. Lemma statement: Added \"with $\\operatorname{rank}(B) \\leq \\sigma$\" (line 282)\n2. Proof: Justified invertibility via rank condition (lines 293-298)\n3. Proof: Replaced $\\operatorname{Tr}_{\\sigma}$ with $\\operatorname{Tr}$ in lines 311-312 (now valid)\n4. Step 4: Added justification that rank condition holds at call site (lines 199-201)\n\n**Status:** Fully resolved. Both gaps are closed with rigorous justification.",
+      "created_at": "2026-06-16T23:15:27Z"
+    },
+    {
+      "id": "ev2b06e4ac",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-16T23:15:30Z"
     }
   ]
 }
