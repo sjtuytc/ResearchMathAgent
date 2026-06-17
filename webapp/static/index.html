@@ -163,6 +163,15 @@ MathJax = {
   .solve-badge.med{background:#3a2a00;color:var(--amber)}
   .solve-badge.hard{background:#2d1010;color:var(--red)}
   .solve-badge.none{background:var(--panel2);color:var(--muted)}
+  /* Meet pane */
+  #pane-meet.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
+  .meet-msg-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+  .meet-msg-event{display:flex;align-items:center;gap:6px;padding:2px 0;font-size:11px;color:var(--muted)}
+  .meet-step-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:6px}
+  .meet-step-card.done{border-color:var(--green);opacity:.7}
+  .meet-step-card.running{border-color:var(--amber)}
+  .meet-persona-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:11px;cursor:pointer;transition:border-color .12s}
+  .meet-persona-chip:hover{border-color:var(--accent)}
   /* Dataset badge on qitem */
   .ds-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);margin-left:auto;flex-shrink:0}
   .qitem-top{display:flex;align-items:center;gap:4px}
@@ -231,8 +240,10 @@ MathJax = {
       <div class="tab" data-tab="documents">Documents</div>
       <div class="tab" data-tab="proofs">Proofs</div>
       <div class="tab" data-tab="final-proof">Final Proof</div>
+      <div class="tab" data-tab="meet">Meet</div>
       <div class="tab" data-tab="literature">Literature</div>
       <div class="tab" data-tab="concepts">Concepts</div>
+      <div class="tab" data-tab="devlog">Dev Log</div>
       <div class="tab" data-tab="meet">Meet</div>
     </div>
 
@@ -461,6 +472,9 @@ MathJax = {
                 </select>
                 <button class="btn-sec" id="iss-resolve-btn" title="Run solver agent on this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Auto-Resolve</button>
                 <button class="btn-sec" id="iss-verify-btn" title="Run verifier agent on this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Verify</button>
+                <button class="btn-sec" id="iss-discuss-btn" title="Run a discussion round (critic→solver→verifier→strategist)" style="font-size:11px;padding:4px 9px;flex-shrink:0">Discuss</button>
+                <button class="btn-sec" id="iss-meet-btn" title="Start a meeting room linked to this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Meet</button>
+                <button class="btn-sec" id="iss-gendoc-btn" title="Generate a summary document from this discussion" style="font-size:11px;padding:4px 9px;flex-shrink:0">Gen Doc</button>
                 <span class="muted" id="iss-status-msg" style="font-size:11px;flex-shrink:0"></span>
               </div>
               <div id="iss-comments" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px"></div>
@@ -476,9 +490,26 @@ MathJax = {
                   </select>
                 </div>
                 <textarea id="iss-reply" placeholder="Write a comment…" spellcheck="false" style="width:100%;box-sizing:border-box;height:70px;resize:vertical"></textarea>
-                <div style="display:flex;gap:8px;margin-top:6px">
+                <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">
                   <button class="btn-pri" id="iss-post">Post Comment</button>
-                  <span class="muted" id="iss-post-status" style="font-size:12px;align-self:center"></span>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--muted)">
+                    <input type="checkbox" id="iss-note-toggle"> Note
+                  </label>
+                  <button class="btn-sec" id="iss-link-btn" style="font-size:11px;padding:3px 8px">Link Issue</button>
+                  <span class="muted" id="iss-post-status" style="font-size:12px;margin-left:auto"></span>
+                </div>
+                <!-- Link issue inline form (hidden by default) -->
+                <div id="iss-link-form" style="display:none;margin-top:8px;padding:8px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;display:none;gap:6px;align-items:center;flex-wrap:wrap">
+                  <input id="iss-link-target" type="text" placeholder="Issue ID (e.g. q4-3)" style="width:120px;font-size:12px;padding:4px 8px">
+                  <select id="iss-link-rel" style="font-size:12px;background:var(--panel);border:1px solid var(--border);color:var(--fg);padding:4px 6px;border-radius:4px">
+                    <option value="related">related</option>
+                    <option value="blocks">blocks</option>
+                    <option value="depends_on">depends on</option>
+                    <option value="resolves">resolves</option>
+                  </select>
+                  <button class="btn-pri" id="iss-link-ok" style="font-size:11px;padding:3px 10px">Link</button>
+                  <button class="btn-sec" id="iss-link-cancel" style="font-size:11px;padding:3px 8px">Cancel</button>
+                  <span id="iss-link-status" style="font-size:11px;color:var(--muted)"></span>
                 </div>
               </div>
             </div>
@@ -737,6 +768,118 @@ MathJax = {
         <!-- Cards grid -->
         <div id="con-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
         <div id="con-none" class="empty" style="display:none">No concepts extracted yet. Extraction runs automatically at server startup.</div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-devlog">
+      <div class="bar" style="margin-bottom:16px">
+        <span style="font-size:14px;font-weight:700">Development Log</span>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px">changes made by agents and engineers</span>
+        <button class="btn-sec" id="dl-refresh" style="font-size:12px;padding:4px 12px;margin-left:auto">Refresh</button>
+      </div>
+      <div id="dl-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div id="dl-empty" class="empty" style="display:none">No log entries yet.</div>
+    </section>
+
+    <!-- ── Virtual Meet pane ────────────────────────────── -->
+    <section class="pane" id="pane-meet" style="padding:0;overflow:hidden">
+      <div id="meet-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Select a question to start a meeting.</div>
+      <div id="meet-body" style="display:none;height:100%;overflow:hidden;flex-direction:column">
+        <!-- agent run bar (reused pattern) -->
+        <div id="meet-agent-bar" style="display:none;background:var(--panel2);border-bottom:1px solid var(--border);padding:6px 12px;font-size:11px;color:var(--muted);align-items:center;gap:10px;flex-shrink:0">
+          <span id="meet-agent-label" style="font-weight:600;color:var(--accent)">Agent running…</span>
+          <button class="btn-sec" id="meet-agent-stop" style="padding:3px 10px;font-size:11px">Stop</button>
+          <button class="btn-sec" id="meet-agent-toggle-log" style="padding:3px 10px;font-size:11px">Show log</button>
+          <span id="meet-agent-status" style="margin-left:auto;color:var(--muted)"></span>
+        </div>
+        <div id="meet-agent-log-wrap" style="display:none;background:#0a0e14;border-bottom:1px solid var(--border);max-height:160px;overflow-y:auto;flex-shrink:0">
+          <pre id="meet-agent-log" style="margin:0;padding:10px 14px;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word"></pre>
+        </div>
+        <div style="display:grid;grid-template-columns:280px 1fr;flex:1;overflow:hidden">
+          <!-- sidebar: room list + new room -->
+          <div style="border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden">
+            <div style="padding:10px;flex-shrink:0;display:flex;flex-direction:column;gap:6px">
+              <button class="btn-pri" id="meet-new-btn" style="font-size:12px;padding:7px 10px">+ New Meeting</button>
+            </div>
+            <div id="meet-room-list" style="overflow-y:auto;padding:0 10px 10px;flex:1;display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+          <!-- main panel: room view -->
+          <div style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+            <!-- empty / select -->
+            <div id="meet-room-empty" class="empty" style="flex:1;display:flex;align-items:center;justify-content:center">Select a meeting room.</div>
+            <!-- room view -->
+            <div id="meet-room-view" style="display:none;flex-direction:column;height:100%;overflow:hidden">
+              <!-- header bar -->
+              <div style="padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px">
+                <div style="flex:1;min-width:0">
+                  <div id="meet-room-topic" style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+                  <div id="meet-room-goal" style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
+                </div>
+                <span id="meet-room-status-badge" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--panel);flex-shrink:0"></span>
+              </div>
+              <!-- participants bar -->
+              <div style="padding:6px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <span style="font-size:11px;color:var(--muted)">Participants:</span>
+                <div id="meet-participants" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+                <div style="margin-left:auto;display:flex;gap:5px">
+                  <button class="btn-sec" id="meet-synth-btn" style="font-size:11px;padding:4px 9px">Synthesize Plan</button>
+                </div>
+              </div>
+              <!-- split: chat + plan -->
+              <div id="meet-split" style="flex:1;overflow:hidden;display:grid;grid-template-columns:1fr 320px">
+                <!-- chat -->
+                <div style="display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)">
+                  <!-- turn buttons -->
+                  <div id="meet-turn-bar" style="padding:6px 10px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+                    <span style="font-size:11px;color:var(--muted)">Run turn:</span>
+                    <div id="meet-turn-btns" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+                    <button class="btn-sec" id="meet-auto-btn" style="font-size:11px;padding:3px 9px;margin-left:4px" title="Auto-run all participants in sequence">Auto Round</button>
+                  </div>
+                  <!-- messages -->
+                  <div id="meet-messages" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px"></div>
+                  <!-- human reply -->
+                  <div style="padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:6px">
+                    <textarea id="meet-reply" placeholder="Add your perspective…" spellcheck="false" style="width:100%;box-sizing:border-box;height:56px;resize:vertical"></textarea>
+                    <div style="display:flex;gap:6px">
+                      <button class="btn-pri" id="meet-post-btn" style="font-size:12px;padding:5px 12px">Post</button>
+                      <span id="meet-post-status" class="muted" style="font-size:11px;align-self:center"></span>
+                    </div>
+                  </div>
+                </div>
+                <!-- plan panel -->
+                <div id="meet-plan-panel" style="display:flex;flex-direction:column;overflow:hidden">
+                  <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:6px">
+                    Action Plan
+                    <span id="meet-plan-status" style="font-size:10px;padding:1px 6px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-weight:400;text-transform:none"></span>
+                  </div>
+                  <div id="meet-plan-empty" style="padding:20px;color:var(--muted);font-size:12px;text-align:center">No plan yet.<br>Click <b>Synthesize Plan</b> after discussion.</div>
+                  <div id="meet-plan-steps" style="flex:1;overflow-y:auto;padding:8px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- New meeting modal -->
+      <div id="meet-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center">
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;width:520px;max-width:95vw">
+          <h3 style="margin:0 0 14px;font-size:15px">New Meeting</h3>
+          <label style="font-size:12px;color:var(--muted)">Topic</label>
+          <input id="meet-new-topic" type="text" placeholder="e.g. Proof strategy for q6" style="width:100%;box-sizing:border-box;margin-bottom:10px">
+          <label style="font-size:12px;color:var(--muted)">Goal (optional)</label>
+          <input id="meet-new-goal" type="text" placeholder="e.g. Agree on main approach and key lemmas" style="width:100%;box-sizing:border-box;margin-bottom:10px">
+          <label style="font-size:12px;color:var(--muted)">Participants</label>
+          <div id="meet-new-parts" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:6px">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="coordinator" checked> 🎯 Coordinator</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="solver-agent" checked> 🔧 Solver</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="critic-agent" checked> 🔍 Critic</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="verifier-agent" checked> ✓ Verifier</label>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn-sec" id="meet-modal-cancel">Cancel</button>
+            <button class="btn-pri" id="meet-modal-ok">Create Meeting</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1400,6 +1543,8 @@ function setTab(name){
   if(name==="proofs"){ if(selected) loadProofForQuestion(selected); else if(!pfProbs.length) loadProofs(); }
   if(name==="literature"){ if(selected) loadLiterature(selected); }
   if(name==="concepts"){ if(selected) loadConcepts(selected); }
+  if(name==="devlog"){ loadDevLog(); }
+  if(name==="meet"){ if(selected) loadMeetRooms(selected); }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -1611,6 +1756,7 @@ async function selectQuestion(qid, node, dataset){
   if(document.querySelector(".tab.active[data-tab='overview']") && ovData) renderOverview(ovData, qid);
   if(document.querySelector(".tab.active[data-tab='literature']")) loadLiterature(qid);
   if(document.querySelector(".tab.active[data-tab='concepts']")) loadConcepts(qid);
+  if(document.querySelector(".tab.active[data-tab='meet']")) loadMeetRooms(qid);
 }
 
 $("q-toggle").onclick=()=>{
@@ -1715,21 +1861,76 @@ function renderIssueThread(issue){
   $("iss-status-sel").value=issue.status;
   $("iss-status-msg").textContent="";
   const comments=$("iss-comments"); comments.innerHTML="";
+
+  // ── Metadata section: linked issues + documents ──────────────────────────
+  const linked=(issue.linked_issues||[]);
+  const docs=(issue.documents||[]);
+  if(linked.length || docs.length){
+    const meta=el("div");
+    meta.style.cssText="display:flex;flex-direction:column;gap:6px;padding:8px 12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);margin-bottom:4px;font-size:12px";
+    if(linked.length){
+      const row=el("div"); row.style.cssText="display:flex;align-items:center;gap:6px;flex-wrap:wrap";
+      row.innerHTML=`<span style="color:var(--muted);font-size:11px">Linked:</span>`;
+      for(const lk of linked){
+        const chip=el("span");
+        chip.style.cssText=`display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-size:11px`;
+        const relColor={blocks:"var(--red)",depends_on:"var(--amber)",resolves:"var(--green)",related:"var(--accent)"}[lk.relation]||"var(--muted)";
+        chip.innerHTML=`<span style="color:${relColor}">${esc(lk.relation)}</span>&nbsp;<span style="color:var(--accent);font-weight:600">${esc(lk.id)}</span>`;
+        chip.onclick=()=>{
+          const items=[...$("iss-list").querySelectorAll(".qitem")];
+          const m=items.find(i=>i.textContent.includes(lk.id));
+          if(m){ m.click(); return; }
+        };
+        row.appendChild(chip);
+      }
+      meta.appendChild(row);
+    }
+    if(docs.length){
+      const row=el("div"); row.style.cssText="display:flex;align-items:center;gap:6px;flex-wrap:wrap";
+      row.innerHTML=`<span style="color:var(--muted);font-size:11px">Docs:</span>`;
+      for(const doc of docs){
+        const chip=el("span");
+        chip.style.cssText="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-size:11px;color:var(--accent)";
+        const isMeet=doc.path&&doc.path.startsWith("__meet__");
+        chip.textContent=(isMeet?"🏛 ":"📄 ")+esc(doc.title||doc.path);
+        chip.onclick=()=>{
+          if(isMeet){
+            const parts=(doc.path||"").replace("__meet__","").split("/");
+            setTab("meet");
+            setTimeout(()=>{ if(parts[1]) loadMeetRoom(parts[0], parts[1]); }, 200);
+          } else {
+            setTab("documents");
+            const p=doc.path||"";
+            setTimeout(()=>{ loadQuestionDocs(p.split("/")[1]||selected, p.split("/").slice(2).join("/")); }, 200);
+          }
+        };
+        row.appendChild(chip);
+      }
+      meta.appendChild(row);
+    }
+    comments.appendChild(meta);
+  }
+
+  // ── Comments/notes thread ─────────────────────────────────────────────────
   for(const c of (issue.comments||[])){
     if(c.role==="event"){
-      // Render as a compact event chip — not a full card
       const chip=el("div","iss-event-chip");
       chip.style.cssText="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:var(--muted)";
       chip.innerHTML=`<span style="flex:1;border-top:1px solid var(--border)"></span><span style="white-space:nowrap;padding:0 8px">${marked.parseInline(c.body||"")}</span><span style="font-size:10px">${esc((c.created_at||"").slice(0,16).replace("T"," "))}</span><span style="flex:1;border-top:1px solid var(--border)"></span>`;
       comments.appendChild(chip);
     } else {
       const card=el("div","card");
+      const isNote=c.role==="note";
+      if(isNote){
+        card.style.cssText="background:rgba(210,160,40,.07);border-left:3px solid var(--amber);border-radius:8px;padding:10px 14px;margin:2px 0";
+      }
       const color=agentColor(c.author);
-      const roleLabel=c.role==="agent"?"agent":"human";
+      const roleLabel=isNote?"note":(c.role==="agent"?"agent":"human");
+      const rolePillColor=isNote?"var(--amber)":(c.role==="agent"?"var(--accent)":"var(--muted)");
       card.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="width:22px;height:22px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0d1117">${esc((c.author||"?")[0].toUpperCase())}</span>
+        ${isNote?`<span style="font-size:14px">📌</span>`:`<span style="width:22px;height:22px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0d1117">${esc((c.author||"?")[0].toUpperCase())}</span>`}
         <span style="font-weight:600;font-size:12px;color:${color}">${esc(c.author)}</span>
-        <span class="pill" style="font-size:10px;padding:1px 5px">${roleLabel}</span>
+        <span class="pill" style="font-size:10px;padding:1px 5px;color:${rolePillColor};border-color:${rolePillColor}40">${roleLabel}</span>
         <span class="muted" style="font-size:11px;margin-left:auto">${esc((c.created_at||"").slice(0,16).replace("T"," "))}</span>
       </div>`;
       const body=el("div","body"); renderContent(body, c.body); card.appendChild(body);
@@ -3009,7 +3210,271 @@ async function loadConcepts(qid){
   } catch(e){ $("con-status").textContent="Error loading"; }
 }
 
+// ─── Dev Log Tab ─────────────────────────────────────────────────────────────
+
+async function loadDevLog(){
+  const list=$("dl-list"), empty=$("dl-empty");
+  list.innerHTML="<div class='muted' style='font-size:12px;padding:8px'>Loading…</div>";
+  empty.style.display="none";
+  try{
+    const r=await fetch("/api/devlog");
+    const data=await r.json();
+    const entries=data.entries||[];
+    list.innerHTML="";
+    if(!entries.length){ list.style.display="none"; empty.style.display="block"; return; }
+    list.style.display="flex";
+    entries.forEach(e=>{
+      const card=document.createElement("div");
+      card.className="card";
+      card.style.cssText="padding:12px 16px;border-left:3px solid var(--accent)";
+      const files=e.files_changed&&e.files_changed.length
+        ?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${e.files_changed.map(f=>`<span class="pill" style="font-family:'SF Mono',Menlo,monospace;font-size:10px">${esc(f)}</span>`).join("")}</div>`
+        :"";
+      card.innerHTML=`
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700;color:var(--text)">${esc(e.title)}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:auto;white-space:nowrap">${esc(e.timestamp)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
+          <span style="color:var(--accent2);font-weight:600">${esc(e.signature)}</span>
+        </div>
+        <div style="font-size:12px;line-height:1.6;color:var(--text)">${esc(e.description)}</div>
+        ${files}
+      `;
+      list.appendChild(card);
+    });
+  } catch(err){ list.innerHTML=`<div class='muted' style='font-size:12px;padding:8px'>Error loading log: ${esc(err.message)}</div>`; }
+}
+
+$("dl-refresh").onclick=loadDevLog;
+
 init();
+
+// ============================================================
+// ---- Virtual Meet ----
+// ============================================================
+const MEET_PERSONAS = {
+  coordinator:{color:"#f78166",icon:"🎯"},
+  "solver-agent":{color:"#3fb950",icon:"🔧"},
+  "critic-agent":{color:"#ffa657",icon:"🔍"},
+  "verifier-agent":{color:"#d2a8ff",icon:"✓"},
+  human:{color:"#58a6ff",icon:"👤"},
+};
+let meetSelectedRoom = null;
+let meetAgentEs = null;
+let _meetAutoQueue = [];
+
+function meetPersonaColor(n){ return (MEET_PERSONAS[n]||{}).color||"#8b949e"; }
+function meetPersonaIcon(n){ return (MEET_PERSONAS[n]||{}).icon||"?"; }
+
+async function loadMeetRooms(qid){
+  $("meet-empty").style.display="none";
+  $("meet-body").style.display="flex";
+  let rooms=[];
+  try{ const d=await (await fetch(`/api/meets/${encodeURIComponent(qid)}`)).json(); rooms=d.rooms||[]; }catch(e){}
+  const list=$("meet-room-list"); list.innerHTML="";
+  for(const r of rooms){
+    const it=el("div","qitem");
+    const statusColor={open:"var(--accent)",planned:"var(--amber)",done:"var(--green)"}[r.status]||"var(--muted)";
+    const msgCount=(r.messages||[]).filter(m=>m.role!=="event").length;
+    it.innerHTML=`<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.topic)}</div>
+      <div style="display:flex;gap:5px;margin-top:3px;align-items:center">
+        <span style="width:7px;height:7px;border-radius:50%;background:${statusColor};display:inline-block"></span>
+        <span style="font-size:10px;color:var(--muted)">${esc(r.status)} · ${msgCount} msg${msgCount!==1?"s":""}</span>
+      </div>`;
+    it.onclick=()=>{ document.querySelectorAll("#meet-room-list .qitem").forEach(e=>e.classList.remove("active")); it.classList.add("active"); openMeetRoom(r); };
+    list.appendChild(it);
+  }
+  if(!rooms.length) list.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:12px 4px">No meetings yet. Click <b>+ New Meeting</b>.</div>`;
+}
+
+function openMeetRoom(room){
+  meetSelectedRoom=room;
+  $("meet-room-empty").style.display="none";
+  $("meet-room-view").style.display="flex";
+  $("meet-room-topic").textContent=room.topic;
+  $("meet-room-goal").textContent=room.goal||"";
+  const statusColor={open:"var(--accent)",planned:"var(--amber)",done:"var(--green)"}[room.status]||"var(--muted)";
+  $("meet-room-status-badge").textContent=room.status;
+  $("meet-room-status-badge").style.color=statusColor;
+  // Participants chips
+  const pp=$("meet-participants"); pp.innerHTML="";
+  for(const p of (room.participants||[])){
+    const chip=el("span","meet-persona-chip");
+    chip.style.borderColor=meetPersonaColor(p);
+    chip.innerHTML=`${meetPersonaIcon(p)} ${esc(p)}`;
+    pp.appendChild(chip);
+  }
+  // Turn buttons
+  const tb=$("meet-turn-btns"); tb.innerHTML="";
+  for(const p of (room.participants||[]).filter(x=>x!=="human")){
+    const btn=el("button","btn-sec");
+    btn.style.cssText=`font-size:11px;padding:3px 8px;border-color:${meetPersonaColor(p)};margin-bottom:2px`;
+    btn.innerHTML=`${meetPersonaIcon(p)} ${esc(p)}`;
+    btn.onclick=()=>runMeetTurn(p);
+    tb.appendChild(btn);
+  }
+  renderMeetMessages(room);
+  renderMeetPlan(room);
+}
+
+function renderMeetMessages(room){
+  const wrap=$("meet-messages"); wrap.innerHTML="";
+  for(const m of (room.messages||[])){
+    if(m.role==="event"){
+      const chip=el("div","meet-msg-event");
+      chip.innerHTML=`<span style="flex:1;border-top:1px solid var(--border)"></span><span style="padding:0 8px;white-space:nowrap">${marked.parseInline(m.body||"")}</span><span style="font-size:10px">${esc((m.created_at||"").slice(0,16).replace("T"," "))}</span><span style="flex:1;border-top:1px solid var(--border)"></span>`;
+      wrap.appendChild(chip);
+    } else {
+      const card=el("div","meet-msg-card");
+      const color=meetPersonaColor(m.author);
+      card.innerHTML=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+        <span style="width:24px;height:24px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${meetPersonaIcon(m.author)}</span>
+        <span style="font-weight:700;font-size:12px;color:${color}">${esc(m.author)}</span>
+        <span class="muted" style="font-size:11px;margin-left:auto">${esc((m.created_at||"").slice(0,16).replace("T"," "))}</span>
+      </div>`;
+      const body=el("div","body"); renderContent(body, m.body||""); card.appendChild(body);
+      wrap.appendChild(card);
+    }
+  }
+  wrap.scrollTop=wrap.scrollHeight;
+}
+
+function renderMeetPlan(room){
+  const plan=room.plan;
+  $("meet-plan-empty").style.display=plan?"none":"block";
+  $("meet-plan-status").textContent=plan?(plan.status||"pending"):"";
+  const wrap=$("meet-plan-steps"); wrap.innerHTML="";
+  if(!plan) return;
+  const executed=(plan.executed_steps||[]).map(e=>e.step);
+  for(const step of (plan.steps||[])){
+    const done=executed.includes(step.idx);
+    const card=el("div","meet-step-card"+(done?" done":""));
+    const agentColor=meetPersonaColor(step.agent||"solver-agent");
+    const runBtn=el("button","btn-sec");
+    runBtn.style.cssText="font-size:10px;padding:2px 7px;float:right;margin-left:6px";
+    runBtn.textContent=done?"✅ Done":"▶ Run";
+    runBtn.disabled=done;
+    if(!done) runBtn.onclick=()=>runMeetStep(step.idx);
+    card.innerHTML=`<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
+      <span style="font-size:10px;font-weight:700;color:var(--muted)">Step ${(step.idx||0)+1}</span>
+      <span style="font-size:11px;color:${agentColor}">${meetPersonaIcon(step.agent||"solver-agent")} ${esc(step.agent||"solver-agent")}</span>
+    </div>
+    <div style="font-size:12px;font-weight:600;margin-bottom:3px">${esc(step.title||"")}</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.4">${esc((step.body||"").slice(0,140))}${(step.body||"").length>140?"…":""}</div>`;
+    card.prepend(runBtn);
+    wrap.appendChild(card);
+  }
+  if(plan.summary){
+    const s=el("div"); s.style.cssText="font-size:12px;color:var(--muted);padding:6px 8px;border-top:1px solid var(--border);margin-top:4px";
+    s.textContent=plan.summary; wrap.appendChild(s);
+  }
+}
+
+async function refreshMeetRoom(){
+  if(!meetSelectedRoom||!selected) return;
+  try{
+    const room=await (await fetch(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}`)).json();
+    meetSelectedRoom=room;
+    renderMeetMessages(room);
+    renderMeetPlan(room);
+    const statusColor={open:"var(--accent)",planned:"var(--amber)",done:"var(--green)"}[room.status]||"var(--muted)";
+    $("meet-room-status-badge").textContent=room.status;
+    $("meet-room-status-badge").style.color=statusColor;
+  }catch(e){}
+}
+
+// ---- SSE runner for meet agents ----
+function meetRunSse(endpoint, label){
+  if(meetAgentEs){ meetAgentEs.close(); meetAgentEs=null; }
+  const bar=$("meet-agent-bar"), logEl=$("meet-agent-log");
+  bar.style.display="flex"; $("meet-agent-label").textContent=label;
+  $("meet-agent-status").textContent=""; logEl.textContent="";
+  const es=new EventSource(endpoint); meetAgentEs=es;
+  es.onmessage=async(ev)=>{
+    try{
+      const d=JSON.parse(ev.data);
+      if(d.type==="text_delta"||d.type==="thinking_delta") logEl.textContent+=d.data.text||"";
+      if(d.type==="status") $("meet-agent-status").textContent=d.data.label||"";
+      if(d.type==="error") logEl.textContent+="\n[ERROR] "+(d.data.message||"");
+      if(d.type==="done"){
+        es.close(); meetAgentEs=null; bar.style.display="none";
+        await refreshMeetRoom();
+        await loadMeetRooms(selected);
+        if(_meetAutoQueue.length){ const next=_meetAutoQueue.shift(); setTimeout(()=>next(),400); }
+      }
+    }catch(e){}
+  };
+  es.onerror=()=>{ es.close(); meetAgentEs=null; bar.style.display="none"; };
+}
+
+function runMeetTurn(p){
+  if(!meetSelectedRoom||!selected) return;
+  const rid=Math.random().toString(36).slice(2);
+  meetRunSse(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/turn/${encodeURIComponent(p)}?run_id=${rid}`,`${meetPersonaIcon(p)} ${p} speaking…`);
+}
+
+function runMeetSynthesize(){
+  if(!meetSelectedRoom||!selected) return;
+  const rid=Math.random().toString(36).slice(2);
+  meetRunSse(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/synthesize?run_id=${rid}`,"📋 Synthesizing plan…");
+}
+
+function runMeetStep(idx){
+  if(!meetSelectedRoom||!selected) return;
+  const rid=Math.random().toString(36).slice(2);
+  meetRunSse(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/execute/${idx}?run_id=${rid}`,`▶ Executing step ${idx+1}…`);
+}
+
+// Auto-round: run all non-human participants in sequence
+$("meet-auto-btn").onclick=()=>{
+  if(!meetSelectedRoom) return;
+  const parts=(meetSelectedRoom.participants||[]).filter(p=>p!=="human");
+  if(!parts.length) return;
+  _meetAutoQueue=parts.slice(1).map(p=>()=>runMeetTurn(p));
+  runMeetTurn(parts[0]);
+};
+
+$("meet-synth-btn").onclick=runMeetSynthesize;
+
+// Post human message
+$("meet-post-btn").onclick=async()=>{
+  if(!meetSelectedRoom||!selected) return;
+  const body=$("meet-reply").value.trim(); if(!body) return;
+  $("meet-post-btn").disabled=true; $("meet-post-status").textContent="posting…";
+  await fetch(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/message`,{
+    method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({author:"human",body}),
+  });
+  $("meet-reply").value=""; $("meet-post-btn").disabled=false; $("meet-post-status").textContent="";
+  await refreshMeetRoom();
+};
+
+$("meet-agent-stop").onclick=()=>{ if(meetAgentEs){meetAgentEs.close();meetAgentEs=null;} $("meet-agent-bar").style.display="none"; _meetAutoQueue=[]; };
+$("meet-agent-toggle-log").onclick=()=>{
+  const w=$("meet-agent-log-wrap"), show=w.style.display!=="block";
+  w.style.display=show?"block":"none";
+  $("meet-agent-toggle-log").textContent=show?"Hide log":"Show log";
+};
+
+// New meeting modal
+$("meet-new-btn").onclick=()=>{ $("meet-modal").style.display="flex"; $("meet-new-topic").value=""; $("meet-new-goal").value=""; };
+$("meet-modal-cancel").onclick=()=>$("meet-modal").style.display="none";
+$("meet-modal-ok").onclick=async()=>{
+  if(!selected) return;
+  const topic=$("meet-new-topic").value.trim(); if(!topic) return;
+  const goal=$("meet-new-goal").value.trim();
+  const parts=[...$("meet-new-parts").querySelectorAll("input[type=checkbox]:checked")].map(c=>c.value);
+  $("meet-modal-ok").disabled=true;
+  const room=await (await fetch(`/api/meets/${encodeURIComponent(selected)}`,{
+    method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({topic,goal,participants:parts.length?parts:null}),
+  })).json();
+  $("meet-modal").style.display="none"; $("meet-modal-ok").disabled=false;
+  await loadMeetRooms(selected);
+  openMeetRoom(room);
+  const items=[...$("meet-room-list").querySelectorAll(".qitem")];
+  const last=items[items.length-1]; if(last)last.classList.add("active");
+};
 </script>
 </body>
 </html>

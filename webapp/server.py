@@ -28,9 +28,9 @@ from .dataset_store import (
     get_problem as ds_get_problem, compute_solvability_scores, get_solvability_scores,
     _validate_slug, _validate_id,
 )
-from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof
+from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof, run_discussion_agent, generate_issue_summary
 from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
-from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log
+from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log, link_issue, add_issue_document
 from .meet import (
     create_room as meet_create, get_room as meet_get, list_rooms as meet_list,
     post_message as meet_post_message, set_plan as meet_set_plan,
@@ -45,6 +45,7 @@ from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
 from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
 from .literature import load_index as lit_load, add_paper as lit_add, update_paper as lit_update, delete_paper as lit_delete, discover_literature, ensure_all_lit
 from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
+from .devlog import read_log as devlog_read, append_entry as devlog_append
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -354,6 +355,150 @@ def log_activity(problem_id: str, payload: dict = Body(...), dataset: str = Quer
     append_activity(REPO_ROOT, problem_id, str(payload.get("entry", "")),
                     agent=str(payload.get("agent", "solver-agent")), dataset=ds)
     return JSONResponse({"ok": True})
+
+
+@app.post("/api/issues/{problem_id}/{issue_id}/note")
+def add_note_ep(problem_id: str, issue_id: str, payload: dict = Body(...), dataset: str = Query(None)) -> JSONResponse:
+    ds = _ds_from_query(dataset)
+    issue = add_comment(
+        REPO_ROOT, problem_id, issue_id,
+        author=str(payload.get("author", "human")),
+        body=str(payload.get("body", "")),
+        dataset=ds,
+        role="note",
+    )
+    if issue is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(issue)
+
+
+@app.post("/api/issues/{problem_id}/{issue_id}/link")
+def link_issue_ep(problem_id: str, issue_id: str, payload: dict = Body(...), dataset: str = Query(None)) -> JSONResponse:
+    ds = _ds_from_query(dataset)
+    issue = link_issue(
+        REPO_ROOT, problem_id, issue_id,
+        target_id=str(payload.get("target_id", "")),
+        target_dataset=payload.get("target_dataset"),
+        relation=str(payload.get("relation", "related")),
+        added_by=str(payload.get("added_by", "human")),
+        dataset=ds,
+    )
+    if issue is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(issue)
+
+
+@app.get("/api/issues/{problem_id}/{issue_id}/discuss")
+def discuss_issue_ep(
+    problem_id: str,
+    issue_id: str,
+    dataset: str = Query(None),
+    n_turns: int = Query(3),
+    run_id: str = Query(""),
+) -> StreamingResponse:
+    ds = _ds_from_query(dataset)
+    rid = run_id or uuid.uuid4().hex
+    handle = REGISTRY.register(rid, {"kind": "discuss", "problem": problem_id, "issue": issue_id})
+
+    def _gen():
+        for ev in run_discussion_agent(REPO_ROOT, problem_id, issue_id, ds, n_turns=n_turns, handle=handle):
+            yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
+        REGISTRY.unregister(rid)
+
+    return StreamingResponse(_gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/issues/{problem_id}/{issue_id}/generate-doc")
+def generate_doc_ep(
+    problem_id: str,
+    issue_id: str,
+    dataset: str = Query(None),
+) -> JSONResponse:
+    ds = _ds_from_query(dataset)
+    result = generate_issue_summary(REPO_ROOT, problem_id, issue_id, ds)
+    if "error" in result:
+        return JSONResponse(result, status_code=404)
+    return JSONResponse(result)
+
+
+@app.post("/api/meets/{problem_id}/from-issue/{issue_id}")
+def create_meet_from_issue(
+    problem_id: str,
+    issue_id: str,
+    payload: dict = Body(default={}),
+    dataset: str = Query(None),
+) -> JSONResponse:
+    """Create a meeting room seeded with the issue context, and link them."""
+    ds = _ds_from_query(dataset)
+    issue = get_issue(REPO_ROOT, problem_id, issue_id, ds)
+    if issue is None:
+        return JSONResponse({"error": "issue not found"}, status_code=404)
+    topic = str(payload.get("topic", f"Discuss: {issue.get('title', issue_id)[:60]}"))
+    goal = str(payload.get("goal", "Agree on a concrete resolution strategy."))
+    room = meet_create(REPO_ROOT, problem_id, topic=topic, goal=goal)
+    # Embed issue reference in room and link back
+    room["issue_id"] = issue_id
+    room["issue_dataset"] = ds
+    import json as _json
+    (REPO_ROOT / "webapp" / "meets" / problem_id / f"{room['id']}.json").write_text(
+        _json.dumps(room, indent=2), encoding="utf-8"
+    )
+    # Record the meeting link on the issue
+    issue = add_issue_document(
+        REPO_ROOT, problem_id, issue_id,
+        title=f"Meeting: {topic[:50]}",
+        path=f"__meet__{problem_id}/{room['id']}",
+        created_by="system",
+        dataset=ds,
+    )
+    return JSONResponse({"room": room, "issue": issue})
+
+
+@app.post("/api/meets/{problem_id}/{room_id}/save-to-issue")
+def meet_save_to_issue(
+    problem_id: str,
+    room_id: str,
+    payload: dict = Body(default={}),
+    dataset: str = Query(None),
+) -> JSONResponse:
+    """Save meeting synthesis/transcript as a document linked to an issue."""
+    ds = _ds_from_query(dataset)
+    room = meet_get(REPO_ROOT, problem_id, room_id)
+    if room is None:
+        return JSONResponse({"error": "room not found"}, status_code=404)
+    issue_id = str(payload.get("issue_id", room.get("issue_id", "")))
+    if not issue_id:
+        return JSONResponse({"error": "no issue_id"}, status_code=400)
+
+    # Build a markdown document from the room transcript + plan
+    from .meet import transcript_text
+    lines = [
+        f"# Meeting Notes: {room.get('topic', room_id)}",
+        f"**Goal:** {room.get('goal', '')}",
+        "",
+        "## Discussion Transcript",
+        transcript_text(room),
+    ]
+    plan = room.get("plan")
+    if plan:
+        lines += ["", "## Action Plan", plan.get("summary", "")]
+        for i, step in enumerate(plan.get("steps", []), 1):
+            done = "✅" if step.get("done") else "⬜"
+            lines.append(f"{i}. {done} {step.get('description', '')}")
+
+    doc_text = "\n".join(lines)
+    doc_dir = REPO_ROOT / "documents" / "questions" / problem_id / "meets"
+    doc_dir.mkdir(parents=True, exist_ok=True)
+    doc_path = doc_dir / f"{room_id}-notes.md"
+    doc_path.write_text(doc_text, encoding="utf-8")
+
+    rel_path = f"questions/{problem_id}/meets/{room_id}-notes.md"
+    title = f"Meeting Notes — {room.get('topic', room_id)[:50]}"
+    updated_issue = add_issue_document(
+        REPO_ROOT, problem_id, issue_id, title, rel_path, created_by="system", dataset=ds
+    )
+    return JSONResponse({"ok": True, "path": rel_path, "issue": updated_issue})
 
 
 # legacy single-issue endpoints kept for backward compatibility
@@ -1367,6 +1512,13 @@ def concepts_generate_ep(problem_id: str) -> StreamingResponse:
 
     return StreamingResponse(_gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ── Dev Log ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/devlog")
+def devlog_list() -> JSONResponse:
+    return JSONResponse({"entries": devlog_read(REPO_ROOT)})
 
 
 # Serve the SPA. Mounted last so /api/* routes take precedence.
