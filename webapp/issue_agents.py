@@ -541,7 +541,8 @@ def generate_issue_summary(
 
     rel_path = f"questions/{problem_id}/issues/{issue_id}-summary.md"
     title = f"Discussion Summary — {(issue.get('title') or issue_id)[:50]}"
-    updated = add_issue_document(repo_root, problem_id, issue_id, title, rel_path, dataset=dataset)
+    updated = add_issue_document(repo_root, problem_id, issue_id, title, rel_path,
+                                 created_by="document-manager", dataset=dataset)
     return {"ok": True, "path": rel_path, "title": title, "issue": updated}
 
 

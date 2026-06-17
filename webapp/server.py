@@ -31,6 +31,7 @@ from .dataset_store import (
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof, run_discussion_agent, generate_issue_summary
 from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
 from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log, link_issue, add_issue_document
+from .todos import list_todos, create_todo, update_todo, delete_todo
 from .meet import (
     create_room as meet_create, get_room as meet_get, list_rooms as meet_list,
     post_message as meet_post_message, set_plan as meet_set_plan,
@@ -449,7 +450,7 @@ def create_meet_from_issue(
         REPO_ROOT, problem_id, issue_id,
         title=f"Meeting: {topic[:50]}",
         path=f"__meet__{problem_id}/{room['id']}",
-        created_by="system",
+        created_by="document-manager",
         dataset=ds,
     )
     return JSONResponse({"room": room, "issue": issue})
@@ -496,7 +497,7 @@ def meet_save_to_issue(
     rel_path = f"questions/{problem_id}/meets/{room_id}-notes.md"
     title = f"Meeting Notes — {room.get('topic', room_id)[:50]}"
     updated_issue = add_issue_document(
-        REPO_ROOT, problem_id, issue_id, title, rel_path, created_by="system", dataset=ds
+        REPO_ROOT, problem_id, issue_id, title, rel_path, created_by="document-manager", dataset=ds
     )
     return JSONResponse({"ok": True, "path": rel_path, "issue": updated_issue})
 
@@ -673,6 +674,87 @@ def meet_execute_step(problem_id: str, room_id: str, step_idx: int, run_id: str 
             yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+@app.get("/api/todos/{problem_id}")
+def get_todos(problem_id: str) -> JSONResponse:
+    return JSONResponse({"todos": list_todos(REPO_ROOT, problem_id)})
+
+
+@app.post("/api/todos/{problem_id}")
+def add_todo(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+    item = create_todo(
+        REPO_ROOT, problem_id,
+        title=str(payload.get("title", "")),
+        priority=str(payload.get("priority", "medium")),
+        note=str(payload.get("note", "")),
+        action_tab=str(payload.get("action_tab", "")),
+        action_target=str(payload.get("action_target", "")),
+    )
+    return JSONResponse(item)
+
+
+@app.patch("/api/todos/{problem_id}/{todo_id}")
+def patch_todo(problem_id: str, todo_id: str, payload: dict = Body(...)) -> JSONResponse:
+    item = update_todo(REPO_ROOT, problem_id, todo_id, **payload)
+    if item is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(item)
+
+
+@app.delete("/api/todos/{problem_id}/{todo_id}")
+def remove_todo(problem_id: str, todo_id: str) -> JSONResponse:
+    ok = delete_todo(REPO_ROOT, problem_id, todo_id)
+    return JSONResponse({"ok": ok})
+
+
+@app.get("/api/q-detail/{problem_id}")
+def question_detail(problem_id: str) -> JSONResponse:
+    """Rich per-question data for the overview dashboard."""
+    pid = problem_id
+    issues = list_issues(REPO_ROOT, pid)
+    open_issues = [
+        {"id": i["id"], "title": i.get("title", ""), "status": i.get("status", ""), "labels": i.get("labels", [])}
+        for i in issues if i.get("status") in ("open", "in_progress")
+    ]
+    activity = get_activity_log(REPO_ROOT, pid, limit=8)
+    # Best proof
+    best_proof: dict = {}
+    try:
+        bp = get_best_proof(pid)
+        if bp:
+            best_proof = {
+                "verified": bool(bp.get("verification_passed")),
+                "issue_count": bp.get("issue_count"),
+                "model": bp.get("model", ""),
+                "date": bp.get("date", "") or bp.get("created_at", ""),
+            }
+    except Exception:  # noqa: BLE001
+        pass
+    # Document availability
+    qdir = REPO_ROOT / "documents" / "questions" / pid
+    docs = {
+        "overview": (qdir / "overview.md").is_file(),
+        "timeline": (qdir / "timeline.md").is_file(),
+        "progress": (qdir / "progress.md").is_file(),
+        "strategies": (qdir / "strategies.md").is_file(),
+    }
+    # Strategies excerpt (first 800 chars of strategies.md for quick display)
+    strategy_excerpt = ""
+    strategies_path = qdir / "strategies.md"
+    if strategies_path.is_file():
+        try:
+            strategy_excerpt = strategies_path.read_text(encoding="utf-8", errors="replace")[:800]
+        except Exception:  # noqa: BLE001
+            pass
+    return JSONResponse({
+        "open_issues": open_issues,
+        "recent_activity": activity,
+        "best_proof": best_proof,
+        "docs": docs,
+        "strategy_excerpt": strategy_excerpt,
+        "user_todos": list_todos(REPO_ROOT, pid),
+    })
 
 
 @app.get("/api/meets/personas")
@@ -1145,12 +1227,37 @@ def overview_ep() -> JSONResponse:
             solvability_pct = accuracy_pct
         else:
             solvability_pct = None
+        # Extra fields for per-question dashboard
+        last_model = ""
+        mem_path = REPO_ROOT / "documents" / "strategy_memory.jsonl"
+        if mem_path.is_file():
+            for line in reversed(mem_path.read_text(encoding="utf-8", errors="replace").splitlines()):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    e = json.loads(line)
+                    if e.get("problem_id") == pid:
+                        last_model = e.get("model", "")
+                        break
+                except Exception:  # noqa: BLE001
+                    continue
+        # Check if critic has ever run (has a critic-agent comment in any issue)
+        has_critic_run = False
+        for iss in list_issues(REPO_ROOT, pid):
+            if any(c.get("author") == "critic-agent" for c in iss.get("comments", [])):
+                has_critic_run = True
+                break
         question_summaries.append({
             **qs,
             "issue_stats": ist,
             "proof_status": proof_status,
             "accuracy_pct": accuracy_pct,
             "solvability_pct": solvability_pct,
+            "best_issues": best_issues if best_issues < 99 else None,
+            "best_verified": best_verified,
+            "last_model": last_model,
+            "has_critic_run": has_critic_run,
         })
 
     return JSONResponse({
