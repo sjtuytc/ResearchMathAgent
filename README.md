@@ -11,6 +11,8 @@
 
 **Language:** English | [中文](README_zh.md)
 
+![Web UI Overview](figures/web1.png)
+
 </div>
 
 ---
@@ -70,9 +72,6 @@ rma solve q6 --model-name claude-opus-4-8
 # 4. Launch the web UI
 python -m webapp          # → http://127.0.0.1:8000
 ```
-
-![Web UI Overview](figures/web1.png)
-*Overview tab: problem listing, solvability metrics, solver status, and daily worker controls.*
 
 ---
 
