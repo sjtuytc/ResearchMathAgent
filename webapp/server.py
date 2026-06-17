@@ -22,6 +22,7 @@ import uuid
 
 from .agent import DEFAULT_MODEL, AgentConfig, run_agent, run_agent_vertex
 from .claude_code import claude_code_available, run_claude_code_agent
+from .vertex import vertex_status
 from .documents import list_documents, read_document
 from .dataset_store import (
     list_datasets, get_dataset_meta, list_problems as ds_list_problems,
@@ -51,6 +52,24 @@ from .devlog import read_log as devlog_read, append_entry as devlog_append
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 _PROBLEM_RE = re.compile(r"^q(?:10|[1-9])$")
+
+
+def _default_provider() -> str:
+    if vertex_status()["available"]:
+        return "vertex"
+    if claude_code_available():
+        return "claude-code"
+    return "api"
+
+
+def _capabilities_payload() -> dict:
+    return {
+        "claude_code": bool(claude_code_available()),
+        "vertex": vertex_status(),
+        "latex": bool(latex_available()),
+        "default_provider": _default_provider(),
+        "default_model": DEFAULT_MODEL,
+    }
 
 _Q_TITLES = {
     "q1":  "Stochastic Analysis — Φ⁴₃ measure equivalence (Hairer)",
@@ -193,7 +212,7 @@ def list_problems() -> JSONResponse:
     if problems_dir.is_dir():
         for tex in sorted(problems_dir.glob("q*.tex"), key=_problem_sort_key):
             items.append({"id": tex.stem, "title": _extract_title(tex)})
-    return JSONResponse({"problems": items, "claude_code": bool(claude_code_available())})
+    return JSONResponse({"problems": items, **_capabilities_payload()})
 
 
 # ── Multi-dataset API ────────────────────────────────────────────────────────
@@ -238,7 +257,7 @@ def api_ds_problems(
         min_solvability=min_solvability, max_solvability=max_solvability,
         search=search,
     )
-    return JSONResponse({"problems": problems, "claude_code": bool(claude_code_available())})
+    return JSONResponse({"problems": problems, **_capabilities_payload()})
 
 
 @app.get("/api/ds/problem/{dataset}/{problem_id}")
@@ -766,13 +785,13 @@ def get_personas() -> JSONResponse:
 def solve(
     problem: str = Query(..., description="Problem id, e.g. q6"),
     model: str = Query(""),
-    provider: str = Query("claude-code", description="claude-code | api | vertex"),
+    provider: str = Query("", description="claude-code | api | vertex (default: auto)"),
     thinking: int = Query(1),
     run_id: str = Query(""),
     gcp_project: str = Query("", description="GCP project ID for Vertex AI provider"),
 ) -> StreamingResponse:
     return StreamingResponse(
-        _sse(problem, model, provider, bool(thinking), run_id or uuid.uuid4().hex, gcp_project=gcp_project),
+        _sse(problem, model, provider or _default_provider(), bool(thinking), run_id or uuid.uuid4().hex, gcp_project=gcp_project),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -961,8 +980,7 @@ def final_proof_file(file_path: str) -> FileResponse:
 
 @app.get("/api/capabilities")
 def capabilities() -> JSONResponse:
-    return JSONResponse({"claude_code": bool(claude_code_available()),
-                         "latex": bool(latex_available())})
+    return JSONResponse(_capabilities_payload())
 
 
 _FINAL_PROOFS_PATH = (

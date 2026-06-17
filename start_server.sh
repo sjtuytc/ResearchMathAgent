@@ -10,6 +10,8 @@ PORT="${RMA_PORT:-8000}"
 HOST="${RMA_HOST:-0.0.0.0}"
 
 cd "$ROOT"
+# shellcheck source=/dev/null
+source "$ROOT/scripts/ensure_webapp_deps.sh"
 
 echo "[prod] ResearchMathAgent production server on ${HOST}:${PORT}"
 echo "[prod] Run deploy.sh to apply code changes to production."

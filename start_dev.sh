@@ -9,6 +9,8 @@ PORT="${RMA_DEV_PORT:-8001}"
 HOST="${RMA_HOST:-0.0.0.0}"
 
 cd "$ROOT"
+# shellcheck source=/dev/null
+source "$ROOT/scripts/ensure_webapp_deps.sh"
 
 echo "[dev] ResearchMathAgent DEV server on ${HOST}:${PORT}"
 echo "[dev] Edits to Python/HTML files are reflected immediately (--reload)."

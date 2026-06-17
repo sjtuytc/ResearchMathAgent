@@ -268,7 +268,6 @@ MathJax = {
       <div class="tab" data-tab="literature">Literature</div>
       <div class="tab" data-tab="concepts">Concepts</div>
       <div class="tab" data-tab="devlog">Dev Log</div>
-      <div class="tab" data-tab="meet">Meet</div>
     </div>
 
     <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
@@ -281,14 +280,17 @@ MathJax = {
       </div>
 
       <!-- ── Focused question panel (shown when a question is selected) ── -->
+      <!-- ── Per-question rich dashboard ──────────────────────── -->
       <div id="ov-q-focus" style="display:none;margin-bottom:16px">
-        <div class="card" style="border-color:rgba(88,166,255,.5);background:rgba(88,166,255,.04)">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+
+        <!-- Header card -->
+        <div class="card" style="border-color:rgba(88,166,255,.5);background:rgba(88,166,255,.04);margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
             <span id="ov-qf-id" style="font-size:22px;font-weight:800;color:var(--accent)"></span>
-            <span id="ov-qf-title" style="font-size:13px;color:var(--text);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <span id="ov-qf-title" style="font-size:14px;color:var(--text);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
             <span id="ov-qf-status" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)"></span>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px">
             <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
               <div id="ov-qf-solv" style="font-size:20px;font-weight:700;color:var(--accent)">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:3px">solvability</div>
@@ -305,14 +307,78 @@ MathJax = {
               <div id="ov-qf-runs" style="font-size:20px;font-weight:700;color:var(--green)">—</div>
               <div style="font-size:10px;color:var(--muted);margin-top:3px">total runs</div>
             </div>
+            <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
+              <div id="ov-qf-best" style="font-size:20px;font-weight:700;color:var(--green)">—</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:3px">best issues</div>
+            </div>
           </div>
-          <div id="ov-qf-labels" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-sec" style="font-size:11px" onclick="setTab('documents')">Documents ↗</button>
-            <button class="btn-sec" style="font-size:11px" onclick="setTab('proofs')">Proof ↗</button>
-            <button class="btn-sec" style="font-size:11px" onclick="setTab('issue')">Issues ↗</button>
+          <div id="ov-qf-labels" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px"></div>
+          <!-- Quick actions -->
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn-sec" style="font-size:11px;padding:4px 11px" onclick="setTab('documents')">Documents ↗</button>
+            <button class="btn-sec" style="font-size:11px;padding:4px 11px" onclick="setTab('proofs')">Proof ↗</button>
+            <button class="btn-sec" style="font-size:11px;padding:4px 11px" onclick="setTab('issue')">Issues ↗</button>
+            <button class="btn-sec" style="font-size:11px;padding:4px 11px" onclick="setTab('meet')">Meet ↗</button>
+            <button id="ov-qf-discover-btn" class="btn-sec" style="font-size:11px;padding:4px 11px;margin-left:auto">Discover</button>
+            <button id="ov-qf-solve-btn" class="btn-sec" style="font-size:11px;padding:4px 11px">Solve</button>
+            <button id="ov-qf-verify-btn" class="btn-sec" style="font-size:11px;padding:4px 11px">Verify</button>
           </div>
         </div>
+
+        <!-- Two-column lower section -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+          <!-- Left: TODO list -->
+          <div class="card" style="margin:0;padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:700;flex:1">TODO List</span>
+              <button id="ov-todo-add-btn" style="font-size:11px;padding:2px 9px;background:var(--panel2);border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--text)">+ Add</button>
+            </div>
+            <!-- Add-todo inline form (hidden by default) -->
+            <div id="ov-todo-form" style="display:none;margin-bottom:8px;padding:8px;background:var(--panel2);border-radius:6px;border:1px solid var(--border)">
+              <input id="ov-todo-input" placeholder="Todo title…" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-size:12px;color:var(--text);margin-bottom:5px">
+              <div style="display:flex;gap:6px;align-items:center">
+                <select id="ov-todo-prio" style="font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 5px;color:var(--text)">
+                  <option value="high">High</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="low">Low</option>
+                </select>
+                <button onclick="ovTodoSubmit()" style="font-size:11px;padding:2px 10px;background:var(--accent);border:none;border-radius:4px;cursor:pointer;color:#fff">Add</button>
+                <button onclick="ovTodoCancel()" style="font-size:11px;padding:2px 8px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text)">Cancel</button>
+              </div>
+            </div>
+            <div id="ov-todo-list" style="display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto"></div>
+          </div>
+
+          <!-- Right: Proof progress + Issues summary -->
+          <div style="display:flex;flex-direction:column;gap:10px">
+
+            <!-- Proof progress -->
+            <div class="card" style="margin:0;padding:12px 14px">
+              <div style="font-size:12px;font-weight:700;margin-bottom:8px">Proof Progress</div>
+              <div id="ov-proof-bar-wrap" style="height:7px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-bottom:8px">
+                <div id="ov-proof-bar" style="height:100%;width:0;background:var(--green);border-radius:4px;transition:width .4s"></div>
+              </div>
+              <div id="ov-proof-details" style="font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px"></div>
+            </div>
+
+            <!-- Open issues -->
+            <div class="card" style="margin:0;padding:12px 14px;flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+                <span style="font-size:12px;font-weight:700;flex:1">Open Issues</span>
+                <button class="btn-sec" style="font-size:10px;padding:2px 8px" onclick="setTab('issue')">See all</button>
+              </div>
+              <div id="ov-open-issues" style="display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Full-width: Recent activity -->
+        <div class="card" style="margin-top:10px;padding:12px 14px">
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px">Recent Activity</div>
+          <div id="ov-qf-activity" style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto"></div>
+        </div>
+
       </div>
 
       <!-- ── Today's usage ─────────────────────────────────────── -->
@@ -947,13 +1013,29 @@ MathJax = {
   </div>
 </div>
 
+<div id="cmd-backdrop"></div>
+<div id="cmd-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div id="cmd-input-wrap">
+    <svg width=16 height=16 viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width=2><circle cx=6 cy=6 r=5/><path d='M10.5 10.5l4 4'/></svg>
+    <input id="cmd-input" type="text" placeholder="Search tabs, questions… or type /proof /agent /issue">
+    <span id="cmd-hint">ESC to close</span>
+  </div>
+  <div id="cmd-results"></div>
+  <div id="cmd-footer">
+    <span><kbd>↑↓</kbd> navigate</span>
+    <span><kbd>Enter</kbd> select</span>
+    <span><kbd>Ctrl K</kbd> toggle</span>
+    <span><kbd>ESC</kbd> close</span>
+  </div>
+</div>
+
 <script>
 const $=(id)=>document.getElementById(id);
 if(typeof pdfjsLib!=="undefined"){
   pdfjsLib.GlobalWorkerOptions.workerSrc=
     "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 }
-let problems=[], selected=null, selectedDataset="first_proof_1", claudeCode=false, es=null, runId=null;
+let problems=[], selected=null, selectedDataset="first_proof_1", claudeCode=false, vertexCfg={available:false,project:"",region:"global",model:"claude-opus-4-8"}, es=null, runId=null;
 let cur={text:null,think:null}; const toolCards={}; let lastArtifact=null;
 let tokenHistory=[], curTurnSep=null, curAssistantCard=null;
 let allDatasets=[];
@@ -1082,16 +1164,21 @@ async function init(){
     startOvRefresh();
     await loadDatasets();
     await loadProblems();
-    // provider options (from legacy endpoint)
+    // Provider options from server capabilities (Vertex ADC, Claude Code CLI, API)
     try{
-      const r=await fetch("/api/problems");
-      if(r.ok){const d=await r.json(); claudeCode=d.claude_code||false;}
+      const r=await fetch("/api/capabilities");
+      if(r.ok){
+        const d=await r.json();
+        claudeCode=d.claude_code||false;
+        vertexCfg=d.vertex||vertexCfg;
+      }
     }catch(_){}
     const prov=$("provider"); prov.innerHTML="";
+    if(vertexCfg.available) prov.appendChild(new Option("Google Cloud (Vertex AI)","vertex"));
     if(claudeCode) prov.appendChild(new Option("Claude Code (subscription)","claude-code"));
     prov.appendChild(new Option("Anthropic API","api"));
-    prov.appendChild(new Option("Google Cloud (Vertex AI)","vertex"));
-    prov.value=claudeCode?"claude-code":"api";
+    prov.value=vertexCfg.available?"vertex":(claudeCode?"claude-code":"api");
+    if(vertexCfg.project) $("gcp-project").value=vertexCfg.project;
     prov.onchange=onProviderChange; onProviderChange();
   }catch(e){
     $("qlist").innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed to load:<br>${esc(String(e))}<br><br>Is the server running?</div>`;
@@ -1101,13 +1188,16 @@ async function init(){
 
 function onProviderChange(){
   const p=$("provider").value;
-  $("model").value = p==="claude-code" ? "sonnet" : "claude-opus-4-8";
+  $("model").value = p==="claude-code" ? "sonnet" : (vertexCfg.model||"claude-opus-4-8");
   const isVertex = p==="vertex";
   $("gcp-project-wrap").style.display = isVertex ? "" : "none";
+  const autoProject = vertexCfg.project && $("gcp-project").value.trim()===vertexCfg.project;
   $("prov-note").innerHTML = p==="claude-code"
     ? "Runs the local <code>claude</code> CLI using your Pro/Max subscription — no API credits. Models: <code>sonnet</code>, <code>opus</code>, <code>haiku</code>."
     : isVertex
-    ? "Uses Claude on Google Cloud Vertex AI via ADC. Enter your GCP Project ID above. Run the ADC setup script first; optionally set <code>GOOGLE_CLOUD_REGION</code> on the server (default: <code>global</code>)."
+    ? (autoProject
+      ? `Uses Claude on Google Cloud Vertex AI via ADC (project <code>${esc(vertexCfg.project)}</code>, region <code>${esc(vertexCfg.region||"global")}</code>). Model: <code>claude-opus-4-8</code>.`
+      : "Uses Claude on Google Cloud Vertex AI via ADC. Enter your GCP Project ID above, or set <code>GOOGLE_CLOUD_PROJECT</code> on the server.")
     : "Uses the Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
 }
 
@@ -1189,6 +1279,7 @@ function renderDistBars(container, items, labelKey, colorFn){
 }
 
 let ovData=null;
+let _ovDetailPid=null; // which pid is currently loaded in the detail panel
 
 async function loadOverview(){
   let d;
@@ -1199,8 +1290,147 @@ async function loadOverview(){
 }
 
 function clearOvFilter(){
+  _ovDetailPid=null;
   renderOverview(ovData, null);
 }
+
+// ── Per-question rich detail ──────────────────────────────────────────────────
+
+async function loadQDetail(pid, qSummary){
+  _ovDetailPid=pid;
+  // Stub placeholders while loading
+  _renderTodoList([], pid);
+  _renderProofProgress(qSummary, null);
+  _renderOpenIssues([]);
+  _renderQActivity([]);
+  let detail;
+  try{ detail=await(await fetch(`/api/q-detail/${encodeURIComponent(pid)}`)).json(); }
+  catch(e){ return; }
+  if(_ovDetailPid!==pid) return; // navigated away
+  _renderTodoList(detail.user_todos||[], pid);
+  _renderProofProgress(qSummary, detail.best_proof||null);
+  _renderOpenIssues(detail.open_issues||[]);
+  _renderQActivity(detail.recent_activity||[]);
+}
+
+function _proofBarPct(qSummary, bestProof){
+  const status=qSummary&&qSummary.proof_status;
+  if(status==="verified") return 100;
+  if(bestProof&&bestProof.verified) return 90;
+  const best=qSummary&&qSummary.best_issues;
+  if(best!=null && best===0) return 80;
+  if(best!=null && best<=3) return 60;
+  const runs=qSummary&&qSummary.total_runs;
+  if(runs>5) return 30;
+  if(runs>0) return 15;
+  return 0;
+}
+
+function _renderProofProgress(qSummary, bestProof){
+  const bar=$("ov-proof-bar"), det=$("ov-proof-details");
+  if(!bar||!det) return;
+  const pct=_proofBarPct(qSummary, bestProof);
+  bar.style.width=pct+"%";
+  bar.style.background=pct>=80?"var(--green)":pct>=40?"var(--amber)":"var(--accent)";
+  const lines=[];
+  if(bestProof&&bestProof.verified) lines.push(`<span style="color:var(--green)">✓ Verified proof exists</span>`);
+  else if(bestProof) lines.push(`<span style="color:var(--amber)">⚠ Best proof: ${bestProof.issue_count!=null?bestProof.issue_count+" issues":"unverified"}</span>`);
+  else lines.push(`<span style="color:var(--muted)">No proof attempt yet</span>`);
+  if(bestProof&&bestProof.model) lines.push(`<span style="color:var(--muted)">Model: ${esc(bestProof.model)}</span>`);
+  if(qSummary&&qSummary.total_runs) lines.push(`<span style="color:var(--muted)">${qSummary.total_runs} total run${qSummary.total_runs!==1?"s":""}</span>`);
+  if(qSummary&&qSummary.last_model) lines.push(`<span style="color:var(--muted)">Last: ${esc(qSummary.last_model)}</span>`);
+  det.innerHTML=lines.join("<br>");
+}
+
+function _renderOpenIssues(issues){
+  const el=$("ov-open-issues"); if(!el) return;
+  if(!issues.length){ el.innerHTML=`<span style="color:var(--muted);font-size:11px">No open issues</span>`; return; }
+  const statusChip={open:"<span style='color:var(--accent)'>●</span>",in_progress:"<span style='color:var(--amber)'>◑</span>"};
+  el.innerHTML=issues.slice(0,8).map(i=>`
+    <div style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:var(--panel2);border-radius:5px;cursor:pointer;font-size:11px"
+         onclick="setTab('issue')">
+      <span style="margin-top:1px">${statusChip[i.status]||"●"}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.title||i.id)}</span>
+      ${i.labels&&i.labels.length?`<span class="tag-chip" style="font-size:9px">${esc(i.labels[0])}</span>`:""}
+    </div>`).join("");
+}
+
+function _renderQActivity(events){
+  const el=$("ov-qf-activity"); if(!el) return;
+  if(!events.length){ el.innerHTML=`<span style="color:var(--muted);font-size:11px">No recent activity</span>`; return; }
+  el.innerHTML=events.slice(0,10).map(e=>{
+    const ts=e.created_at?(new Date(e.created_at)).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"";
+    const isEvent=e.role==="event";
+    const body=(e.body||e.description||"").replace(/<[^>]*>/g,"").slice(0,120);
+    return `<div style="display:flex;gap:7px;align-items:flex-start;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">
+      ${isEvent?`<span style="color:var(--muted);flex-shrink:0">⬡</span>`:`<span style="color:var(--accent);flex-shrink:0">◈</span>`}
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isEvent?"var(--muted)":"var(--text)"}">${esc(body)}</span>
+      <span style="color:var(--muted);white-space:nowrap;flex-shrink:0">${esc(ts)}</span>
+    </div>`;
+  }).join("");
+}
+
+// ── TODO CRUD ─────────────────────────────────────────────────────────────────
+
+const _PRIO_COLOR={high:"var(--red,#f85149)",medium:"var(--amber)",low:"var(--muted)"};
+const _PRIO_ICON={high:"▲",medium:"◆",low:"▽"};
+
+function _renderTodoList(todos, pid){
+  const el=$("ov-todo-list"); if(!el) return;
+  if(!todos.length){
+    el.innerHTML=`<span style="color:var(--muted);font-size:11px;padding:4px 0">No todos yet — click + Add to create one.</span>`;
+    return;
+  }
+  const order={high:0,medium:1,low:2,pending:0,in_progress:1,done:2};
+  const sorted=[...todos].sort((a,b)=>{
+    const sd=(order[a.status]||0)-(order[b.status]||0);
+    if(sd) return sd;
+    return (order[a.priority]||1)-(order[b.priority]||1);
+  });
+  el.innerHTML=sorted.map(t=>{
+    const done=t.status==="done";
+    return `<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:var(--panel2);border-radius:5px;opacity:${done?.55:1}">
+      <input type="checkbox" style="margin-top:2px;cursor:pointer;flex-shrink:0" ${done?"checked":""}
+             onchange="ovTodoToggle('${esc(pid)}','${esc(t.id)}',this.checked)">
+      <span style="flex:1;font-size:11px;${done?"text-decoration:line-through;color:var(--muted)":""}">${esc(t.title)}</span>
+      <span style="font-size:10px;color:${_PRIO_COLOR[t.priority]||"var(--muted)"};flex-shrink:0" title="${t.priority}">${_PRIO_ICON[t.priority]||""}</span>
+      <span style="font-size:10px;color:var(--muted);cursor:pointer;flex-shrink:0" onclick="ovTodoDelete('${esc(pid)}','${esc(t.id)}')" title="Delete">✕</span>
+    </div>`;
+  }).join("");
+}
+
+function ovTodoShowForm(){
+  const f=$("ov-todo-form"); if(f) f.style.display="block";
+  const i=$("ov-todo-input"); if(i){ i.value=""; i.focus(); }
+}
+function ovTodoCancel(){
+  const f=$("ov-todo-form"); if(f) f.style.display="none";
+}
+async function ovTodoSubmit(){
+  const pid=_ovDetailPid; if(!pid) return;
+  const title=($("ov-todo-input")||{value:""}).value.trim();
+  if(!title) return;
+  const prio=($("ov-todo-prio")||{value:"medium"}).value;
+  await fetch(`/api/todos/${encodeURIComponent(pid)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,priority:prio})});
+  ovTodoCancel();
+  const detail=await(await fetch(`/api/q-detail/${encodeURIComponent(pid)}`)).json();
+  _renderTodoList(detail.user_todos||[], pid);
+}
+async function ovTodoToggle(pid, tid, checked){
+  await fetch(`/api/todos/${encodeURIComponent(pid)}/${encodeURIComponent(tid)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:checked?"done":"pending"})});
+  const detail=await(await fetch(`/api/q-detail/${encodeURIComponent(pid)}`)).json();
+  _renderTodoList(detail.user_todos||[], pid);
+}
+async function ovTodoDelete(pid, tid){
+  await fetch(`/api/todos/${encodeURIComponent(pid)}/${encodeURIComponent(tid)}`,{method:"DELETE"});
+  const detail=await(await fetch(`/api/q-detail/${encodeURIComponent(pid)}`)).json();
+  _renderTodoList(detail.user_todos||[], pid);
+}
+
+// Wire the + Add button (set once DOM is ready)
+document.addEventListener("DOMContentLoaded",()=>{
+  const btn=$("ov-todo-add-btn"); if(btn) btn.onclick=ovTodoShowForm;
+});
 
 // IDs of global-only overview cards to hide when a question is focused
 const _OV_GLOBAL_CARDS = ["ov-card-tokens","ov-card-schedule","ov-card-active",
@@ -1216,9 +1446,8 @@ function renderOverview(d, pid){
     filterBar.style.display="flex";
     $("ov-filter-label").textContent=pid;
     focusPanel.style.display="block";
-    // Hide global cards
-    _OV_GLOBAL_CARDS.forEach(id=>{ const el=$( id); if(el) el.style.display="none"; });
-    // Populate focus panel
+    _OV_GLOBAL_CARDS.forEach(id=>{ const el=$(id); if(el) el.style.display="none"; });
+    // Populate summary stats from overview data
     const q=(d.question_summaries||[]).find(q=>q.qid===pid)||{};
     const ist=q.issue_stats||{};
     const statusColors={not_started:"var(--muted)",exploring:"var(--accent)",open_issues:"var(--amber)",in_progress:"var(--accent2)",verified:"var(--green)"};
@@ -1226,24 +1455,30 @@ function renderOverview(d, pid){
     $("ov-qf-id").textContent=pid.toUpperCase();
     $("ov-qf-title").textContent=q.title||"";
     const sc=statusColors[q.proof_status]||"var(--muted)";
-    $("ov-qf-status").textContent=statusTexts[q.proof_status]||"";
+    $("ov-qf-status").textContent=statusTexts[q.proof_status]||q.proof_status||"";
     $("ov-qf-status").style.color=sc;
     $("ov-qf-status").style.borderColor=sc;
     $("ov-qf-solv").textContent=q.solvability_pct!=null?q.solvability_pct+"%":"—";
     $("ov-qf-acc").textContent=q.accuracy_pct!=null?q.accuracy_pct+"%":"—";
     $("ov-qf-issues").textContent=ist.open!=null?ist.open:"—";
     $("ov-qf-runs").textContent=q.total_runs||"—";
-    // Labels
+    $("ov-qf-best").textContent=q.best_issues!=null?q.best_issues:(q.best_verified?"✓":"—");
     const labelsEl=$("ov-qf-labels");
     if(labelsEl){
       const labs=q.labels||[];
       labelsEl.innerHTML=labs.map(l=>`<span class="tag-chip">${esc(l)}</span>`).join("");
       labelsEl.style.display=labs.length?"flex":"none";
     }
+    // Wire quick-action buttons to question context
+    const discoverBtn=$("ov-qf-discover-btn"), solveBtn=$("ov-qf-solve-btn"), verifyBtn=$("ov-qf-verify-btn");
+    if(discoverBtn) discoverBtn.onclick=()=>{ selectQuestion(pid,null,selectedDataset||"first_proof_1"); setTab("documents"); };
+    if(solveBtn)    solveBtn.onclick=()=>{ selectQuestion(pid,null,selectedDataset||"first_proof_1"); setTab("proofs"); };
+    if(verifyBtn)   verifyBtn.onclick=()=>{ selectQuestion(pid,null,selectedDataset||"first_proof_1"); setTab("proofs"); };
+    // Load rich detail (async)
+    loadQDetail(pid, q);
   } else {
     filterBar.style.display="none";
     focusPanel.style.display="none";
-    // Show all global cards
     _OV_GLOBAL_CARDS.forEach(id=>{ const el=$(id); if(el) el.style.display=""; });
   }
 
@@ -2520,7 +2755,7 @@ function start(){
     return;
   }
   const provider=$("provider").value, model=$("model").value.trim(), thinking=$("thinking").checked?1:0;
-  const gcpProject=$("gcp-project").value.trim();
+  const gcpProject=$("gcp-project").value.trim() || (vertexCfg.project||"");
   if(provider==="vertex" && !gcpProject){
     $("a-empty").style.display="block";
     $("a-empty").textContent="Enter your GCP Project ID in the field above before running Vertex AI.";
@@ -3801,20 +4036,5 @@ $("meet-modal-ok").onclick=async()=>{
   const last=items[items.length-1]; if(last)last.classList.add("active");
 };
 </script>
-<div id="cmd-backdrop"></div>
-<div id="cmd-palette" role="dialog" aria-modal="true" aria-label="Command palette">
-  <div id="cmd-input-wrap">
-    <svg width=16 height=16 viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width=2><circle cx=6 cy=6 r=5/><path d='M10.5 10.5l4 4'/></svg>
-    <input id="cmd-input" type="text" placeholder="Search tabs, questions… or type /proof /agent /issue">
-    <span id="cmd-hint">ESC to close</span>
-  </div>
-  <div id="cmd-results"></div>
-  <div id="cmd-footer">
-    <span><kbd>↑↓</kbd> navigate</span>
-    <span><kbd>Enter</kbd> select</span>
-    <span><kbd>Ctrl K</kbd> toggle</span>
-    <span><kbd>ESC</kbd> close</span>
-  </div>
-</div>
 </body>
 </html>

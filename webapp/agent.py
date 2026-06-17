@@ -21,6 +21,7 @@ from typing import Iterator
 import anthropic
 
 from .tools import TOOL_DEFINITIONS, ToolContext, ToolError, execute_tool
+from .vertex import vertex_adc_project, vertex_region
 
 DEFAULT_MODEL = "claude-opus-4-8"
 MAX_TOKENS = 32_000
@@ -196,19 +197,13 @@ def run_agent_vertex(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
         yield AgentEvent("done", {"reason": "error"})
         return
 
-    project_id = cfg.gcp_project or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    project_id = (cfg.gcp_project or vertex_adc_project()).strip()
     if not project_id:
-        try:
-            import google.auth
-            _, project_id = google.auth.default()
-        except Exception:
-            pass
-    if not project_id:
-        yield AgentEvent("error", {"message": "GCP project not set. Enter your Project ID in the UI or set GOOGLE_CLOUD_PROJECT on the server."})
+        yield AgentEvent("error", {"message": "GCP project not set. Enter your Project ID in the UI, set GOOGLE_CLOUD_PROJECT on the server, or configure ADC with a quota project."})
         yield AgentEvent("done", {"reason": "error"})
         return
 
-    region = os.environ.get("GOOGLE_CLOUD_REGION", "global")
+    region = vertex_region()
 
     repo_root = cfg.repo_root or Path(__file__).resolve().parents[1]
     workspace = cfg.workspace or (repo_root / "webapp" / ".runs" / f"{cfg.problem_id}_{int(time.time())}")
