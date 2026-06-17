@@ -384,6 +384,167 @@ def run_issue_cycle(
     return log
 
 
+# ── multi-agent discussion ───────────────────────────────────────────────────
+
+_DISCUSSION_PERSONAS: dict[str, str] = {
+    "critic-agent": (
+        "You are a sharp mathematical critic. Read the discussion and find remaining gaps, "
+        "errors, or unproven claims not yet addressed. Be specific: cite exact steps, explain "
+        "why they fail. Do NOT repeat issues already raised. 3–6 sentences or bullets max."
+    ),
+    "solver-agent": (
+        "You are a rigorous mathematical problem solver. Read the discussion and propose a "
+        "concrete fix for the most critical open gap. Write the key argument (inline LaTeX ok). "
+        "State the lemma clearly, sketch the proof, note remaining conditions. 3–8 sentences max."
+    ),
+    "verifier-agent": (
+        "You are a mathematical verifier. Read the discussion. Confirm what is now correct, "
+        "flag what still needs work, and give an honest assessment of how close the proof is "
+        "to complete. Be brief and direct. 3–6 sentences max."
+    ),
+    "strategist-agent": (
+        "You are a research strategist. Read the discussion. Decide: which issues are most "
+        "critical to resolve next and what is the clearest path to a complete proof? "
+        "Give a brief action plan (2–4 bullets). Assess overall proof status: nearly done or "
+        "major rework needed?"
+    ),
+}
+
+_DISCUSS_ROTATION = ["critic-agent", "solver-agent", "verifier-agent", "strategist-agent"]
+
+
+def _thread_to_text(issue: dict, max_chars: int = 6000) -> str:
+    lines = [f"# Issue: {issue.get('title', '')}", f"Status: {issue.get('status', 'open')}", ""]
+    for c in issue.get("comments", []):
+        if c.get("role") == "event":
+            continue
+        lines.append(f"### {c.get('author', '?')}")
+        lines.append((c.get("body") or "").strip())
+        lines.append("")
+    text = "\n".join(lines)
+    return text[-max_chars:] if len(text) > max_chars else text
+
+
+def _claude_one_shot(prompt: str, repo_root: Path, timeout: int = 120) -> str:
+    binary = shutil.which("claude")
+    if not binary:
+        return "(claude CLI not found)"
+    env = dict(os.environ)
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.pop("ANTHROPIC_AUTH_TOKEN", None)
+    try:
+        result = subprocess.run(
+            [binary, "-p", prompt, "--output-format", "text",
+             "--no-session-persistence", "--permission-mode", "acceptEdits"],
+            capture_output=True, text=True, timeout=timeout,
+            cwd=str(repo_root), env=env,
+        )
+        return result.stdout.strip() or result.stderr.strip() or "(empty response)"
+    except subprocess.TimeoutExpired:
+        return "(timed out)"
+    except Exception as exc:
+        return f"(error: {exc})"
+
+
+def run_discussion_agent(
+    repo_root: Path,
+    problem_id: str,
+    issue_id: str,
+    dataset: str = "first_proof_1",
+    n_turns: int = 3,
+    handle: RunHandle | None = None,
+) -> Iterator[AgentEvent]:
+    """Run N round-robin discussion turns on an issue thread."""
+    from .issues import get_issue, add_comment
+
+    issue = get_issue(repo_root, problem_id, issue_id, dataset)
+    if issue is None:
+        yield AgentEvent("error", {"message": f"Issue {issue_id} not found"})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    last_agent = None
+    for c in reversed(issue.get("comments", [])):
+        if c.get("role") == "agent" and c.get("author") in _DISCUSS_ROTATION:
+            last_agent = c.get("author")
+            break
+
+    start_idx = 0
+    if last_agent and last_agent in _DISCUSS_ROTATION:
+        start_idx = (_DISCUSS_ROTATION.index(last_agent) + 1) % len(_DISCUSS_ROTATION)
+
+    for turn in range(n_turns):
+        if handle is not None and handle.cancelled:
+            yield AgentEvent("done", {"reason": "cancelled"})
+            return
+
+        agent_name = _DISCUSS_ROTATION[(start_idx + turn) % len(_DISCUSS_ROTATION)]
+        persona = _DISCUSSION_PERSONAS[agent_name]
+
+        issue = get_issue(repo_root, problem_id, issue_id, dataset)
+        if issue is None:
+            break
+
+        thread_text = _thread_to_text(issue)
+        prompt = (
+            f"{persona}\n\n---\n\nCURRENT DISCUSSION THREAD:\n{thread_text}\n\n---\n\n"
+            f"Write your response as {agent_name}. Be concise and mathematical. "
+            "Do not open with meta-commentary — post your message directly."
+        )
+
+        yield AgentEvent("text_delta", {"text": f"[discuss] {agent_name} thinking…\n"})
+
+        response = _claude_one_shot(prompt, repo_root)
+        if response:
+            add_comment(repo_root, problem_id, issue_id, agent_name, response, dataset)
+            yield AgentEvent("text_delta", {"text": f"[discuss] {agent_name} posted.\n"})
+            yield AgentEvent("result", {"agent": agent_name, "body": response})
+
+        time.sleep(1)
+
+    yield AgentEvent("done", {"reason": "done"})
+
+
+def generate_issue_summary(
+    repo_root: Path,
+    problem_id: str,
+    issue_id: str,
+    dataset: str = "first_proof_1",
+) -> dict:
+    """Synthesize an issue thread into a structured markdown document."""
+    from .issues import get_issue, add_issue_document
+
+    issue = get_issue(repo_root, problem_id, issue_id, dataset)
+    if issue is None:
+        return {"error": "issue not found"}
+
+    thread_text = _thread_to_text(issue, max_chars=8000)
+    prompt = (
+        "You are a mathematical research coordinator. Synthesize the following issue "
+        "discussion thread into a structured markdown document.\n\n"
+        f"ISSUE THREAD:\n{thread_text}\n\n---\n\n"
+        "Write a structured markdown document with exactly these sections:\n\n"
+        "## Summary\n(2–3 sentence overview)\n\n"
+        "## Key Findings\n(bullet list of main mathematical findings / gaps / fixes)\n\n"
+        "## Current Status\n(what is resolved vs. still open; overall completeness)\n\n"
+        "## Open Questions\n(unresolved mathematical questions)\n\n"
+        "## Next Steps\n(concrete actions to close this issue)\n\n"
+        "Write only the markdown. Be precise and mathematical."
+    )
+
+    doc_text = _claude_one_shot(prompt, repo_root, timeout=180)
+
+    doc_dir = repo_root / "documents" / "questions" / problem_id / "issues"
+    doc_dir.mkdir(parents=True, exist_ok=True)
+    doc_path = doc_dir / f"{issue_id}-summary.md"
+    doc_path.write_text(doc_text, encoding="utf-8")
+
+    rel_path = f"questions/{problem_id}/issues/{issue_id}-summary.md"
+    title = f"Discussion Summary — {(issue.get('title') or issue_id)[:50]}"
+    updated = add_issue_document(repo_root, problem_id, issue_id, title, rel_path, dataset=dataset)
+    return {"ok": True, "path": rel_path, "title": title, "issue": updated}
+
+
 # ── internal: generic agent driver ──────────────────────────────────────────
 
 def _run_agent(
@@ -393,6 +554,8 @@ def _run_agent(
     handle: RunHandle | None,
     label: str,
     on_done: "callable | None" = None,
+    max_turns: int | None = None,
+    allowed_tools: str | None = None,
 ) -> Iterator[AgentEvent]:
     binary = shutil.which("claude")
     if not binary:
@@ -406,8 +569,8 @@ def _run_agent(
         "--verbose",
         "--include-partial-messages",
         "--permission-mode", "acceptEdits",
-        "--allowedTools", _ALLOWED_TOOLS,
-        "--max-turns", str(_MAX_TURNS),
+        "--allowedTools", allowed_tools or _ALLOWED_TOOLS,
+        "--max-turns", str(max_turns if max_turns is not None else _MAX_TURNS),
         "--append-system-prompt", system_extra,
         "--no-session-persistence",
     ]

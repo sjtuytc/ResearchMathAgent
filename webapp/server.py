@@ -31,6 +31,12 @@ from .dataset_store import (
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof
 from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
 from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log
+from .meet import (
+    create_room as meet_create, get_room as meet_get, list_rooms as meet_list,
+    post_message as meet_post_message, set_plan as meet_set_plan,
+    mark_step_done as meet_mark_step_done, PERSONAS as meet_personas,
+)
+from .meet_agents import run_discussion_turn, run_synthesis, run_step_execution
 from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
@@ -422,6 +428,111 @@ def post_event(problem_id: str, payload: dict = Body(...), dataset: str = Query(
         issue_id=payload.get("issue_id"),
     )
     return JSONResponse({"ok": True})
+
+
+# ── Virtual Meet endpoints ────────────────────────────────────────────────────
+
+@app.get("/api/meets/{problem_id}")
+def list_meets(problem_id: str) -> JSONResponse:
+    return JSONResponse({"rooms": meet_list(REPO_ROOT, problem_id)})
+
+
+@app.post("/api/meets/{problem_id}")
+def create_meet(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+    room = meet_create(
+        REPO_ROOT, problem_id,
+        topic=str(payload.get("topic", "Proof strategy discussion")),
+        goal=str(payload.get("goal", "")),
+        participants=payload.get("participants") or None,
+    )
+    return JSONResponse(room)
+
+
+@app.get("/api/meets/{problem_id}/{room_id}")
+def get_meet(problem_id: str, room_id: str) -> JSONResponse:
+    room = meet_get(REPO_ROOT, problem_id, room_id)
+    if room is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(room)
+
+
+@app.post("/api/meets/{problem_id}/{room_id}/message")
+def post_meet_message(problem_id: str, room_id: str, payload: dict = Body(...)) -> JSONResponse:
+    room = meet_post_message(
+        REPO_ROOT, problem_id, room_id,
+        author=str(payload.get("author", "human")),
+        body=str(payload.get("body", "")),
+        role=payload.get("role"),
+    )
+    if room is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(room)
+
+
+@app.post("/api/meets/{problem_id}/{room_id}/plan")
+def post_meet_plan(problem_id: str, room_id: str, payload: dict = Body(...)) -> JSONResponse:
+    steps = payload.get("steps", [])
+    summary = str(payload.get("summary", ""))
+    room = meet_set_plan(REPO_ROOT, problem_id, room_id, steps=steps, summary=summary)
+    if room is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(room)
+
+
+@app.post("/api/meets/{problem_id}/{room_id}/steps/{step_idx}/done")
+def meet_step_done(problem_id: str, room_id: str, step_idx: int, payload: dict = Body(...)) -> JSONResponse:
+    room = meet_mark_step_done(
+        REPO_ROOT, problem_id, room_id, step_idx,
+        outcome=str(payload.get("outcome", "success")),
+        notes=str(payload.get("notes", "")),
+    )
+    if room is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(room)
+
+
+@app.get("/api/meets/{problem_id}/{room_id}/turn/{participant}")
+def meet_agent_turn(problem_id: str, room_id: str, participant: str, run_id: str = Query("")) -> StreamingResponse:
+    rid = run_id or uuid.uuid4().hex
+    handle = REGISTRY.register(rid, f"meet-turn/{room_id}/{participant}")
+
+    def _stream():
+        yield f"data: {json.dumps({'type': 'status', 'data': {'state': 'running', 'label': f'meet/{room_id}/{participant}'}})}\n\n"
+        for ev in run_discussion_turn(REPO_ROOT, problem_id, room_id, participant, handle):
+            yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
+
+    return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+@app.get("/api/meets/{problem_id}/{room_id}/synthesize")
+def meet_synthesize(problem_id: str, room_id: str, run_id: str = Query("")) -> StreamingResponse:
+    rid = run_id or uuid.uuid4().hex
+    handle = REGISTRY.register(rid, f"meet-synth/{room_id}")
+
+    def _stream():
+        yield f"data: {json.dumps({'type': 'status', 'data': {'state': 'running', 'label': f'synthesize/{room_id}'}})}\n\n"
+        for ev in run_synthesis(REPO_ROOT, problem_id, room_id, handle):
+            yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
+
+    return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+@app.get("/api/meets/{problem_id}/{room_id}/execute/{step_idx}")
+def meet_execute_step(problem_id: str, room_id: str, step_idx: int, run_id: str = Query("")) -> StreamingResponse:
+    rid = run_id or uuid.uuid4().hex
+    handle = REGISTRY.register(rid, f"meet-exec/{room_id}/{step_idx}")
+
+    def _stream():
+        yield f"data: {json.dumps({'type': 'status', 'data': {'state': 'running', 'label': f'execute/{room_id}/step{step_idx}'}})}\n\n"
+        for ev in run_step_execution(REPO_ROOT, problem_id, room_id, step_idx, handle):
+            yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
+
+    return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+@app.get("/api/meets/personas")
+def get_personas() -> JSONResponse:
+    return JSONResponse(meet_personas)
 
 
 @app.get("/api/solve")

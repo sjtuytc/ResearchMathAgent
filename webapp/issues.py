@@ -133,7 +133,8 @@ def create_issue(repo_root: Path, problem_id: str, title: str,
 
 
 def add_comment(repo_root: Path, problem_id: str, issue_id: str,
-                author: str, body: str, dataset: str = "first_proof_1") -> dict | None:
+                author: str, body: str, dataset: str = "first_proof_1",
+                role: str | None = None) -> dict | None:
     issue = get_issue(repo_root, problem_id, issue_id, dataset)
     if issue is None:
         return None
@@ -141,10 +142,60 @@ def add_comment(repo_root: Path, problem_id: str, issue_id: str,
     issue["comments"].append({
         "id": f"c{uuid.uuid4().hex[:8]}",
         "author": author,
-        "role": "agent" if author != "human" else "human",
+        "role": role if role is not None else ("agent" if author != "human" else "human"),
         "body": body.strip(),
         "created_at": now,
     })
+    _save(repo_root, problem_id, issue, dataset)
+    return issue
+
+
+def link_issue(
+    repo_root: Path,
+    problem_id: str,
+    issue_id: str,
+    target_id: str,
+    target_dataset: str | None = None,
+    relation: str = "related",
+    added_by: str = "human",
+    dataset: str = "first_proof_1",
+) -> dict | None:
+    issue = get_issue(repo_root, problem_id, issue_id, dataset)
+    if issue is None:
+        return None
+    links = issue.setdefault("linked_issues", [])
+    if not any(lk["id"] == target_id for lk in links):
+        links.append({
+            "id": target_id,
+            "dataset": target_dataset or dataset,
+            "relation": relation,
+            "added_by": added_by,
+            "added_at": _now(),
+        })
+        issue["comments"].append(
+            _make_event("linked", f"Linked to **{target_id}** ({relation})", added_by)
+        )
+    _save(repo_root, problem_id, issue, dataset)
+    return issue
+
+
+def add_issue_document(
+    repo_root: Path,
+    problem_id: str,
+    issue_id: str,
+    title: str,
+    path: str,
+    created_by: str = "system",
+    dataset: str = "first_proof_1",
+) -> dict | None:
+    issue = get_issue(repo_root, problem_id, issue_id, dataset)
+    if issue is None:
+        return None
+    docs = issue.setdefault("documents", [])
+    docs.append({"title": title, "path": path, "created_at": _now(), "created_by": created_by})
+    issue["comments"].append(
+        _make_event("doc_generated", f"Document generated: **{title}**", created_by)
+    )
     _save(repo_root, problem_id, issue, dataset)
     return issue
 
