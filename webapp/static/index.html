@@ -1572,6 +1572,173 @@ function setTab(name){
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
+// ---- Command Palette ----
+(function(){
+  const TABS = [
+    {id:"overview",  icon:"🗂",  label:"Overview",    sub:"Problem cards & solvability"},
+    {id:"question",  icon:"❓",  label:"Question",    sub:"Problem statement"},
+    {id:"issue",     icon:"🐛",  label:"Issue",       sub:"Per-problem issue tracker"},
+    {id:"agent",     icon:"🤖",  label:"Agent",       sub:"Run live solver"},
+    {id:"documents", icon:"📄",  label:"Documents",   sub:"Daily reports"},
+    {id:"proofs",    icon:"📐",  label:"Proofs",      sub:"Best proof per problem"},
+    {id:"final-proof",icon:"✅", label:"Final Proof", sub:"PDF viewer"},
+    {id:"literature",icon:"📚",  label:"Literature",  sub:"Related papers"},
+    {id:"concepts",  icon:"💡",  label:"Concepts",    sub:"Key concepts"},
+    {id:"meet",      icon:"👥",  label:"Meet",        sub:"Multi-agent chat rooms"},
+  ];
+
+  // Slash aliases: /proof → proofs, /concept → concepts, etc.
+  const ALIASES = {
+    proof:"proofs","final-proof":"final-proof",finalproof:"final-proof",
+    question:"question",q:"question",
+    issue:"issue",issues:"issue",bug:"issue",
+    agent:"agent",run:"agent",solve:"agent",
+    doc:"documents",docs:"documents",documents:"documents",
+    lit:"literature",literature:"literature",paper:"literature",
+    concept:"concepts",concepts:"concepts",
+    meet:"meet",chat:"meet",
+    overview:"overview",home:"overview",
+  };
+
+  let selIdx = 0;
+  let items = [];
+
+  function openPalette(){
+    document.getElementById("cmd-backdrop").classList.add("open");
+    document.getElementById("cmd-palette").classList.add("open");
+    const inp = document.getElementById("cmd-input");
+    inp.value = "";
+    inp.focus();
+    renderResults("");
+  }
+
+  function closePalette(){
+    document.getElementById("cmd-backdrop").classList.remove("open");
+    document.getElementById("cmd-palette").classList.remove("open");
+  }
+
+  function buildItems(query){
+    const q = query.trim().toLowerCase();
+
+    // Slash command: /proof, /agent, etc.
+    if(q.startsWith("/")){
+      const key = q.slice(1).replace(/\s+/g,"");
+      const tabId = ALIASES[key];
+      if(tabId) return [{type:"tab", tab:TABS.find(t=>t.id===tabId)||{id:tabId,icon:"→",label:tabId,sub:""}, score:100}];
+      // Partial match
+      return TABS
+        .filter(t=>t.id.startsWith(key)||t.label.toLowerCase().startsWith(key))
+        .map(t=>({type:"tab",tab:t,score:50}));
+    }
+
+    const results = [];
+
+    // Tab matches
+    TABS.forEach(t=>{
+      const score = t.label.toLowerCase().startsWith(q) ? 90
+        : t.id.startsWith(q) ? 80
+        : t.sub.toLowerCase().includes(q) ? 40
+        : q==='' ? 10 : 0;
+      if(score>0) results.push({type:"tab",tab:t,score});
+    });
+
+    // Question matches (from sidebar qlist)
+    if(q.length>0){
+      document.querySelectorAll("#qlist .qitem").forEach(el=>{
+        const text = el.textContent.toLowerCase();
+        const qid = el.dataset.qid||"";
+        const score = qid===q ? 95 : text.includes(q) ? 30 : 0;
+        if(score>0) results.push({type:"question",el,label:el.querySelector(".qitem-title")?.textContent||qid,qid,score});
+      });
+    }
+
+    results.sort((a,b)=>b.score-a.score);
+    return results.slice(0,12);
+  }
+
+  function renderResults(query){
+    const res = document.getElementById("cmd-results");
+    items = buildItems(query);
+    selIdx = 0;
+
+    if(!items.length){
+      res.innerHTML='<div style="padding:14px 12px;color:var(--muted);font-size:13px">No results — try /overview, /proof, /agent…</div>';
+      return;
+    }
+
+    let html = "";
+    const tabItems = items.filter(i=>i.type==="tab");
+    const qItems   = items.filter(i=>i.type==="question");
+
+    if(tabItems.length){
+      html += '<div class="cmd-group">Navigate to tab</div>';
+      tabItems.forEach((item,i)=>{
+        const sel = i===selIdx && qItems.length===0 ? " sel" : (i===selIdx && qItems.length>0 ? " sel":"");
+        const globalIdx = items.indexOf(item);
+        html += `<div class="cmd-item${globalIdx===selIdx?" sel":""}" data-idx="${globalIdx}">
+          <span class="cmd-icon">${item.tab.icon}</span>
+          <span class="cmd-label">${item.tab.label}</span>
+          <span class="cmd-sub">${item.tab.sub}</span>
+        </div>`;
+      });
+    }
+    if(qItems.length){
+      html += '<div class="cmd-group">Jump to question</div>';
+      qItems.forEach(item=>{
+        const globalIdx = items.indexOf(item);
+        html += `<div class="cmd-item${globalIdx===selIdx?" sel":""}" data-idx="${globalIdx}">
+          <span class="cmd-icon" style="font-size:11px;font-weight:700">${item.qid.toUpperCase()}</span>
+          <span class="cmd-label">${item.label}</span>
+        </div>`;
+      });
+    }
+
+    res.innerHTML = html;
+    res.querySelectorAll(".cmd-item").forEach(el=>{
+      el.onclick = ()=>{ selIdx=parseInt(el.dataset.idx); execute(); };
+      el.onmouseenter = ()=>{ selIdx=parseInt(el.dataset.idx); highlight(); };
+    });
+  }
+
+  function highlight(){
+    document.querySelectorAll(".cmd-item").forEach(el=>
+      el.classList.toggle("sel", parseInt(el.dataset.idx)===selIdx)
+    );
+  }
+
+  function execute(){
+    const item = items[selIdx];
+    if(!item) return closePalette();
+    closePalette();
+    if(item.type==="tab"){
+      setTab(item.tab.id);
+    } else if(item.type==="question"){
+      item.el.click();
+    }
+  }
+
+  // Keyboard navigation
+  document.getElementById("cmd-input").addEventListener("keydown", e=>{
+    if(e.key==="ArrowDown"){ e.preventDefault(); selIdx=Math.min(selIdx+1,items.length-1); highlight(); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); selIdx=Math.max(selIdx-1,0); highlight(); }
+    else if(e.key==="Enter"){ e.preventDefault(); execute(); }
+    else if(e.key==="Escape"){ closePalette(); }
+  });
+  document.getElementById("cmd-input").addEventListener("input", e=>renderResults(e.target.value));
+
+  // Open triggers
+  document.getElementById("cmd-open-btn").onclick = openPalette;
+  document.getElementById("cmd-backdrop").onclick = closePalette;
+
+  // Global hotkey: Ctrl+K / Cmd+K
+  document.addEventListener("keydown", e=>{
+    if((e.ctrlKey||e.metaKey) && e.key==="k"){
+      e.preventDefault();
+      document.getElementById("cmd-palette").classList.contains("open") ? closePalette() : openPalette();
+    }
+  });
+})();
+
 // ---- shared PDF.js render helper ----
 let qScale=1.5, qDoc=null;
 let pfScale=1.5, pfDoc=null;
@@ -3460,6 +3627,137 @@ $("meet-auto-btn").onclick=()=>{
 };
 
 $("meet-synth-btn").onclick=runMeetSynthesize;
+
+// Helper: open meet room by id (used by Issue → Meet button)
+async function loadMeetRoom(qid, roomId){
+  await loadMeetRooms(qid);
+  try{
+    const room=await (await fetch(`/api/meets/${encodeURIComponent(qid)}/${encodeURIComponent(roomId)}`)).json();
+    openMeetRoom(room);
+    const items=[...$("meet-room-list").querySelectorAll(".qitem")];
+    const m=items.find(i=>(i.textContent||"").includes(room.topic||roomId));
+    if(m){ document.querySelectorAll("#meet-room-list .qitem").forEach(e=>e.classList.remove("active")); m.classList.add("active"); }
+  }catch(_){}
+}
+
+// Save meeting notes back to issue
+async function meetSaveToIssue(issueId, ds){
+  if(!meetSelectedRoom||!selected) return;
+  const targetIssue=issueId||(issSelectedId||null);
+  if(!targetIssue){ $("meet-agent-status").textContent="No issue to link"; return; }
+  $("meet-agent-status").textContent="saving…";
+  try{
+    const r=await fetch(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/save-to-issue?dataset=${encodeURIComponent(ds||"first_proof_1")}`,{
+      method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({issue_id:targetIssue})
+    });
+    $("meet-agent-status").textContent=r.ok?"Notes saved ✓":"error";
+    setTimeout(()=>{ $("meet-agent-status").textContent=""; },3000);
+  }catch(_){ $("meet-agent-status").textContent="error"; }
+}
+
+// ─── Issue action button handlers (Discuss, Gen Doc, Meet, Note, Link) ──────
+
+$("iss-note-toggle").onchange=function(){ $("iss-post").textContent=this.checked?"Post Note":"Post Comment"; };
+
+$("iss-link-btn").onclick=()=>{
+  const f=$("iss-link-form"), open=f.style.display==="flex";
+  f.style.display=open?"none":"flex";
+};
+$("iss-link-cancel").onclick=()=>{ $("iss-link-form").style.display="none"; };
+$("iss-link-ok").onclick=async()=>{
+  if(!selected||!issSelectedId) return;
+  const targetId=$("iss-link-target").value.trim(); if(!targetId) return;
+  const relation=$("iss-link-rel").value;
+  const ds=selectedDataset||"first_proof_1";
+  $("iss-link-status").textContent="linking…";
+  try{
+    const r=await fetch(`/api/issues/${selected}/${issSelectedId}/link?dataset=${encodeURIComponent(ds)}`,{
+      method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({target_id:targetId,relation,added_by:"human"})
+    });
+    if(r.ok){ renderIssueThread(await r.json()); $("iss-link-form").style.display="none"; $("iss-link-target").value=""; }
+    $("iss-link-status").textContent="";
+  }catch(_){ $("iss-link-status").textContent="error"; }
+};
+
+// Override iss-post to support notes
+(()=>{
+  const btn=$("iss-post");
+  btn.onclick=async()=>{
+    if(!selected||!issSelectedId) return;
+    const body=$("iss-reply").value.trim(); if(!body) return;
+    const author=$("iss-poster").value;
+    const isNote=$("iss-note-toggle").checked;
+    btn.disabled=true; $("iss-post-status").textContent="posting…";
+    const ds=selectedDataset||"first_proof_1";
+    const ep=isNote
+      ?`/api/issues/${selected}/${issSelectedId}/note?dataset=${encodeURIComponent(ds)}`
+      :`/api/issues/${selected}/${issSelectedId}/comment?dataset=${encodeURIComponent(ds)}`;
+    try{
+      const r=await fetch(ep,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({author,body})});
+      if(r.ok){ $("iss-reply").value=""; renderIssueThread(await r.json()); $("iss-post-status").textContent="posted ✓"; }
+      else $("iss-post-status").textContent="error";
+      setTimeout(()=>$("iss-post-status").textContent="",2000);
+    }catch(_){ $("iss-post-status").textContent="error"; }
+    finally{ btn.disabled=false; }
+  };
+})();
+
+// Discuss button: multi-agent discussion round via SSE
+let issDiscussEs=null;
+$("iss-discuss-btn").onclick=async()=>{
+  if(!selected||!issSelectedId) return;
+  if(issDiscussEs){ issDiscussEs.close(); issDiscussEs=null; }
+  $("iss-discuss-btn").disabled=true; $("iss-status-msg").textContent="discussing…";
+  const ds=selectedDataset||"first_proof_1";
+  issDiscussEs=new EventSource(`/api/issues/${selected}/${issSelectedId}/discuss?dataset=${encodeURIComponent(ds)}&n_turns=3`);
+  issDiscussEs.onmessage=async(e)=>{
+    try{
+      const ev=JSON.parse(e.data);
+      if(ev.type==="done"||ev.type==="error"){
+        issDiscussEs.close(); issDiscussEs=null;
+        $("iss-discuss-btn").disabled=false;
+        $("iss-status-msg").textContent=ev.type==="done"?"done ✓":"error";
+        setTimeout(()=>$("iss-status-msg").textContent="",3000);
+        const r=await fetch(`/api/issues/${selected}/${issSelectedId}?dataset=${encodeURIComponent(ds)}`);
+        if(r.ok) renderIssueThread(await r.json());
+      }
+    }catch(_){}
+  };
+  issDiscussEs.onerror=()=>{ if(issDiscussEs){issDiscussEs.close();issDiscussEs=null;} $("iss-discuss-btn").disabled=false; $("iss-status-msg").textContent=""; };
+};
+
+// Gen Doc button: synthesize issue discussion into a document
+$("iss-gendoc-btn").onclick=async()=>{
+  if(!selected||!issSelectedId) return;
+  $("iss-gendoc-btn").disabled=true; $("iss-status-msg").textContent="generating…";
+  const ds=selectedDataset||"first_proof_1";
+  try{
+    const r=await fetch(`/api/issues/${selected}/${issSelectedId}/generate-doc?dataset=${encodeURIComponent(ds)}`,{method:"POST"});
+    const d=await r.json();
+    $("iss-status-msg").textContent=d.ok?"doc ready ✓":"error";
+    setTimeout(()=>$("iss-status-msg").textContent="",3000);
+    if(d.issue) renderIssueThread(d.issue);
+  }catch(_){ $("iss-status-msg").textContent="error"; }
+  finally{ $("iss-gendoc-btn").disabled=false; }
+};
+
+// Meet button: create meeting room linked to this issue
+$("iss-meet-btn").onclick=async()=>{
+  if(!selected||!issSelectedId) return;
+  $("iss-meet-btn").disabled=true;
+  const ds=selectedDataset||"first_proof_1";
+  try{
+    const r=await fetch(`/api/meets/${selected}/from-issue/${issSelectedId}?dataset=${encodeURIComponent(ds)}`,{
+      method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({})
+    });
+    const d=await r.json();
+    if(d.issue) renderIssueThread(d.issue);
+    setTab("meet");
+    if(d.room) setTimeout(()=>loadMeetRoom(selected, d.room.id), 300);
+  }catch(_){ $("iss-status-msg").textContent="error"; }
+  finally{ $("iss-meet-btn").disabled=false; }
+};
 
 // Post human message
 $("meet-post-btn").onclick=async()=>{
