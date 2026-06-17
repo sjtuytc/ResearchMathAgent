@@ -350,7 +350,7 @@ latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
 
 ## 致谢
 
-感谢 **PoggioAI** 开源 `PoggioAI_MSc`，其系统组织方向和 README 结构为本项目提供了启发。同时感谢 **[TheAgentCompany](https://github.com/TheAgentCompany/TheAgentCompany)** 团队开源其智能体循环框架和问题/议题工作区设计，这启发了 RMA Web 应用的架构。
+感谢 **PoggioAI** 开源 `PoggioAI_MSc`，其系统组织方向和 README 结构为本项目提供了启发。同时感谢 **[TheAgentCompany](https://github.com/TheAgentCompany/TheAgentCompany)** 团队开源其智能体循环框架和问题/议题工作区设计，这启发了 RMA Web 应用的架构。此外，我们还致谢 **[Andrej Karpathy](https://github.com/karpathy)** 的 [autoresearch](https://github.com/karpathy/autoresearch) 项目——该项目开创了全自动 AI 驱动科学发现的理念，为 RMA 自主求解流水线提供了重要的概念启发。
 
 ---
 
