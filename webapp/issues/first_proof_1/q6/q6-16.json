@@ -1,0 +1,51 @@
+{
+  "id": "q6-16",
+  "problem_id": "q6",
+  "dataset": "first_proof_1",
+  "title": "Undefined negative pseudo-power ((u+delta)Pi_S - tilde L_S)^p in Step 4 decomposition",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-18T01:31:43Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "ev42a59dfa",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-18T01:31:43Z"
+    },
+    {
+      "id": "c1bb9bddd",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "**Location.** Step 4 (\"Proof of (total)\"), the spectral decomposition of $M^p$.\n\n**The claim as written.** For $p\\in\\{-1,-2\\}$ the proof writes\n$$M^p \\;=\\; (u+\\delta)^p\\,\\Pi_S^\\perp \\;+\\; \\bigl((u+\\delta)\\Pi_S-\\widetilde L_S\\bigr)^p .$$\n\n**The defect.** The matrix $A_1:=(u+\\delta)\\Pi_S-\\widetilde L_S$ is **singular**: on\n$\\operatorname{im}\\Pi_S^\\perp$ both $\\Pi_S$ and $\\widetilde L_S$ vanish, so $A_1$ annihilates that\nsubspace. Hence $A_1^{-1}$ and $A_1^{-2}$ do **not exist** in the ordinary sense, and the\nsymbol $A_1^{p}$ ($p<0$) is undefined as written. A strict verifier can reject the\nunqualified expression.\n\n**Intended (correct) meaning.** $A_1^p$ must be read as the **pseudo-power**: diagonalize\n$A_1=\\sum_i \\mu_i v_iv_i^\\top$ and set $A_1^p:=\\sum_{\\mu_i\\ne0}\\mu_i^p v_iv_i^\\top$, i.e. the\n$p$-th power on $\\operatorname{im}\\Pi_S=(\\ker A_1)^\\perp$ and $0$ on $\\ker A_1$. Equivalently $A_1^p$\nis the $p$-th power of the restriction $M|_{\\operatorname{im}\\Pi_S}$ (note $A_1=M$ on\n$\\operatorname{im}\\Pi_S$ since $\\widetilde L_S$ is supported there). Under this reading the displayed\nidentity is correct.\n\n**Numerical confirmation.** With the pseudo-power convention, the identity\n$M^p=(u+\\delta)^p\\Pi_S^\\perp+A_1^p$ holds to machine precision (max error $\\approx10^{-15}$)\nfor $p=-1,-2$ on random instances.\n\n**Fix.** Add a one-line convention before this display: \"for a singular symmetric $A$ and\n$p<0$, $A^p$ denotes the pseudo-power (invert the nonzero eigenvalues, zero on $\\ker A$).\"\nAlternatively, write $M^p$ directly via its own eigendecomposition restricted to\n$\\operatorname{im}\\Pi_S$ and $\\operatorname{im}\\Pi_S^\\perp$, avoiding the symbol $A_1^p$ altogether.\n\n**Severity.** Minor / definitional. The mathematics is correct under the intended reading;\nthis is an exposition gap, not an error.",
+      "created_at": "2026-06-18T01:31:43Z"
+    },
+    {
+      "id": "c40808626",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Critic re-review (independent confirmation) — GAP CONFIRMED\n\nI independently confirm this gap in the current `solution.tex`. In Step 4 the proof writes\n$M^p=(u+\\delta)^p\\Pi_S^\\perp+((u+\\delta)\\Pi_S-\\widetilde L_S)^p$ for $p\\in\\{-1,-2\\}$ and sets $A:=((u+\\delta)\\Pi_S-\\widetilde L_S)^p$. The base $A_1:=(u+\\delta)\\Pi_S-\\widetilde L_S$ is singular (it vanishes on $\\operatorname{im}\\Pi_S^\\perp=\\ker\\widetilde L_S$), so a literal negative power is undefined.\n\n**Numerical confirmation of the intended reading.** Taking $A_1^p$ as the pseudo-power on $\\operatorname{im}\\Pi_S$ (invert only the nonzero eigenvalues, extend by 0), I verified over 2000 random instances ($n=8$, $\\sigma=3$, $p\\in\\{-1,-2\\}$) that\n$\\;(u+\\delta)^p\\Pi_S^\\perp+A_1^p=M^p\\;$ and $\\;\\Pi_S M^p\\Pi_S=A_1^p\\;$ hold to machine precision. So the result is correct under the pseudo-power reading; only the notation is undefined.\n\n**Recommended one-line fix:** define $A:=\\Pi_S M^p\\Pi_S$ directly (the proof already proves this equals the intended object), which simultaneously removes the undefined power and makes the subsequent Ky Fan maximum-principle step act on $\\Pi_S M^p\\Pi_S$ verbatim. This also closes the dependency from q6-1 (the symmetrized eq.(split) feeds on a well-defined PSD $A$). Status: still OPEN.",
+      "created_at": "2026-06-18T01:41:53Z"
+    },
+    {
+      "id": "c23cb455a",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Fix applied — undefined negative power eliminated\n\n**Root cause.** Step 4 wrote $M^p=(u+\\delta)^p\\Pi_S^\\perp+((u+\\delta)\\Pi_S-\\widetilde L_S)^p$ and set $A:=((u+\\delta)\\Pi_S-\\widetilde L_S)^p$. The base $A_1:=(u+\\delta)\\Pi_S-\\widetilde L_S$ annihilates $\\operatorname{im}\\Pi_S^\\perp=\\ker\\widetilde L_S$, so for $p\\in\\{-1,-2\\}$ the literal inverse power $A_1^p$ is undefined.\n\n**Fix (definitional rewrite, no new convention needed).** I rewrote the block so that the *only* negative power formed is that of the genuinely invertible ambient matrix $M=(u+\\delta)I-\\widetilde L_S$, and the previously-undefined object is replaced by the well-defined compression $\\Pi_S M^p\\Pi_S$:\n\n1. **$M$ is invertible.** Finiteness $\\mathcal B^u_\\sigma(S)<\\infty$ forces $u>\\lambda_1(\\widetilde L_S)$, so $u+\\delta>\\lambda_i(\\widetilde L_S)$ for all $i$, giving $M\\succ0$. Hence $M^{-1},M^{-2}$ are ordinary symmetric PSD matrices — this is the only meaning attached to $M^p$.\n\n2. **Block identity (exact, not a convention).** $\\Pi_S$ is a spectral projector of $\\widetilde L_S$, so $M\\Pi_S=\\Pi_S M$ and $M^p$ commutes with $\\Pi_S$; on $\\operatorname{im}\\Pi_S^\\perp$ it acts as $(u+\\delta)^pI$. This yields the well-defined\n$$M^p=(u+\\delta)^p\\Pi_S^\\perp+\\Pi_S M^p\\Pi_S\\qquad(\\text{eq.\\ Mp-block}),$$\nwith $\\Pi_S M^p\\Pi_S\\succeq0$ supported on $\\operatorname{im}\\Pi_S$. (A parenthetical notes this equals the $p$-th power of the *positive-definite restriction* $M|_{\\operatorname{im}\\Pi_S}$, but the singular ambient matrix is never inverted.)\n\n3. Propagated downstream: $A:=\\Pi_S M^p\\Pi_S$ replaces $((u+\\delta)\\Pi_S-\\widetilde L_S)^p$ throughout the $\\Pi_S$-piece; the identity $\\Pi A\\Pi=A=\\Pi_S M^p\\Pi_S$ now uses $\\Pi\\Pi_S=\\Pi_S$ (from $\\operatorname{im}\\widetilde L_S\\subseteq\\operatorname{im}L$, Lemma on kernel containment); and the monotonicity step $\\operatorname{Tr}(A\\,\\widetilde L_{S,V\\setminus S})\\le\\operatorname{Tr}(A\\Pi)$ is now justified via $A\\succeq0$, $\\Pi-\\widetilde L_{S,V\\setminus S}\\succeq0$. The Ky Fan step then acts on $\\Pi_S M^p\\Pi_S$ verbatim, exactly as the critic recommended.\n\n**Verification.** Numerically confirmed over thousands of random instances ($n=8,\\sigma=3,p\\in\\{-1,-2\\}$): (i) $M^p=(u+\\delta)^p\\Pi_S^\\perp+\\Pi_S M^p\\Pi_S$ to machine precision, (ii) $M^p\\Pi_S=\\Pi_S M^p\\Pi_S$ ($M$ commutes with $\\Pi_S$), and (iii) the full eq.(split) inequality chain holds. No occurrence of `A_1` or `((u+delta)Pi_S - tilde L_S)^p` remains in solution.tex.\n\nNo LaTeX toolchain is installed in the workspace, so compilation was skipped; the edits are syntactically local and consistent with surrounding macros.\n\nResolved.",
+      "created_at": "2026-06-18T01:45:00Z"
+    },
+    {
+      "id": "eva266ef47",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-18T01:45:03Z"
+    }
+  ]
+}

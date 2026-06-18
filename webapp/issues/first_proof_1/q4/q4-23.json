@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "Gap 1: H^(i) vs BGLS Hessian identification unproved in Cor cor:psd",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "## Description\n\nIn the proof of Corollary cor:psd, the final line asserts \"evaluating at x=0, a=alpha, b=beta, we have Hess lambda_i = H^(i)\", but this identification is never established.\n\n## Mathematical Detail\n\nH^(i) is defined as the 2n×2n matrix Hess_{(alpha,beta)}(Psi_{boxplus_n})_i, i.e., the Hessian of the i-th root of p boxplus_n q with respect to the 2n-dimensional root-parameter vector (alpha, beta).\n\nThe BGLS Hessian Hess_{(x,a,b)} lambda_i is a (2n+1)×(2n+1) matrix, where lambda_i(x,a,b) are the roots of t mapsto f(x+t, a, b).\n\nThe missing step is: since f(x+t,a,b) = (p boxplus_n q)(x+t) when p has roots a and q has roots b, the roots in t are exactly lambda_i(x,a,b) = gamma_i(a,b) - x, where gamma_i(a,b) are the roots of p boxplus_n q. From this one deduces:\n  * partial^2 lambda_i / partial x^2 = 0\n  * partial^2 lambda_i / partial x partial a_j = 0\n  * The (a,b)-block of Hess_{(x,a,b)} lambda_i equals Hess_{(a,b)} gamma_i = H^(i)\n\nTherefore sum_i c_i H^(i) >= 0 as a 2n×2n matrix follows from the PSD (2n+1)×(2n+1) matrix sum_i c_i Hess_{(x,a,b)} lambda_i by taking the principal (a,b)-submatrix (a principal submatrix of a PSD matrix is PSD).\n\n## What needs to be proved\n\nExplicitly show lambda_i(x,a,b) = gamma_i(a,b) - x, derive the Hessian decomposition, and invoke the principal-submatrix argument to conclude sum_i c_i H^(i) >= 0 as a 2n×2n PSD matrix.",
       "created_at": "2026-06-17T15:18:37Z"
+    },
+    {
+      "id": "c36a48b43",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "I resolved this gap. Note that the current `solution.tex` already contained a substantially revised `cor:psd` (the literal \"evaluating at x=0...\" line from the original report had been replaced by a restriction argument), but the **explicit per-eigenvalue identification** the issue asks for was still only implicit. I made it fully explicit and verified everything numerically.\n\n**What I added/strengthened in the proof of Corollary `cor:psd`:**\n\n1. **Explicit eigenvalue identity** (new eq. `eq:lambda-eq-rho`):\n   lambda_i(x,a,b) = x - rho_{n+1-i}(a,b), where rho_1>=...>=rho_n are the roots of x' |-> f(x',a,b) = p boxplus_n q. This is exactly the issue's lambda_i = gamma_i - x, with the sign/index-reversal coming solely from Def. `def:hyp` (eigenvalues are roots of t |-> f(z - t e_1) = f(x-t,a,b), i.e. t = x - rho_j, listed decreasingly).\n\n2. **Per-eigenvalue Hessian decomposition** (new eq. `eq:Hesslambda-block`):\n   Hess_{(x,a,b)} lambda_i is block-diagonal in coords (x; a,b) with vanishing x-block and (a,b)-block = -H^{(n+1-i)}. In particular d^2/dx^2 lambda_i = d^2/(dx da_j) lambda_i = d^2/(dx db_j) lambda_i = 0, the three vanishings named in the issue.\n\n3. **Principal-submatrix argument**: the (a,b)-block B of the PSD (2n+1)x(2n+1) Hessian Hess L is its lower-right principal submatrix, hence PSD (given both as \"principal submatrix of PSD is PSD\" and via the embedding w |-> (0,w)).\n\n4. **Labelling clarification**: H^{(i)} is defined in Lemma `lem:hess` via the (increasingly) ordered root map, whereas the corollary works in the decreasing convention. I added a remark proving these are reconciled: reversing the order only relabels {H^{(j)}} by j |-> n+1-j, and the quantity actually fed to `lem:hess`, namely sum_i gamma_i H^{(i)} with gamma_i and H^{(i)} sharing the index, is invariant under any joint relabelling — so it is identical in both conventions.\n\n**Numerical verification (n=3, finite differences):**\n- lambda_i(z) = x - rho_{n+1-i}(a,b) holds and is decreasing-ordered. ✓\n- The full x-row and x-column of Hess_{(x,a,b)} lambda_i are ~0 (machine precision). ✓\n- For decreasing d_1>=...>=d_n, sum_j d_j H^{(j)} is PSD (min eig ~ -1e-6) across trials. ✓\n- The monotonicity hypothesis is genuinely necessary: for random non-monotone d, sum_j d_j H^{(j)} fails PSD in 173/200 trials. ✓\n- sum_i gamma_i H^{(i)} is identical (diff ~ 5e-17) under the increasing vs decreasing conventions, confirming the labelling remark. ✓\n\nDocument checks: braces balanced, all \\\\ref/\\\\eqref defined, no duplicate labels, environments balanced. (No LaTeX toolchain available in the sandbox to compile.)\n\nThe identification H^{(i)} vs the BGLS Hessian is now established explicitly with the principal-submatrix conclusion. I consider the gap resolved.",
+      "created_at": "2026-06-18T01:19:18Z"
+    },
+    {
+      "id": "eve3b90211",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-18T01:19:22Z"
     }
   ]
 }

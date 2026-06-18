@@ -64,7 +64,19 @@ MathJax = {
   .pane{flex:1;overflow-y:auto;padding:18px 22px;display:none}
   .pane.active{display:block}
   #pane-issue.active,#pane-final-proof.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
-  #pane-overview.active{display:block}
+  #pane-overview.active{display:flex;flex-direction:column}
+  #ov-system-card{order:-20}
+  #ov-filter-bar{order:-16}
+  #ov-q-focus{order:-15}
+  #ov-card-qstatus{order:-10}
+  #ov-card-issues{order:-5}
+  #ov-card-active{order:-3}
+  #ov-card-tokens{order:10}
+  #ov-card-schedule{order:11}
+  #ov-card-chart{order:12}
+  #ov-card-prob-tokens{order:13}
+  #ov-card-suggestions{order:14}
+  #ov-card-activity{order:15}
   /* Cap display math in narrow comment/document views */
   .body mjx-container[display="true"]{font-size:.88em;overflow-x:auto;max-width:100%;margin:.4em 0}
   .rendered mjx-container[display="true"]{overflow-x:auto;max-width:100%}
@@ -272,6 +284,20 @@ MathJax = {
 
     <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
 
+      <!-- ── System + Dataset overview card (always visible) ─────────── -->
+      <div id="ov-system-card" class="card" style="margin-bottom:14px">
+        <!-- System summary row -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <span style="font-size:13px;font-weight:700">Research System Overview</span>
+          <span id="ov-sys-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)">loading…</span>
+        </div>
+        <!-- Big summary numbers -->
+        <div id="ov-sys-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:14px"></div>
+        <!-- Dataset cards -->
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Datasets</div>
+        <div id="ov-ds-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px"></div>
+      </div>
+
       <!-- ── Question filter banner ──────────────────────────────── -->
       <div id="ov-filter-bar" style="display:none;align-items:center;gap:10px;margin-bottom:14px;padding:8px 12px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.3);border-radius:7px">
         <span style="font-size:12px;color:var(--muted)">Filtered to:</span>
@@ -286,6 +312,7 @@ MathJax = {
         <!-- Header card -->
         <div class="card" style="border-color:rgba(88,166,255,.5);background:rgba(88,166,255,.04);margin-bottom:10px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+            <button onclick="clearOvFilter()" title="Back to all questions" style="font-size:11px;padding:3px 9px;background:var(--panel2);border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--muted);flex-shrink:0">← All</button>
             <span id="ov-qf-id" style="font-size:22px;font-weight:800;color:var(--accent)"></span>
             <span id="ov-qf-title" style="font-size:14px;color:var(--text);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
             <span id="ov-qf-status" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)"></span>
@@ -455,7 +482,7 @@ MathJax = {
       </div>
 
       <!-- Per-question status grid -->
-      <div class="card" style="margin-bottom:14px">
+      <div id="ov-card-qstatus" class="card" style="margin-bottom:14px;order:-10">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
           <span style="font-size:13px;font-weight:700">Problem Status &amp; AI Solvability</span>
           <div style="display:flex;align-items:center;gap:8px">
@@ -566,9 +593,6 @@ MathJax = {
                 </select>
                 <button class="btn-sec" id="iss-resolve-btn" title="Run solver agent on this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Auto-Resolve</button>
                 <button class="btn-sec" id="iss-verify-btn" title="Run verifier agent on this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Verify</button>
-                <button class="btn-sec" id="iss-discuss-btn" title="Run a discussion round (critic→solver→verifier→strategist)" style="font-size:11px;padding:4px 9px;flex-shrink:0">Discuss</button>
-                <button class="btn-sec" id="iss-meet-btn" title="Start a meeting room linked to this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Meet</button>
-                <button class="btn-sec" id="iss-gendoc-btn" title="Generate a summary document from this discussion" style="font-size:11px;padding:4px 9px;flex-shrink:0">Gen Doc</button>
                 <span class="muted" id="iss-status-msg" style="font-size:11px;flex-shrink:0"></span>
               </div>
               <div id="iss-comments" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px"></div>
@@ -749,7 +773,7 @@ MathJax = {
         <div id="pf-pdf-wrap" style="background:#404040;border-radius:6px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:200px"></div>
         <pre id="pf-raw" style="display:none;margin-top:12px"><code id="pf-raw-code" class="language-latex"></code></pre>
       </div>
-      <div id="pf-empty" class="empty" style="display:none">No proof results found. Run <code>rma solve --all</code> then click <b>Consolidate</b>.</div>
+      <div id="pf-empty" class="empty" style="display:none">No proof results found. Select a question and run the agent, then click <b>Consolidate</b>.</div>
     </section>
 
     <section class="pane" id="pane-final-proof" style="padding:0;overflow:hidden">
@@ -1069,6 +1093,7 @@ function md(node, raw, stream=false){
   let s = raw
     .replace(/\$\$[\s\S]{0,8000}?\$\$/g,    protect)   // display $$
     .replace(/\\\[[\s\S]{0,8000}?\\\]/g,     protect)   // display \[
+    .replace(/\\begin\{(align\*?|equation\*?|gather\*?|multline\*?|eqnarray\*?|alignat\*?|aligned|gathered|split|subequations|array|smallmatrix|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|cases)\}[\s\S]{0,20000}?\\end\{\1\}/g, protect)
     .replace(/\$[^\n$]{0,1000}\$/g,           protect)   // inline $
     .replace(/\\\([^\n)]{0,1000}\\\)/g,       protect);  // inline \(
   let html = marked.parse(s);
@@ -1532,10 +1557,50 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 // IDs of global-only overview cards to hide when a question is focused
 const _OV_GLOBAL_CARDS = ["ov-card-tokens","ov-card-schedule","ov-card-active",
-  "ov-card-issues","ov-card-chart","ov-card-prob-tokens","ov-card-suggestions","ov-card-activity"];
+  "ov-card-issues","ov-card-chart","ov-card-prob-tokens","ov-card-suggestions","ov-card-activity","ov-card-qstatus"];
 
 function renderOverview(d, pid){
   if(!d) return;
+
+  // ── System + Dataset overview (always render) ──────────────────────
+  const qSums=d.question_summaries||[];
+  const totalQ=qSums.length;
+  const attempted=qSums.filter(q=>(q.total_runs||0)>0).length;
+  const verified=qSums.filter(q=>q.proof_status==="verified").length;
+  const exploring=qSums.filter(q=>q.proof_status==="exploring"||q.proof_status==="in_progress").length;
+  const totalIssues=qSums.reduce((s,q)=>s+((q.issue_stats||{}).open||0),0);
+  const badge=$("ov-sys-badge");
+  if(badge) badge.textContent=`${allDatasets.length} dataset${allDatasets.length!==1?"s":""} · ${totalQ} problems`;
+  const statsEl=$("ov-sys-stats");
+  if(statsEl) statsEl.innerHTML=[
+    {n:attempted,l:"Attempted",c:"var(--accent)"},
+    {n:exploring,l:"Exploring",c:"var(--accent2)"},
+    {n:verified,l:"Verified",c:"var(--green)"},
+    {n:totalIssues,l:"Open Issues",c:"var(--amber)"},
+    {n:totalQ-attempted,l:"Not Started",c:"var(--muted)"},
+  ].map(({n,l,c})=>`<div style="text-align:center;padding:8px 4px;background:var(--panel2);border-radius:7px;border:1px solid var(--border)"><div style="font-size:20px;font-weight:800;color:${c}">${n}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${l}</div></div>`).join("");
+  // Dataset rows
+  const dsGrid=$("ov-ds-grid");
+  if(dsGrid && allDatasets.length){
+    dsGrid.innerHTML=allDatasets.map(ds=>{
+      const dsQs=qSums.filter(q=>q.dataset===ds.slug||(!q.dataset&&ds.slug===(selectedDataset||"first_proof_1")));
+      const dsTotal=ds.problem_count||dsQs.length||0;
+      const dsAtt=dsQs.filter(q=>(q.total_runs||0)>0).length;
+      const dsVer=dsQs.filter(q=>q.proof_status==="verified").length;
+      const pct=dsTotal>0?Math.round(dsAtt/dsTotal*100):0;
+      return `<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:default">
+        <div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text)">${esc(ds.name||ds.slug)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="flex:1;height:5px;background:var(--panel3,var(--border));border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--accent);transition:width .4s"></div></div>
+          <span style="font-size:10px;color:var(--muted)">${dsAtt}/${dsTotal}</span>
+        </div>
+        <div style="display:flex;gap:10px;font-size:10px;color:var(--muted)">
+          <span style="color:var(--green)">✓ ${dsVer} verified</span>
+          <span>${dsTotal-dsAtt} unstarted</span>
+        </div>
+      </div>`;
+    }).join("");
+  }
 
   // ── Question focus vs. global mode ──
   const filterBar=$("ov-filter-bar");
@@ -2895,6 +2960,13 @@ function handle(ev){
         c.appendChild(box);
       }
       $("stream").appendChild(c);
+      // Show auto-discovery notice
+      if(ev.ok){
+        const note=el("div","card");
+        note.style.cssText="border-color:rgba(88,166,255,.3);background:rgba(88,166,255,.04);margin-top:6px;font-size:12px;color:var(--muted)";
+        note.innerHTML=`<span style="color:var(--accent)">⬡</span> Auto-running discovery agent in background to find proof gaps…`;
+        $("stream").appendChild(note);
+      }
       scroll();
       break;}
     case "artifact":{
@@ -3404,7 +3476,7 @@ async function loadProofDetail(pid){
       // Show a clear "no proof yet" panel inside pf-detail instead of just a status bar message
       $("pf-title").textContent=`${pid} — no best proof yet`;
       $("pf-batch-info").textContent="";
-      $("pf-checks").innerHTML=`<div style="color:var(--muted);font-size:13px;padding:16px 0">No best proof stored for ${esc(pid)} yet. Run <code>rma solve ${esc(pid)}</code> or click <b>Consolidate</b> to scan existing runs.</div>`;
+      $("pf-checks").innerHTML=`<div style="color:var(--muted);font-size:13px;padding:16px 0">No best proof stored for ${esc(pid)} yet. Run the agent on this question, then click <b>Consolidate</b> to scan runs.</div>`;
       $("pf-pdf-wrap").innerHTML="";
       $("pf-raw").style.display="none";
       $("pf-detail").style.display="block";
@@ -4144,61 +4216,6 @@ $("iss-link-ok").onclick=async()=>{
   };
 })();
 
-// Discuss button: multi-agent discussion round via SSE
-let issDiscussEs=null;
-$("iss-discuss-btn").onclick=async()=>{
-  if(!selected||!issSelectedId) return;
-  if(issDiscussEs){ issDiscussEs.close(); issDiscussEs=null; }
-  $("iss-discuss-btn").disabled=true; $("iss-status-msg").textContent="discussing…";
-  const ds=selectedDataset||"first_proof_1";
-  issDiscussEs=new EventSource(`/api/issues/${selected}/${issSelectedId}/discuss?dataset=${encodeURIComponent(ds)}&n_turns=3`);
-  issDiscussEs.onmessage=async(e)=>{
-    try{
-      const ev=JSON.parse(e.data);
-      if(ev.type==="done"||ev.type==="error"){
-        issDiscussEs.close(); issDiscussEs=null;
-        $("iss-discuss-btn").disabled=false;
-        $("iss-status-msg").textContent=ev.type==="done"?"done ✓":"error";
-        setTimeout(()=>$("iss-status-msg").textContent="",3000);
-        const r=await fetch(`/api/issues/${selected}/${issSelectedId}?dataset=${encodeURIComponent(ds)}`);
-        if(r.ok) renderIssueThread(await r.json());
-      }
-    }catch(_){}
-  };
-  issDiscussEs.onerror=()=>{ if(issDiscussEs){issDiscussEs.close();issDiscussEs=null;} $("iss-discuss-btn").disabled=false; $("iss-status-msg").textContent=""; };
-};
-
-// Gen Doc button: synthesize issue discussion into a document
-$("iss-gendoc-btn").onclick=async()=>{
-  if(!selected||!issSelectedId) return;
-  $("iss-gendoc-btn").disabled=true; $("iss-status-msg").textContent="generating…";
-  const ds=selectedDataset||"first_proof_1";
-  try{
-    const r=await fetch(`/api/issues/${selected}/${issSelectedId}/generate-doc?dataset=${encodeURIComponent(ds)}`,{method:"POST"});
-    const d=await r.json();
-    $("iss-status-msg").textContent=d.ok?"doc ready ✓":"error";
-    setTimeout(()=>$("iss-status-msg").textContent="",3000);
-    if(d.issue) renderIssueThread(d.issue);
-  }catch(_){ $("iss-status-msg").textContent="error"; }
-  finally{ $("iss-gendoc-btn").disabled=false; }
-};
-
-// Meet button: create meeting room linked to this issue
-$("iss-meet-btn").onclick=async()=>{
-  if(!selected||!issSelectedId) return;
-  $("iss-meet-btn").disabled=true;
-  const ds=selectedDataset||"first_proof_1";
-  try{
-    const r=await fetch(`/api/meets/${selected}/from-issue/${issSelectedId}?dataset=${encodeURIComponent(ds)}`,{
-      method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({})
-    });
-    const d=await r.json();
-    if(d.issue) renderIssueThread(d.issue);
-    setTab("meet");
-    if(d.room) setTimeout(()=>loadMeetRoom(selected, d.room.id), 300);
-  }catch(_){ $("iss-status-msg").textContent="error"; }
-  finally{ $("iss-meet-btn").disabled=false; }
-};
 
 // Post human message
 $("meet-post-btn").onclick=async()=>{

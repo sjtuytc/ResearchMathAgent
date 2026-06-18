@@ -291,7 +291,6 @@ def run_agent(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
     }
     if cfg.thinking:
         create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": THINKING_BUDGET}
-        create_kwargs["betas"] = ["interleaved-thinking-2025-05-14"]
 
     # First user message: problem + cached prefix context + instruction
     first_msg_content = _build_first_message_content(cfg)
@@ -399,8 +398,6 @@ def run_agent_vertex(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
     }
     if cfg.thinking:
         create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": THINKING_BUDGET}
-        # Vertex uses the same beta header via the anthropic-beta query param
-        create_kwargs["betas"] = ["interleaved-thinking-2025-05-14"]
 
     if cfg.initial_message:
         first_msg_content: list[dict] | str = cfg.initial_message

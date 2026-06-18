@@ -2,16 +2,17 @@
 
 After the live agent finishes (API, Vertex, or Claude Code), this module
 saves solution.tex, updates strategy memory, refreshes per-question docs,
-and returns UI-friendly links.
+runs background discovery, and returns UI-friendly links.
 """
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .documents import write_or_append_report
-from .issue_agents import save_working_proof
+from .issue_agents import save_working_proof, run_discovery_agent
 from .issues import append_activity
 from .rich_documents import PROFILES, question_dir, update_discussion_index, update_question_document
 
@@ -89,6 +90,73 @@ def _build_report_section(
             "</details>",
         ]
     return "\n".join(lines)
+
+
+_STRATEGY_SUMMARY_SYSTEM = (
+    "You are a research assistant summarizing a math proof attempt. "
+    "Be concise and precise — 3-6 bullet points max."
+)
+_STRATEGY_SUMMARY_PROMPT = """\
+The following is the output of an autonomous math agent attempting to prove problem {pid}.
+Model: {model}. Stop reason: {reason}.
+
+Agent transcript (last 3000 chars):
+{transcript_tail}
+
+Summarize what the agent tried, what worked, and what failed or was left unproven.
+Output ONLY a markdown bullet list (no header, no prose outside bullets). Example:
+- Tried X approach but it failed because Y.
+- Established lemma Z correctly.
+- Left gap: the case W was not handled.
+"""
+
+
+def _append_solve_to_strategies(
+    repo_root: Path,
+    problem_id: str,
+    transcript: str,
+    model: str,
+    reason: str,
+    solution_tex: str,
+) -> None:
+    """Summarise this run and append the entry to strategies.md (background-safe)."""
+    from .vertex_llm import complete
+
+    strat_path = question_dir(repo_root, problem_id) / "strategies.md"
+    if not strat_path.is_file():
+        return
+
+    transcript_tail = transcript.strip()[-3000:] or "(no transcript)"
+    prompt = _STRATEGY_SUMMARY_PROMPT.format(
+        pid=problem_id, model=model, reason=reason, transcript_tail=transcript_tail
+    )
+    summary = complete(prompt, system=_STRATEGY_SUMMARY_SYSTEM, max_tokens=512)
+    if not summary:
+        # Fallback: use the raw tail without LLM summarization
+        summary = f"- Agent ran ({model}, {reason}). Transcript tail:\n```\n{transcript_tail[-600:]}\n```"
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    has_proof = bool(solution_tex.strip())
+    outcome_badge = "✅ solution produced" if has_proof else "❌ no solution"
+    section = (
+        f"\n\n---\n\n### Solve run — {now} ({outcome_badge})\n\n"
+        f"**Model:** {model or 'unknown'} · **Stop:** {reason}\n\n"
+        f"{summary.strip()}\n"
+    )
+    try:
+        existing = strat_path.read_text(encoding="utf-8", errors="replace")
+        strat_path.write_text(existing.rstrip() + section, encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _run_discovery_background(repo_root: Path, problem_id: str) -> None:
+    """Run the discovery (critic) agent in a background thread after solve."""
+    try:
+        for _ in run_discovery_agent(repo_root, problem_id):
+            pass
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def finalize_solve_run(
@@ -225,6 +293,24 @@ def finalize_solve_run(
         )
     except Exception:  # noqa: BLE001
         pass
+
+    # Append a strategy entry so the next run starts with richer context
+    try:
+        threading.Thread(
+            target=_append_solve_to_strategies,
+            args=(repo_root, problem_id, transcript, model or provider, reason, solution_tex),
+            daemon=True,
+        ).start()
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Auto-run discovery after a successful solve so gaps are caught immediately
+    if solution_tex and reason not in ("error", "stopped"):
+        threading.Thread(
+            target=_run_discovery_background,
+            args=(repo_root, problem_id),
+            daemon=True,
+        ).start()
 
     ok = bool(solution_tex)
     message = (

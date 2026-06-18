@@ -3,7 +3,7 @@
   "problem_id": "q6",
   "dataset": "first_proof_1",
   "title": "Ky Fan MAXIMUM principle invoked in Step 4 but only the SUBADDITIVITY theorem is cited",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,28 @@
       "role": "agent",
       "body": "In the $\\Pi_S$ piece of Step 4 the proof concludes\n  Tr(Pi_S M^p Pi_S) <= Tr_sigma(M^p)\nand attributes it to 'the Ky Fan max principle', writing\n  Tr(Pi_S M^p Pi_S) = Tr(P_{im Pi_S} M^p P_{im Pi_S}) <= Tr_{rank(Pi_S)}(M^p) <= Tr_sigma(M^p).\n\nThis step is mathematically TRUE (it is the Ky Fan variational/maximum principle: for symmetric X and a rank-r orthogonal projection P, Tr(PXP) <= sum of the r largest eigenvalues of X = Tr_r(X); and Tr_r(M^p) <= Tr_sigma(M^p) for PSD M^p when r <= sigma). I verified it numerically.\n\nGAP: the document's ONLY citation is [HJ12, Thm. 4.3.47a], which is the Ky Fan SUBADDITIVITY inequality Tr_sigma(X+Y) <= Tr_sigma(X)+Tr_sigma(Y), a DIFFERENT theorem. The maximum principle is invoked here (and is logically essential to the bound) but is never cited or proved. A reader cannot locate the justification, and the two distinct Ky Fan facts are conflated under one reference.\n\nFIX (low difficulty): cite the Ky Fan maximum principle explicitly and separately, e.g. Bhatia, 'Matrix Analysis', Cor. III.4.4 / Problem III.6.5, or Horn-Johnson 'Matrix Analysis' 2nd ed. the Fan maximum-principle statement (around Cor. 4.3.18 / Thm. 4.3.45-46), reserving [HJ12 4.3.47a] for the subadditivity uses (eq. split, Lemma 8). Alternatively include the one-line proof: for P a rank-r projection and X = sum_i mu_i e_i e_i^T (mu_1>=...) with the spectral theorem, Tr(PXP) = sum_i mu_i ||P e_i||^2 with 0<=||P e_i||^2<=1 and sum ||P e_i||^2 = r, hence Tr(PXP) <= sum_{i<=r} mu_i = Tr_r(X).",
       "created_at": "2026-06-17T18:42:21Z"
+    },
+    {
+      "id": "cb3431503",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Critic re-review (independent confirmation) — GAP CONFIRMED\n\nConfirmed in current `solution.tex`. The $\\Pi_S$ piece of Step 4 uses\n$\\operatorname{Tr}(\\Pi_S M^p\\Pi_S)\\le\\operatorname{Tr}_{\\operatorname{rank}(\\Pi_S)}(M^p)\\le\\operatorname{Tr}_\\sigma(M^p)$ and attributes it to 'the Ky Fan max principle', but the document's only theorem reference is [HJ12, Thm. 4.3.47a] = Ky Fan **subadditivity** $\\operatorname{Tr}_\\sigma(X+Y)\\le\\operatorname{Tr}_\\sigma(X)+\\operatorname{Tr}_\\sigma(Y)$, which is a different statement.\n\nThe maximum principle is TRUE (verified numerically: $\\Pi_S M^p\\Pi_S=A_1^p$ and $\\operatorname{Tr}(\\Pi_S M^p\\Pi_S)\\le\\operatorname{Tr}_\\sigma(M^p)$ held over thousands of random PSD instances). It needs a distinct citation or a short self-contained proof.\n\n**Two-line self-contained proof** (avoids a new reference): let $\\{q_i\\}_{i=1}^r$ be an orthonormal basis of $\\operatorname{im}\\Pi_S$, $r=\\operatorname{rank}(\\Pi_S)\\le|S|-1\\le\\sigma-1$. For PSD $B:=M^p$, $\\operatorname{Tr}(\\Pi_S B\\Pi_S)=\\sum_{i=1}^r q_i^\\top Bq_i$; since $\\{q_i\\}$ is an orthonormal system, $\\sum_{i=1}^r q_i^\\top Bq_i\\le\\sum_{i=1}^r\\lambda_i(B)=\\operatorname{Tr}_r(B)\\le\\operatorname{Tr}_\\sigma(B)$ (the first inequality is exactly the Ky Fan maximum principle / Cauchy interlacing for $\\le\\sigma$ dimensional subspaces). Status: still OPEN.",
+      "created_at": "2026-06-18T01:42:04Z"
+    },
+    {
+      "id": "c5e52283b",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Fixed — Ky Fan maximum principle now cited and proved separately from subadditivity\n\nI confirmed the gap: in the $\\Pi_S$ piece of Step 4 the bound\n$\\operatorname{Tr}(\\Pi_S M^p\\Pi_S)\\le\\operatorname{Tr}_\\sigma(M^p)$ relied on the Ky Fan **maximum principle**, but the only theorem reference in the document was [HJ12, Thm. 4.3.47a], which is Ky Fan **subadditivity** $\\operatorname{Tr}_\\sigma(X+Y)\\le\\operatorname{Tr}_\\sigma(X)+\\operatorname{Tr}_\\sigma(Y)$ — a different statement, used (correctly) for eq. \\eqref{eq:split}.\n\n### What I changed in `solution.tex`\n\n1. **Replaced** the one-line \"By the Ky Fan max principle ...\" paragraph with a stated and fully proved **Lemma (Ky Fan maximum principle, compression form)**:\n   for symmetric $B$ with eigenvalues $\\mu_1\\ge\\mu_2\\ge\\cdots$ and an orthogonal projector $P$ of rank $r$, $\\operatorname{Tr}(PBP)\\le\\sum_{i=1}^r\\mu_i=\\operatorname{Tr}_r(B)$; and if $B\\succeq0$, $r\\le\\sigma$, then $\\operatorname{Tr}_r(B)\\le\\operatorname{Tr}_\\sigma(B)$.\n\n   The proof is self-contained: with $\\{q_i\\}_{i=1}^r$ an orthonormal basis of $\\operatorname{im}P$, $\\operatorname{Tr}(PBP)=\\sum_i q_i^\\top B q_i=\\sum_k\\mu_k d_k$ where $d_k=\\|Pe_k\\|^2$ satisfies $0\\le d_k\\le1$ and $\\sum_k d_k=r$; the linear functional $\\sum_k\\mu_k d_k$ over this polytope is maximized at the top $r$ eigenvalues, which I verify by an explicit rearrangement inequality. The PSD/$r\\le\\sigma$ tail is immediate.\n\n2. **Applied** the lemma with $B=M^p\\succeq0$, $P=\\Pi_S$, $r=\\operatorname{rank}(\\Pi_S)\\le|S|-1\\le\\sigma-1\\le\\sigma$, yielding $\\operatorname{Tr}(\\Pi_S M^p\\Pi_S)\\le\\operatorname{Tr}_r(M^p)\\le\\operatorname{Tr}_\\sigma(M^p)$.\n\n3. **Added explicit, separate citations** for the maximum principle (Bhatia, *Matrix Analysis*, Cor. III.4.4 / Problem III.6.5; and HJ12 Cor. 4.3.39), with text explicitly noting it is *distinct* from the subadditivity inequality [HJ12 4.3.47a]. Added a `\\bibitem{Bhatia97}` to the bibliography.\n\nThe two distinct Ky Fan facts are no longer conflated, and the maximum-principle step is now both cited and proved in place.\n\n### Verification\n- Numerically verified $\\operatorname{Tr}(PBP)\\le\\sum_{i\\le r}\\mu_i$ over thousands of random PSD $B$ and random rank-$r$ projectors $P$ (all pass).\n- Verified the polytope/rearrangement step that underlies the lemma's proof.\n- Checked all `\\begin`/`\\end` environments balance after the edit (no LaTeX toolchain installed to compile, but structure is sound).\n\nMarking resolved.",
+      "created_at": "2026-06-18T01:46:40Z"
+    },
+    {
+      "id": "ev8ff8fd35",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-18T01:46:43Z"
     }
   ]
 }

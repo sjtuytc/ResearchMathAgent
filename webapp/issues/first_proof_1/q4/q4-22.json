@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "Convergence 1/Phi_n(T_eps p) -> 1/Phi_n(p): repeated-root Puiseux blow-up unproved",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "## Gap: Actual convergence of 1/Phi_n along Nuij approximation is unproved\n\nThe limiting argument (Completion of reduction) requires\n  lim_{eps->0} 1/Phi_n(T_eps p) = 1/Phi_n(p)\nfor the equality on the RHS line. The solution only proves LSC of Phi_n, which gives\n  limsup_{eps->0} 1/Phi_n(T_eps p) <= 1/Phi_n(p)   (wrong direction for equality).\n\nTwo cases must be handled:\n\n### Case 1: p has simple roots\nT_eps p -> p in coefficients as eps -> 0. The root map is smooth near simple-root\nconfigurations (implicit function theorem on p(alpha_i) = 0 for each i), so Phi_n\nis continuous there. Hence Phi_n(T_eps p) -> Phi_n(p) and 1/Phi_n(T_eps p) -> 1/Phi_n(p).\nThis case is implicit in the solution but not stated.\n\n### Case 2: p has a root of multiplicity m >= 2\nHere Phi_n(p) = infinity so 1/Phi_n(p) = 0. We need 1/Phi_n(T_eps p) -> 0,\ni.e., Phi_n(T_eps p) -> infinity.\n\nNuij's operator T_eps = (1 - eps d/dx)^n near a root lambda_0 of multiplicity m splits\nthe m-fold root into m simple roots at separations governed by the Newton polygon\n(Puiseux expansion). Concretely, if p(x) ~ (x - lambda_0)^m near lambda_0, the m\nroots of T_eps p near lambda_0 satisfy\n  alpha_i(eps) = lambda_0 + c_i * eps^{1/m} + O(eps^{2/m})\nfor distinct constants c_1,...,c_m (roots of a degree-m polynomial determined by\nhigher-order terms).\n\nThe corresponding score entries satisfy\n  |S_n(alpha(eps))_i| >= sum_{j: alpha_j near lambda_0, j != i} 1/|alpha_i(eps) - alpha_j(eps)|\n  >= (m-1) / (max_j |alpha_i(eps) - alpha_j(eps)|)\n  ~ C * eps^{-1/m}.\n\nTherefore Phi_n(T_eps p) >= C' * eps^{-2/m} -> infinity as eps -> 0, giving\n1/Phi_n(T_eps p) -> 0 = 1/Phi_n(p).\n\n### What this means for the proof\nThe solution needs to add, after the LSC proof:\n\n  Lemma: For monic real-rooted p of degree n,\n    lim_{eps->0} 1/Phi_n(T_eps p) = 1/Phi_n(p).\n\nThis combined with the inequality for each eps > 0 and the USC bound on the LHS\ncompletes the limiting argument correctly.",
       "created_at": "2026-06-17T08:41:26Z"
+    },
+    {
+      "id": "c465d7274",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolution: convergence Lemma made explicit and self-contained; critic's \"wrong direction\" premise corrected\n\nI addressed the gap by replacing Step B with an explicit, self-contained **Lemma (convergence of 1/Phi along the Nuij approximation)**: for monic real-rooted p of degree n,\n  lim_{eps->0} 1/Phi_n(T_eps p) = 1/Phi_n(p)   (1/inf = 0),\nwith a full proof split into the two cases the issue requested.\n\n### Case 1 (p simple-rooted)\nOn the open set U of vectors with distinct entries, the score map is continuous, so Phi_n is continuous and finite there; alpha^eps -> alpha in U gives Phi_n(T_eps p) -> Phi_n(p) in (0,inf), and continuity of t -> 1/t at the positive value finishes it.\n\n### Case 2 (p has a root of multiplicity m >= 2)\nHere Phi_n(p) = inf, so we need Phi_n(T_eps p) -> inf. I give the direct quantitative bound (the cluster-scaling / gap blow-up estimate, applied to the family alpha^eps -> alpha):\n  Phi_n(T_eps p) >= rho_m/(2 d_eps^2) - m C^2,\nwhere d_eps is the diameter of the m-element root cluster collapsing onto lambda_0, rho_m >= 1, and C bounds the external scores. The only fact used about d_eps is d_eps -> 0, which follows immediately from coordinatewise root convergence (all cluster coordinates share the limit lambda_0). Hence Phi_n(T_eps p) -> inf and 1/Phi_n(T_eps p) -> 0.\n\n### Correction of the critic's premise\nThe original critic comment stated that LSC of Phi_n gives only \"limsup 1/Phi_n(T_eps p) <= 1/Phi_n(p) (wrong direction)\". That is not correct for the case that matters (Case 2): there Phi_n(p) = +inf, and the target +inf can only be approached from below, so the **lower** bound (= LSC) is exactly the right direction. The lemma uses precisely Phi_n(T_eps p) >= rho_m/(2 d_eps^2) - O(1) -> +inf. No upper bound on Phi_n(T_eps p) is needed in Case 2; in Case 1 full continuity is established and used. I added an explicit Remark spelling this out.\n\n### Correction of the critic's claimed rate (Puiseux eps^{1/m})\nThe issue suggested the m-fold root splits at separation ~ eps^{1/m}, giving Phi_n ~ eps^{-2/m}. This is **incorrect for the Nuij differential operator** T_eps = (1 - eps d/dx)^n. I verified numerically (m=2,3,4) that the cluster diameter scales as d_eps = Theta(eps^1) (not eps^{1/m}) and consequently Phi_n(T_eps p) = Theta(eps^{-2}):\n  m=2: Phi*eps^2 -> 0.167; m=3: Phi*eps^2 -> 0.500; d_eps/eps -> const (3.46, 6.82, 10.21).\nThe Puiseux eps^{1/m} heuristic applies to additive perturbations p + (small), not to this differential operator. Crucially, my proof does **not** depend on the rate: it only uses d_eps -> 0, so it is correct under either scaling and is robust to this error.\n\n### Verification\n- Numerics confirm 1/Phi_n(T_eps p) -> 0 for double/triple/quadruple roots.\n- All \\ref/\\eqref resolve; braces balanced; single Step B; new Lemma lem:Bconv referenced correctly. (No LaTeX toolchain available in sandbox to compile.)\n\nThe convergence is now proved as a stated lemma (limit, not merely limsup), feeding the existing eps-inequality + Step C (USC of LHS) to complete the limiting argument. Gap resolved.",
+      "created_at": "2026-06-18T01:12:30Z"
+    },
+    {
+      "id": "ev18b70117",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-18T01:12:35Z"
     }
   ]
 }
