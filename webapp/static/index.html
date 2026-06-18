@@ -260,6 +260,12 @@ MathJax = {
   .info-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--panel2);border:1px solid var(--border);font-size:9px;color:var(--muted);cursor:help;flex-shrink:0;line-height:1;vertical-align:middle}
   /* Floating tooltip */
   #ov-tooltip{position:fixed;z-index:9999;pointer-events:none;max-width:260px;background:#1e2228;border:1px solid rgba(88,166,255,.3);border-radius:7px;padding:8px 11px;font-size:11px;line-height:1.55;color:#cdd9e5;box-shadow:0 4px 18px rgba(0,0,0,.45);display:none}
+  #app-splash{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .45s ease}
+  #app-splash.splash-done{opacity:0;pointer-events:none}
+  .splash-title{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.01em}
+  .splash-sub{font-size:12px;color:var(--muted)}
+  .splash-track{width:260px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+  .splash-fill{height:100%;width:0;background:var(--accent);border-radius:2px;transition:width .35s ease}
 </style>
 </head>
 <body>
@@ -273,6 +279,12 @@ MathJax = {
   </button>
   <button id="bug-report-btn" class="btn-sec" style="padding:4px 10px;font-size:11px;font-weight:500;margin-left:8px;flex-shrink:0" title="Report a bug or issue with a proof">Report bug</button>
 </header>
+<!-- Loading splash — hidden once datasets + problems + overview are ready -->
+<div id="app-splash">
+  <div class="splash-title">Research Math Agent</div>
+  <div class="splash-sub" id="splash-msg">Loading datasets…</div>
+  <div class="splash-track"><div class="splash-fill" id="splash-fill"></div></div>
+</div>
 <div class="layout">
   <aside class="sidebar">
     <h2>Dataset</h2>
@@ -363,7 +375,7 @@ MathJax = {
         <!-- System summary row -->
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
           <span style="font-size:13px;font-weight:700">Research System Overview</span>
-          <span id="ov-sys-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)">loading…</span>
+          <span id="ov-sys-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)"></span>
         </div>
         <!-- Big summary numbers -->
         <div id="ov-sys-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:14px"></div>
@@ -554,7 +566,7 @@ MathJax = {
       <div id="ov-card-schedule" class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
           <span style="font-size:13px;font-weight:700">Auto-Run Schedule</span>
-          <span id="ov-daemon-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)">checking…</span>
+          <span id="ov-daemon-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border)"></span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
           <div><span class="muted">Next run:</span> <span id="ov-next-run" style="font-weight:600">—</span></div>
@@ -1518,7 +1530,7 @@ $("f-solv").oninput=function(){
 };
 
 // ── Problem list loader ──────────────────────────────────────────────────────
-async function loadProblems(force=false){
+function _buildProblemParams(offset=0, limit=200){
   const params=new URLSearchParams();
   if(selectedDataset) params.set("dataset",selectedDataset);
   const sort=$("f-sort").value; if(sort&&sort!=="id") params.set("sort",sort);
@@ -1526,59 +1538,70 @@ async function loadProblems(force=false){
   const tags=$("f-tags").value.trim(); if(tags) params.set("tags",tags);
   const solv=parseInt($("f-solv").value||"0"); if(solv>0) params.set("min_solvability",(solv/100).toFixed(2));
   const status=$("f-status").value; if(status) params.set("status",status);
+  params.set("limit",String(limit));
+  if(offset>0) params.set("offset",String(offset));
+  return params;
+}
 
-  const list=$("qlist");
-  // Show static problems immediately so sidebar is never empty
+async function loadProblems(){
+  _problemOffset=0; _problemTotal=0;
   const staticFiltered = !selectedDataset || selectedDataset==="first_proof_1"
     ? STATIC_PROBLEMS
     : STATIC_PROBLEMS.filter(p=>p.dataset===selectedDataset);
-
-  // Lazy-load check: skip auto-fetch for large datasets (≥100 problems) unless forced
-  const dsMeta = allDatasets.find(d=>d.slug===selectedDataset);
-  const isLargeDs = dsMeta && (dsMeta.problem_count||0)>=100;
-  if(isLargeDs && !force){
-    problems=staticFiltered;
-    renderProblemList(problems);
-    const cnt=dsMeta.problem_count;
-    list.insertAdjacentHTML("beforeend",
-      `<div id="lazy-load-banner" style="padding:12px 10px;border-top:1px solid var(--border);text-align:center">
-        <button class="btn-sec" style="font-size:12px;padding:5px 14px" onclick="loadProblems(true)">
-          Load all ${cnt} problems →
-        </button>
-        <div style="font-size:10px;color:var(--muted);margin-top:5px">Large dataset — not loaded automatically</div>
-      </div>`);
-    return;
-  }
-
   if(!problems.length) renderProblemList(staticFiltered);
-  // Then fetch live data in background
   try{
-    const r=await fetchWithTimeout("/api/ds/problems?"+params,8000);
+    const r=await fetchWithTimeout("/api/ds/problems?"+_buildProblemParams(0,200),8000);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d=await r.json();
     problems=d.problems||[];
-    renderProblemList(problems);
+    _problemTotal=d.total||problems.length;
+    _problemOffset=problems.length;
+    $("q-count").textContent=`(${_problemTotal})`;
+    _appendProblems(problems,false);
   }catch(e){
-    // Static data already shown — only show server-error if no real data yet
     if(!problems.length){
       problems=staticFiltered;
+      _problemTotal=problems.length;
       renderProblemList(problems);
       setStatus("offline — showing cached data","warn");
     }
   }
 }
 
+async function loadMoreProblems(){
+  if(_problemOffset>=_problemTotal) return;
+  const btn=$("qlist-load-more");
+  if(btn) btn.textContent="Loading…";
+  try{
+    const r=await fetchWithTimeout("/api/ds/problems?"+_buildProblemParams(_problemOffset,200),10000);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();
+    const more=d.problems||[];
+    problems=problems.concat(more);
+    _problemTotal=d.total||_problemTotal;
+    _problemOffset+=more.length;
+    _appendProblems(more,true);
+  }catch(e){
+    if(btn) btn.textContent=`Retry load more (${e.message})`;
+  }
+}
+
 // Domain filter ---------------------------------------------------------------
 const DOMAINS = [
-  {key:"Analysis",      label:"Analysis"},
-  {key:"Algebra",       label:"Algebra"},
-  {key:"Combinatorics", label:"Combinatorics"},
-  {key:"Graph Theory",  label:"Graph Theory"},
-  {key:"Geometry",      label:"Geometry"},
-  {key:"Topology",      label:"Topology"},
-  {key:"Number Theory", label:"Number Theory"},
-  {key:"Linear Algebra",label:"Linear Algebra"},
+  {key:"Analysis",            label:"Analysis"},
+  {key:"Algebra",             label:"Algebra"},
+  {key:"Combinatorics",       label:"Combinatorics"},
+  {key:"Graph Theory",        label:"Graph Theory"},
+  {key:"Geometry",            label:"Geometry"},
+  {key:"Topology",            label:"Topology"},
+  {key:"Number Theory",       label:"Number Theory"},
+  {key:"Linear Algebra",      label:"Linear Algebra"},
+  {key:"Probability",         label:"Probability"},
+  {key:"TCS",                 label:"TCS"},
+  {key:"Logic",               label:"Logic"},
+  {key:"Mathematical Physics",label:"Math Physics"},
 ];
+// Explicit domain map for First Proof problems (their tags are topic-level, not domain-level)
 const Q_DOMAINS = {
   q1:  ["Analysis"],
   q2:  ["Algebra","Number Theory"],
@@ -1591,7 +1614,10 @@ const Q_DOMAINS = {
   q9:  ["Algebra","Linear Algebra"],
   q10: ["Linear Algebra","Analysis"],
 };
+const DOMAIN_KEYS = new Set(DOMAINS.map(d=>d.key));
 let _activeDomains = new Set();
+let _problemTotal = 0; // total matching problems (may exceed rendered count for large datasets)
+let _problemOffset = 0;
 
 function _initDomainChips(){
   const wrap=$("domain-chips"); if(!wrap) return;
@@ -1612,65 +1638,113 @@ function _initDomainChips(){
   }
 }
 
+function _itemDomains(item){
+  const pid=item.dataset.pid||"";
+  if(Q_DOMAINS[pid]) return Q_DOMAINS[pid];
+  try{ return JSON.parse(item.dataset.tags||"[]"); }catch(_){ return []; }
+}
+
 function _applyDomainFilter(){
   document.querySelectorAll("#qlist .qitem").forEach(item=>{
     if(_activeDomains.size===0){ item.classList.remove("domain-hidden"); return; }
-    const pid=item.dataset.pid||"";
-    const qDoms=Q_DOMAINS[pid]||[];
-    const match=qDoms.some(d=>_activeDomains.has(d));
-    item.classList.toggle("domain-hidden",!match);
+    item.classList.toggle("domain-hidden",!_itemDomains(item).some(d=>_activeDomains.has(d)));
   });
-  // Update count
   const visible=document.querySelectorAll("#qlist .qitem:not(.domain-hidden)").length;
-  const total=document.querySelectorAll("#qlist .qitem").length;
+  const rendered=document.querySelectorAll("#qlist .qitem").length;
+  const total=_problemTotal||rendered;
   $("q-count").textContent=_activeDomains.size>0?`(${visible}/${total})`:`(${total})`;
 }
 
-function renderProblemList(ps){
-  const list=$("qlist"); list.innerHTML="";
-  $("q-count").textContent=`(${ps.length})`;
-  if(!ps.length){
+function _qitemStatusBadge(p){
+  if(!p.open_status) return "";
+  const colors={open:"var(--green)",unknown:"var(--muted)","partially solved":"var(--amber)",solved:"var(--accent)"};
+  const c=colors[p.open_status]||"var(--muted)";
+  return `<span style="font-size:9px;padding:1px 5px;border-radius:8px;border:1px solid ${c};color:${c};margin-left:4px">${esc(p.open_status)}</span>`;
+}
+
+function _appendProblems(ps, append=false){
+  const list=$("qlist");
+  if(!append) list.innerHTML="";
+  // Remove existing load-more button
+  const old=$("qlist-load-more"); if(old) old.remove();
+  if(!ps.length && !append){
     list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">No problems match.</div>';
     return;
   }
-  const showDs=!selectedDataset; // show dataset badge when viewing "all"
+  const showDs=!selectedDataset;
   for(const p of ps){
     const it=el("div","qitem");
     const shortTitle=esc((p.title||p.id).replace(/^Problem \d+:\s*/,""));
+    const domainTags=(Q_DOMAINS[p.id]||p.tags||[]).filter(t=>DOMAIN_KEYS.has(t));
     const tagHtml=p.tags&&p.tags.length
-      ? `<div class="tag-strip">${p.tags.slice(0,3).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("")}</div>`
+      ? `<div class="tag-strip">${p.tags.slice(0,2).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("")}</div>`
       : "";
     const dsBadge=showDs?`<span class="ds-badge">${esc(p.dataset||"")}</span>`:"";
-    it.innerHTML=`<div class="qitem-top"><span class="qid">${esc(p.id)}</span>${dsBadge}${solvBadge(p.solvability_score)}</div><span class="qt">${shortTitle}</span>${tagHtml}`;
+    const statusBadge=_qitemStatusBadge(p);
+    it.innerHTML=`<div class="qitem-top"><span class="qid">${esc(p.id)}</span>${dsBadge}${statusBadge}${solvBadge(p.solvability_score)}</div><span class="qt">${shortTitle}</span>${tagHtml}`;
     it.dataset.pid=p.id; it.dataset.ds=p.dataset||selectedDataset||"first_proof_1";
+    it.dataset.tags=JSON.stringify(domainTags);
     it.onclick=()=>selectQuestion(p.id,it,p.dataset||selectedDataset||"first_proof_1");
     list.appendChild(it);
+  }
+  // Add "load more" button if there are more problems beyond what's rendered
+  const renderedCount=list.querySelectorAll(".qitem").length;
+  if(_problemTotal>renderedCount){
+    const btn=document.createElement("div");
+    btn.id="qlist-load-more";
+    btn.style.cssText="padding:8px 10px;font-size:11px;color:var(--accent);cursor:pointer;text-align:center;border-top:1px solid var(--border);margin-top:4px";
+    const remaining=_problemTotal-renderedCount;
+    btn.textContent=`Load ${Math.min(remaining,200)} more… (${remaining} remaining)`;
+    btn.onclick=()=>loadMoreProblems();
+    list.appendChild(btn);
   }
   _applyDomainFilter();
 }
 
+function renderProblemList(ps){
+  _problemOffset=ps.length;
+  $("q-count").textContent=`(${_problemTotal||ps.length})`;
+  _appendProblems(ps,false);
+}
+
+// ── Splash progress (3 steps: datasets, problems, overview) ─────────────────
+let _splashSteps=0;
+const _SPLASH_STEPS=3;
+function splashStep(msg){
+  _splashSteps=Math.min(_splashSteps+1,_SPLASH_STEPS);
+  const fill=$("splash-fill");
+  if(fill) fill.style.width=Math.round(_splashSteps/_SPLASH_STEPS*100)+"%";
+  if(msg){ const m=$("splash-msg"); if(m) m.textContent=msg; }
+  if(_splashSteps>=_SPLASH_STEPS) hideSplash();
+}
+function hideSplash(){
+  const s=$("app-splash"); if(!s||s.classList.contains("splash-done")) return;
+  s.classList.add("splash-done");
+  setTimeout(()=>{ if(s.parentNode) s.parentNode.removeChild(s); },500);
+}
+setTimeout(hideSplash,10000); // failsafe — never hang longer than 10s
+
 async function init(){
   _initDomainChips();
+  // Non-blocking capabilities fetch
+  fetchWithTimeout("/api/capabilities",5000).then(r=>r.ok?r.json():null).then(d=>{if(d) vertexCfg=d.vertex||vertexCfg;}).catch(()=>{});
   try{
-    // Load datasets first; only auto-start overview for small datasets (< 100 problems)
-    loadDatasets().then(()=>{
-      const dsMeta=allDatasets.find(d=>d.slug===selectedDataset);
-      const isSmall=!dsMeta||(dsMeta.problem_count||0)<100;
-      if(isSmall) startOvRefresh();
-      loadProblems();
-    }).catch(()=>{
-      startOvRefresh(); // still try overview for default small dataset
-      if(!problems.length){ problems=STATIC_PROBLEMS; renderProblemList(problems); }
-    });
-    // Provider options from server capabilities (non-blocking)
-    try{
-      const r=await fetchWithTimeout("/api/capabilities",5000);
-      if(r.ok){
-        const d=await r.json();
-        vertexCfg=d.vertex||vertexCfg;
-      }
-    }catch(_){}
+    // Step 1: datasets
+    $("splash-msg").textContent="Loading datasets…";
+    await loadDatasets().catch(()=>{});
+    splashStep("Loading problems…");
+    // Step 2: problems
+    const dsMeta=allDatasets.find(d=>d.slug===selectedDataset);
+    const isSmall=!dsMeta||(dsMeta.problem_count||0)<100;
+    await loadProblems().catch(()=>{ if(!problems.length){problems=STATIC_PROBLEMS;renderProblemList(problems);} });
+    splashStep("Loading overview…");
+    // Step 3: initial overview load (always attempt regardless of dataset size)
+    await loadOverview().catch(()=>{});
+    splashStep();
+    // Start periodic refresh only for small datasets (large ones are too slow)
+    if(isSmall) { if(!ovTimer) ovTimer=setInterval(loadOverview,30000); }
   }catch(e){
+    hideSplash();
     $("qlist").innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed to load:<br>${esc(String(e))}<br><br>Is the server running?</div>`;
     setStatus("server error","err");
   }
@@ -1908,21 +1982,22 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 
 // ── Tooltip system ────────────────────────────────────────────────────
-const _tip=$("ov-tooltip");
+let _tip=null; // lazy — queried on first use since #ov-tooltip is after </script>
+function _getTip(){ if(!_tip) _tip=$("ov-tooltip"); return _tip; }
 function showTip(el, html){
-  if(!_tip) return;
+  const _tip=_getTip(); if(!_tip) return;
   _tip.innerHTML=html;
   _tip.style.display="block";
   const r=el.getBoundingClientRect();
   moveTipXY(r.right+6, r.top);
 }
 function moveTipXY(x,y){
-  if(!_tip||_tip.style.display==="none") return;
+  const _tip=_getTip(); if(!_tip||_tip.style.display==="none") return;
   const mw=_tip.offsetWidth||220, mh=_tip.offsetHeight||60;
   _tip.style.left=(x+mw>window.innerWidth ? window.innerWidth-mw-8 : x)+"px";
   _tip.style.top=(y+mh>window.innerHeight ? window.innerHeight-mh-8 : y)+"px";
 }
-function hideTip(){if(_tip) _tip.style.display="none";}
+function hideTip(){ const _tip=_getTip(); if(_tip) _tip.style.display="none"; }
 document.addEventListener("mousemove", ev=>moveTipXY(ev.clientX+12, ev.clientY-6));
 document.addEventListener("mouseleave", hideTip);
 document.addEventListener("mouseover", ev=>{
@@ -2091,8 +2166,8 @@ const _OV_GLOBAL_CARDS = ["ov-card-costs","ov-card-tokens","ov-card-schedule","o
 function renderOverview(d, pid){
   if(!d) return;
 
-  // Cost attribution charts (always update)
-  renderCostCharts(d);
+  // Cost attribution charts (always update — wrapped so errors don't block the rest)
+  try{ renderCostCharts(d); }catch(e){ console.warn("renderCostCharts:",e); }
 
   // ── System + Dataset overview (always render) ──────────────────────
   const qSums=d.question_summaries||[];
