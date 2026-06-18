@@ -116,10 +116,10 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
         report_path = write_or_append_report(repo_root, date_str, section)
         try:
             append_activity(repo_root, pid,
-                            f"Autonomous daily run (model {model}, {reason}). See documents/{date_str}.md.")
+                            f"Autonomous daily run (model {model}, {reason}). See documents/{date_str}.tex.")
         except Exception:  # noqa: BLE001
             pass
-        _log(f"  {pid}: {reason}; report -> documents/{date_str}.md")
+        _log(f"  {pid}: {reason}; report -> documents/{date_str}.tex")
 
         # Update rich per-question document with transcript + outcome
         try:
@@ -129,7 +129,7 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
                 model_used=model,
                 run_outcome=reason,
             )
-            _log(f"  {pid}: updated documents/questions/{pid}.md")
+            _log(f"  {pid}: updated documents/questions/{pid}.tex")
         except Exception as exc:  # noqa: BLE001
             _log(f"  {pid}: rich doc update failed: {exc}")
 
@@ -145,7 +145,7 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
     # Refresh the cross-problem discussion index
     try:
         update_discussion_index(repo_root)
-        _log("updated documents/discussions/index.md")
+        _log("updated documents/discussions/index.tex")
     except Exception as exc:  # noqa: BLE001
         _log(f"discussion index update failed: {exc}")
 

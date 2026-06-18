@@ -109,16 +109,23 @@ def build_prefix_context(repo_root: Path, problem_id: str) -> str:
     parts: list[str] = []
     qdir = repo_root / "documents" / "questions" / problem_id
     doc_map = [
-        ("ctx_overview.md",   "## Research Overview"),
-        ("ctx_strategies.md", "## Known Strategies and Attempts"),
-        ("ctx_progress.md",   "## Proof Progress Log"),
-        ("ctx_timeline.md",   "## Work Timeline"),
+        ("overview",   "## Research Overview"),
+        ("strategies", "## Known Strategies and Attempts"),
+        ("progress",   "## Proof Progress Log"),
+        ("timeline",   "## Work Timeline"),
     ]
-    for fname, heading in doc_map:
-        fpath = qdir / fname.replace("ctx_", "")  # documents dir uses bare names
+    for stem, heading in doc_map:
+        # Prefer .tex; fall back to .md for legacy files
+        fpath = qdir / f"{stem}.tex"
         if not fpath.is_file():
-            # Also check workspace-style ctx_ names
-            fpath = qdir / fname
+            fpath = qdir / f"{stem}.md"
+        if not fpath.is_file():
+            # Also check workspace-style ctx_ prefix
+            for ext in (".tex", ".md"):
+                alt = qdir / f"ctx_{stem}{ext}"
+                if alt.is_file():
+                    fpath = alt
+                    break
         if fpath.is_file():
             try:
                 text = fpath.read_text(encoding="utf-8", errors="replace").strip()
