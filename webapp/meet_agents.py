@@ -11,14 +11,17 @@ import json
 import re
 import shutil
 import tempfile
+import logging
 import textwrap
 from pathlib import Path
 from typing import Iterator
 
+log = logging.getLogger(__name__)
+
 from .agent import AgentEvent
 from .issue_agents import _run_agent, _seed_workspace
 from .runs import RunHandle
-from .meet import PERSONAS, get_room, post_message, set_plan, mark_step_done, transcript_text
+from .meet import PERSONAS, MATHEMATICIAN_PERSONAS, get_room, post_message, set_plan, mark_step_done, transcript_text
 
 _API_BASE = "http://localhost:8000"
 _MAX_DISCUSSION_TURNS = 4
@@ -29,6 +32,19 @@ _MAX_EXEC_TURNS = 30
 # ── Persona system prompts ────────────────────────────────────────────────────
 
 def _persona_system(participant: str, problem_id: str) -> str:
+    # Mathematician persona takes priority
+    if participant in MATHEMATICIAN_PERSONAS:
+        mp = MATHEMATICIAN_PERSONAS[participant]
+        return (
+            f"{mp['character']}\n\n"
+            f"You are in a virtual research meeting about problem {problem_id}. "
+            f"Stay completely in character as {mp['display']}. "
+            "Speak in first person. Use your characteristic mathematical style, "
+            "reference your own past work naturally, and engage with what others said. "
+            "Be concise but substantive: 4–10 sentences or a focused list of mathematical points. "
+            "Use LaTeX notation where helpful. "
+            "You will post your response via curl at the end."
+        )
     p = PERSONAS.get(participant, PERSONAS["coordinator"])
     return (
         f"You are {participant} in a virtual research meeting about math problem {problem_id}. "
@@ -75,7 +91,15 @@ def run_discussion_turn(
         return
 
     transcript = transcript_text(room)
-    persona = PERSONAS.get(participant, PERSONAS["coordinator"])
+    is_mathematician = participant in MATHEMATICIAN_PERSONAS
+    if is_mathematician:
+        mp = MATHEMATICIAN_PERSONAS[participant]
+        persona_desc = f"{mp['display']} — {mp['field']}, {mp['institution']}"
+        opening_hint = f"\nYour characteristic opening move: \"{mp['opening_move']}\""
+    else:
+        persona = PERSONAS.get(participant, PERSONAS["coordinator"])
+        persona_desc = f"{participant} ({persona['role']})"
+        opening_hint = ""
 
     # Build workspace (no proof needed for discussion turns, just context)
     base = Path(tempfile.gettempdir()) / "rma_meet_agents"
@@ -87,26 +111,35 @@ def run_discussion_turn(
     prob = repo_root / "problems" / f"{problem_id}.tex"
     if prob.is_file():
         shutil.copyfile(prob, ws / "problem.tex")
+    # Also look in dataset directories for non-first_proof_1 problems
+    if not prob.is_file():
+        for ds_dir in (repo_root / "data").iterdir() if (repo_root / "data").is_dir() else []:
+            candidate = ds_dir / "problems" / f"{problem_id}.md"
+            if candidate.is_file():
+                shutil.copyfile(candidate, ws / "problem.md")
+                break
 
     prompt = textwrap.dedent(f"""
-        You are **{participant}** ({persona['role']}).
+        You are **{persona_desc}**.{opening_hint}
 
-        The meeting transcript is in transcript.md. Read it.
-        Also read problem.tex for the problem statement.
+        The meeting transcript is in transcript.md. Read it carefully.
+        Also read problem.tex (or problem.md) for the problem statement.
 
         Add your contribution to the discussion. Be direct and mathematical.
         Your response should:
         - Engage with what was already said (agree, challenge, or extend)
-        - Contribute a clear mathematical point (a strategy, a gap, a check)
-        - Be focused: 3–8 sentences or a short bullet list
+        - Contribute a clear mathematical point using your characteristic style and tools
+        - Be focused: 4–10 sentences or a structured list of mathematical points
+        - Reference your own relevant past work naturally where appropriate
+        - Use LaTeX where it helps clarity
 
-        After formulating your response, post it to the meeting room:
+        After formulating your contribution, post it to the meeting room:
 
         curl -s -X POST {_API_BASE}/api/meets/{problem_id}/{room_id}/message \\
           -H 'Content-Type: application/json' \\
           -d '{{"author": "{participant}", "body": "YOUR CONTRIBUTION HERE"}}'
 
-        Replace YOUR CONTRIBUTION HERE with your actual message (escape double quotes).
+        Replace YOUR CONTRIBUTION HERE with your actual message. Escape any double quotes inside the body.
         Then confirm the post succeeded.
     """).strip()
 
@@ -273,3 +306,63 @@ def run_step_execution(
         max_turns=_MAX_EXEC_TURNS,
         on_done=on_done,
     )
+
+
+# ── Offline (background) full round ──────────────────────────────────────────
+
+# job_id → {"status": "running"|"done"|"error", "done_at": ISO, "error": str}
+_PUSH_JOBS: dict[str, dict] = {}
+
+
+def push_job_status(job_id: str) -> dict | None:
+    return _PUSH_JOBS.get(job_id)
+
+
+def run_round_offline(
+    repo_root: Path,
+    problem_id: str,
+    room_id: str,
+    job_id: str,
+    n_rounds: int = 1,
+) -> None:
+    """Run n_rounds of discussion for all non-human participants, blocking the caller thread.
+
+    Each participant gets one turn per round, in order. Messages are posted directly to
+    the room JSON via the meet API. No SSE streaming — results accumulate silently.
+    Called from a daemon thread so the HTTP response is already returned.
+    """
+    from datetime import datetime, timezone
+
+    _PUSH_JOBS[job_id] = {"status": "running", "started_at": datetime.now(timezone.utc).isoformat()}
+
+    try:
+        room = get_room(repo_root, problem_id, room_id)
+        if room is None:
+            _PUSH_JOBS[job_id] = {"status": "error", "error": "room not found"}
+            return
+
+        participants = [p for p in room.get("participants", []) if p != "human"]
+        if not participants:
+            _PUSH_JOBS[job_id] = {"status": "done", "turns": 0}
+            return
+
+        turns_done = 0
+        for _round in range(n_rounds):
+            for participant in participants:
+                try:
+                    # Drain the generator — side-effects (posting to room JSON) happen inside
+                    for _ in run_discussion_turn(repo_root, problem_id, room_id, participant):
+                        pass
+                    turns_done += 1
+                    log.info("push-round: %s/%s turn done for %s", problem_id, room_id, participant)
+                except Exception as exc:
+                    log.warning("push-round: turn failed for %s: %s", participant, exc)
+
+        _PUSH_JOBS[job_id] = {
+            "status": "done",
+            "turns": turns_done,
+            "done_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as exc:
+        log.exception("push-round job %s failed", job_id)
+        _PUSH_JOBS[job_id] = {"status": "error", "error": str(exc)}

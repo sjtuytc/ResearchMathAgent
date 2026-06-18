@@ -243,12 +243,14 @@ def update_issue(repo_root: Path, problem_id: str, issue_id: str,
 
 
 
+_PRIO_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
+
+
 def list_all_issues(repo_root: Path, dataset: str = "first_proof_1") -> list[dict]:
     """Return all issues across all questions for a dataset, sorted by priority then created_at."""
     base = repo_root / "webapp" / "issues" / dataset
     if not base.is_dir():
         return []
-    _PRIO_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
     issues = []
     for qdir in sorted(base.iterdir()):
         if not qdir.is_dir():
@@ -258,6 +260,33 @@ def list_all_issues(repo_root: Path, dataset: str = "first_proof_1") -> list[dic
                 issues.append(json.loads(f.read_text(encoding="utf-8")))
             except Exception:
                 pass
+    issues.sort(key=lambda i: (
+        _PRIO_ORDER.get(i.get("priority", "P2"), 2),
+        i.get("created_at", ""),
+    ))
+    return issues
+
+
+def list_all_issues_system(repo_root: Path) -> list[dict]:
+    """Return all issues across all datasets, sorted by priority then created_at."""
+    base = repo_root / "webapp" / "issues"
+    if not base.is_dir():
+        return []
+    issues = []
+    for dsdir in sorted(base.iterdir()):
+        if not dsdir.is_dir():
+            continue
+        dataset = dsdir.name
+        for qdir in sorted(dsdir.iterdir()):
+            if not qdir.is_dir():
+                continue
+            for f in sorted(qdir.glob("*.json"), key=lambda p: p.stat().st_mtime):
+                try:
+                    issue = json.loads(f.read_text(encoding="utf-8"))
+                    issue.setdefault("dataset", dataset)
+                    issues.append(issue)
+                except Exception:
+                    pass
     issues.sort(key=lambda i: (
         _PRIO_ORDER.get(i.get("priority", "P2"), 2),
         i.get("created_at", ""),

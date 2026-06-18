@@ -200,6 +200,11 @@ MathJax = {
   /* Tags strip */
   .tag-strip{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px}
   .tag-chip{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--panel2);color:var(--muted);border:1px solid var(--border)}
+  .qstat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+  .domain-chip{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--panel);border:1px solid var(--border);color:var(--muted);font-weight:500;flex-shrink:0}
+  .qitem-stats{font-size:10px;color:var(--muted);margin-top:3px;display:flex;align-items:center;justify-content:space-between}
+  .qf-chip{font-size:11px;padding:2px 10px;border-radius:20px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;transition:all .15s}
+  .qf-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
   /* Global level bar */
   .lvl-bar{display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--border);padding:5px 14px;flex-shrink:0;flex-wrap:wrap;background:var(--panel)}
   .lvl-seg{padding:4px 10px;border-radius:5px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:5px;user-select:none;font-size:12px;transition:background .12s,color .12s}
@@ -229,6 +234,8 @@ MathJax = {
 <header>
   <h1>Research Math Agent</h1>
   <span class="sub" id="header-sub">Research-level math problems · multi-dataset · live solver</span>
+  <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:8px">Dataset:</span>
+  <select id="ds-select" class="ds-picker" style="width:auto;margin-bottom:0;padding:4px 8px;flex-shrink:0;min-width:140px;max-width:240px"><option value="">Loading…</option></select>
   <span class="status" id="status">select a question</span>
   <button id="cmd-open-btn" class="btn-sec" style="padding:4px 10px;font-size:11px;font-weight:500;display:flex;align-items:center;gap:6px;flex-shrink:0" title="Command palette (Ctrl+K)">
     <svg width=12 height=12 viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width=2><circle cx=6 cy=6 r=5/><path d='M10.5 10.5l4 4'/></svg>
@@ -238,8 +245,6 @@ MathJax = {
 </header>
 <div class="layout">
   <aside class="sidebar">
-    <h2>Dataset</h2>
-    <select id="ds-select" class="ds-picker"><option value="">Loading…</option></select>
     <div class="filter-toggle" id="filter-toggle"><span id="filter-arrow" style="font-size:9px">▶</span> Filter &amp; Sort</div>
     <div id="filter-panel" class="filter-panel" style="display:none">
       <label>Search</label>
@@ -267,6 +272,9 @@ MathJax = {
       </select>
     </div>
     <h2 style="display:flex;align-items:center;gap:6px">Problems <span id="q-count" style="font-size:10px;font-weight:400;color:var(--muted)"></span></h2>
+    <div style="padding:0 2px 6px;display:flex;gap:4px;flex-wrap:wrap">
+      <button id="q-unsolved-btn" class="qf-chip" title="Hide verified/solved problems">Unsolved only</button>
+    </div>
     <div id="qlist"></div>
     <h2 style="margin-top:18px">Daily cycle</h2>
     <div style="padding:6px 10px">
@@ -822,7 +830,17 @@ MathJax = {
     </section>
 
     <section class="pane" id="pane-literature">
-      <div id="lit-empty" class="empty">Pick a question to see its literature.</div>
+      <!-- Global shared library (always visible) -->
+      <div id="lit-global-section" style="margin-bottom:18px">
+        <div class="bar" style="margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700">Global Library</span>
+          <span id="lit-g-count" style="font-size:11px;color:var(--muted);margin-left:6px"></span>
+          <button class="btn-sec" id="lit-g-seed-btn" style="font-size:11px;padding:3px 10px;margin-left:8px" title="Seed with foundational papers">Seed Refs</button>
+          <span id="lit-g-status" style="font-size:11px;color:var(--muted);margin-left:8px"></span>
+        </div>
+        <div id="lit-g-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px"></div>
+      </div>
+      <div id="lit-empty" class="empty">Pick a question to see its question-specific literature.</div>
       <div id="lit-body" style="display:none">
         <div class="bar" style="margin-bottom:14px">
           <span style="font-size:13px;font-weight:700;color:var(--accent)" id="lit-q-label"></span>
@@ -1235,6 +1253,33 @@ async function loadDatasets(){
   }
 }
 
+// ── Domain one-word mapping ──────────────────────────────────────────────────
+function _domainFromTags(tags){
+  if(!tags||!tags.length) return "";
+  const t=tags.join(" ").toLowerCase();
+  if(/stochastic|measure theory|pde/.test(t)) return "Analysis";
+  if(/automorphic|representation|l-function/.test(t)) return "Algebra";
+  if(/algebraic combin|macdonald|markov/.test(t)) return "Combinat.";
+  if(/free prob|spectral graph|polynomial/.test(t)) return "Spectral";
+  if(/algebraic topol|operad|homotopy/.test(t)) return "Topology";
+  if(/symplectic|lagrangian/.test(t)) return "Geometry";
+  if(/lie group|lattice|group theory/.test(t)) return "Groups";
+  if(/tensor|algebraic geom/.test(t)) return "Tensors";
+  if(/numerical|rkhs|optimization/.test(t)) return "Numerics";
+  if(/graph theory|combin/.test(t)) return "Graphs";
+  if(/number theory/.test(t)) return "Numbers";
+  const w=tags[0].trim().split(/\s+/);
+  return (w[0][0].toUpperCase()+w[0].slice(1)).slice(0,9);
+}
+
+// ── Unsolved-only quick filter ───────────────────────────────────────────────
+let _unsolvedOnly=false;
+$("q-unsolved-btn").onclick=()=>{
+  _unsolvedOnly=!_unsolvedOnly;
+  $("q-unsolved-btn").classList.toggle("active",_unsolvedOnly);
+  renderProblemList(problems);
+};
+
 // ── Filter toggle ────────────────────────────────────────────────────────────
 $("filter-toggle").onclick=()=>{
   const p=$("filter-panel"), open=p.style.display!=="none";
@@ -1288,20 +1333,52 @@ async function loadProblems(){
 
 function renderProblemList(ps){
   const list=$("qlist"); list.innerHTML="";
-  $("q-count").textContent=`(${ps.length})`;
-  if(!ps.length){
+  // Apply unsolved-only filter client-side using live overview data
+  const qSums=ovData&&ovData.question_summaries||[];
+  const filtered=_unsolvedOnly
+    ? ps.filter(p=>{ const qs=qSums.find(q=>q.qid===p.id); return !qs||qs.proof_status!=="verified"; })
+    : ps;
+  const total=ps.length, shown=filtered.length;
+  $("q-count").textContent=total===shown?`(${total})`:`(${shown}/${total})`;
+  if(!filtered.length){
     list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">No problems match.</div>';
     return;
   }
-  const showDs=!selectedDataset; // show dataset badge when viewing "all"
-  for(const p of ps){
+  const showDs=!selectedDataset;
+  for(const p of filtered){
     const it=el("div","qitem");
-    const shortTitle=esc((p.title||p.id).replace(/^Problem \d+:\s*/,""));
-    const tagHtml=p.tags&&p.tags.length
-      ? `<div class="tag-strip">${p.tags.slice(0,3).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("")}</div>`
-      : "";
+    // Status from overview data
+    const qs=qSums.find(q=>q.qid===p.id)||{};
+    const proofStatus=qs.proof_status||"";
+    const totalRuns=qs.total_runs||0;
+    const accPctRaw=qs.accuracy_pct;
+    // Status dot color based on proof_status + accuracy
+    let dotColor,dotTitle;
+    if(proofStatus==="verified"){dotColor="var(--green)";dotTitle="Verified";}
+    else if(totalRuns===0){dotColor="var(--border)";dotTitle="Not started";}
+    else if(proofStatus==="in_progress"||proofStatus==="exploring"||(accPctRaw!=null&&accPctRaw>0)){
+      dotColor="var(--amber)";dotTitle="In progress";
+    }
+    else{dotColor="var(--red)";dotTitle="Failing";}
+    // One-word domain from tags
+    const domain=_domainFromTags(p.tags);
+    const domainHtml=domain?`<span class="domain-chip">${esc(domain)}</span>`:"";
+    // Stats row: use server accuracy_pct (already computed above)
+    const accPct=accPctRaw;
+    let statsHtml;
+    if(proofStatus==="verified"&&totalRuns===0){
+      statsHtml=`<div class="qitem-stats"><span style="color:var(--green);font-weight:600">Verified</span></div>`;
+    } else if(totalRuns>0){
+      const accStr=accPct!=null?`${accPct}% acc`:"";
+      const lo=qs.last_outcome;
+      const lastIcon=lo==="success"?"✓":lo==="fail"?"✗":"·";
+      const lastColor=lo==="success"?"var(--green)":lo==="fail"?"var(--red)":"var(--muted)";
+      statsHtml=`<div class="qitem-stats"><span>${totalRuns} run${totalRuns!==1?"s":""}${accStr?" &middot; "+accStr:""}</span><span style="color:${lastColor};font-weight:700">${lastIcon}</span></div>`;
+    } else {
+      statsHtml=`<div class="qitem-stats"><span style="opacity:.45">No runs yet</span></div>`;
+    }
     const dsBadge=showDs?`<span class="ds-badge">${esc(p.dataset||"")}</span>`:"";
-    it.innerHTML=`<div class="qitem-top"><span class="qid">${esc(p.id)}</span>${dsBadge}${solvBadge(p.solvability_score)}</div><span class="qt">${shortTitle}</span>${tagHtml}`;
+    it.innerHTML=`<div class="qitem-top"><span class="qstat-dot" style="background:${dotColor}" title="${esc(dotTitle)}"></span><span class="qid">${esc(p.id)}</span>${domainHtml}${dsBadge}<span style="margin-left:auto">${solvBadge(p.solvability_score)}</span></div><span class="qt">${esc((p.title||p.id).replace(/^Problem \d+:\s*/,""))}</span>${statsHtml}`;
     it.dataset.pid=p.id; it.dataset.ds=p.dataset||selectedDataset||"first_proof_1";
     it.onclick=()=>selectQuestion(p.id,it,p.dataset||selectedDataset||"first_proof_1");
     list.appendChild(it);
@@ -1513,6 +1590,8 @@ async function loadOverview(){
   catch(e){ return; }
   ovData=d;
   renderOverview(d, selected);
+  // Refresh problem list status dots + stats when overview data arrives
+  if(problems.length) renderProblemList(problems);
 }
 
 function clearOvFilter(){
@@ -4074,6 +4153,74 @@ $("lit-d-delete").onclick=async()=>{
     loadLiterature(litSelected);
   }
 };
+
+// ─── Global Library ────────────────────────────────────────────────────────
+async function loadGlobalLibrary(){
+  const list=$("lit-g-list"), count=$("lit-g-count"), status=$("lit-g-status");
+  if(!list) return;
+  try{
+    const r=await fetch("/api/lit-global");
+    const d=await r.json();
+    const papers=d.papers||[];
+    if(count) count.textContent=`(${papers.length} paper${papers.length!==1?"s":""})`;
+    list.innerHTML="";
+    if(!papers.length){
+      list.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:8px">No papers yet. Click <strong>Seed Refs</strong> to add foundational references, or run <strong>Discover</strong> on a question.</div>`;
+      return;
+    }
+    for(const p of papers){
+      const card=document.createElement("div");
+      card.className="card";
+      card.style.cssText="padding:10px 12px;position:relative";
+      const relColor=p.relevance==="high"?"var(--green)":p.relevance==="low"?"var(--muted)":"var(--accent)";
+      const pdfSt=p.pdf_status||"none";
+      const pdfBadge=pdfSt==="available"
+        ? `<a href="/api/lit-global/${esc(p.id)}/pdf" target="_blank" style="font-size:10px;color:var(--green);border:1px solid var(--green);border-radius:8px;padding:1px 6px;text-decoration:none;flex-shrink:0">PDF ↗</a>`
+        : pdfSt==="downloading"
+        ? `<span style="font-size:10px;color:var(--amber)">⏳ downloading…</span>`
+        : `<button class="btn-sec" style="font-size:10px;padding:1px 6px;flex-shrink:0" onclick="downloadGlobalPaper(${JSON.stringify(p.id)},this)">↓ PDF</button>`;
+      const arXivLink=p.url?`<a href="${esc(p.url)}" target="_blank" style="font-size:10px;color:var(--muted);text-decoration:none">arXiv ↗</a>`:"";
+      card.innerHTML=`
+        <div style="font-size:12px;font-weight:700;margin-bottom:3px;line-height:1.3">${esc(p.title)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">${esc((p.authors||[]).slice(0,3).map(a=>a.split(",")[0]).join(", "))} ${p.year?`(${p.year})`:""}</div>
+        <div style="font-size:10px;color:${relColor};margin-bottom:5px;font-weight:600">${esc(p.relevance||"medium")} relevance · ${esc((p.tags||[]).slice(0,2).join(", "))}</div>
+        <div style="font-size:11px;color:var(--fg);margin-bottom:6px;line-height:1.4">${esc((p.notes||p.abstract||"").slice(0,160))}${(p.notes||p.abstract||"").length>160?"…":""}</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${pdfBadge}${arXivLink}</div>
+      `;
+      list.appendChild(card);
+    }
+  }catch(e){ if(status) status.textContent="Failed to load global library"; }
+}
+async function downloadGlobalPaper(paperId, btn){
+  if(btn){ btn.disabled=true; btn.textContent="⏳"; }
+  try{
+    await fetch(`/api/lit-global/${encodeURIComponent(paperId)}/download`,{method:"POST"});
+    // Poll for status
+    let tries=0;
+    const poll=setInterval(async()=>{
+      tries++;
+      const r=await fetch("/api/lit-global");
+      const d=await r.json();
+      const p=(d.papers||[]).find(x=>x.id===paperId);
+      if(!p||p.pdf_status==="available"||tries>60){
+        clearInterval(poll);
+        loadGlobalLibrary();
+      }
+    },3000);
+  }catch(e){ if(btn){ btn.disabled=false; btn.textContent="↓ PDF"; } }
+}
+$("lit-g-seed-btn").onclick=async function(){
+  this.disabled=true; $("lit-g-status").textContent="Seeding…";
+  try{
+    const r=await fetch("/api/lit-global/seed",{method:"POST"});
+    const d=await r.json();
+    $("lit-g-status").textContent=`Added ${d.seeded} paper${d.seeded!==1?"s":""}`;
+    await loadGlobalLibrary();
+  }catch(e){ $("lit-g-status").textContent="Failed"; }
+  finally{ this.disabled=false; }
+};
+// Load global library immediately on page load
+loadGlobalLibrary();
 
 async function loadLiterature(qid){
   litSelected=qid;

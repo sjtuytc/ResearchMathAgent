@@ -71,10 +71,29 @@ def get_working_proof(repo_root: Path, problem_id: str) -> str:
     return ""
 
 
-def save_working_proof(repo_root: Path, problem_id: str, tex: str) -> None:
+def save_working_proof(
+    repo_root: Path,
+    problem_id: str,
+    tex: str,
+    issue_id: str | None = None,
+    issue_title: str | None = None,
+    agent: str | None = None,
+) -> None:
+    from .proof_history import record_proof_version
+    old_tex = get_working_proof(repo_root, problem_id)
     p = working_proof_path(repo_root, problem_id)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(tex, encoding="utf-8")
+    try:
+        record_proof_version(
+            repo_root, problem_id, tex,
+            old_tex=old_tex or None,
+            issue_id=issue_id,
+            issue_title=issue_title,
+            agent=agent,
+        )
+    except Exception:
+        pass
 
 
 # ── workspace seeding ────────────────────────────────────────────────────────
@@ -294,17 +313,32 @@ Report what you actually established, not what you hoped to prove."""
 
     yield from _run_agent(
         repo_root, ws, prompt, _RESOLVER_SYSTEM, handle, f"solver/{problem_id}/{issue_id}",
-        on_done=lambda: _save_improved_proof(repo_root, problem_id, ws),
+        on_done=lambda: _save_improved_proof(
+            repo_root, problem_id, ws,
+            issue_id=issue_id,
+            issue_title=issue.get("title", ""),
+        ),
     )
 
 
-def _save_improved_proof(repo_root: Path, problem_id: str, ws: Path) -> None:
-    """If the agent wrote solution.tex, save it as the working proof."""
+def _save_improved_proof(
+    repo_root: Path,
+    problem_id: str,
+    ws: Path,
+    issue_id: str | None = None,
+    issue_title: str | None = None,
+) -> None:
+    """If the agent wrote solution.tex, save it as the working proof and record history."""
     sol = ws / "solution.tex"
     if sol.is_file():
         tex = sol.read_text(encoding="utf-8", errors="replace")
         if tex.strip():
-            save_working_proof(repo_root, problem_id, tex)
+            save_working_proof(
+                repo_root, problem_id, tex,
+                issue_id=issue_id,
+                issue_title=issue_title,
+                agent="solver-agent",
+            )
 
 
 def _merge_analysis_into_document(repo_root: Path, problem_id: str, ws: Path) -> None:
