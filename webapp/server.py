@@ -31,14 +31,16 @@ from .dataset_store import (
 )
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof, run_discussion_agent, generate_issue_summary
 from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
-from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log, link_issue, add_issue_document
+from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log, link_issue, add_issue_document, list_all_issues, list_all_issues_system
 from .todos import list_todos, create_todo, update_todo, delete_todo
 from .meet import (
     create_room as meet_create, get_room as meet_get, list_rooms as meet_list,
     post_message as meet_post_message, set_plan as meet_set_plan,
     mark_step_done as meet_mark_step_done, PERSONAS as meet_personas,
+    MATHEMATICIAN_PERSONAS as meet_mathematician_personas,
+    get_personas_for_problem as meet_get_personas,
 )
-from .meet_agents import run_discussion_turn, run_synthesis, run_step_execution
+from .meet_agents import run_discussion_turn, run_synthesis, run_step_execution, run_round_offline
 from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
@@ -51,6 +53,7 @@ from .concepts import load_concepts, save_concepts, generate_concepts, ensure_al
 from .devlog import read_log as devlog_read, append_entry as devlog_append
 from .insights import get_system_insight, get_dataset_insight, get_question_insight
 from .issue_pdf import compile_issue_pdf
+from .doc_bundle import build_bundle_pdf
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -311,6 +314,14 @@ _ID_RE_LOOSE = re.compile(r"^[A-Za-z0-9_.-]{1,120}$")
 
 def _ds_from_query(dataset: str | None) -> str:
     return dataset if dataset and re.match(r"^[A-Za-z0-9_-]{1,80}$", dataset) else "first_proof_1"
+
+
+@app.get("/api/issues-all")
+def list_issues_all_ep(level: str = Query("dataset"), dataset: str = Query(None)) -> JSONResponse:
+    if level == "system":
+        return JSONResponse({"issues": list_all_issues_system(REPO_ROOT)})
+    ds = _ds_from_query(dataset)
+    return JSONResponse({"issues": list_all_issues(REPO_ROOT, ds)})
 
 
 @app.get("/api/issues/{problem_id}")
@@ -632,6 +643,17 @@ def post_event(problem_id: str, payload: dict = Body(...), dataset: str = Query(
 
 # ── Virtual Meet endpoints ────────────────────────────────────────────────────
 
+@app.get("/api/meet-personas/{problem_id}")
+def get_meet_personas(problem_id: str) -> JSONResponse:
+    personas = meet_get_personas(problem_id)
+    # Strip the long 'character' field — keep only display info for the UI
+    ui_personas = [
+        {k: v for k, v in p.items() if k != "character"}
+        for p in personas
+    ]
+    return JSONResponse({"personas": ui_personas})
+
+
 @app.get("/api/meets/{problem_id}")
 def list_meets(problem_id: str) -> JSONResponse:
     return JSONResponse({"rooms": meet_list(REPO_ROOT, problem_id)})
@@ -728,6 +750,29 @@ def meet_execute_step(problem_id: str, room_id: str, step_idx: int, run_id: str 
             yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/meets/{problem_id}/{room_id}/push-round")
+def meet_push_round(problem_id: str, room_id: str, payload: dict = Body(default={})) -> JSONResponse:
+    """Fire-and-forget: run one full round of discussion in a background thread."""
+    from .meet_agents import push_job_status
+    n_rounds = int(payload.get("n_rounds", 1))
+    job_id = uuid.uuid4().hex
+    threading.Thread(
+        target=run_round_offline,
+        args=(REPO_ROOT, problem_id, room_id, job_id, n_rounds),
+        daemon=True,
+    ).start()
+    return JSONResponse({"job_id": job_id, "status": "started"})
+
+
+@app.get("/api/meets/{problem_id}/{room_id}/push-status/{job_id}")
+def meet_push_status(problem_id: str, room_id: str, job_id: str) -> JSONResponse:
+    from .meet_agents import push_job_status
+    info = push_job_status(job_id)
+    if info is None:
+        return JSONResponse({"status": "unknown"})
+    return JSONResponse(info)
 
 
 @app.get("/api/todos/{problem_id}")
@@ -855,6 +900,18 @@ def document(name: str) -> JSONResponse:
         return JSONResponse({"error": "not found"}, status_code=404)
     fmt = "latex" if name.endswith(".tex") else "markdown"
     return JSONResponse({"name": name, "format": fmt, "markdown": content, "content": content})
+
+
+@app.get("/api/documents/bundle.pdf")
+def documents_bundle(dataset: str | None = None, question: str | None = None):
+    """Return a combined PDF of all documents (or filtered by dataset/question)."""
+    from fastapi.responses import Response
+    try:
+        pdf_bytes = build_bundle_pdf(REPO_ROOT, dataset=dataset, qid=question)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                    headers={"Content-Disposition": "inline; filename=context_bundle.pdf"})
 
 
 @app.get("/api/problem-pdf/{problem_id}")
@@ -1090,8 +1147,28 @@ def save_working_proof_ep(problem_id: str, payload: dict = Body(...)) -> JSONRes
     if not _ID_RE_LOOSE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
     tex = str(payload.get("tex", ""))
-    save_working_proof(REPO_ROOT, problem_id, tex)
+    save_working_proof(REPO_ROOT, problem_id, tex, agent="human")
     return JSONResponse({"ok": True})
+
+
+@app.get("/api/proof-history/{problem_id}")
+def proof_history_ep(problem_id: str) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    from .proof_history import list_proof_history
+    history = list_proof_history(REPO_ROOT, problem_id)
+    return JSONResponse({"problem_id": problem_id, "history": history})
+
+
+@app.get("/api/proof-history/{problem_id}/{version}")
+def proof_history_version_ep(problem_id: str, version: int) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    from .proof_history import get_proof_version_tex
+    tex = get_proof_version_tex(REPO_ROOT, problem_id, version)
+    if tex is None:
+        return JSONResponse({"error": "version not found"}, status_code=404)
+    return JSONResponse({"problem_id": problem_id, "version": version, "tex": tex})
 
 
 @app.get("/api/agent/discover/{problem_id}")

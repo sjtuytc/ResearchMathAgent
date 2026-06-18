@@ -59,6 +59,7 @@ MathJax = {
   .qitem .qt{display:block;font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .main{display:flex;flex-direction:column;min-width:0}
   .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 14px}
+  .tab-freq{display:inline-block;margin-left:4px;font-size:9px;font-weight:700;background:var(--accent);color:#fff;border-radius:8px;padding:0 4px;vertical-align:middle;opacity:.75;line-height:14px}
   .tab{padding:11px 16px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;font-size:13px}
   .tab.active{color:var(--text);border-bottom-color:var(--accent)}
   .pane{flex:1;overflow-y:auto;padding:18px 22px;display:none}
@@ -190,8 +191,9 @@ MathJax = {
   .meet-step-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:6px}
   .meet-step-card.done{border-color:var(--green);opacity:.7}
   .meet-step-card.running{border-color:var(--amber)}
-  .meet-persona-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:11px;cursor:pointer;transition:border-color .12s}
+  .meet-persona-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:11px;cursor:default;transition:border-color .12s}
   .meet-persona-chip:hover{border-color:var(--accent)}
+  #meet-new-parts label:hover{border-color:var(--accent)!important}
   /* Dataset badge on qitem */
   .ds-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);margin-left:auto;flex-shrink:0}
   .qitem-top{display:flex;align-items:center;gap:4px}
@@ -292,16 +294,16 @@ MathJax = {
     </div>
     <div class="tabs">
       <div class="tab active" data-tab="overview">Overview</div>
-      <div class="tab" data-tab="question">Question</div>
+      <div class="tab" data-tab="insights">Insights</div>
       <div class="tab" data-tab="issue">Issue</div>
       <div class="tab" data-tab="agent">Agent</div>
-      <div class="tab" data-tab="documents">Documents</div>
+      <div class="tab" data-tab="question">Question</div>
       <div class="tab" data-tab="proofs">Proofs</div>
+      <div class="tab" data-tab="documents">Documents</div>
       <div class="tab" data-tab="final-proof">Final Proof</div>
-      <div class="tab" data-tab="meet">Meet</div>
       <div class="tab" data-tab="literature">Literature</div>
       <div class="tab" data-tab="concepts">Concepts</div>
-      <div class="tab" data-tab="insights">Insights</div>
+      <div class="tab" data-tab="meet">Meet</div>
       <div class="tab" data-tab="devlog">Dev Log</div>
     </div>
 
@@ -546,7 +548,7 @@ MathJax = {
     </section>
 
     <section class="pane" id="pane-issue" style="padding:0;overflow:hidden">
-      <div id="i-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Pick a question to see its issues.</div>
+      <div id="i-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Loading issues…</div>
       <div id="i-body" style="display:none;height:100%;overflow:hidden;flex-direction:column">
         <!-- Agent log panel (collapsible, shown when an agent is running) -->
         <div id="iss-agent-bar" style="display:none;background:var(--panel2);border-bottom:1px solid var(--border);padding:6px 12px;font-size:11px;color:var(--muted);align-items:center;gap:10px;flex-shrink:0">
@@ -563,7 +565,7 @@ MathJax = {
           <div id="iss-sidebar" style="border-right:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column">
             <div style="padding:10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0">
               <div style="display:flex;align-items:center;gap:6px;padding:4px 2px">
-                <span style="font-size:11px;color:var(--muted)">Issues for</span>
+                <span id="iss-scope-label" style="font-size:11px;color:var(--muted)">Scope</span>
                 <span id="iss-q-badge" style="font-size:12px;font-weight:700;color:var(--accent)">—</span>
               </div>
               <div style="display:flex;gap:4px">
@@ -599,8 +601,10 @@ MathJax = {
                 <button class="btn-sec" id="iss-discuss-btn" title="Run a discussion round (critic→solver→verifier→strategist)" style="font-size:11px;padding:4px 9px;flex-shrink:0">Discuss</button>
                 <button class="btn-sec" id="iss-meet-btn" title="Start a meeting room linked to this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Meet</button>
                 <button class="btn-sec" id="iss-gendoc-btn" title="Generate a summary document from this discussion" style="font-size:11px;padding:4px 9px;flex-shrink:0">Gen Doc</button>
+                <button class="btn-sec" id="iss-pdf-btn" title="View issue thread as PDF" style="font-size:11px;padding:4px 9px;flex-shrink:0">PDF</button>
                 <span class="muted" id="iss-status-msg" style="font-size:11px;flex-shrink:0"></span>
               </div>
+              <div id="iss-pdf-view" style="display:none;flex:1;overflow-y:auto;position:relative"></div>
               <div id="iss-comments" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px"></div>
               <div style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0">
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
@@ -674,7 +678,7 @@ MathJax = {
             <input type="text" id="gcp-project" style="width:160px" placeholder="your-project-id" />
           </label>
           <label class="inline"><input type="checkbox" id="thinking" checked /> show thinking</label>
-          <button class="btn-pri" id="run">Solve</button>
+          <button class="btn-pri" id="run">Push Forward ▶</button>
           <button class="btn-sec" id="stop" style="display:none">Stop</button>
           <span class="usage" id="usage"></span>
         </div>
@@ -698,42 +702,38 @@ MathJax = {
           </div>
         </div>
         <div id="a-empty" class="muted" style="margin-top:18px;font-size:13px">Select a question from the left to run the agent.</div>
+        <div id="a-status-panel" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;font-size:12px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-weight:700;font-size:13px" id="a-status-qid"></span>
+            <span id="a-status-proof-badge" style="padding:2px 8px;border-radius:10px;background:var(--border);color:var(--muted);font-size:11px"></span>
+            <span style="margin-left:auto;color:var(--muted);font-size:11px" id="a-status-runs-label"></span>
+          </div>
+          <div id="a-status-proof-preview" style="color:var(--muted);font-size:11px;white-space:pre-wrap;max-height:120px;overflow-y:auto;border-top:1px solid var(--border);padding-top:8px;margin-top:4px"></div>
+        </div>
         <div id="stream"></div>
       </div>
     </section>
 
-    <section class="pane" id="pane-documents">
-      <div class="bar">
-        <button class="btn-pri" id="d-run">Generate today's report</button>
-        <button class="btn-sec" id="d-refresh">Refresh</button>
-        <span class="muted" id="d-status"></span>
-        <button class="btn-sec" id="d-show-all" style="display:none;margin-left:auto;font-size:11px">All docs ↗</button>
+    <section class="pane" id="pane-documents" style="display:flex;flex-direction:column;height:100%">
+      <!-- Toolbar -->
+      <div class="bar" style="flex-shrink:0;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:var(--fg)">Context Bundle</span>
+        <span id="d-scope-badge" style="font-size:11px;padding:2px 8px;background:var(--panel2);border-radius:12px;color:var(--muted)">all docs</span>
+        <button class="btn-pri" id="d-bundle-btn" style="font-size:11px;padding:4px 12px">Regenerate PDF</button>
+        <a id="d-bundle-dl" href="#" download="context_bundle.pdf" style="font-size:11px;padding:4px 12px;border:1px solid var(--border);border-radius:5px;color:var(--accent);text-decoration:none;background:var(--panel2);display:none">&#x2B07; Download</a>
+        <button class="btn-sec" id="d-run" style="font-size:11px;padding:4px 10px" title="Run the daily report agent">Generate daily report</button>
+        <span class="muted" id="d-status" style="font-size:11px"></span>
       </div>
 
-      <!-- Question-specific document view (shown when a question is selected) -->
-      <div id="d-q-view" style="display:none">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <span id="d-q-label" style="font-size:13px;font-weight:700;color:var(--accent)"></span>
-          <div style="display:flex;gap:5px">
-            <button class="btn-sec d-q-btn" data-file="overview.md"   style="font-size:11px;padding:3px 10px">Overview</button>
-            <button class="btn-sec d-q-btn" data-file="timeline.md"   style="font-size:11px;padding:3px 10px">Timeline</button>
-            <button class="btn-sec d-q-btn" data-file="progress.md"   style="font-size:11px;padding:3px 10px">Progress</button>
-            <button class="btn-sec d-q-btn" data-file="strategies.md" style="font-size:11px;padding:3px 10px">Strategies</button>
-          </div>
-          <span id="d-q-doc-label" style="font-size:11px;color:var(--muted);margin-left:4px"></span>
-        </div>
-        <div class="rendered" id="d-q-content" style="min-height:200px"><span class="muted">Select a document above.</span></div>
-      </div>
+      <!-- Included-files list (collapsible) -->
+      <details id="d-files-details" style="flex-shrink:0;margin:6px 0 4px;border:1px solid var(--border);border-radius:6px;background:var(--panel2)">
+        <summary style="padding:5px 10px;font-size:11px;cursor:pointer;color:var(--muted);user-select:none">Included files <span id="d-file-count"></span></summary>
+        <div id="d-files-list" style="padding:4px 12px 8px;font-size:11px;color:var(--muted);max-height:120px;overflow-y:auto"></div>
+      </details>
 
-      <!-- All-docs view (shown when no question selected, or "All docs" clicked) -->
-      <div id="d-all-view">
-        <div class="muted" style="margin-bottom:10px;font-size:12px">
-          Daily reports and per-question documents. Select a question on the left to see its files.
-        </div>
-        <div style="display:grid;grid-template-columns:250px 1fr;gap:14px">
-          <div id="d-list"></div>
-          <div class="rendered" id="d-view"><span class="muted">Select a report on the left.</span></div>
-        </div>
+      <!-- PDF viewer (fills remaining space) -->
+      <div id="d-pdf-wrap" style="flex:1;overflow-y:auto;background:#404040;border-radius:6px;display:flex;flex-direction:column;align-items:center;padding:12px;gap:8px;min-height:300px">
+        <div style="color:#aaa;font-size:13px;padding:32px">Click <strong>Regenerate PDF</strong> to build the context bundle.</div>
       </div>
     </section>
 
@@ -776,6 +776,17 @@ MathJax = {
           <div id="pf-eval-issues" style="display:none;padding:10px 12px;border-top:1px solid var(--border)"></div>
           <div id="pf-eval-hint" style="padding:10px 12px;font-size:12px;color:var(--muted)">Run <strong>Evaluate</strong> to have the critic agent read this proof, identify problems, and file them as issues.</div>
         </div>
+        <!-- Proof Evolution timeline -->
+        <div id="pf-history-section" style="margin-bottom:14px;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel2);cursor:pointer" onclick="toggleProofHistory()">
+            <span style="font-size:12px;font-weight:600;color:var(--fg)">Proof Evolution</span>
+            <span id="pf-hist-count" style="font-size:11px;color:var(--muted)"></span>
+            <span id="pf-hist-toggle" style="font-size:11px;color:var(--accent);margin-left:auto">▼ show</span>
+          </div>
+          <div id="pf-history-body" style="display:none">
+            <div id="pf-history-list" style="padding:10px 12px"></div>
+          </div>
+        </div>
         <div id="pf-pdf-wrap" style="background:#404040;border-radius:6px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:200px"></div>
         <pre id="pf-raw" style="display:none;margin-top:12px"><code id="pf-raw-code" class="language-latex"></code></pre>
       </div>
@@ -805,7 +816,7 @@ MathJax = {
             <button class="btn-sec" id="fpf-zin" style="padding:3px 8px">+</button>
             <a id="fpf-dl" style="margin-left:auto;font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none" target="_blank">⬇ Download</a>
           </div>
-          <div id="fpf-canvas-wrap" style="display:none;flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
+          <div id="fpf-canvas-wrap" style="display:none;flex:1;overflow:auto;padding:16px;flex-direction:column;align-items:center;gap:12px"></div>
         </div>
       </div>
     </section>
@@ -965,9 +976,9 @@ MathJax = {
                 <div style="display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)">
                   <!-- turn buttons -->
                   <div id="meet-turn-bar" style="padding:6px 10px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:5px;flex-wrap:wrap;align-items:center">
-                    <span style="font-size:11px;color:var(--muted)">Run turn:</span>
                     <div id="meet-turn-btns" style="display:flex;gap:4px;flex-wrap:wrap"></div>
-                    <button class="btn-sec" id="meet-auto-btn" style="font-size:11px;padding:3px 9px;margin-left:4px" title="Auto-run all participants in sequence">Auto Round</button>
+                    <button class="btn-pri" id="meet-push-btn" style="font-size:11px;padding:4px 12px;margin-left:auto" title="Run one full discussion round offline (all participants in background)">⚡ Push Round</button>
+                    <span id="meet-push-status" style="font-size:11px;color:var(--muted)"></span>
                   </div>
                   <!-- messages -->
                   <div id="meet-messages" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px"></div>
@@ -996,22 +1007,19 @@ MathJax = {
       </div>
       <!-- New meeting modal -->
       <div id="meet-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center">
-        <div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;width:520px;max-width:95vw">
-          <h3 style="margin:0 0 14px;font-size:15px">New Meeting</h3>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:22px;width:620px;max-width:96vw;max-height:90vh;overflow-y:auto">
+          <h3 style="margin:0 0 4px;font-size:15px">New Meeting Room</h3>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Convene famous mathematicians in the domain to discuss the problem</div>
           <label style="font-size:12px;color:var(--muted)">Topic</label>
-          <input id="meet-new-topic" type="text" placeholder="e.g. Proof strategy for q6" style="width:100%;box-sizing:border-box;margin-bottom:10px">
+          <input id="meet-new-topic" type="text" placeholder="e.g. Proof strategy for the ε-light subset conjecture" style="width:100%;box-sizing:border-box;margin-bottom:10px">
           <label style="font-size:12px;color:var(--muted)">Goal (optional)</label>
-          <input id="meet-new-goal" type="text" placeholder="e.g. Agree on main approach and key lemmas" style="width:100%;box-sizing:border-box;margin-bottom:10px">
-          <label style="font-size:12px;color:var(--muted)">Participants</label>
-          <div id="meet-new-parts" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding:8px;background:var(--panel2);border:1px solid var(--border);border-radius:6px">
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="coordinator" checked> 🎯 Coordinator</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="solver-agent" checked> 🔧 Solver</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="critic-agent" checked> 🔍 Critic</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="verifier-agent" checked> ✓ Verifier</label>
-          </div>
-          <div style="display:flex;gap:8px;justify-content:flex-end">
+          <input id="meet-new-goal" type="text" placeholder="e.g. Agree on main approach and key lemmas" style="width:100%;box-sizing:border-box;margin-bottom:14px">
+          <label style="font-size:12px;color:var(--muted)">Invite mathematicians</label>
+          <div id="meet-new-parts" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;margin-bottom:14px"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
+            <span id="meet-modal-status" style="font-size:12px;color:var(--muted);margin-right:auto"></span>
             <button class="btn-sec" id="meet-modal-cancel">Cancel</button>
-            <button class="btn-pri" id="meet-modal-ok">Create Meeting</button>
+            <button class="btn-pri" id="meet-modal-ok">Start Meeting</button>
           </div>
         </div>
       </div>
@@ -1023,17 +1031,9 @@ MathJax = {
         <div class="ins-section-title">Project Roadmap</div>
         <div id="ins-system-card" style="display:none"></div>
         <div id="ins-system-empty" class="muted" style="padding:20px;font-size:13px">No system insight generated yet. The daemon runs daily at 09:05.</div>
-        <div id="ins-sys-datasets-wrap" style="display:none;margin-top:20px">
-          <div class="ins-section-title">Per-Dataset Next Steps</div>
-          <div id="ins-sys-datasets"></div>
-        </div>
         <div id="ins-sys-mistakes-wrap" style="display:none;margin-top:20px">
           <div class="ins-section-title">Mistakes &amp; Lessons Learned</div>
           <div id="ins-sys-mistakes"></div>
-        </div>
-        <div id="ins-sys-notable-wrap" style="display:none;margin-top:20px">
-          <div class="ins-section-title">Problems Needing Attention</div>
-          <div id="ins-sys-notable"></div>
         </div>
       </div>
       <!-- Dataset level panel -->
@@ -1384,6 +1384,39 @@ function renderVertexBillingBar(){
   if(urls.billing) $("vertex-billing-link").href=urls.billing;
   if(urls.vertex_usage) $("vertex-usage-link").href=urls.vertex_usage;
   bar.title="Estimated from webapp agent runs. Open GCP billing for full project charges (all services).";
+}
+
+async function loadAgentStatus(pid){
+  const panel=$("a-status-panel"); if(!panel) return;
+  panel.style.display="block";
+  const qidEl=$("a-status-qid"); if(qidEl) qidEl.textContent=pid.toUpperCase();
+  const badge=$("a-status-proof-badge"); const preview=$("a-status-proof-preview");
+  const runsLbl=$("a-status-runs-label");
+  if(badge) badge.textContent="loading…";
+  if(preview) preview.textContent="";
+  if(runsLbl) runsLbl.textContent="";
+  // Load working proof status
+  try{
+    const d=await(await fetchWithTimeout(`/api/working-proof/${encodeURIComponent(pid)}`,6000)).json();
+    if(d.tex){
+      const lines=d.tex.trim().split("\n");
+      const preview_text=lines.slice(0,12).join("\n")+(lines.length>12?"\n…":"");
+      if(badge){ badge.textContent="Working proof · "+lines.length+" lines"; badge.style.background="rgba(63,185,80,.15)"; badge.style.color="#3fb950"; }
+      if(preview) preview.textContent=preview_text;
+    } else {
+      if(badge){ badge.textContent="No proof yet"; badge.style.background=""; badge.style.color="var(--muted)"; }
+      if(preview) preview.textContent="No working proof found. Push Forward to start solving.";
+    }
+  }catch(e){
+    if(badge){ badge.textContent="unavailable"; }
+    if(preview) preview.textContent="";
+  }
+  // Load active runs
+  try{
+    const runs=(await(await fetchWithTimeout("/api/runs",5000)).json()).runs||[];
+    const active=runs.filter(r=>r.problem_id===pid&&r.status==="running");
+    if(runsLbl) runsLbl.textContent=active.length?`${active.length} run${active.length>1?"s":""} active`:``;
+  }catch(_){}
 }
 
 async function refreshVertexUsage(){
@@ -2017,6 +2050,17 @@ function setGlobalLevel(level){
 
 const _CSS_FLEX_PANES = new Set(["pane-issue","pane-final-proof","pane-overview"]);
 function setTab(name){
+  // Track click frequency in localStorage
+  const _tcc=JSON.parse(localStorage.getItem("tabClicks")||"{}");
+  _tcc[name]=(_tcc[name]||0)+1; localStorage.setItem("tabClicks",JSON.stringify(_tcc));
+  document.querySelectorAll(".tab[data-tab]").forEach(t=>{
+    const cnt=_tcc[t.dataset.tab]||0;
+    let badge=t.querySelector(".tab-freq");
+    if(cnt>=3){
+      if(!badge){badge=document.createElement("span");badge.className="tab-freq";t.appendChild(badge);}
+      badge.textContent=cnt>=100?"99+":cnt;
+    } else if(badge){badge.remove();}
+  });
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
   document.querySelectorAll(".pane").forEach(p=>{
     const active=p.id==="pane-"+name;
@@ -2036,12 +2080,8 @@ function setTab(name){
   if(name==="devlog"){ loadDevLog(); }
   if(name==="meet"){ if(q||selected) loadMeetRooms(q||selected); }
   if(name==="insights"){ loadInsights(); }
-  if(name==="agent") refreshVertexUsage();
-  if(name==="issue"){
-    // If no question selected, drop to dataset level
-    if(!selected && _issLevel==="question") issSetLevel("dataset");
-    else issSetLevel(_issLevel);
-  }
+  if(name==="agent"){ refreshVertexUsage(); if(selected) loadAgentStatus(selected); }
+  if(name==="issue"){ loadIssues(); }
   if(name==="hero"){ heroRefreshDiagram(); }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
@@ -2326,8 +2366,7 @@ function clearQuestion(){
   $("q-body").style.display="none";
   const lvlQ=$("lvl-q-name"); if(lvlQ){ lvlQ.textContent="none"; lvlQ.className="lvl-value none"; }
   setGlobalLevel("dataset");
-  // Drop issue tab to dataset level
-  if(typeof _issLevel!=="undefined" && _issLevel==="question") issSetLevel("dataset");
+  if(document.querySelector(".tab.active[data-tab='issue']")) loadIssues();
   // Refresh the active tab in dataset-level context
   const activeTab=document.querySelector(".tab.active");
   if(activeTab) setTab(activeTab.dataset.tab);
@@ -2427,17 +2466,23 @@ async function selectQuestion(qid, node, dataset){
     $("q-view-mode").textContent="error";
     setStatus("load error","err");
   }
-  // Load issues (non-blocking) — scoped to dataset
-  const ds2=selectedDataset||"first_proof_1";
-  fetch(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`).then(r=>r.json()).then(d=>{
-    if(qid!==selected) return; // stale response — user already switched question
-    loadIssueList(qid,d.issues||[]);
-    // If activity log is visible, refresh it too
+  // If issue tab is active, reload with question scope; else pre-fetch silently
+  if(document.querySelector(".tab.active[data-tab='issue']")){
+    loadIssues();
     if(_issCurrentView==="log") loadActivityLog(qid);
-  }).catch(()=>{});
+  } else {
+    const ds2=selectedDataset||"first_proof_1";
+    fetch(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`).then(r=>r.json()).then(d=>{
+      if(qid!==selected) return;
+      loadIssueList(qid,d.issues||[]);
+    }).catch(()=>{});
+  }
   // Agent pane — hide hint, clear previous stream
   $("a-empty").style.display="none";
   $("stream").innerHTML=""; $("usage").textContent=""; lastArtifact=null;
+  // Show existing agent status if agent tab is active
+  if(document.querySelector(".tab.active[data-tab='agent']")) loadAgentStatus(qid);
+  else { const sp=$("a-status-panel"); if(sp) sp.style.display="none"; }
   // If documents tab is active, load this question's docs
   if(document.querySelector(".tab.active[data-tab='documents']")) loadQuestionDocs(qid);
   // If proofs tab is active, load this question's proof
@@ -2447,6 +2492,7 @@ async function selectQuestion(qid, node, dataset){
   if(document.querySelector(".tab.active[data-tab='literature']")) loadLiterature(qid);
   if(document.querySelector(".tab.active[data-tab='concepts']")) loadConcepts(qid);
   if(document.querySelector(".tab.active[data-tab='meet']")) loadMeetRooms(qid);
+  loadMeetPersonas(qid).catch(()=>{}); // pre-fetch so New Meeting modal is instant
 }
 
 $("q-toggle").onclick=()=>{
@@ -2504,6 +2550,98 @@ const AGENT_COLORS = {
 };
 let issSelectedId=null;
 let _issCurrentView = "issues";
+let _issLevel = "question";
+
+function issSetLevel(level){ _issLevel=level; loadIssues(); }
+
+const _PRIO_COLOR_ISS = {P0:"var(--red)",P1:"var(--amber)",P2:"var(--accent)",P3:"var(--muted)"};
+const _STATUS_ORDER_ISS = {open:0,in_progress:1,resolved:2};
+const _PRIO_ORDER_ISS   = {P0:0,P1:1,P2:2,P3:3};
+
+function renderIssueList(issues, showProblem){
+  const list=$("iss-list"); list.innerHTML="";
+  const sorted=[...issues].sort((a,b)=>{
+    const sd=(_STATUS_ORDER_ISS[a.status]||0)-(_STATUS_ORDER_ISS[b.status]||0);
+    if(sd!==0) return sd;
+    return (_PRIO_ORDER_ISS[a.priority||"P2"]||2)-(_PRIO_ORDER_ISS[b.priority||"P2"]||2);
+  });
+  for(const iss of sorted){
+    const it=el("div","qitem");
+    const statusColor={open:"var(--accent)",in_progress:"var(--amber)",resolved:"var(--green)"}[iss.status]||"var(--muted)";
+    const prioColor=_PRIO_COLOR_ISS[iss.priority]||"var(--muted)";
+    const prioBadge=iss.priority?`<span style="font-size:10px;font-weight:700;color:${prioColor};flex-shrink:0">${esc(iss.priority)}</span>`:"";
+    const probBadge=showProblem&&iss.problem_id
+      ?`<span style="font-size:10px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--accent);font-weight:700;flex-shrink:0">${esc(iss.problem_id)}</span>`
+      :"";
+    it.innerHTML=`<div style="display:flex;align-items:center;gap:4px;min-width:0;flex-wrap:wrap">
+      ${probBadge}${prioBadge}
+      <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${esc(iss.title)}</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:3px;align-items:center">
+      <span style="width:7px;height:7px;border-radius:50%;background:${statusColor};display:inline-block;flex-shrink:0"></span>
+      <span style="font-size:10px;color:var(--muted)">${esc(iss.status)} · #${esc(iss.id)}</span>
+    </div>`;
+    it.onclick=()=>{
+      document.querySelectorAll("#iss-list .qitem").forEach(e=>e.classList.remove("active"));
+      it.classList.add("active");
+      renderIssueThread(iss);
+    };
+    list.appendChild(it);
+  }
+  if(sorted.length) list.querySelector(".qitem").click();
+}
+
+function issSelectById(issueId){
+  const items=[...$("iss-list").querySelectorAll(".qitem")];
+  const target=items.find(el=>el.innerHTML.includes(escRe(issueId)));
+  if(target){
+    items.forEach(e=>e.classList.remove("active"));
+    target.classList.add("active");
+    target.click();
+    target.scrollIntoView({block:"nearest"});
+  }
+}
+function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+
+async function loadIssues(){
+  const level=_globalLevel;
+  const ds=selectedDataset||"first_proof_1";
+  const badge=$("iss-q-badge");
+  const scopeLabel=$("iss-scope-label");
+  const discoverBtn=$("i-discover-btn");
+  const newBtn=$("i-new-btn");
+  $("i-empty").style.display="none";
+  $("i-body").style.display="block";
+
+  if(level==="question"&&selected){
+    if(badge) badge.textContent=selected;
+    if(scopeLabel) scopeLabel.textContent="Issues for";
+    if(discoverBtn) discoverBtn.style.display="";
+    if(newBtn) newBtn.style.display="";
+    try{
+      const d=await(await fetchWithTimeout(`/api/issues/${encodeURIComponent(selected)}?dataset=${encodeURIComponent(ds)}`,8000)).json();
+      renderIssueList(d.issues||[],false);
+    }catch(e){ $("iss-list").innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">Load failed: ${esc(String(e))}</div>`; }
+  } else if(level==="dataset"){
+    if(badge) badge.textContent=ds;
+    if(scopeLabel) scopeLabel.textContent="Dataset";
+    if(discoverBtn) discoverBtn.style.display="none";
+    if(newBtn) newBtn.style.display="none";
+    try{
+      const d=await(await fetchWithTimeout(`/api/issues-all?level=dataset&dataset=${encodeURIComponent(ds)}`,8000)).json();
+      renderIssueList(d.issues||[],true);
+    }catch(e){ $("iss-list").innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">Load failed: ${esc(String(e))}</div>`; }
+  } else {
+    if(badge) badge.textContent="all datasets";
+    if(scopeLabel) scopeLabel.textContent="System";
+    if(discoverBtn) discoverBtn.style.display="none";
+    if(newBtn) newBtn.style.display="none";
+    try{
+      const d=await(await fetchWithTimeout(`/api/issues-all?level=system`,8000)).json();
+      renderIssueList(d.issues||[],true);
+    }catch(e){ $("iss-list").innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">Load failed: ${esc(String(e))}</div>`; }
+  }
+}
 
 function agentColor(author){ return AGENT_COLORS[author]||'#8b949e'; }
 
@@ -2520,28 +2658,10 @@ function issShowView(view){
 
 function loadIssueList(qid, issues){
   if(qid!==selected) return; // drop stale responses
-  // Show question context in sidebar header
   const badge=$("iss-q-badge"); if(badge) badge.textContent=qid;
+  const scopeLabel=$("iss-scope-label"); if(scopeLabel) scopeLabel.textContent="Issues for";
   $("i-empty").style.display="none"; $("i-body").style.display="block";
-  const list=$("iss-list"); list.innerHTML="";
-  for(const iss of issues){
-    const it=el("div","qitem");
-    const statusColor={open:"var(--accent)",in_progress:"var(--amber)",resolved:"var(--green)"}[iss.status]||"var(--muted)";
-    it.innerHTML=`<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(iss.title)}</div>
-      <div style="display:flex;gap:6px;margin-top:3px;align-items:center">
-        <span style="width:7px;height:7px;border-radius:50%;background:${statusColor};display:inline-block"></span>
-        <span style="font-size:10px;color:var(--muted)">${esc(iss.status)} · #${esc(iss.id)}</span>
-      </div>`;
-    it.onclick=()=>{
-      document.querySelectorAll("#iss-list .qitem").forEach(e=>e.classList.remove("active"));
-      it.classList.add("active");
-      renderIssueThread(iss);
-    };
-    list.appendChild(it);
-  }
-  if(issues.length){
-    list.querySelector(".qitem").click();
-  }
+  renderIssueList(issues, false);
 }
 
 function showProofModal(tex){
@@ -2565,6 +2685,11 @@ function showProofModal(tex){
 
 function renderIssueThread(issue){
   issSelectedId=issue.id;
+  // Reset PDF view state when switching issues
+  _issPdfMode=false;
+  $("iss-pdf-view").style.display="none";
+  $("iss-comments").style.display="flex";
+  $("iss-pdf-btn").textContent="PDF";
   $("iss-thread-empty").style.display="none";
   $("iss-thread").style.display="flex";
   $("iss-title").textContent=issue.title;
@@ -2587,13 +2712,27 @@ function renderIssueThread(issue){
       if(!el2) return;
       if(d.has_proof && d.tex){
         const lines=d.tex.split("\n").length;
-        el2.textContent=`${lines} lines · last updated by agents`;
+        el2.textContent=`${lines} lines`;
         el2.style.color="var(--green)";
         if(btn){ btn.style.display=""; btn.onclick=()=>showProofModal(d.tex); }
       } else {
         el2.textContent="no proof yet";
       }
     }).catch(()=>{ const el2=$("iss-pf-status"); if(el2) el2.textContent="unavailable"; });
+    // Check if this issue drove a proof update
+    fetchWithTimeout(`/api/proof-history/${encodeURIComponent(selected)}`,5000).then(r=>r.json()).then(d=>{
+      const banner=$("iss-proof-banner"); if(!banner) return;
+      const versions=(d.history||[]).filter(v=>v.issue_id===issue.id);
+      if(versions.length){
+        const v=versions[versions.length-1];
+        const badge=document.createElement("span");
+        badge.style.cssText="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;background:rgba(62,207,142,.12);border:1px solid var(--green);font-size:10px;font-weight:700;color:var(--green);cursor:pointer";
+        badge.title=`Proof updated as version ${v.version} (+${v.chars_after-(v.chars_before||0)} chars)`;
+        badge.textContent=`→ proof v${v.version}`;
+        badge.onclick=()=>{ setTab("proofs"); setTimeout(()=>{ if(selected) loadProofDetail(selected); setTimeout(()=>{ if(!_pfHistOpen) toggleProofHistory(); },300); },200); };
+        banner.appendChild(badge);
+      }
+    }).catch(()=>{});
   }
 
   // ── Metadata section: linked issues + documents ──────────────────────────
@@ -2988,6 +3127,7 @@ function handle(ev){
     case "start":
       $("stream").innerHTML=""; Object.keys(toolCards).forEach(k=>delete toolCards[k]);
       cur={text:null,think:null}; $("usage").textContent=""; lastArtifact=null;
+      const _sp=$("a-status-panel"); if(_sp) _sp.style.display="none";
       tokenHistory=[]; curTurnSep=null; curAssistantCard=null;
       $("tok-chart-wrap").style.display="none"; $("tok-total").textContent=""; drawTokenChart(); break;
     case "status": setStatus(`running · ${ev.provider||""} ${ev.model||""}`,"run"); break;
@@ -3047,7 +3187,6 @@ function handle(ev){
               await loadQuestionDocs(parts[1], parts.slice(2).join("/"));
             } else {
               await loadDocuments();
-              await selectDocument(lk.path);
             }
           };
           li.appendChild(a);
@@ -3184,130 +3323,83 @@ async function compilePdf(content,name,card,btn){
   scroll();
 }
 
-// ---- Documents tab ----
+// ---- Documents tab (context bundle PDF) ----
 let docPoll=null;
-let _docAllMode=false; // true when user explicitly chose "all docs" view
+let _bundleUrl=null; // current object URL for the PDF blob
 
-function _showDocAllView(){
-  $("d-q-view").style.display="none";
-  $("d-all-view").style.display="";
-  $("d-show-all").style.display="none";
-  _docAllMode=true;
-}
-function _showDocQView(qid){
-  $("d-all-view").style.display="none";
-  $("d-q-view").style.display="";
-  $("d-show-all").style.display="";
-  $("d-q-label").textContent=qid.toUpperCase();
-  _docAllMode=false;
+function _docBundleUrl(){
+  const q=_lvlQ();
+  const ds=selectedDataset||"first_proof_1";
+  const params=new URLSearchParams();
+  params.set("dataset",ds);
+  if(q) params.set("question",q);
+  return "/api/documents/bundle.pdf?"+params.toString();
 }
 
-// Datasets that have per-question documents under documents/questions/{qid}/
-const _DS_WITH_QDOCS = new Set(["first_proof_1","first_proof_2"]);
+function _docUpdateScopeBadge(){
+  const q=_lvlQ();
+  const badge=$("d-scope-badge");
+  if(!badge) return;
+  badge.textContent=q?`question: ${q}`:`dataset: ${selectedDataset||"all"}`;
+}
 
-async function loadQuestionDocs(qid, file){
-  const ds = selectedDataset || "first_proof_1";
-  // For datasets without per-question documents, fall back to the all-docs view
-  if(!_DS_WITH_QDOCS.has(ds)){
-    _showDocAllView();
-    await loadDocuments();
-    return;
+async function loadDocBundle(){
+  _docUpdateScopeBadge();
+  const wrap=$("d-pdf-wrap");
+  const url=_docBundleUrl();
+  wrap.innerHTML='<div style="color:#aaa;padding:32px;font-size:13px">Building PDF…</div>';
+  // Update file list sidebar
+  try{
+    const r=await fetch("/api/documents"); const {documents}=await r.json();
+    const q=_lvlQ();
+    const ds=selectedDataset||"first_proof_1";
+    const shown=q
+      ? documents.filter(d=>d.path&&d.path.includes("/"+q+"/"))
+      : documents.filter(d=>!d.folder||d.folder.startsWith("questions/")||d.folder==="");
+    const fl=$("d-files-list");
+    if(fl) fl.innerHTML=shown.slice(0,30).map(d=>`<div>📄 ${esc(d.path||d.name)}</div>`).join("");
+    const fc=$("d-file-count"); if(fc) fc.textContent=`(${shown.length})`;
+  }catch(e){}
+  // Fetch and display PDF via PDF.js
+  try{
+    if(_bundleUrl){ URL.revokeObjectURL(_bundleUrl); _bundleUrl=null; }
+    const r=await fetchWithTimeout(url,30000);
+    if(!r.ok){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Failed to generate PDF (${r.status})</div>`; return; }
+    const blob=await r.blob();
+    _bundleUrl=URL.createObjectURL(blob);
+    // Update download link
+    const dl=$("d-bundle-dl");
+    if(dl){ dl.href=_bundleUrl; dl.style.display=""; }
+    await pdfLoad(_bundleUrl, wrap, ()=>{}, 1.5);
+  }catch(e){
+    wrap.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`;
   }
-  _showDocQView(qid);
-  // Default to overview.md
-  const target=file||"overview.md";
-  // Highlight active button
-  document.querySelectorAll(".d-q-btn").forEach(b=>{
-    b.classList.toggle("active", b.dataset.file===target);
-    b.style.fontWeight=b.dataset.file===target?"700":"400";
-    b.style.borderColor=b.dataset.file===target?"var(--accent)":"";
-    b.style.color=b.dataset.file===target?"var(--accent)":"";
-  });
-  $("d-q-doc-label").textContent=target.replace(".md","");
-  $("d-q-content").innerHTML='<span class="muted">Loading…</span>';
-  const path=`questions/${qid}/${target}`;
-  const r=await fetch(`/api/document/${path.split("/").map(encodeURIComponent).join("/")}`);
-  if(r.ok){
-    const d=await r.json();
-    renderContent($("d-q-content"), d.markdown||"_(empty)_");
-  } else {
-    $("d-q-content").innerHTML=`<p style="color:var(--muted)">No <code>${esc(target)}</code> for <strong>${esc(qid)}</strong> yet — run the daily agent to generate it.</p>`;
-  }
 }
 
+// Called when switching to documents tab or when question/dataset changes
 async function loadDocuments(){
-  _showDocAllView();
-  const r=await fetch("/api/documents"); const {documents}=await r.json();
-  const list=$("d-list"); list.innerHTML="";
-  if(!documents.length){ list.innerHTML='<div class="muted" style="padding:10px">No reports yet.</div>'; return; }
-  // Build tree: group by folder
-  const rootItems=documents.filter(d=>!d.folder);
-  const folders={};
-  for(const d of documents){
-    if(d.folder){
-      if(!folders[d.folder]) folders[d.folder]=[];
-      folders[d.folder].push(d);
-    }
-  }
-  function addDocItem(doc, parent){
-    const it=el("div","qitem");
-    it._docPath = doc.path||doc.name;
-    it.innerHTML=`<span style="font-size:12px;font-weight:600">${esc(doc.name)}</span><span class="qt">${esc(doc.title)} · ${doc.modified}</span>`;
-    it.onclick=()=>selectDocument(doc.path||doc.name, it);
-    parent.appendChild(it);
-  }
-  // Root-level files first
-  for(const d of rootItems) addDocItem(d, list);
-  // Folders (collapsible)
-  for(const [folderName, items] of Object.entries(folders).sort()){
-    const fold=el("div","doc-folder");
-    fold.innerHTML=`<span class="doc-folder-arrow">▾</span> 📁 ${esc(folderName)} <span style="color:var(--muted);font-weight:400;font-size:10px">(${items.length})</span>`;
-    const children=el("div","doc-folder-children");
-    for(const d of items) addDocItem(d, children);
-    fold.onclick=e=>{
-      if(e.target!==fold && e.target.closest(".qitem")) return; // don't collapse when clicking item
-      fold.classList.toggle("collapsed");
-      children.style.display=fold.classList.contains("collapsed")?"none":"";
-    };
-    list.appendChild(fold);
-    list.appendChild(children);
-  }
+  await loadDocBundle();
+}
+
+// Alias for when a question is selected — load bundle scoped to that question
+async function loadQuestionDocs(qid, _file){
+  await loadDocBundle();
 }
 
 async function openQuestionDoc(qid){
   setTab("documents");
-  const ds = selectedDataset || "first_proof_1";
-  if(_DS_WITH_QDOCS.has(ds)){
-    await loadQuestionDocs(qid, "overview.md");
-  } else {
-    await loadDocuments();
-  }
+  await loadDocBundle();
 }
 
-async function selectDocument(path,node){
-  document.querySelectorAll("#d-list .qitem").forEach(n=>n.classList.remove("active"));
-  if(node)node.classList.add("active");
-  const r=await fetch(`/api/document/${path.split("/").map(encodeURIComponent).join("/")}`); const d=await r.json();
-  renderContent($("d-view"), d.markdown||"_(empty)_");
-}
-
-// Wire up the 4 doc-type buttons
-document.querySelectorAll(".d-q-btn").forEach(btn=>{
-  btn.onclick=()=>{ if(selected) loadQuestionDocs(selected, btn.dataset.file); };
-});
-
-$("d-show-all").onclick=loadDocuments;
-$("d-refresh").onclick=()=>{ if(selected && !_docAllMode) loadQuestionDocs(selected); else loadDocuments(); };
+$("d-bundle-btn").onclick=()=>loadDocBundle();
 $("d-run").onclick=async()=>{
   $("d-run").disabled=true; $("d-status").textContent="starting…";
   const r=await (await fetch("/api/run-daily",{method:"POST"})).json();
   if(!r.started){ $("d-status").textContent=r.reason||"already running"; $("d-run").disabled=false; return; }
-  $("d-status").textContent="generating… (the agent is running on your subscription; this can take a while)";
+  $("d-status").textContent="generating… (this can take a while)";
   let n=0; clearInterval(docPoll);
   docPoll=setInterval(async()=>{ n++;
-    if(selected && !_docAllMode) await loadQuestionDocs(selected);
-    else await loadDocuments();
-    if(n>=40){ clearInterval(docPoll); $("d-status").textContent="done polling — click Refresh to update"; $("d-run").disabled=false; }
+    if(n>=40){ clearInterval(docPoll); $("d-status").textContent="done — click Regenerate PDF to update"; $("d-run").disabled=false; }
   },15000);
   setTimeout(()=>{ $("d-run").disabled=false; },20000);
 };
@@ -3574,6 +3666,8 @@ async function loadProofDetail(pid){
     fetch(`/api/issues/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(evalDs)}`)
       .then(r=>r.json()).then(iss=>{ if((iss.issues||[]).length) renderEvalIssues(pid,iss.issues); })
       .catch(()=>{});
+    // Load proof evolution history (non-blocking)
+    loadProofHistory(pid);
     const wrap=$("pf-pdf-wrap");
     pfDoc=null;
     const pdfUrl=`/api/best-proof-pdf/${encodeURIComponent(pid)}`;
@@ -3581,6 +3675,71 @@ async function loadProofDetail(pid){
     $("pf-dl").download=`${pid}_best_proof.pdf`;
     await pdfLoad(pdfUrl, wrap, d=>{pfDoc=d;}, pfScale);
   }catch(e){$("pf-status").textContent="error: "+e.message;}
+}
+
+// ---- Proof Evolution History ----
+let _pfHistOpen=false;
+function toggleProofHistory(){
+  _pfHistOpen=!_pfHistOpen;
+  $("pf-history-body").style.display=_pfHistOpen?"":"none";
+  $("pf-hist-toggle").textContent=_pfHistOpen?"▲ hide":"▼ show";
+}
+async function loadProofHistory(pid){
+  const sec=$("pf-history-section"); if(!sec) return;
+  sec.style.display="none";
+  const list=$("pf-history-list"); if(!list) return;
+  try{
+    const r=await fetch(`/api/proof-history/${encodeURIComponent(pid)}`);
+    if(!r.ok) return;
+    const d=await r.json();
+    const hist=(d.history||[]).slice().reverse(); // newest first
+    if(!hist.length){ sec.style.display="none"; return; }
+    sec.style.display="";
+    $("pf-hist-count").textContent=`(${hist.length} version${hist.length!==1?"s":""})`;
+    list.innerHTML=hist.map((v,i)=>{
+      const isFirst=i===hist.length-1;
+      const date=(v.timestamp||"").slice(0,16).replace("T"," ");
+      const charsAdded=v.chars_after-(v.chars_before||0);
+      const sign=charsAdded>=0?"+":"";
+      const deltaStr=`${sign}${charsAdded} chars`;
+      const linesAdded=v.lines_after-(v.lines_before||0);
+      const deltaLines=linesAdded>=0?`+${linesAdded}`:`${linesAdded}`;
+      const agentLabel=v.agent||"unknown";
+      const agentColor=agentLabel==="solver-agent"?"var(--green)":agentLabel==="hero"?"var(--accent)":"var(--muted)";
+      const issueHtml=v.issue_id
+        ? `<span style="cursor:pointer;color:var(--accent);text-decoration:underline;font-size:10px" onclick="jumpToIssue(${JSON.stringify(v.issue_id)})" title="View issue">#${esc(v.issue_id)}: ${esc(v.issue_title||"")}</span>`
+        : `<span style="color:var(--muted);font-size:10px">(no issue linked)</span>`;
+      const deltaColor=charsAdded>100?"var(--green)":charsAdded<-100?"var(--red)":"var(--muted)";
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--panel2);border:2px solid ${agentColor};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:${agentColor}">v${v.version}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="color:var(--muted)">${esc(date)}</span>
+            <span style="color:${agentColor};font-weight:600">${esc(agentLabel)}</span>
+            <span style="color:${deltaColor};font-size:10px">${deltaStr} (${deltaLines} lines)</span>
+          </div>
+          <div style="margin-top:3px">${issueHtml}</div>
+        </div>
+        <button class="btn-sec" style="font-size:10px;padding:2px 6px;flex-shrink:0" onclick="viewProofVersion(${JSON.stringify(pid)},${v.version})">View</button>
+      </div>`;
+    }).join("");
+  }catch(e){}
+}
+function jumpToIssue(issueId){
+  // Navigate to Issue tab and highlight this issue
+  setTab("issue");
+  if(issueId) setTimeout(()=>{ if(typeof issSelectById==="function") issSelectById(issueId); },200);
+}
+async function viewProofVersion(pid,version){
+  try{
+    const r=await fetch(`/api/proof-history/${encodeURIComponent(pid)}/${version}`);
+    if(!r.ok) return;
+    const d=await r.json();
+    // Show in the raw tex view
+    $("pf-raw-code").textContent=d.tex||"";
+    $("pf-raw").style.display="";
+    $("pf-toggle-raw").textContent="Hide raw .tex";
+  }catch(e){}
 }
 
 $("pf-show-all").onclick=loadProofs;
@@ -3766,6 +3925,10 @@ async function loadFinalProofFiles(){
   merged.forEach(f=>fpfItem(f,mc));
   authors.forEach(f=>fpfItem(f,ac));
   fpfLoaded=true;
+  if(!data.files.length){
+    const em=$("fpf-empty");
+    if(em) em.textContent="No final proof files yet. Run the proof pipeline to generate merged PDFs.";
+  }
   const mainPdf=merged.find(f=>f.name==="all_proofs_merged.pdf");
   if(mainPdf){ mc.querySelector(".qitem")?.click(); }
 }
@@ -4024,20 +4187,37 @@ init();
 // ---- Virtual Meet ----
 // ============================================================
 const MEET_PERSONAS = {
-  coordinator:{color:"#f78166",icon:"🎯"},
-  "solver-agent":{color:"#3fb950",icon:"🔧"},
-  "critic-agent":{color:"#ffa657",icon:"🔍"},
-  "verifier-agent":{color:"#d2a8ff",icon:"✓"},
-  "strategist-agent":{color:"#79c0ff",icon:"🧭"},
-  "document-manager":{color:"#56d364",icon:"📋"},
-  human:{color:"#58a6ff",icon:"👤"},
+  coordinator:{color:"#f78166",icon:"🎯",display:"Coordinator"},
+  "solver-agent":{color:"#3fb950",icon:"🔧",display:"Solver"},
+  "critic-agent":{color:"#ffa657",icon:"🔍",display:"Critic"},
+  "verifier-agent":{color:"#d2a8ff",icon:"✓",display:"Verifier"},
+  "strategist-agent":{color:"#79c0ff",icon:"🧭",display:"Strategist"},
+  "document-manager":{color:"#56d364",icon:"📋",display:"Doc Manager"},
+  human:{color:"#58a6ff",icon:"👤",display:"You"},
 };
+// Extended registry — filled from /api/meet-personas/{pid} on question select
+let MEET_MATHEMATICIAN_PERSONAS = {}; // id → {display,color,icon,field,institution,...}
 let meetSelectedRoom = null;
 let meetAgentEs = null;
 let _meetAutoQueue = [];
 
-function meetPersonaColor(n){ return (MEET_PERSONAS[n]||{}).color||"#8b949e"; }
-function meetPersonaIcon(n){ return (MEET_PERSONAS[n]||{}).icon||"?"; }
+function meetPersonaLookup(n){
+  return MEET_MATHEMATICIAN_PERSONAS[n] || MEET_PERSONAS[n] || {};
+}
+function meetPersonaColor(n){ return meetPersonaLookup(n).color||"#8b949e"; }
+function meetPersonaIcon(n){ return meetPersonaLookup(n).icon||"👤"; }
+function meetPersonaDisplay(n){ return meetPersonaLookup(n).display||n; }
+
+async function loadMeetPersonas(qid){
+  if(!qid) return;
+  try{
+    const d=await(await fetch(`/api/meet-personas/${encodeURIComponent(qid)}`)).json();
+    MEET_MATHEMATICIAN_PERSONAS={};
+    for(const p of (d.personas||[])){
+      MEET_MATHEMATICIAN_PERSONAS[p.id]=p;
+    }
+  }catch(_){}
+}
 
 async function loadMeetRooms(qid){
   $("meet-empty").style.display="none";
@@ -4073,16 +4253,20 @@ function openMeetRoom(room){
   const pp=$("meet-participants"); pp.innerHTML="";
   for(const p of (room.participants||[])){
     const chip=el("span","meet-persona-chip");
+    const lp=meetPersonaLookup(p);
     chip.style.borderColor=meetPersonaColor(p);
-    chip.innerHTML=`${meetPersonaIcon(p)} ${esc(p)}`;
+    chip.title=lp.field?`${lp.display||p} · ${lp.field}${lp.institution?` · ${lp.institution}`:""}`:p;
+    chip.innerHTML=`${meetPersonaIcon(p)} <b>${esc(meetPersonaDisplay(p))}</b>`;
     pp.appendChild(chip);
   }
   // Turn buttons
   const tb=$("meet-turn-btns"); tb.innerHTML="";
   for(const p of (room.participants||[]).filter(x=>x!=="human")){
     const btn=el("button","btn-sec");
-    btn.style.cssText=`font-size:11px;padding:3px 8px;border-color:${meetPersonaColor(p)};margin-bottom:2px`;
-    btn.innerHTML=`${meetPersonaIcon(p)} ${esc(p)}`;
+    const color=meetPersonaColor(p);
+    btn.style.cssText=`font-size:11px;padding:3px 9px;border-color:${color};margin-bottom:2px`;
+    btn.innerHTML=`${meetPersonaIcon(p)} <span style="color:${color}">${esc(meetPersonaDisplay(p))}</span>`;
+    btn.title=`Run a turn for ${meetPersonaDisplay(p)}`;
     btn.onclick=()=>runMeetTurn(p);
     tb.appendChild(btn);
   }
@@ -4100,10 +4284,15 @@ function renderMeetMessages(room){
     } else {
       const card=el("div","meet-msg-card");
       const color=meetPersonaColor(m.author);
+      const lp=meetPersonaLookup(m.author);
+      const displayName=meetPersonaDisplay(m.author);
+      const subtitle=lp.field?`<span style="font-size:10px;color:var(--muted);font-weight:400"> · ${esc(lp.field)}</span>`:"";
       card.innerHTML=`<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
-        <span style="width:24px;height:24px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${meetPersonaIcon(m.author)}</span>
-        <span style="font-weight:700;font-size:12px;color:${color}">${esc(m.author)}</span>
-        <span class="muted" style="font-size:11px;margin-left:auto">${esc((m.created_at||"").slice(0,16).replace("T"," "))}</span>
+        <span style="width:28px;height:28px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${meetPersonaIcon(m.author)}</span>
+        <div style="min-width:0;flex:1">
+          <span style="font-weight:700;font-size:12px;color:${color}">${esc(displayName)}</span>${subtitle}
+        </div>
+        <span class="muted" style="font-size:11px;flex-shrink:0">${esc((m.created_at||"").slice(0,16).replace("T"," "))}</span>
       </div>`;
       const body=el("div","body"); renderContent(body, m.body||""); card.appendChild(body);
       wrap.appendChild(card);
@@ -4198,14 +4387,54 @@ function runMeetStep(idx){
   meetRunSse(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/execute/${idx}?run_id=${rid}`,`▶ Executing step ${idx+1}…`);
 }
 
-// Auto-round: run all non-human participants in sequence
-$("meet-auto-btn").onclick=()=>{
-  if(!meetSelectedRoom) return;
-  const parts=(meetSelectedRoom.participants||[]).filter(p=>p!=="human");
-  if(!parts.length) return;
-  _meetAutoQueue=parts.slice(1).map(p=>()=>runMeetTurn(p));
-  runMeetTurn(parts[0]);
-};
+// Push-round: fire-and-forget offline round, poll for completion
+let _meetPushJobId = null;
+let _meetPushPoller = null;
+
+async function meetPushRound(){
+  if(!meetSelectedRoom||!selected) return;
+  const btn=$("meet-push-btn"), status=$("meet-push-status");
+  btn.disabled=true; status.textContent="Starting…";
+  try{
+    const r=await fetch(
+      `/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/push-round`,
+      {method:"POST",headers:{"content-type":"application/json"},body:"{}"}
+    );
+    const d=await r.json();
+    _meetPushJobId=d.job_id;
+    status.textContent="Running round…";
+    _meetStartPushPoller();
+  }catch(e){ btn.disabled=false; status.textContent="Error: "+String(e); }
+}
+
+function _meetStartPushPoller(){
+  if(_meetPushPoller) clearInterval(_meetPushPoller);
+  _meetPushPoller=setInterval(async()=>{
+    if(!_meetPushJobId||!meetSelectedRoom||!selected){ clearInterval(_meetPushPoller); return; }
+    try{
+      const d=await(await fetch(
+        `/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/push-status/${_meetPushJobId}`
+      )).json();
+      if(d.status==="done"){
+        clearInterval(_meetPushPoller); _meetPushPoller=null; _meetPushJobId=null;
+        $("meet-push-btn").disabled=false;
+        $("meet-push-status").textContent=`Round done (${d.turns||0} turns)`;
+        setTimeout(()=>{ $("meet-push-status").textContent=""; },4000);
+        await refreshMeetRoom();
+        await loadMeetRooms(selected);
+      } else if(d.status==="error"){
+        clearInterval(_meetPushPoller); _meetPushPoller=null; _meetPushJobId=null;
+        $("meet-push-btn").disabled=false;
+        $("meet-push-status").textContent="Error: "+(d.error||"unknown");
+      } else {
+        // still running — also refresh to show any messages posted so far
+        await refreshMeetRoom();
+      }
+    }catch(_){}
+  }, 4000);
+}
+
+$("meet-push-btn").onclick=meetPushRound;
 
 $("meet-synth-btn").onclick=runMeetSynthesize;
 
@@ -4323,6 +4552,38 @@ $("iss-gendoc-btn").onclick=async()=>{
   finally{ $("iss-gendoc-btn").disabled=false; }
 };
 
+// PDF button: compile and display issue thread as PDF
+let _issPdfMode = false;
+$("iss-pdf-btn").onclick=async()=>{
+  if(!selected||!issSelectedId) return;
+  const pdfView=$("iss-pdf-view"), commView=$("iss-comments");
+  if(_issPdfMode){
+    // Toggle back to thread view
+    pdfView.style.display="none"; commView.style.display="flex";
+    $("iss-pdf-btn").textContent="PDF"; _issPdfMode=false; return;
+  }
+  // Show PDF view
+  const ds=selectedDataset||"first_proof_1";
+  $("iss-pdf-btn").disabled=true; $("iss-pdf-btn").textContent="compiling…";
+  pdfView.style.display="block"; commView.style.display="none";
+  pdfView.innerHTML=`<div style="padding:24px;color:var(--muted);font-size:13px">Compiling PDF…</div>`;
+  try{
+    const r=await fetch(`/api/issue-pdf/${encodeURIComponent(selected)}/${encodeURIComponent(issSelectedId)}?dataset=${encodeURIComponent(ds)}`);
+    const d=await r.json();
+    if(d.ok && d.pdf_url){
+      _issPdfMode=true;
+      $("iss-pdf-btn").textContent="Thread";
+      await pdfLoad(d.pdf_url, pdfView, ()=>{}, 1.2);
+    } else {
+      pdfView.innerHTML=`<details style="padding:12px;width:100%"><summary style="color:var(--red);cursor:pointer">PDF compile failed</summary><pre style="font-size:11px;color:#aaa;white-space:pre-wrap;margin-top:8px">${esc(d.log||"no log")}</pre></details>`;
+      pdfView.style.display="none"; commView.style.display="flex";
+    }
+  } catch(e){
+    pdfView.style.display="none"; commView.style.display="flex";
+    $("iss-status-msg").textContent="PDF error"; setTimeout(()=>$("iss-status-msg").textContent="",3000);
+  } finally{ $("iss-pdf-btn").disabled=false; }
+};
+
 // Meet button: create meeting room linked to this issue
 $("iss-meet-btn").onclick=async()=>{
   if(!selected||!issSelectedId) return;
@@ -4401,27 +4662,7 @@ async function loadInsightSystem(){
       mEl.innerHTML=(d.mistakes||[]).map(m=>`<div style="padding:5px 8px;background:var(--panel2);border-radius:5px;margin-bottom:4px;font-size:12px">${esc(m)}</div>`).join("");
       mWrap.style.display="";
     }
-    // Per-dataset next steps
-    const dsWrap=$("ins-sys-datasets-wrap"), dsList=$("ins-sys-datasets");
-    const supported=[...SUPPORTED_DATASETS].map(slug=>allDatasets.find(d2=>d2.slug===slug)||{slug,name:slug});
-    if(dsWrap && dsList && supported.length){
-      const rows=await Promise.all(supported.map(async ds=>{
-        try{
-          const r2=await fetchWithTimeout(`/api/insights/dataset/${encodeURIComponent(ds.slug)}`,6000);
-          if(!r2.ok) return null;
-          const d2=await r2.json();
-          if(!d2||!d2.summary) return null;
-          const todos=(d2.suggested_todos||[]).slice(0,3).map(t=>`<li>${esc(t.title||'')}</li>`).join("");
-          return `<div class="ins-card" style="margin-bottom:8px">
-            <div style="font-weight:700;font-size:13px;margin-bottom:5px">${esc(ds.name||ds.slug)}</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:5px">${esc(d2.summary||'')}</div>
-            ${todos?`<ul style="margin:0;padding-left:16px;font-size:12px">${todos}</ul>`:""}
-          </div>`;
-        }catch(_){return null;}
-      }));
-      const filtered=rows.filter(Boolean);
-      if(filtered.length){ dsList.innerHTML=filtered.join(""); dsWrap.style.display=""; }
-    }
+
   }catch(e){
     if(empty){ empty.textContent="Failed to load system insight."; empty.style.display=""; }
   }
@@ -4462,23 +4703,87 @@ async function loadInsights(){
 }
 
 // New meeting modal
-$("meet-new-btn").onclick=()=>{ $("meet-modal").style.display="flex"; $("meet-new-topic").value=""; $("meet-new-goal").value=""; };
+function meetRenderParticipantCards(){
+  const grid=$("meet-new-parts"); grid.innerHTML="";
+  const mathematicians=Object.entries(MEET_MATHEMATICIAN_PERSONAS);
+  if(mathematicians.length){
+    for(const [id,p] of mathematicians){
+      const card=el("label");
+      card.style.cssText="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .12s";
+      const cb=el("input"); cb.type="checkbox"; cb.value=id; cb.checked=true;
+      cb.style.cssText="margin-top:3px;flex-shrink:0";
+      cb.onchange=()=>{ card.style.borderColor=cb.checked?p.color:"var(--border)"; };
+      card.style.borderColor=p.color;
+      card.innerHTML="";
+      const avatar=el("span"); avatar.style.cssText=`width:28px;height:28px;border-radius:50%;background:${p.color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0`;
+      avatar.textContent=p.icon||"👤";
+      const info=el("div"); info.style.cssText="min-width:0;flex:1";
+      info.innerHTML=`<div style="font-size:12px;font-weight:700;color:${p.color}">${esc(p.display)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px">${esc(p.field||"")}</div>
+        <div style="font-size:10px;color:var(--muted);opacity:.7">${esc(p.institution||"")}</div>`;
+      card.appendChild(cb); card.appendChild(avatar); card.appendChild(info);
+      grid.appendChild(card);
+    }
+  } else {
+    // Fallback: generic agents
+    const defaults=[
+      {id:"coordinator",icon:"🎯",display:"Coordinator",color:"#f78166",field:"Facilitator"},
+      {id:"solver-agent",icon:"🔧",display:"Solver",color:"#3fb950",field:"Proof strategist"},
+      {id:"critic-agent",icon:"🔍",display:"Critic",color:"#ffa657",field:"Devil's advocate"},
+      {id:"verifier-agent",icon:"✓",display:"Verifier",color:"#d2a8ff",field:"Correctness checker"},
+    ];
+    for(const p of defaults){
+      const card=el("label");
+      card.style.cssText=`display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel2);border:1px solid ${p.color};border-radius:8px;cursor:pointer`;
+      const cb=el("input"); cb.type="checkbox"; cb.value=p.id; cb.checked=true;
+      const avatar=el("span"); avatar.style.cssText=`width:22px;height:22px;border-radius:50%;background:${p.color};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0`;
+      avatar.textContent=p.icon;
+      const info=el("div");
+      info.innerHTML=`<div style="font-size:12px;font-weight:700;color:${p.color}">${esc(p.display)}</div><div style="font-size:10px;color:var(--muted)">${esc(p.field)}</div>`;
+      card.appendChild(cb); card.appendChild(avatar); card.appendChild(info);
+      grid.appendChild(card);
+    }
+  }
+}
+
+$("meet-new-btn").onclick=async()=>{
+  $("meet-modal").style.display="flex";
+  $("meet-new-topic").value=""; $("meet-new-goal").value="";
+  $("meet-modal-status").textContent="";
+  await loadMeetPersonas(selected);
+  meetRenderParticipantCards();
+};
 $("meet-modal-cancel").onclick=()=>$("meet-modal").style.display="none";
 $("meet-modal-ok").onclick=async()=>{
   if(!selected) return;
   const topic=$("meet-new-topic").value.trim(); if(!topic) return;
   const goal=$("meet-new-goal").value.trim();
   const parts=[...$("meet-new-parts").querySelectorAll("input[type=checkbox]:checked")].map(c=>c.value);
-  $("meet-modal-ok").disabled=true;
-  const room=await (await fetch(`/api/meets/${encodeURIComponent(selected)}`,{
-    method:"POST",headers:{"content-type":"application/json"},
-    body:JSON.stringify({topic,goal,participants:parts.length?parts:null}),
-  })).json();
-  $("meet-modal").style.display="none"; $("meet-modal-ok").disabled=false;
-  await loadMeetRooms(selected);
-  openMeetRoom(room);
-  const items=[...$("meet-room-list").querySelectorAll(".qitem")];
-  const last=items[items.length-1]; if(last)last.classList.add("active");
+  if(!parts.length){ $("meet-modal-status").textContent="Select at least one participant."; return; }
+  $("meet-modal-ok").disabled=true; $("meet-modal-status").textContent="Creating…";
+  try{
+    const room=await (await fetch(`/api/meets/${encodeURIComponent(selected)}`,{
+      method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({topic,goal,participants:parts}),
+    })).json();
+    $("meet-modal").style.display="none";
+    await loadMeetRooms(selected);
+    openMeetRoom(room);
+    // Auto-post opening move for each mathematician
+    for(const pid of parts){
+      const mp=MEET_MATHEMATICIAN_PERSONAS[pid];
+      if(mp?.opening_move){
+        await fetch(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(room.id)}/message`,{
+          method:"POST",headers:{"content-type":"application/json"},
+          body:JSON.stringify({author:pid, body:`*(Joining the meeting)* — ${mp.opening_move}`})
+        }).catch(()=>{});
+      }
+    }
+    await refreshMeetRoom();
+    const items=[...$("meet-room-list").querySelectorAll(".qitem")];
+    const last=items[items.length-1]; if(last)last.classList.add("active");
+  }catch(e){ $("meet-modal-status").textContent=String(e); }
+  finally{ $("meet-modal-ok").disabled=false; }
 };
 </script>
 </body>
