@@ -21,9 +21,9 @@
 
 | 特性 | 说明 |
 |------|------|
-| **研究级数学问题** | First Proof 基准：10 道由数学专家贡献的开放性研究问题，横跨 10 个不同领域 |
+| **7 个研究级数学数据集** | First Proof 第 1、2 轮、Erdős 问题集、形式化猜想、ResearchMath-14k、未解数学问题、AIM 问题列表，共计 22,000+ 道问题 |
 | **多智能体流水线** | 初始化器 → 提议器 → 验证器 → 精炼器，通过结构化共享记忆协调 |
-| **领先实验结果** | 在 First Proof 上解决 **8 / 10** 道问题，超越 GPT-5.2R 与 Aletheia |
+| **领先实验结果** | 在 First Proof 第 1 轮基准上解决 **8 / 10** 道问题，超越 GPT-5.2R 与 Aletheia |
 | **双 Claude 后端** | Anthropic Messages API（按 token 付费）*或* Claude Code 本地 CLI（Pro/Max 订阅额度） |
 | **实时 Web 界面** | 逐步流式输出、实时 PDF 预览、问题追踪器、token 费用显示（含来源归因与饼图） |
 | **自主每日工作器** | 无需人工干预，定时运行求解器，将有日期的报告写入 `documents/` |
@@ -52,6 +52,24 @@
 RMA 聚焦于**研究级数学**（而非竞赛数学或形式化定理证明），综合运用以下专门模块：问题分析、文献检索与理解、公平比较、知识库构建和证明验证。
 
 在多角色、多轮次工作流中，初始化器/提议器/验证器智能体共享结构化记忆，迭代生成、精炼和验证候选证明。在 First Proof 基准上，RMA 通过结构化模块、迭代精炼和验证器反馈报告了优于强基线的结果。
+
+---
+
+## 支持的数据集
+
+RMA 开箱即用地支持以下基准数据集。通过修改 `config/default.yaml` 中的路径指向 `data/datasets/<slug>/problems/` 即可切换数据集。
+
+| 数据集 | 题目数 | 说明 | 许可证 |
+|--------|--------|------|--------|
+| **First Proof — 第 1 轮** | 10 | 由顶尖数学家贡献的 10 道研究级开放问题，横跨 10 个不同领域（随机分析、表示论、谱图论等）。本项目主要评测基准。 | CC BY 4.0 |
+| **First Proof — 第 2 轮** | 10 | 2026 年 6 月发布的第二批问题，涵盖描述集合论、分段线性几何、概率论、黎曼几何、随机偏微分方程、组合学、群论、热带几何与算子代数。 | CC BY 4.0 |
+| **Erdős 问题集** | 1,217 | Paul Erdős 提出的 1,179 道开放问题，由 Terence Tao 维护，含悬赏金额、OEIS 链接及当前状态。 | Apache-2.0 |
+| **形式化猜想** *(Google DeepMind)* | 4,557 | 2,571 条用 Lean 4 形式化表达的数学猜想，含 1,029 道标记为 `sorry` 的开放问题，覆盖数论、组合学、分析和代数。 | Apache-2.0 / CC-BY-4.0 |
+| **ResearchMath-14k** | 14,056 | 从 arXiv 论文与研讨会问题列表收集的 14k 道研究级问题，横跨 11 个数学领域，标注了开放/已解/部分解决状态。（[arXiv:2605.28003](https://arxiv.org/abs/2605.28003)） | CC BY 4.0 |
+| **未解数学问题** | 2,084 | 来自 12 个精选集合的开放问题：千禧年大奖、希尔伯特 23 题、Erdős（632 题）、Ben Green 百题、DARPA 23 题、Smale、Landau、Hardy-Littlewood、Guy 素数问题、Kourovka 手册、Kirby 低维拓扑、OpenGarden。 | CC-BY-4.0 |
+| **AIM 问题列表** | 101 | 来自美国数学研究所（AIM）研讨会的开放问题列表，覆盖纯数学与应用数学 80+ 个主题。 | 学术/需署名 |
+
+> **合计：7 个数据集，22,035 道问题。**
 
 ---
 
@@ -353,6 +371,15 @@ latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
 ## 致谢
 
 感谢 **PoggioAI** 开源 `PoggioAI_MSc`，其系统组织方向和 README 结构为本项目提供了启发。同时感谢 **[TheAgentCompany](https://github.com/TheAgentCompany/TheAgentCompany)** 团队开源其智能体循环框架和问题/议题工作区设计，这启发了 RMA Web 应用的架构。此外，我们还致谢 **[Andrej Karpathy](https://github.com/karpathy)** 的 [autoresearch](https://github.com/karpathy/autoresearch) 项目——该项目开创了全自动 AI 驱动科学发现的理念，为 RMA 自主求解流水线提供了重要的概念启发。
+
+我们由衷感谢以下基准数据集的创建者与维护者：
+
+- **First Proof**（第 1、2 轮）— [firstproof.ai](https://firstproof.ai) / [github.com/1stproof/batch-2](https://github.com/1stproof/batch-2)，由顶尖数学家贡献研究级开放问题，CC BY 4.0 许可证。
+- **Erdős 问题集** — [Terence Tao](https://terrytao.wordpress.com/) 等人维护，[github.com/teorth/erdosproblems](https://github.com/teorth/erdosproblems)，Apache-2.0 许可证。
+- **形式化猜想** — Google DeepMind，[github.com/google-deepmind/formal-conjectures](https://github.com/google-deepmind/formal-conjectures)，Apache-2.0 / CC-BY-4.0 许可证。
+- **ResearchMath-14k** — [arXiv:2605.28003](https://arxiv.org/abs/2605.28003)，数据集见 [Hugging Face](https://huggingface.co/datasets/amphora/ResearchMath-14k)，CC BY 4.0 许可证。
+- **未解数学问题** — [ulamai/UnsolvedMath](https://huggingface.co/datasets/ulamai/UnsolvedMath)，CC-BY-4.0 许可证。
+- **AIM 问题列表** — [美国数学研究所](http://aimpl.org/)，学术使用需署名。
 
 ---
 

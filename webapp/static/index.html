@@ -1480,6 +1480,9 @@ async function loadDatasets(){
       }
       if(sel.value) setGlobalLevel("dataset");
       loadProblems();
+      // Stop overview auto-refresh for large datasets
+      const _dsmNew=allDatasets.find(d=>d.slug===sel.value);
+      if(_dsmNew&&(_dsmNew.problem_count||0)>=100) stopOvRefresh();
     };
   }
   populateDsSel(STATIC_DATASETS);
@@ -1515,7 +1518,7 @@ $("f-solv").oninput=function(){
 };
 
 // ── Problem list loader ──────────────────────────────────────────────────────
-async function loadProblems(){
+async function loadProblems(force=false){
   const params=new URLSearchParams();
   if(selectedDataset) params.set("dataset",selectedDataset);
   const sort=$("f-sort").value; if(sort&&sort!=="id") params.set("sort",sort);
@@ -1529,10 +1532,28 @@ async function loadProblems(){
   const staticFiltered = !selectedDataset || selectedDataset==="first_proof_1"
     ? STATIC_PROBLEMS
     : STATIC_PROBLEMS.filter(p=>p.dataset===selectedDataset);
+
+  // Lazy-load check: skip auto-fetch for large datasets (≥100 problems) unless forced
+  const dsMeta = allDatasets.find(d=>d.slug===selectedDataset);
+  const isLargeDs = dsMeta && (dsMeta.problem_count||0)>=100;
+  if(isLargeDs && !force){
+    problems=staticFiltered;
+    renderProblemList(problems);
+    const cnt=dsMeta.problem_count;
+    list.insertAdjacentHTML("beforeend",
+      `<div id="lazy-load-banner" style="padding:12px 10px;border-top:1px solid var(--border);text-align:center">
+        <button class="btn-sec" style="font-size:12px;padding:5px 14px" onclick="loadProblems(true)">
+          Load all ${cnt} problems →
+        </button>
+        <div style="font-size:10px;color:var(--muted);margin-top:5px">Large dataset — not loaded automatically</div>
+      </div>`);
+    return;
+  }
+
   if(!problems.length) renderProblemList(staticFiltered);
   // Then fetch live data in background
   try{
-    const r=await fetchWithTimeout("/api/ds/problems?"+params,5000);
+    const r=await fetchWithTimeout("/api/ds/problems?"+params,8000);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d=await r.json();
     problems=d.problems||[];
@@ -1631,9 +1652,14 @@ function renderProblemList(ps){
 async function init(){
   _initDomainChips();
   try{
-    // Load datasets and problems — fire-and-forget so page is never stuck loading
-    startOvRefresh();
-    loadDatasets().then(()=>loadProblems()).catch(()=>{
+    // Load datasets first; only auto-start overview for small datasets (< 100 problems)
+    loadDatasets().then(()=>{
+      const dsMeta=allDatasets.find(d=>d.slug===selectedDataset);
+      const isSmall=!dsMeta||(dsMeta.problem_count||0)<100;
+      if(isSmall) startOvRefresh();
+      loadProblems();
+    }).catch(()=>{
+      startOvRefresh(); // still try overview for default small dataset
       if(!problems.length){ problems=STATIC_PROBLEMS; renderProblemList(problems); }
     });
     // Provider options from server capabilities (non-blocking)
@@ -1732,7 +1758,7 @@ let _ovDetailPid=null; // which pid is currently loaded in the detail panel
 
 async function loadOverview(){
   let d;
-  try{ d=await(await fetch("/api/overview")).json(); }
+  try{ d=await(await fetchWithTimeout("/api/overview",15000)).json(); }
   catch(e){ return; }
   ovData=d;
   renderOverview(d, selected);
@@ -1753,7 +1779,7 @@ async function loadQDetail(pid, qSummary){
   _renderOpenIssues([]);
   _renderQActivity([]);
   let detail;
-  try{ detail=await(await fetch(`/api/q-detail/${encodeURIComponent(pid)}`)).json(); }
+  try{ detail=await(await fetchWithTimeout(`/api/q-detail/${encodeURIComponent(pid)}`,10000)).json(); }
   catch(e){ return; }
   if(_ovDetailPid!==pid) return; // navigated away
   _renderTodoList(detail.user_todos||[], pid);
@@ -2492,7 +2518,7 @@ function setTab(name){
     }
   });
   const q=_lvlQ();
-  if(name==="overview"){ startOvRefresh(); if(ovData) renderOverview(ovData, q||null); } else stopOvRefresh();
+  if(name==="overview"){ const _ovDsMeta=allDatasets.find(d=>d.slug===selectedDataset); const _ovSmall=!_ovDsMeta||(_ovDsMeta.problem_count||0)<100; if(_ovSmall) startOvRefresh(); if(ovData) renderOverview(ovData, q||null); } else stopOvRefresh();
   if(name==="issue"){ issSetLevel(_issLevel); }
   if(name==="documents"){ if(q) loadQuestionDocs(q); else loadDocuments(); }
   if(name==="proofs"){ if(q) loadProofForQuestion(q); else if(!pfProbs.length) loadProofs(); }
@@ -2715,7 +2741,8 @@ async function pdfRenderAll(doc, scale, wrap, withTextLayer=true){
 async function pdfLoad(url, wrap, onDoc, scale){
   wrap.innerHTML=`<div style="color:#aaa;padding:32px;font-size:13px">Loading PDF…</div>`;
   try{
-    const doc=await pdfjsLib.getDocument(url).promise;
+    const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("PDF load timeout")),20000));
+    const doc=await Promise.race([pdfjsLib.getDocument(url).promise, timeout]);
     onDoc(doc);
     await pdfRenderAll(doc, scale||1.5, wrap);
   }catch(e){
@@ -2806,9 +2833,9 @@ async function selectQuestion(qid, node, dataset){
     let pr;
     const dsUrl=`/api/ds/problem/${encodeURIComponent(ds)}/${encodeURIComponent(qid)}`;
     const legUrl=`/api/problem/${encodeURIComponent(qid)}`;
-    const res=await fetch(dsUrl);
+    const res=await fetchWithTimeout(dsUrl,8000);
     if(res.ok){ pr=await res.json(); }
-    else if(ds==="first_proof_1"){ pr=await (await fetch(legUrl)).json(); }
+    else if(ds==="first_proof_1"){ pr=await (await fetchWithTimeout(legUrl,8000)).json(); }
     else { pr=await res.json(); }
     if(pr.error) throw new Error(pr.error);
     $("q-title").textContent=pr.title||qid;
@@ -2840,7 +2867,7 @@ async function selectQuestion(qid, node, dataset){
       const pdfEndpoint = (ds==="first_proof_1")
         ? `/api/problem-pdf/${encodeURIComponent(qid)}`
         : `/api/ds/problem-pdf/${encodeURIComponent(ds)}/${encodeURIComponent(qid)}`;
-      const pdfRes=await (await fetch(pdfEndpoint)).json();
+      const pdfRes=await (await fetchWithTimeout(pdfEndpoint,10000)).json();
       if(pdfRes.ok && pdfRes.pdf_url){
         area.innerHTML=metaHtml; // clear the "loading" message; pdfLoad fills the rest
         await pdfLoad(pdfRes.pdf_url, area, d=>{qDoc=d;}, qScale);
@@ -2874,7 +2901,7 @@ async function selectQuestion(qid, node, dataset){
   }
   // Load issues (non-blocking) — scoped to dataset
   const ds2=selectedDataset||"first_proof_1";
-  fetch(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`).then(r=>r.json()).then(d=>{
+  fetchWithTimeout(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`,8000).then(r=>r.json()).then(d=>{
     if(qid!==selected) return; // stale response — user already switched question
     loadIssueList(qid,d.issues||[]);
     // If activity log is visible, refresh it too

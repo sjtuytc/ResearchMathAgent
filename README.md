@@ -23,9 +23,9 @@
 
 | Feature | Detail |
 |---------|--------|
-| **Research-level problems** | First Proof benchmark: 10 open-math problems from expert mathematicians across 10 distinct fields |
+| **7 research-level datasets** | First Proof Rounds 1 & 2, Erdős Problems, Formal Conjectures, ResearchMath-14k, Unsolved Math, AIM Problem Lists — totalling 22,000+ problems |
 | **Multi-agent pipeline** | Initializer → Proposer → Verifier → Refiner, coordinated through shared structured memory |
-| **State-of-the-art results** | Solves **8 / 10** First Proof problems; outperforms GPT-5.2R and Aletheia |
+| **State-of-the-art results** | Solves **8 / 10** First Proof Round 1 problems; outperforms GPT-5.2R and Aletheia |
 | **Two Claude backends** | Anthropic Messages API (pay-per-token) *or* Claude Code local CLI (Pro/Max subscription) |
 | **Live web UI** | Streaming step-by-step viewer, live PDF preview, per-question issue tracker, token cost display with provider attribution and pie charts |
 | **Autonomous daily worker** | Runs the solver overnight with no human in the loop, writes dated reports to `documents/` |
@@ -54,6 +54,24 @@ We present **Research Math Agents (RMA)**, an agentic framework for automated re
 RMA targets **research-level mathematics** (not competition math or formal theorem proving) by combining specialized modules for problem analysis, literature search and understanding, fair comparison, knowledge-bank construction, and proof verification.
 
 Within a multi-role, multi-round workflow, initializer/proposer/verifier agents share structured memory to iteratively generate, refine, and validate candidate proofs. On the First Proof benchmark, RMA reports stronger results than strong baselines through structured modules, iterative refinement, and verifier feedback.
+
+---
+
+## Supported Datasets
+
+RMA works with any of the following benchmark collections out of the box. Switch datasets by pointing `config/default.yaml` to `data/datasets/<slug>/problems/`.
+
+| Dataset | Problems | Description | License |
+|---------|----------|-------------|---------|
+| **First Proof — Round 1** | 10 | 10 open research-level math problems posed by leading mathematicians across 10 distinct fields (stochastic analysis, representation theory, spectral graph theory, …). Our primary evaluation benchmark. | CC BY 4.0 |
+| **First Proof — Round 2** | 10 | Second batch (June 2026) spanning descriptive set theory, piecewise-linear geometry, probability, Riemannian geometry, stochastic PDE, combinatorics, group theory, tropical geometry, and operator algebras. | CC BY 4.0 |
+| **Erdős Problems** | 1,217 | 1,179 open problems posed by Paul Erdős, maintained by Terence Tao. Includes cash prizes, OEIS references, and current open/solved status. | Apache-2.0 |
+| **Formal Conjectures** *(Google DeepMind)* | 4,557 | 2,571 formal mathematical conjectures in Lean 4, including 1,029 open problems (marked `sorry`). Covers number theory, combinatorics, analysis, and algebra. | Apache-2.0 / CC-BY-4.0 |
+| **ResearchMath-14k** | 14,056 | 14k research-level problems collected from arXiv papers and workshop lists, spanning 11 domains, annotated with open/solved/partially-solved status. ([arXiv:2605.28003](https://arxiv.org/abs/2605.28003)) | CC BY 4.0 |
+| **Unsolved Math** | 2,084 | Open problems drawn from 12 curated sets: Millennium Prize, Hilbert's 23, Erdős (632), Ben Green's 100, DARPA 23, Smale's, Landau's, Hardy-Littlewood, Richard Guy's Primes, Kourovka Notebook, Kirby Topology, OpenGarden. | CC-BY-4.0 |
+| **AIM Problem Lists** | 101 | Open problem lists from American Institute of Mathematics workshops, covering 80+ topics in pure and applied mathematics. | Academic / attribution required |
+
+> **Total: 22,035 problems across 7 collections.**
 
 ---
 
@@ -355,6 +373,15 @@ latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
 ## Acknowledgements
 
 We thank **PoggioAI** for open-sourcing `PoggioAI_MSc`, which inspired the system-organization direction and README structure of this project. We also thank the **[TheAgentCompany](https://github.com/TheAgentCompany/TheAgentCompany)** team for open-sourcing their agent-loop-over-model framework and questions/issues workspace design, which inspired the architecture of the RMA web app. We additionally acknowledge **[Andrej Karpathy](https://github.com/karpathy)**'s [autoresearch](https://github.com/karpathy/autoresearch) project for pioneering the idea of fully automated AI-driven scientific discovery, which served as an important conceptual inspiration for RMA's autonomous solver pipeline.
+
+We gratefully acknowledge the creators and maintainers of the benchmark datasets integrated in RMA:
+
+- **First Proof** (Rounds 1 & 2) — [firstproof.ai](https://firstproof.ai) / [github.com/1stproof/batch-2](https://github.com/1stproof/batch-2). Research-level open problems contributed by expert mathematicians. Licensed CC BY 4.0.
+- **Erdős Problems** — [Terence Tao](https://terrytao.wordpress.com/) and contributors, [github.com/teorth/erdosproblems](https://github.com/teorth/erdosproblems). Licensed Apache-2.0.
+- **Formal Conjectures** — Google DeepMind, [github.com/google-deepmind/formal-conjectures](https://github.com/google-deepmind/formal-conjectures). Licensed Apache-2.0 / CC-BY-4.0.
+- **ResearchMath-14k** — [arXiv:2605.28003](https://arxiv.org/abs/2605.28003), available on [Hugging Face](https://huggingface.co/datasets/amphora/ResearchMath-14k). Licensed CC BY 4.0.
+- **Unsolved Math** — [ulamai/UnsolvedMath](https://huggingface.co/datasets/ulamai/UnsolvedMath) on Hugging Face. Licensed CC-BY-4.0.
+- **AIM Problem Lists** — [American Institute of Mathematics](http://aimpl.org/). Academic use with attribution.
 
 ---
 

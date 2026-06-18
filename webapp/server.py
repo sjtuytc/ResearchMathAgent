@@ -252,6 +252,8 @@ def api_ds_problems(
     min_solvability: float = Query(None),
     max_solvability: float = Query(None),
     search: str = Query(None),
+    limit: int = Query(200),          # max items to return
+    offset: int = Query(0),           # start index (for pagination)
 ) -> JSONResponse:
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
     if dataset:
@@ -265,7 +267,11 @@ def api_ds_problems(
         min_solvability=min_solvability, max_solvability=max_solvability,
         search=search,
     )
-    return JSONResponse({"problems": problems, **_capabilities_payload()})
+    total = len(problems)
+    limit = max(1, min(limit, 2000))
+    offset = max(0, offset)
+    page = problems[offset: offset + limit]
+    return JSONResponse({"problems": page, "total": total, "offset": offset, "limit": limit, **_capabilities_payload()})
 
 
 @app.get("/api/ds/problem/{dataset}/{problem_id}")
@@ -1850,22 +1856,23 @@ def hero_run_ep(problem_id: str, payload: dict = Body(default={}), dataset: str 
     def stream():
         yield f"data: {json.dumps({'type': 'hero_start', 'run_id': run_id, 'stats': stats})}\n\n"
         try:
-            from .agent import AgentConfig, run_agent_vertex
-            cfg = AgentConfig(
-                model=model,
-                system_prompt=system_prompt,
-                workspace=REPO_ROOT / "webapp" / ".runs" / run_id,
-                repo_root=REPO_ROOT,
-                problem_id=problem_id,
-            )
-            cfg.workspace.mkdir(parents=True, exist_ok=True)
-            # Write context sections to workspace
+            import os as _os
+            workspace = REPO_ROOT / "webapp" / ".runs" / run_id
+            workspace.mkdir(parents=True, exist_ok=True)
             for s in sections:
                 if s["enabled"] and s["content"].strip():
-                    (cfg.workspace / f"ctx_{s['id']}.md").write_text(s["content"], encoding="utf-8")
-            # Stream the hero inference
-            import anthropic as _ant
-            client = _ant.Anthropic()
+                    (workspace / f"ctx_{s['id']}.md").write_text(s["content"], encoding="utf-8")
+            # Use Vertex AI if available, fall back to Anthropic API
+            from .vertex import vertex_adc_project, vertex_region
+            project_id = vertex_adc_project().strip()
+            if project_id:
+                from anthropic import AnthropicVertex
+                client = AnthropicVertex(region=vertex_region(), project_id=project_id)
+            elif _os.environ.get("ANTHROPIC_API_KEY"):
+                import anthropic as _ant
+                client = _ant.Anthropic()
+            else:
+                raise RuntimeError("No API credentials: set GOOGLE_CLOUD_PROJECT (Vertex AI) or ANTHROPIC_API_KEY")
             with client.messages.stream(
                 model=model,
                 max_tokens=8192,
