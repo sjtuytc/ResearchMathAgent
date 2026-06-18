@@ -230,3 +230,42 @@ def vertex_usage_summary(repo_root: Path, *, days: int = 365) -> dict:
         "today_runs": today_tot["runs"],
         "estimated": True,
     }
+
+
+_PROOF_KINDS = {"daily", "resolve", "discover", "issue-loop", "critic", "verify", "agent", "solve"}
+_WEB_KINDS = {"literature", "concepts", "document", "summary", "devlog", "generate"}
+
+
+def by_provider_summary(entries: list[dict]) -> dict:
+    """Separate costs by provider: vertex (NAIRR) vs api (personal subscription)."""
+    buckets: dict = {}
+    for e in entries:
+        prov = (e.get("provider") or "unknown").lower()
+        if prov not in buckets:
+            buckets[prov] = {"in": 0, "out": 0, "cost": 0.0, "runs": 0}
+        buckets[prov]["in"] += e.get("in", 0)
+        buckets[prov]["out"] += e.get("out", 0)
+        buckets[prov]["cost"] += float(e.get("cost") or 0.0)
+        buckets[prov]["runs"] += 1
+    for v in buckets.values():
+        v["cost"] = round(v["cost"], 6)
+    return buckets
+
+
+def by_kind_summary(entries: list[dict]) -> dict:
+    """Separate costs by purpose: proof work vs website development."""
+    groups: dict = {
+        "proof": {"in": 0, "out": 0, "cost": 0.0, "runs": 0},
+        "website": {"in": 0, "out": 0, "cost": 0.0, "runs": 0},
+        "other": {"in": 0, "out": 0, "cost": 0.0, "runs": 0},
+    }
+    for e in entries:
+        kind = (e.get("kind") or "").lower()
+        bucket = "proof" if kind in _PROOF_KINDS else "website" if kind in _WEB_KINDS else "other"
+        groups[bucket]["in"] += e.get("in", 0)
+        groups[bucket]["out"] += e.get("out", 0)
+        groups[bucket]["cost"] += float(e.get("cost") or 0.0)
+        groups[bucket]["runs"] += 1
+    for v in groups.values():
+        v["cost"] = round(v["cost"], 6)
+    return groups

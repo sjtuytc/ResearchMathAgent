@@ -33,6 +33,22 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 _TITLE_RE = re.compile(r"\\title\{([^}]*)\}")
+
+# Mutually exclusive issue type taxonomy
+ISSUE_TYPES = [
+    "proof-gap",      # required step missing
+    "logical-error",  # incorrect/circular reasoning
+    "hallucination",  # invented false fact or non-existent theorem
+    "unclear-def",    # term undefined, ambiguous, or inconsistently used
+    "missing-case",   # case analysis incomplete
+    "wrong-bound",    # numerical estimate or inequality incorrect
+    "scope-issue",    # special-case argument claimed generally
+    "strategy",       # overall proof approach needs rethinking
+    "external-ref",   # unverified external result cited
+    "notation",       # inconsistent or undefined notation
+]
+
+PRIORITY_LEVELS = ["P0", "P1", "P2", "P3"]  # P0=Critical, P1=High, P2=Medium, P3=Low
 _AUTHOR_RE = re.compile(r"\\author\{([^}]*)\}")
 
 
@@ -104,7 +120,9 @@ def _make_event(event_type: str, description: str, author: str = "system") -> di
 def create_issue(repo_root: Path, problem_id: str, title: str,
                  body: str = "", author: str = "human",
                  labels: list[str] | None = None,
-                 dataset: str = "first_proof_1") -> dict:
+                 dataset: str = "first_proof_1",
+                 issue_type: str | None = None,
+                 priority: str | None = None) -> dict:
     d = _issues_dir(repo_root, problem_id, dataset)
     existing = [json.loads(f.read_text()) for f in d.glob("*.json") if f.is_file()]
     issue_id = _short_id(problem_id, existing)
@@ -116,6 +134,8 @@ def create_issue(repo_root: Path, problem_id: str, title: str,
         "title": title,
         "status": "open",
         "labels": labels or [],
+        "issue_type": issue_type if issue_type in ISSUE_TYPES else None,
+        "priority": priority if priority in PRIORITY_LEVELS else "P2",
         "created_at": now,
         "created_by": author,
         "comments": [_make_event("opened", f"Issue opened by **{author}**", author)],
@@ -209,6 +229,10 @@ def update_issue(repo_root: Path, problem_id: str, issue_id: str,
     for k in ("title", "status", "labels"):
         if k in kwargs:
             issue[k] = kwargs[k]
+    if "issue_type" in kwargs and (kwargs["issue_type"] in ISSUE_TYPES or kwargs["issue_type"] is None):
+        issue["issue_type"] = kwargs["issue_type"]
+    if "priority" in kwargs and kwargs["priority"] in PRIORITY_LEVELS:
+        issue["priority"] = kwargs["priority"]
     if "status" in kwargs and kwargs["status"] != old_status:
         icon = {"open": "🔵", "in_progress": "🟡", "resolved": "✅"}.get(kwargs["status"], "⚪")
         issue["comments"].append(
@@ -216,6 +240,29 @@ def update_issue(repo_root: Path, problem_id: str, issue_id: str,
         )
     _save(repo_root, problem_id, issue, dataset)
     return issue
+
+
+
+def list_all_issues(repo_root: Path, dataset: str = "first_proof_1") -> list[dict]:
+    """Return all issues across all questions for a dataset, sorted by priority then created_at."""
+    base = repo_root / "webapp" / "issues" / dataset
+    if not base.is_dir():
+        return []
+    _PRIO_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
+    issues = []
+    for qdir in sorted(base.iterdir()):
+        if not qdir.is_dir():
+            continue
+        for f in sorted(qdir.glob("*.json"), key=lambda p: p.stat().st_mtime):
+            try:
+                issues.append(json.loads(f.read_text(encoding="utf-8")))
+            except Exception:
+                pass
+    issues.sort(key=lambda i: (
+        _PRIO_ORDER.get(i.get("priority", "P2"), 2),
+        i.get("created_at", ""),
+    ))
+    return issues
 
 
 def log_event(

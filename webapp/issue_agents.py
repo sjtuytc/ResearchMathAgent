@@ -248,7 +248,7 @@ def run_resolver_agent(
 ) -> Iterator[AgentEvent]:
     """Solver agent: works a specific open issue, updates proof, posts resolution."""
     from .prefix import build_prefix_md
-from .issues import get_issue
+    from .issues import get_issue
     issue = get_issue(repo_root, problem_id, issue_id, dataset)
     if issue is None:
         yield AgentEvent("error", {"message": f"Issue {issue_id} not found"})

@@ -31,7 +31,7 @@ from .dataset_store import (
 )
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof, run_discussion_agent, generate_issue_summary
 from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
-from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log, link_issue, add_issue_document
+from .issues import append_activity, list_issues, list_all_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log, link_issue, add_issue_document, ISSUE_TYPES, PRIORITY_LEVELS
 from .todos import list_todos, create_todo, update_todo, delete_todo
 from .meet import (
     create_room as meet_create, get_room as meet_get, list_rooms as meet_list,
@@ -42,7 +42,7 @@ from .meet_agents import run_discussion_turn, run_synthesis, run_step_execution
 from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
-from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary, vertex_usage_summary, log_usage_delta
+from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary, vertex_usage_summary, log_usage_delta, by_provider_summary, by_kind_summary
 from .solve_finalize import finalize_solve_run
 from .tools import _expand_tex_inputs, _extract_title, _problem_sort_key
 from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
@@ -51,6 +51,7 @@ from .concepts import load_concepts, save_concepts, generate_concepts, ensure_al
 from .devlog import read_log as devlog_read, append_entry as devlog_append
 from .proof_eval import load_proof_eval, evaluate_proof
 from .prefix import load_prefix, add_entry as prefix_add, update_entry as prefix_update, delete_entry as prefix_delete, reorder_entries as prefix_reorder, build_prefix_md
+from .hero import assemble_context, build_hero_prompt, context_stats, SECTION_COLORS, SECTION_LABELS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -340,6 +341,8 @@ def create_issue_ep(problem_id: str, payload: dict = Body(...), dataset: str = Q
         author=str(payload.get("author", "human")),
         labels=payload.get("labels", []),
         dataset=ds,
+        issue_type=payload.get("issue_type"),
+        priority=payload.get("priority"),
     )
     return JSONResponse(issue)
 
@@ -1243,6 +1246,8 @@ def overview_ep() -> JSONResponse:
     total_in = sum(e.get("in", 0) for e in log_entries)
     total_out = sum(e.get("out", 0) for e in log_entries)
     total_cost = sum(e.get("cost") or 0.0 for e in log_entries)
+    cost_by_provider = by_provider_summary(log_entries)
+    cost_by_purpose = by_kind_summary(log_entries)
 
     # Simple improvement suggestions based on issue stats
     suggestions: list[str] = []
@@ -1360,6 +1365,8 @@ def overview_ep() -> JSONResponse:
             "in": total_in, "out": total_out,
             "cost": round(total_cost, 6), "runs": len(log_entries),
         },
+        "cost_by_provider": cost_by_provider,
+        "cost_by_purpose": cost_by_purpose,
         "suggestions": suggestions,
         "today": today_summary(REPO_ROOT),
         "question_summaries": question_summaries,
@@ -1777,6 +1784,105 @@ def proof_eval_ep(problem_id: str, force: bool = Query(False)) -> JSONResponse:
 
 
 # ── Dev Log ──────────────────────────────────────────────────────────────────
+
+# ── Issue taxonomy & cross-question endpoints ────────────────────────────────
+
+@app.get("/api/issue-taxonomy")
+def issue_taxonomy() -> JSONResponse:
+    """Returns the canonical issue type list and priority levels."""
+    return JSONResponse({"types": ISSUE_TYPES, "priorities": PRIORITY_LEVELS})
+
+
+@app.get("/api/issues-all")
+def all_issues_ep(dataset: str = Query(None), status: str = Query(None)) -> JSONResponse:
+    """All issues across all questions for a dataset, sorted by priority."""
+    ds = _ds_from_query(dataset)
+    issues = list_all_issues(REPO_ROOT, ds)
+    if status:
+        issues = [i for i in issues if i.get("status") == status]
+    return JSONResponse({"issues": issues, "dataset": ds, "total": len(issues)})
+
+
+# ── Hero inference endpoints ─────────────────────────────────────────────────
+
+@app.get("/api/hero/context/{problem_id}")
+def hero_context_ep(problem_id: str, dataset: str = Query(None), budget: int = Query(180000)) -> JSONResponse:
+    """Assemble and return context sections with token counts for the context diagram."""
+    ds = _ds_from_query(dataset)
+    sections = assemble_context(REPO_ROOT, problem_id, ds, max_tokens=budget)
+    stats = context_stats(sections, budget)
+    return JSONResponse({
+        "sections": [
+            {k: v for k, v in s.items() if k != "content"}  # strip content for the diagram view
+            for s in sections
+        ],
+        "stats": stats,
+        "budget": budget,
+        "problem_id": problem_id,
+    })
+
+
+@app.get("/api/hero/section/{problem_id}/{section_id}")
+def hero_section_ep(problem_id: str, section_id: str, dataset: str = Query(None), budget: int = Query(180000)) -> JSONResponse:
+    """Return the full content of a single context section for preview."""
+    ds = _ds_from_query(dataset)
+    sections = assemble_context(REPO_ROOT, problem_id, ds, max_tokens=budget)
+    sec = next((s for s in sections if s["id"] == section_id), None)
+    if sec is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(sec)
+
+
+@app.post("/api/hero/run/{problem_id}")
+def hero_run_ep(problem_id: str, payload: dict = Body(default={}), dataset: str = Query(None)) -> StreamingResponse:
+    """Run a hero inference pass — assembles full context and streams the result."""
+    ds = _ds_from_query(dataset)
+    enabled = payload.get("enabled_sections")
+    budget  = int(payload.get("budget", 180_000))
+    model   = str(payload.get("model", DEFAULT_MODEL))
+    sections = assemble_context(REPO_ROOT, problem_id, ds, max_tokens=budget, enabled_sections=enabled)
+    system_prompt, user_prompt = build_hero_prompt(sections)
+    stats = context_stats(sections, budget)
+
+    import uuid as _uuid
+    run_id = f"hero-{problem_id}-{_uuid.uuid4().hex[:8]}"
+
+    def stream():
+        yield f"data: {json.dumps({'type': 'hero_start', 'run_id': run_id, 'stats': stats})}\n\n"
+        try:
+            from .agent import AgentConfig, run_agent_vertex
+            cfg = AgentConfig(
+                model=model,
+                system_prompt=system_prompt,
+                workspace=REPO_ROOT / "webapp" / ".runs" / run_id,
+                repo_root=REPO_ROOT,
+                problem_id=problem_id,
+            )
+            cfg.workspace.mkdir(parents=True, exist_ok=True)
+            # Write context sections to workspace
+            for s in sections:
+                if s["enabled"] and s["content"].strip():
+                    (cfg.workspace / f"ctx_{s['id']}.md").write_text(s["content"], encoding="utf-8")
+            # Stream the hero inference
+            import anthropic as _ant
+            client = _ant.Anthropic()
+            with client.messages.stream(
+                model=model,
+                max_tokens=8192,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            ) as stream_obj:
+                for text in stream_obj.text_stream:
+                    yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
+            final = stream_obj.get_final_message()
+            usage = final.usage
+            yield f"data: {json.dumps({'type': 'hero_done', 'input_tokens': usage.input_tokens, 'output_tokens': usage.output_tokens})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
 
 # ── Prefix endpoints ─────────────────────────────────────────────────────────
 
