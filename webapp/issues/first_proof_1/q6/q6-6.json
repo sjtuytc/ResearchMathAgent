@@ -1,0 +1,44 @@
+{
+  "id": "q6-6",
+  "problem_id": "q6",
+  "dataset": "first_proof_1",
+  "title": "CRITICAL: Leverage invariant base case unproven for arbitrary initial vertex",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-17T08:56:44Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "evdc8ed76a",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-17T08:56:44Z"
+    },
+    {
+      "id": "c81196ba0",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Gap Description\n\nThe proof (Step 1) says 'Pick any v0 in V' but never verifies the leverage invariant l(S0) <= 4|S0| = 4 for the initial singleton S0 = {v0}.\n\n## Counterexample\n\nFor the star K_{1,n-1} with unit weights and center vertex c: by Foster's identity, all n-1 edges have equal leverage summing to n-1, so each has leverage 1. Thus l({c}, V\\{c}) = n-1 >> 4 for n > 5.\n\nSince the Greedy Lemma takes l(S) <= 4|S| as an explicit hypothesis, the entire induction collapses without this base case.\n\n## Why It Matters\n\nThe Greedy Lemma is applied sigma times. At step 0 we need l(S0) <= 4. Without establishing this, we cannot execute the first greedy step.\n\n## Fix\n\nApply Claim 3 to T = V: sum_{v in V} l(v,V) <= 2(n-1) < 2n, so the average is < 2. By Markov with threshold 4, more than half of all vertices satisfy l(v0, V\\{v0}) <= 4.\n\nChange initialization to: 'Pick v0 in V with l(v0, V) <= 4 (exists by Claim 3 + Markov applied to T=V).'",
+      "created_at": "2026-06-17T08:56:44Z"
+    },
+    {
+      "id": "cd53947ae",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Analysis and Fix\n\n### Gap Confirmed\n\nThe critic is correct. The original Step 1 said \"Pick any v0 in V\", but never established the leverage invariant l(S0) <= 4|S0| = 4 for the initial singleton S0 = {v0}. The Greedy Lemma requires l(S) <= 4|S| as an explicit hypothesis, so without this base case the induction collapses.\n\nThe counterexample is valid: for K_{1,n-1} with unit weights, the center vertex c has l({c}, V\\{c}) = n-1 (all n-1 edges with leverage 1 are incident to c), which exceeds 4 for n > 5.\n\n### Fix Applied\n\nStep 1 now selects v0 using a Markov argument:\n\n1. Foster identity: sum_{(s,t) in E} l(s,t) <= n-1.\n2. Double-counting: sum_{v in V} l({v}, V\\{v}) = 2 * sum_{edges} l(e) <= 2(n-1) < 2n.\n3. Markov with threshold 4: at most 2(n-1)/4 < n/2 vertices have l({v}) > 4. So more than half satisfy l({v}) <= 4.\n4. Initialization: Pick any such v0. Then l(S0) = l({v0}, V\\{v0}) <= 4 = 4|S0| establishes the leverage invariant at step 0.\n\nThe barrier invariant B^{u0}_sigma(S0) <= phi is unchanged (holds for any v0 since G_{S0} has no edges).\n\nWith both invariants verified at step 0, the Greedy Lemma applies inductively for all sigma steps, and the proof is complete.\n\n### Verification\n\nFor K_{1,n-1}: each of the n-1 leaf vertices has l({v}) = 1 <= 4, so the Markov selection picks any leaf, correctly avoiding the high-leverage center vertex.",
+      "created_at": "2026-06-17T09:01:53Z"
+    },
+    {
+      "id": "eveab62bbc",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-17T09:01:56Z"
+    }
+  ]
+}

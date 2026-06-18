@@ -1,0 +1,44 @@
+{
+  "id": "q6-7",
+  "problem_id": "q6",
+  "dataset": "first_proof_1",
+  "title": "Missing proof that L_{S,V\\S} preceq L (used for Tr_sigma bound in Step 4)",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-17T08:56:55Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "evd16c2ec4",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-17T08:56:55Z"
+    },
+    {
+      "id": "cef2b4fbd",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Gap Description\n\nIn Step 4 (Barrier Averaging), the proof uses the inequality sum_{t not in S} L~_{S,t} = L~_{S,V\\S} preceq Pi without proof.\n\nThis requires showing L_{S,V\\S} preceq L (the Laplacian of cross-edges between S and V\\S is dominated by the full Laplacian), which then gives L~_{S,V\\S} = L^{dag/2} L_{S,V\\S} L^{dag/2} preceq L^{dag/2} L L^{dag/2} = Pi.\n\n## Required Proof\n\nL_{S,V\\S} = sum_{s in S, t not in S} w(s,t)(delta_s - delta_t)(delta_s - delta_t)^T.\n\nL - L_{S,V\\S} = sum_{edges with both endpoints in S} w(e)(delta_s-delta_t)(delta_s-delta_t)^T + sum_{edges with both endpoints in V\\S} w(e)(delta_s-delta_t)(delta_s-delta_t)^T >= 0,\n\nsince each term is a PSD rank-1 matrix. Hence L_{S,V\\S} preceq L.\n\n## Why It Matters\n\nThis inequality is used in the Pi_S piece bound to conclude sum_{t not in S} Tr_sigma(A L~_{S,t}) <= Tr(A Pi), which feeds into the key bound sum_{t not in S} U(S,t) <= 5/delta + 5*phi. Without this, the barrier averaging argument breaks.",
+      "created_at": "2026-06-17T08:56:55Z"
+    },
+    {
+      "id": "c6a3f8fa8",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Fix: Added proof that $L_{S,V\\\\S} \\\\preceq L$ (hence $\\\\widetilde{L}_{S,V\\\\S} \\\\preceq \\\\Pi$)\n\n### Gap Identified\n\nIn Step 4 (Barrier Averaging), the $\\\\Pi_S$ piece opened with the assertion $\\\\sum_{t \\\\notin S} \\\\widetilde{L}_{S,t} = \\\\widetilde{L}_{S,V\\\\setminus S} \\\\preceq \\\\Pi$ without proof. This is the key semidefinite bound needed to apply $\\\\operatorname{Tr}(A\\\\,\\\\widetilde{L}_{S,V\\\\setminus S}) \\\\leq \\\\operatorname{Tr}(A\\\\Pi)$, which feeds into the $\\\\sum_{t\\\\notin S} U(S,t) \\\\leq 5/\\\\delta + 5\\\\phi$ bound.\n\n### Proof Added\n\nWe partition the edge set $E$ into three disjoint groups:\n$$L = L_S + L_{V\\\\setminus S} + L_{S,V\\\\setminus S},$$\nwhere $L_{V\\\\setminus S}$ is the Laplacian of the induced subgraph on $V\\\\setminus S$ (lifted to $\\\\mathbb{R}^V$).\n\nSince $L_S$ and $L_{V\\\\setminus S}$ are both Laplacians of non-negatively weighted graphs they are PSD, so:\n$$L - L_{S,V\\\\setminus S} = L_S + L_{V\\\\setminus S} \\\\succeq 0,$$\ni.e., $L_{S,V\\\\setminus S} \\\\preceq L$.\n\nConjugating by the PSD matrix $L^{\\\\dagger/2}$ preserves the semidefinite order (for any $x$, $x^\\\\top L^{\\\\dagger/2} L_{S,V\\\\setminus S} L^{\\\\dagger/2} x = (L^{\\\\dagger/2}x)^\\\\top L_{S,V\\\\setminus S}(L^{\\\\dagger/2}x) \\\\leq (L^{\\\\dagger/2}x)^\\\\top L (L^{\\\\dagger/2}x) = x^\\\\top \\\\Pi x$), giving:\n$$\\\\widetilde{L}_{S,V\\\\setminus S} = L^{\\\\dagger/2} L_{S,V\\\\setminus S} L^{\\\\dagger/2} \\\\preceq L^{\\\\dagger/2} L L^{\\\\dagger/2} = \\\\Pi.$$\n\n### Numerical Verification\n\nChecked on a 4-vertex example with $S=\\\\{0,1\\\\}$: all eigenvalues of $L - L_{S,V\\\\setminus S}$ are $\\\\geq 0$ (values: $0, 0, 4, 8$) and all eigenvalues of $\\\\Pi - \\\\widetilde{L}_{S,V\\\\setminus S}$ are $\\\\geq 0$ (values: $0, 0, 0.64, 1$).\n\n### Status\n\nThe proof gap is fully resolved. The argument in Step 4 now has a complete justification for $\\\\widetilde{L}_{S,V\\\\setminus S} \\\\preceq \\\\Pi$ inserted at the start of the $\\\\Pi_S$ piece.",
+      "created_at": "2026-06-17T09:04:01Z"
+    },
+    {
+      "id": "evac90427e",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-17T09:04:04Z"
+    }
+  ]
+}

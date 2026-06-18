@@ -1,0 +1,75 @@
+"""One-shot Google Cloud Vertex AI completions.
+
+Replaces the local ``claude`` CLI for simple prompt/response calls
+(solvability eval, literature discovery, concept extraction, issue discussion).
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+
+from .vertex import DEFAULT_MODEL, vertex_adc_project, vertex_region
+
+logger = logging.getLogger(__name__)
+
+# Per-minute quota on Vertex is shared with streaming agent runs.
+# Back off and retry when quota is exceeded.
+_RETRY_DELAYS = (5, 15, 45)  # seconds between retries on 429
+
+
+def complete(
+    prompt: str,
+    *,
+    system: str = "",
+    model: str | None = None,
+    max_tokens: int = 8192,
+) -> str | None:
+    """Run a single-turn Vertex completion. Returns text or None on failure.
+
+    Retries automatically on quota errors (HTTP 429) with exponential backoff.
+    """
+    try:
+        from anthropic import AnthropicVertex
+    except ImportError:
+        logger.warning("anthropic[vertex] not installed; skipping Vertex completion")
+        return None
+
+    project_id = vertex_adc_project().strip()
+    if not project_id:
+        logger.warning("No GCP project ID found; skipping Vertex completion")
+        return None
+
+    use_model = model or DEFAULT_MODEL
+    client = AnthropicVertex(region=vertex_region(), project_id=project_id)
+    kwargs: dict = {
+        "model": use_model,
+        "max_tokens": max_tokens,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    if system:
+        kwargs["system"] = system
+
+    last_exc: Exception | None = None
+    for attempt, delay in enumerate((*_RETRY_DELAYS, None)):
+        try:
+            msg = client.messages.create(**kwargs)
+            parts: list[str] = []
+            for block in msg.content:
+                if getattr(block, "type", None) == "text":
+                    parts.append(getattr(block, "text", "") or "")
+            text = "".join(parts).strip()
+            return text or None
+        except Exception as exc:
+            last_exc = exc
+            err_str = str(exc)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "Quota" in err_str:
+                if delay is not None:
+                    logger.info("Vertex quota exceeded, retrying in %ds (attempt %d)…", delay, attempt + 1)
+                    time.sleep(delay)
+                    continue
+            logger.warning("Vertex completion failed (model=%s): %s", use_model, exc)
+            return None
+
+    logger.warning("Vertex completion exhausted retries (model=%s): %s", use_model, last_exc)
+    return None

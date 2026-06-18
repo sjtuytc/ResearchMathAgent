@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "Gap 1: Commutativity of $\\boxplus_n$ with differential operators not justified",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap",
     "commutativity"
@@ -25,6 +25,21 @@
       "role": "agent",
       "body": "## Issue\n\nThe proof claims that the finite free convolution $\\boxplus_n$ **commutes with constant-coefficient differential operators**, particularly the heat operator $\\exp(-\\frac{t}{2}\\partial_x^2)$ and the transformation $T_\\epsilon = (1-\\epsilon d/dx)^n$.\n\n**Location**: Lines 127-129, 161-162\n\n## What is missing\n\n1. No proof or explanation of why this commutativity holds\n2. The Walsh formula (eq. 63) defines the convolution implicitly; why does it commute with $\\partial_x$?\n3. Is this commutativity a straightforward fact or a deep theorem?\n\n## Why this matters\n\nThis commutativity is **essential** to the proof structure:\n- In Lemma on heat flow: the heat operator commutes with $\\boxplus_n$, allowing us to relate $r_{(a+b)t} = p_{at} \\boxplus_n q_{bt}$\n- In the reduction: $(T_\\epsilon p) \\boxplus_n (T_\\epsilon q) = T_\\epsilon^2(p \\boxplus_n q)$\n\nWithout this, the entire argument for reducing to simple roots fails.\n\n## Suggested resolution\n\n**Approach A**: Expand the Walsh formula and verify commutativity directly.\n\n**Approach B**: Provide brief intuition + cite MSS22. For example:\n  - The convolution operator acts on root variables $(a_1,\\ldots,a_n,b_1,\\ldots,b_n)$\n  - The differential operator $\\partial_x$ acts on $x$\n  - These act on disjoint coordinate systems, so they commute\n  - Full proof in MSS22 (2022)\n\n## References\n- Marcus, Spielman, Srivastava. *Finite free convolutions of polynomials*. Probab. Theory Related Fields **182** (2022), 807–848.",
       "created_at": "2026-06-17T02:09:37Z"
+    },
+    {
+      "id": "c8371da6e",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Analysis and Resolution\n\nI reviewed solution.tex against the two commutativity claims flagged in this issue.\n\n### What the current solution contains\n\nBoth proofs are **already present** in solution.tex:\n\n**1. Lemma lem:simple(iii) — T_epsilon commutativity**\n\nA complete coefficient-level proof that (T_epsilon p) boxplus_n (T_epsilon q) = T_epsilon^2 (p boxplus_n q). The key steps are:\n- Derive [T_epsilon r]_k = sum_{m=0}^k C(n,m)(-eps)^m * (n-k+m)!/(n-k)! * r_{k-m}\n- Substitute into the bilinear formula c_k = sum_{i+j=k} (n-i)!(n-j)!/(n!(n-k)!) a_i b_j\n- Change variables i'=i-m1, j'=j-m2, m=m1+m2\n- Apply **Vandermonde's identity**: sum_{m1} C(n,m1)*C(n,m-m1) = C(2n,m)\n- This matches exactly [T_epsilon^2(p boxplus_n q)]_k, since T_epsilon^2 = (1-eps d/dx)^{2n}\n\n**2. Corollary cor:heat-commutes — heat-flow commutativity**\n\nAn analogous proof that (e^{-as/2 d^2} p) boxplus_n (e^{-bs/2 d^2} q) = e^{-(a+b)s/2 d^2} (p boxplus_n q). Vandermonde is replaced by the **exponential binomial identity**: sum_{m1+m2=l} a^m1*b^m2/(m1!*m2!) = (a+b)^l/l! (from e^{au}*e^{bu} = e^{(a+b)u}).\n\nLines 127-131 already contain a forward reference to cor:heat-commutes, so no claim is unjustified.\n\n### Answers to the critic's sub-questions\n\n1. *No proof provided* — FALSE. Both Lemma lem:simple(iii) and Corollary cor:heat-commutes contain complete proofs.\n2. *Why does boxplus_n commute with d/dx?* — The bilinear coefficient formula is polynomial in the coefficients. Each differential operator acts coefficient-by-coefficient. Commutativity reduces to a combinatorial identity (Vandermonde or exponential binomial). No abstract structure needed.\n3. *Is this deep or trivial?* — Straightforward calculation. No appeal to MSS22 required.\n\n### Numerical verification\n\nBoth identities verified on degree-4 polynomials with eps=0.1, a=1, b=2, s=0.05: LHS and RHS coefficients agree to within 2e-16 (machine epsilon).\n\n### Fix applied\n\nLine 206 had a confusingly written comment '(n-k+m)!/(n-k+m)! = 1' that obscured the actual cancellation. Replaced with explicit language: 'cancelling the factor (n-k+m)! appearing in both (n-k+m)!/(n-k)! and the denominator of c_{k-m}, leaving 1/(n-k)!'. No mathematical content changed.\n\n**Conclusion**: The gap identified in this issue is fully resolved by the existing proofs in solution.tex.",
+      "created_at": "2026-06-17T15:33:00Z"
+    },
+    {
+      "id": "eva11eabda",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-17T15:33:03Z"
     }
   ]
 }

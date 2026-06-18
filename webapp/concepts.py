@@ -2,15 +2,16 @@
 from __future__ import annotations
 
 import json
-import os
+import logging
 import re
-import shutil
-import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
 from .agent import AgentEvent
+
+logger = logging.getLogger(__name__)
 
 
 def _concepts_path(repo_root: Path, qid: str) -> Path:
@@ -78,34 +79,44 @@ Aim for 8-16 entries covering all essential mathematical content.
 """
 
 
-def _call_claude_json(prompt: str, system: str, model: str = "claude-sonnet-4-6") -> str | None:
-    binary = shutil.which("claude")
-    if not binary:
-        return None
-    env = dict(os.environ)
-    env.pop("ANTHROPIC_API_KEY", None)
-    env.pop("ANTHROPIC_AUTH_TOKEN", None)
-    cmd = [binary, "-p", prompt, "--output-format", "json", "--model", model,
-           "--no-session-persistence", "--append-system-prompt", system]
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=120)
-        if r.returncode != 0:
-            return None
-        obj = json.loads(r.stdout)
-        return obj.get("result") or obj.get("text") or ""
-    except Exception:
-        return None
+# Only claude-opus-4-8 (no version suffix) is available on the NAIRR Vertex project.
+_VERTEX_CONCEPT_MODEL = "claude-opus-4-8"
+# Gap between background extractions to avoid competing with solve-run quota.
+_EXTRACTION_GAP_SECS = 20
+
+
+def _call_llm(prompt: str, system: str) -> str | None:
+    """Call Claude via Vertex for concept extraction."""
+    from .vertex_llm import complete
+    return complete(prompt, system=system, model=_VERTEX_CONCEPT_MODEL, max_tokens=8192)
 
 
 def ensure_all_concepts(repo_root: Path, q_titles: dict | None = None) -> None:
-    """Background: extract concepts for any question missing a concepts file."""
+    """Background: extract concepts for any question missing a concepts file.
+
+    Spaces out extractions by _EXTRACTION_GAP_SECS to avoid competing
+    with concurrent solve-run quota on Vertex.
+    """
+    logger.info("ensure_all_concepts: checking q1-q10...")
+    first = True
     for i in range(1, 11):
         qid = f"q{i}"
         if load_concepts(repo_root, qid):
+            logger.debug("ensure_all_concepts: %s already has concepts, skipping", qid)
             continue
+        if not first:
+            time.sleep(_EXTRACTION_GAP_SECS)
+        first = False
         title = (q_titles or {}).get(qid, qid)
-        for _ in generate_concepts(repo_root, qid, title):
-            pass
+        logger.info("ensure_all_concepts: extracting concepts for %s", qid)
+        results = list(generate_concepts(repo_root, qid, title))
+        done = next((e for e in results if e.type == "done"), None)
+        if done and done.data.get("count", 0) > 0:
+            logger.info("ensure_all_concepts: %s — %d concepts extracted", qid, done.data["count"])
+        else:
+            err = next((e for e in results if e.type == "error"), None)
+            logger.warning("ensure_all_concepts: %s failed — %s", qid,
+                           err.data.get("message") if err else "unknown")
 
 
 def generate_concepts(repo_root: Path, qid: str, title: str) -> Iterator[AgentEvent]:
@@ -120,7 +131,7 @@ def generate_concepts(repo_root: Path, qid: str, title: str) -> Iterator[AgentEv
 
     problem_tex = problem_path.read_text(encoding="utf-8", errors="replace")[:6000]
     prompt = _EXTRACT_PROMPT.format(qid=qid, title=title, problem_tex=problem_tex)
-    raw = _call_claude_json(prompt, _EXTRACT_SYSTEM)
+    raw = _call_llm(prompt, _EXTRACT_SYSTEM)
 
     if not raw:
         yield AgentEvent("error", {"message": "Claude returned no response."})

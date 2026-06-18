@@ -11,7 +11,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-_NAME_RE = re.compile(r"^[A-Za-z0-9._/-]+\.md$")
+_NAME_RE = re.compile(r"^[A-Za-z0-9._/-]+\.(md|tex)$")
 
 
 def documents_dir(repo_root: Path) -> Path:
@@ -24,7 +24,9 @@ def list_documents(repo_root: Path) -> list[dict]:
     """Return all .md files under documents/, recursively, with folder metadata."""
     d = documents_dir(repo_root)
     items = []
-    for path in sorted(d.rglob("*.md")):
+    for path in sorted(d.rglob("*")):
+        if path.suffix not in (".md", ".tex"):
+            continue
         rel = path.relative_to(d)
         parts = rel.parts
         folder = "/".join(parts[:-1]) if len(parts) > 1 else ""

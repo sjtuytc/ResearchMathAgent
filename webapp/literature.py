@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import shutil
-import subprocess
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
@@ -141,23 +139,9 @@ Relevance must be one of: high, medium, low. Order papers by relevance descendin
 """
 
 
-def _call_claude_json(prompt: str, system: str, model: str = "claude-sonnet-4-6") -> str | None:
-    binary = shutil.which("claude")
-    if not binary:
-        return None
-    env = dict(os.environ)
-    env.pop("ANTHROPIC_API_KEY", None)
-    env.pop("ANTHROPIC_AUTH_TOKEN", None)
-    cmd = [binary, "-p", prompt, "--output-format", "json", "--model", model,
-           "--no-session-persistence", "--append-system-prompt", system]
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=120)
-        if r.returncode != 0:
-            return None
-        obj = json.loads(r.stdout)
-        return obj.get("result") or obj.get("text") or ""
-    except Exception:
-        return None
+def _call_vertex_json(prompt: str, system: str, model: str = "claude-sonnet-4-6") -> str | None:
+    from .vertex_llm import complete
+    return complete(prompt, system=system, model=model, max_tokens=8192)
 
 
 def ensure_all_lit(repo_root: Path, q_titles: dict | None = None) -> None:
@@ -183,7 +167,7 @@ def discover_literature(repo_root: Path, qid: str, title: str) -> Iterator[Agent
 
     problem_tex = problem_path.read_text(encoding="utf-8", errors="replace")[:5000]
     prompt = _DISCOVER_PROMPT.format(qid=qid, title=title, problem_tex=problem_tex)
-    raw = _call_claude_json(prompt, _DISCOVER_SYSTEM)
+    raw = _call_vertex_json(prompt, _DISCOVER_SYSTEM)
 
     if not raw:
         yield AgentEvent("error", {"message": "Claude returned no response."})

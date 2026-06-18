@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "Commutativity Claim (Lemma 2(iii)): Insufficient justification",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "## Issue\n\nLemma 2(iii) claims:\n\n(T_ε p) ⊞_n (T_ε q) = T_ε²(p ⊞_n q)\n\nwhere T_ε = (1 - ε d/dx)^n, with the only justification being a citation to MSS22.\n\n## Why This Matters\n\nThis identity is crucial for the reduction strategy:\n- It justifies that applying T_ε to each polynomial and taking their convolution\n- yields the same result as applying T_ε² to the original convolution\n- This allows the simple-root proof to extend to general polynomials via operators\n\n## What's Missing\n\n1. **Proof sketch**: The statement \"finite free convolution commutes with any constant-coefficient differential operator\" is cited but not proven. A sketch or detailed reference is needed to verify:\n   - T_ε is indeed a constant-coefficient operator\n   - The commutativity holds specifically for ⊞_n\n   - The right-hand side is precisely T_ε² (not some other composition)\n\n2. **Verification of scaling**: The RHS has T_ε² specifically. Why not T_ε^{2n}? Why does the scaling work out this way? This should be explained in terms of the degree formula for ⊞_n or MSS22.\n\n## Impact\n\nMedium-High: If this commutativity fails or is different from what's stated, the entire reduction collapses. Conversely, if true, it's a deep result worthy of clarity.\n\n## Suggested Fix\n\nEither:\n1. Prove the identity directly using the explicit form of ⊞_n from eq. (walsh), or\n2. Cite the specific theorem from MSS22 with page number and brief explanation of how it applies here.",
       "created_at": "2026-06-16T23:06:07Z"
+    },
+    {
+      "id": "ccb9520c6",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolution\n\nThe one-line citation in Lemma 2(iii) has been replaced with a complete self-contained proof.\n\n### The identity\n\n(T_eps p) ⊞_n (T_eps q) = T_eps^2 (p ⊞_n q), where T_eps = (1-eps d/dx)^n.\n\n### Proof sketch (now in solution.tex)\n\nWrite p(x)=sum_k a_k x^{n-k}, q(x)=sum_k b_k x^{n-k}.\n\n**Step 1 (action of T_eps on coefficients).** Expanding T_eps = sum_{m=0}^n C(n,m)(-eps)^m (d/dx)^m, the k-th coefficient of T_eps r is\n  [T_eps r]_k = sum_{m=0}^k C(n,m)(-eps)^m (n-k+m)!/(n-k)! * r_{k-m}.\n\n**Step 2 (LHS).** By bilinearity of ⊞_n in coefficients, [(T_eps p)⊞_n(T_eps q)]_k = sum_{i+j=k} (n-i)!(n-j)!/(n!(n-k)!) [T_eps p]_i [T_eps q]_j. Substituting the Step 1 formula with indices m_1 (for p) and m_2 (for q), then changing variables i'=i-m_1, j'=j-m_2, m=m_1+m_2 (so i'+j'=k-m), one obtains\n  [(T_eps p)⊞_n(T_eps q)]_k = 1/(n!(n-k)!) * sum_{m=0}^k (-eps)^m [sum_{m_1=0}^m C(n,m_1)C(n,m-m_1)] * sum_{i'+j'=k-m} (n-i')!(n-j')! a_{i'} b_{j'}.\n\n**Step 3 (Vandermonde).** sum_{m_1=0}^m C(n,m_1)C(n,m-m_1) = C(2n,m).\n\n**Step 4 (RHS).** Applying T_eps^2 = (1-eps d/dx)^{2n} to p⊞_n q and substituting c_{k-m} = sum_{i'+j'=k-m} (n-i')!(n-j')!/(n!(n-k+m)!) a_{i'} b_{j'} yields the identical expression, so both sides agree for every k in {0,...,n}.\n\n### Why T_eps^2 and not a different power\n\nEach argument of ⊞_n contributes a binomial weight C(n,m_i)(-eps)^{m_i}. Their convolution over m_1+m_2=m is C(2n,m)(-eps)^m by Vandermonde, which is the coefficient in (1-eps d/dx)^{2n} = T_eps^2. Vandermonde ADDS the upper indices (n+n=2n), so the answer is 2n, not n^2 or anything else. The analogous statement for the heat operator e^{-t partial^2/2} follows from the ordinary binomial theorem (instead of Vandermonde) and recovers the heat-flow commutativity used in Observation 1 and cited from MSS22.\n\n### Numerical verification\n\nVerified by exact rational arithmetic (Python fractions module):\n- n=2, eps=1/7, roots {1,2} and {3,4}: LHS == RHS (True)\n- n=3, eps=1/5, roots {1,2,3} and {4,5,6}: LHS == RHS (True)\n\n### Changes made\n\nIn solution.tex, the proof of Lemma 2(iii) was expanded from the single sentence 'This holds because ⊞_n commutes with the differential operator 1-eps d/dx [MSS22]' to a four-paragraph proof covering: (a) action of T_eps on coefficients, (b) LHS coefficient expansion, (c) Vandermonde convolution, (d) RHS computation and equality, and (e) explanation of why the exponent is precisely 2n.",
+      "created_at": "2026-06-17T08:48:58Z"
+    },
+    {
+      "id": "ev2154b459",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-17T08:49:01Z"
     }
   ]
 }

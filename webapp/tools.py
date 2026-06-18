@@ -29,7 +29,7 @@ BLOCKED_INPUT_DIRS = (
 
 # Roots the agent is allowed to read from (relative to the repo root), in
 # addition to its own session workspace.
-READABLE_ROOTS = ("problems", "skills")
+READABLE_ROOTS = ("problems", "skills", "documents")
 
 _PROBLEM_RE = re.compile(r"^q(?:10|[1-9])$")
 _MAX_OUTPUT_CHARS = 16_000
@@ -84,12 +84,20 @@ TOOL_DEFINITIONS = [
         },
     },
     {
+        "name": "list_skills",
+        "description": (
+            "List available math-research skill files under skills/. "
+            "Call read_file on a returned path to load guidance."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
         "name": "read_file",
         "description": (
             "Read a UTF-8 text file. Allowed locations: anything under "
             "problems/ or skills/, and any file you have written into your "
-            "scratch workspace. Reading prior benchmark solutions is "
-            "forbidden and will fail."
+            "scratch workspace (e.g. solution.tex, preamble.tex). Reading "
+            "prior benchmark solutions is forbidden and will fail."
         ),
         "input_schema": {
             "type": "object",
@@ -164,21 +172,49 @@ TOOL_DEFINITIONS = [
 
 # --- Path safety ----------------------------------------------------------
 
+def _logical_repo_path(ctx: ToolContext, raw: str) -> Path | None:
+    """Return a repo-relative path when ``raw`` is under allowed read roots.
+
+    Uses the logical path (no symlink follow) so problems/ symlinks outside the
+    repo remain readable when they are declared under problems/ or skills/.
+    """
+    candidate = Path(raw)
+    if candidate.is_absolute():
+        return None
+    logical = ctx.repo_root / candidate
+    try:
+        logical.relative_to(ctx.repo_root)
+    except ValueError:
+        return None
+    top = candidate.parts[0] if candidate.parts else ""
+    if top in BLOCKED_INPUT_DIRS or top not in READABLE_ROOTS:
+        return None
+    return logical
+
+
 def _resolve_readable(ctx: ToolContext, raw: str) -> Path:
     """Resolve ``raw`` to an absolute path the agent is allowed to read."""
     candidate = Path(raw)
-    # Try workspace-relative first, then repo-relative.
-    options = []
+    options: list[Path] = []
     if candidate.is_absolute():
         options.append(candidate)
     else:
+        repo_logical = _logical_repo_path(ctx, raw)
+        if repo_logical is not None:
+            options.append(repo_logical)
         options.append(ctx.workspace / candidate)
-        options.append(ctx.repo_root / candidate)
 
+    readable: list[Path] = []
     for opt in options:
-        opt = opt.resolve()
+        if not opt.is_file():
+            if _is_readable(ctx, opt):
+                readable.append(opt.resolve())
+            continue
+        resolved = opt.resolve()
         if _is_readable(ctx, opt):
-            return opt
+            return resolved
+    if readable:
+        return readable[0]
     raise ToolError(
         f"Path '{raw}' is outside the readable sandbox (problems/, skills/, "
         f"or your workspace) or points at a blocked benchmark directory."
@@ -188,9 +224,11 @@ def _resolve_readable(ctx: ToolContext, raw: str) -> Path:
 def _is_readable(ctx: ToolContext, path: Path) -> bool:
     if _within(path, ctx.workspace):
         return True
-    if not _within(path, ctx.repo_root):
+    # Accept logical paths under problems/ or skills/ even when they symlink outside.
+    try:
+        rel = path.relative_to(ctx.repo_root)
+    except ValueError:
         return False
-    rel = path.relative_to(ctx.repo_root)
     top = rel.parts[0] if rel.parts else ""
     if top in BLOCKED_INPUT_DIRS:
         return False
@@ -223,6 +261,8 @@ def execute_tool(ctx: ToolContext, name: str, tool_input: dict) -> str:
     """Dispatch a tool call and return a string result (raises ToolError)."""
     if name == "list_problems":
         return _list_problems(ctx)
+    if name == "list_skills":
+        return _list_skills(ctx)
     if name == "read_problem":
         return _read_problem(ctx, str(tool_input.get("problem_id", "")).strip())
     if name == "read_file":
@@ -242,9 +282,67 @@ def _list_problems(ctx: ToolContext) -> str:
         raise ToolError("No problems/ directory found.")
     lines = []
     for tex in sorted(problems_dir.glob("q*.tex"), key=_problem_sort_key):
+        if not tex.is_file():
+            continue
         title = _extract_title(tex)
         lines.append(f"- {tex.stem}: {title}")
     return "Available problems:\n" + "\n".join(lines) if lines else "No problems found."
+
+
+def _expand_tex_inputs(text: str, repo_root: Path) -> str:
+    """Inline \\input{...} directives (currently preamble only)."""
+
+    def _replacer(match: re.Match[str]) -> str:
+        name = match.group(1).strip()
+        if name == "preamble":
+            pre = repo_root / "problems" / "preamble.tex"
+            if pre.is_file():
+                return pre.read_text(encoding="utf-8", errors="replace")
+        return match.group(0)
+
+    return re.sub(r"\\input\{([^}]+)\}", _replacer, text)
+
+
+def seed_workspace(repo_root: Path, problem_id: str, workspace: Path) -> None:
+    """Copy problem sources and all accumulated context into the agent workspace."""
+    workspace.mkdir(parents=True, exist_ok=True)
+    prob = repo_root / "problems" / f"{problem_id}.tex"
+    if prob.is_file():
+        (workspace / "problem.tex").write_text(
+            _expand_tex_inputs(prob.read_text(encoding="utf-8", errors="replace"), repo_root),
+            encoding="utf-8",
+        )
+    pre = repo_root / "problems" / "preamble.tex"
+    if pre.is_file():
+        shutil.copy2(pre, workspace / "preamble.tex")
+    skill = repo_root / "skills" / "math-research" / "SKILL.md"
+    if skill.is_file():
+        shutil.copy2(skill, workspace / "SKILL.md")
+
+    # Copy all accumulated research documents for this problem
+    qdir = repo_root / "documents" / "questions" / problem_id
+    for doc_name in ("overview.md", "strategies.md", "progress.md", "timeline.md"):
+        src = qdir / doc_name
+        if src.is_file():
+            shutil.copy2(src, workspace / f"ctx_{doc_name}")
+
+    # Seed the best current proof as solution.tex if one exists
+    _seed_best_proof(repo_root, problem_id, workspace)
+
+
+def _seed_best_proof(repo_root: Path, problem_id: str, workspace: Path) -> None:
+    """Write the best known proof into solution.tex if one exists."""
+    sol = workspace / "solution.tex"
+    if sol.is_file():
+        return  # caller already provided one
+    try:
+        # Lazy import to avoid circular dependency
+        from .proofs import get_best_proof  # type: ignore[attr-defined]
+        bp = get_best_proof(problem_id)
+        if bp and bp.get("latex"):
+            sol.write_text(bp["latex"], encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _read_problem(ctx: ToolContext, problem_id: str) -> str:
@@ -253,7 +351,25 @@ def _read_problem(ctx: ToolContext, problem_id: str) -> str:
     path = ctx.repo_root / "problems" / f"{problem_id}.tex"
     if not path.is_file():
         raise ToolError(f"Problem '{problem_id}' not found.")
-    return _clip(path.read_text(encoding="utf-8", errors="replace"))
+    text = path.read_text(encoding="utf-8", errors="replace")
+    text = _expand_tex_inputs(text, ctx.repo_root)
+    return _clip(text)
+
+
+def _list_skills(ctx: ToolContext) -> str:
+    skills_dir = ctx.repo_root / "skills"
+    if not skills_dir.is_dir():
+        raise ToolError("No skills/ directory found.")
+    lines: list[str] = []
+    for path in sorted(skills_dir.rglob("*.md")):
+        rel = path.relative_to(ctx.repo_root)
+        lines.append(f"- {rel}")
+    if not lines:
+        return "No skill files found under skills/."
+    return (
+        "Available skill files (use read_file with the path shown):\n"
+        + "\n".join(lines)
+    )
 
 
 def _read_file(ctx: ToolContext, raw: str) -> str:

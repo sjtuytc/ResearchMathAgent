@@ -18,6 +18,9 @@ echo "[prod] Run deploy.sh to apply code changes to production."
 
 while true; do
     echo "[prod $(date '+%Y-%m-%d %H:%M:%S')] launching..."
+    PYTHONPATH="${HOME}/.local/lib/python3.12/site-packages${PYTHONPATH:+:$PYTHONPATH}" \
+    GOOGLE_CLOUD_PROJECT="nairr-260096-569948" \
+    GOOGLE_CLOUD_REGION="us-east5" \
     "$PYTHON" -m uvicorn webapp.server:app \
         --host "$HOST" \
         --port "$PORT" || true

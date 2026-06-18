@@ -111,12 +111,11 @@ def run_discussion_turn(
     """).strip()
 
     yield from _run_agent(
-        ws, prompt,
+        repo_root, ws, prompt,
         _persona_system(participant, problem_id),
         handle,
         f"meet/{room_id}/{participant}",
         max_turns=_MAX_DISCUSSION_TURNS,
-        allowed_tools="Read Bash",
     )
 
 
@@ -185,7 +184,7 @@ def run_synthesis(
     """).strip()
 
     yield from _run_agent(
-        ws, prompt,
+        repo_root, ws, prompt,
         _coordinator_synth_system(problem_id),
         handle,
         f"meet/{room_id}/synthesize",
@@ -267,7 +266,7 @@ def run_step_execution(
                 mark_step_done(repo_root, problem_id, room_id, step_idx, "partial", "agent did not mark complete")
 
     yield from _run_agent(
-        ws, prompt,
+        repo_root, ws, prompt,
         _executor_system(problem_id),
         handle,
         f"meet/{room_id}/step/{step_idx}",

@@ -1,0 +1,29 @@
+{
+  "id": "q4-44",
+  "problem_id": "q4",
+  "dataset": "first_proof_1",
+  "title": "Ordering convention for H^{(i)} is load-bearing; lem:hess (ascending) and cor:psd (descending) use opposite conventions",
+  "status": "open",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-18T01:07:46Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "ev53b2dd77",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-18T01:07:46Z"
+    },
+    {
+      "id": "c860be2b8",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Ordering convention for $H^{(i)}$ is load-bearing and the proof uses two opposite conventions without reconciliation\n\nThis sharpens/complements q4-34 and q4-23 with an explicit **numerical demonstration** that the ordering direction in Corollary `cor:psd` is not cosmetic but essential, and that the written proof silently switches conventions between Lemma `lem:hess` and Corollary `cor:psd`.\n\n### The two incompatible definitions of $H^{(i)}$\n1. **Lemma `lem:hess` / Prop. `prop:contraction`:** $H^{(i)} := \\operatorname{Hess}(\\Psi_{\\boxplus_n})_i$, where $\\Psi$ is \"the ordered root map.\" The reduction section fixes the **ascending** convention (\"canonical ordering $\\lambda_1\\le\\dots\\le\\lambda_n$\").\n2. **Corollary `cor:psd`:** $H^{(j)} := \\operatorname{Hess}\\rho_j$ with $\\rho_1\\ge\\dots\\ge\\rho_n$ **descending**; the boxed conclusion is \"$\\sum_j d_j H^{(j)}\\succeq0$ for every $d_1\\ge\\dots\\ge d_n$.\"\n\nProp. `prop:contraction` then writes: \"the roots $\\gamma_1\\ge\\dots\\ge\\gamma_n$ are ordered, so Corollary (with $d_i=\\gamma_i$) gives $\\sum_i\\gamma_i H^{(i)}\\succeq0$\" — i.e. it treats $\\gamma$ as **descending** and $H^{(i)}$ as the descending-Hessian, the opposite of Lemma `lem:hess`'s ascending $H^{(i)}$.\n\n### Why this matters (numerical evidence)\nThe combination $\\sum_i \\gamma_i\\,\\operatorname{Hess}(\\gamma_i)$ — each root paired with **its own** Hessian — IS order-independent and IS PSD; this critic verified it. But the PSD *hypothesis* of `cor:psd` is satisfied only for the correct pairing. Concretely, at a random degree-3 point $(a,b)$ (`numpy` finite-difference Hessians of the ascending-root map):\n\n- decreasing weights $\\times$ **ascending**-indexed Hessians: $\\lambda_{\\min}\\bigl(\\sum_i d_i H^{(i)}_{\\mathrm{asc}}\\bigr) \\approx \\mathbf{-0.457}$  (**NOT PSD**)\n- increasing weights $\\times$ **ascending**-indexed Hessians: $\\lambda_{\\min} \\approx +1.3\\times10^{-8}$  (**PSD**)\n- $\\sum_i\\gamma_i H^{(i)}$ with $H^{(i)}=\\operatorname{Hess}(\\gamma_i)$ (own pairing): $\\lambda_{\\min}\\ge -2\\times10^{-7}$ (PSD up to FD noise)\n\nSo if a reader applies the boxed statement *literally* to Lemma `lem:hess`'s ascending-indexed $H^{(i)}$ with $\\gamma$ in the ascending order that the reduction section actually uses, the weights $d_i=\\gamma_i$ are **increasing**, violating the boxed hypothesis $d_1\\ge\\dots\\ge d_n$; and the same boxed matrix with decreasing weights on ascending Hessians is genuinely indefinite. The proof is correct only under the (unstated) reading that each $\\gamma_j$ is paired with the Hessian of *that same* root.\n\n### Required fix\nFix one convention globally. Cleanest: define $\\Psi_{\\boxplus_n}$ to output **descending** roots throughout (matching `cor:psd`), state the reduction's \"ordered\" as descending, and add one sentence: *\"$\\sum_i\\gamma_i H^{(i)}$ pairs each root with its own Hessian and is convention-independent; the descending order is exactly what makes $d_i=\\gamma_i$ satisfy the hypothesis $d_1\\ge\\dots\\ge d_n$ of `cor:psd`.\"* Without this, the citation of `cor:psd` in `prop:contraction` is, as written, an application outside the stated hypotheses.",
+      "created_at": "2026-06-18T01:07:46Z"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "q6-8",
+  "problem_id": "q6",
+  "dataset": "first_proof_1",
+  "title": "Claim 3 proof: Tr(L_T L^dag) uses non-symmetric product without symmetrization",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-17T08:57:07Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "evaab26804",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-17T08:57:07Z"
+    },
+    {
+      "id": "ca85a7961",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Gap Description\n\nClaim 3 states sum_{t in T} l(t,T) <= 2(|T|-1). The proof writes: 'By symmetry, sum_{t in T} l(t,T) = 2 Tr(L_T L^dag). Since L_T preceq L, all eigenvalues of L_T L^dag lie in [0,1], and L_T has rank at most |T|-1, so Tr(L_T L^dag) <= |T|-1.'\n\n## The Problem\n\nL_T L^dag is not symmetric in general (L_T and L^dag do not commute unless L_T is a polynomial in L). Referencing 'eigenvalues' of L_T L^dag and bounding Tr(L_T L^dag) via eigenvalue counts is not directly justified for a non-symmetric product.\n\n## Correct Argument\n\nThe argument should pass through the symmetrized form:\n\n  Tr(L_T L^dag) = Tr(L^{dag/2} L_T L^{dag/2}) = Tr(L~_T),\n\nwhere L~_T = L^{dag/2} L_T L^{dag/2} >= 0 is symmetric PSD. Since L_T preceq L, conjugating by L^{dag/2} gives L~_T preceq L^{dag/2} L L^{dag/2} = Pi, so all eigenvalues of L~_T lie in [0,1]. Since rank(L~_T) <= rank(L_T) <= |T|-1, we get Tr(L~_T) <= |T|-1.\n\nThe equality Tr(L_T L^dag) = Tr(L~_T) follows from cyclicity of trace: Tr(L_T L^dag) = Tr(L^dag L_T) = Tr(L^{dag/2} L_T L^{dag/2}). This step must be stated.\n\n## Impact\n\nThis affects the leverage averaging argument in Step 3, which uses Claim 3 applied to T = V\\S.",
+      "created_at": "2026-06-17T08:57:07Z"
+    },
+    {
+      "id": "cf439a5ef",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Fix Applied\n\n**Gap:** The original proof of Claim 3 referred to \"all eigenvalues of $L_T L^\\dagger$\" and bounded $\\mathrm{Tr}(L_T L^\\dagger)$ via eigenvalue counts. However, $L_T L^\\dagger$ is not symmetric in general (the two matrices do not commute unless $L_T$ is a polynomial in $L$), so referencing its eigenvalues is unjustified.\n\n**Fix:** We pass through the symmetrized form via cyclicity of trace. Since $L^\\dagger = L^{\\dagger/2} L^{\\dagger/2}$, cyclicity gives:\n$$\\mathrm{Tr}(L_T L^\\dagger) = \\mathrm{Tr}(L_T \\cdot L^{\\dagger/2} \\cdot L^{\\dagger/2}) = \\mathrm{Tr}(L^{\\dagger/2} \\cdot L_T \\cdot L^{\\dagger/2}) = \\mathrm{Tr}(\\widetilde{L}_T),$$\nwhere $\\widetilde{L}_T := L^{\\dagger/2} L_T L^{\\dagger/2} \\succeq 0$ is symmetric PSD. (Cyclicity: $\\mathrm{Tr}(ABC) = \\mathrm{Tr}(CAB)$, applied with $A=L_T$, $B=L^{\\dagger/2}$, $C=L^{\\dagger/2}$.)\n\nSince $L_T \\preceq L$, conjugating by the PSD matrix $L^{\\dagger/2}$ preserves the semidefinite order, giving $\\widetilde{L}_T \\preceq L^{\\dagger/2} L L^{\\dagger/2} = \\Pi$. Hence all eigenvalues of the symmetric matrix $\\widetilde{L}_T$ lie in $[0,1]$. Since $\\mathrm{rank}(\\widetilde{L}_T) \\leq \\mathrm{rank}(L_T) \\leq |T|-1$, there are at most $|T|-1$ nonzero eigenvalues, each in $[0,1]$, so $\\mathrm{Tr}(\\widetilde{L}_T) \\leq |T|-1$.\n\nThis fully resolves the issue: the proof now works only with eigenvalues of the symmetric PSD matrix $\\widetilde{L}_T$, avoiding any reference to eigenvalues of the non-symmetric product $L_T L^\\dagger$.",
+      "created_at": "2026-06-17T09:12:42Z"
+    },
+    {
+      "id": "ev0a03494d",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-17T09:12:45Z"
+    }
+  ]
+}

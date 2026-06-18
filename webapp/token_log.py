@@ -19,6 +19,9 @@ def append_usage(
     input_tokens: int,
     output_tokens: int,
     cost_usd: float | None = None,
+    *,
+    provider: str = "",
+    model: str = "",
 ) -> None:
     entry = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -27,6 +30,8 @@ def append_usage(
         "in": int(input_tokens),
         "out": int(output_tokens),
         "cost": float(cost_usd) if cost_usd is not None else None,
+        "provider": provider or "",
+        "model": model or "",
     }
     with open(_log_path(repo_root), "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
@@ -124,3 +129,104 @@ def _ts_epoch(ts: str) -> float:
         return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
     except Exception:  # noqa: BLE001
         return 0.0
+
+
+def _entry_cost_usd(entry: dict) -> float:
+    stored = entry.get("cost")
+    if stored is not None:
+        return float(stored)
+    from .vertex import DEFAULT_MODEL, estimate_vertex_cost_usd
+
+    return estimate_vertex_cost_usd(
+        entry.get("model") or DEFAULT_MODEL,
+        entry.get("in", 0),
+        entry.get("out", 0),
+    )
+
+
+def _dedupe_cumulative_entries(entries: list[dict]) -> list[dict]:
+    """Keep the largest cumulative snapshot per run (problem + kind + minute)."""
+    best: dict[tuple, dict] = {}
+    for e in entries:
+        key = (e.get("problem"), e.get("kind"), (e.get("ts") or "")[:16])
+        tok = int(e.get("in", 0)) + int(e.get("out", 0))
+        prev = best.get(key)
+        if prev is None or tok > int(prev.get("in", 0)) + int(prev.get("out", 0)):
+            best[key] = e
+    return list(best.values())
+
+
+def log_usage_delta(
+    repo_root: Path,
+    problem_id: str,
+    kind: str,
+    data: dict,
+    prev: dict,
+    *,
+    provider: str = "",
+    model: str = "",
+) -> dict:
+    """Append one usage row using token deltas vs the previous cumulative snapshot."""
+    cur_in = int(data.get("input_tokens", 0))
+    cur_out = int(data.get("output_tokens", 0))
+    delta_in = max(0, cur_in - int(prev.get("input_tokens", 0)))
+    delta_out = max(0, cur_out - int(prev.get("output_tokens", 0)))
+    prev.update({"input_tokens": cur_in, "output_tokens": cur_out})
+    if not delta_in and not delta_out:
+        return prev
+
+    cost = data.get("cost_usd")
+    if cost is None and provider == "vertex":
+        from .vertex import estimate_vertex_cost_usd
+
+        cost = estimate_vertex_cost_usd(model, delta_in, delta_out)
+    elif cost is not None and prev.get("cost_usd") is not None:
+        cost = max(0.0, float(cost) - float(prev.get("cost_usd", 0)))
+    prev["cost_usd"] = float(cost) if cost is not None else prev.get("cost_usd")
+
+    append_usage(
+        repo_root,
+        problem_id,
+        kind,
+        delta_in,
+        delta_out,
+        cost,
+        provider=provider,
+        model=model,
+    )
+    return prev
+
+
+def vertex_usage_summary(repo_root: Path, *, days: int = 365) -> dict:
+    """Aggregate webapp token log as estimated Vertex/GCP spend."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    entries = _dedupe_cumulative_entries(read_log(repo_root, days=days))
+
+    def _accum(bucket: dict, entry: dict) -> None:
+        bucket["in"] += entry.get("in", 0)
+        bucket["out"] += entry.get("out", 0)
+        bucket["cost"] += _entry_cost_usd(entry)
+        bucket["runs"] += 1
+
+    total = {"in": 0, "out": 0, "cost": 0.0, "runs": 0}
+    today_tot = {"in": 0, "out": 0, "cost": 0.0, "runs": 0}
+    for e in entries:
+        prov = (e.get("provider") or "").lower()
+        if prov and prov not in {"vertex", "api"}:
+            continue
+        _accum(total, e)
+        if (e.get("ts") or "")[:10] == today:
+            _accum(today_tot, e)
+
+    return {
+        "days": days,
+        "total_in": total["in"],
+        "total_out": total["out"],
+        "total_cost": round(total["cost"], 4),
+        "total_runs": total["runs"],
+        "today_in": today_tot["in"],
+        "today_out": today_tot["out"],
+        "today_cost": round(today_tot["cost"], 4),
+        "today_runs": today_tot["runs"],
+        "estimated": True,
+    }

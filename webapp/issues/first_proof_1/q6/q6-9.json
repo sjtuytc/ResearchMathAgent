@@ -1,0 +1,44 @@
+{
+  "id": "q6-9",
+  "problem_id": "q6",
+  "dataset": "first_proof_1",
+  "title": "Ky Fan subadditivity in eq.(split) applied before symmetrized Tr_sigma is defined",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-17T08:57:20Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "evaff48ff4",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-17T08:57:20Z"
+    },
+    {
+      "id": "cede38d23",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Gap Description\n\nIn Step 4, equation (split) applies Ky Fan subadditivity to write:\n\n  Tr_sigma(M^p L~_{S,t}) <= Tr_sigma((u+delta)^p Pi_S^perp L~_{S,t}) + Tr_sigma(((u+delta)Pi_S - L~_S)^p L~_{S,t})\n\nBut M^p L~_{S,t} is a product of a symmetric matrix and a PSD matrix and is not itself symmetric. Ky Fan's sum inequality (HJ12 Thm 4.3.47a) applies to symmetric matrices.\n\n## The Problem\n\nThe proof introduces the symmetrized definition Tr_sigma(AN) := Tr_sigma(N^{1/2} A N^{1/2}) (for symmetric A, PSD N) only in the Pi_S piece analysis, AFTER (split) has already been invoked. There is a logical gap: (split) is applied to the unsymmetrized product without justification.\n\n## Required Argument\n\nWith the symmetrized definition, set N = L~_{S,t} (PSD) and A = M^p = (u+delta)^p Pi_S^perp + A1^p where A1 = (u+delta)Pi_S - L~_S. Then:\n\n  Tr_sigma(M^p L~_{S,t}) := Tr_sigma(L~_{S,t}^{1/2} M^p L~_{S,t}^{1/2})\n                          = Tr_sigma(L~_{S,t}^{1/2} [(u+delta)^p Pi_S^perp + A1^p] L~_{S,t}^{1/2})\n\nBoth L~_{S,t}^{1/2} (u+delta)^p Pi_S^perp L~_{S,t}^{1/2} and L~_{S,t}^{1/2} A1^p L~_{S,t}^{1/2} are symmetric PSD, so Ky Fan subadditivity applies:\n\n  Tr_sigma(L~_{S,t}^{1/2} M^p L~_{S,t}^{1/2}) <= Tr_sigma(L~_{S,t}^{1/2}(u+delta)^p Pi_S^perp L~_{S,t}^{1/2}) + Tr_sigma(L~_{S,t}^{1/2} A1^p L~_{S,t}^{1/2})\n\nwhich is (split) in symmetrized form. This argument requires the symmetrized definition to be established FIRST.",
+      "created_at": "2026-06-17T08:57:20Z"
+    },
+    {
+      "id": "c9af87984",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Fix Applied\n\n### Root Cause\n\nThe original proof applied Ky Fan subadditivity to `Tr_sigma(M^p L~_{S,t})` before establishing that the notation `Tr_sigma(AN)` is well-defined when `A` is symmetric and `N` is PSD (but `AN` is not necessarily symmetric). Ky Fan subadditivity (HJ12 Thm 4.3.47a) requires symmetric (Hermitian) matrix inputs, so invoking it on the non-symmetric product `M^p L~_{S,t}` was unjustified.\n\nThe symmetrized definition `Tr_sigma(AN) := Tr_sigma(N^{1/2} A N^{1/2})` was introduced only later, in the Pi_S piece analysis, after (split) had already been used.\n\n### Fix\n\n**Step 1 (moved before eq. (split)):** Establish the symmetrized convention for all subsequent uses. For symmetric `A` and PSD `N` define `Tr_sigma(AN) := Tr_sigma(N^{1/2} A N^{1/2})`, where the right-hand side applies to the symmetric PSD matrix `N^{1/2} A N^{1/2}`. Consistency with ordinary trace follows by cyclicity: `Tr(AN) = Tr(N^{1/2} A N^{1/2})`.\n\n**Step 2 (justify (split) in symmetrized form):** With `A_1 := (u+delta) Pi_S - L~_S`, expand\n\n  Tr_sigma(M^p L~_{S,t}) := Tr_sigma(L~_{S,t}^{1/2} M^p L~_{S,t}^{1/2})\n                          = Tr_sigma((u+delta)^p L~_{S,t}^{1/2} Pi_S^perp L~_{S,t}^{1/2}\n                                     + L~_{S,t}^{1/2} A_1^p L~_{S,t}^{1/2}).\n\nBoth summands are symmetric PSD (each is a symmetric PSD matrix sandwiched by the PSD factor `L~_{S,t}^{1/2}`). Ky Fan subadditivity therefore legitimately applies, giving (split).\n\n**Step 3 (Pi_S^perp piece):** Now `Tr_sigma(Pi_S^perp L~_{S,t}) = Tr_sigma(L~_{S,t}^{1/2} Pi_S^perp L~_{S,t}^{1/2}) <= Tr(L~_{S,t}^{1/2} Pi_S^perp L~_{S,t}^{1/2}) = Tr(Pi_S^perp L~_{S,t}) <= Tr(L~_{S,t}) = ell(S,t)`, all justified via the convention.\n\n**Step 4 (Pi_S piece):** The symmetrized convention is already in force; the redundant re-definition has been removed. The bound `Tr_sigma(A L~_{S,t}) <= Tr(A L~_{S,t})` follows immediately from `Tr_sigma(B) <= Tr(B)` for PSD `B` and cyclicity.\n\n### What Changed in solution.tex\n\n1. The paragraph before eq. (split) now introduces the symmetrized definition, computes the sandwich expansion explicitly, verifies both summands are symmetric PSD, and THEN cites Ky Fan.\n2. The Pi_S^perp piece bound is rewritten using the convention.\n3. The Pi_S piece no longer re-defines the convention; it refers back to the established one.\n\nThe mathematical content of the bound is unchanged; only its logical order is corrected.",
+      "created_at": "2026-06-17T09:16:36Z"
+    },
+    {
+      "id": "ev17e132e8",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-17T09:16:39Z"
+    }
+  ]
+}

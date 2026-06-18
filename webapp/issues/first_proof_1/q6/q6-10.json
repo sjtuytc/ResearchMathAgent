@@ -1,0 +1,44 @@
+{
+  "id": "q6-10",
+  "problem_id": "q6",
+  "dataset": "first_proof_1",
+  "title": "Greedy Lemma (lem:greedy) has no formal proof: connection to lem:bu never made explicit",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-17T09:09:16Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "ev5fe2f9d4",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-17T09:09:16Z"
+    },
+    {
+      "id": "c458b17a1",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Gap Description\n\nLemma lem:greedy is stated (find t ∉ S with B^σ_{u+δ}(S∪{t}) ≤ φ and ℓ(S∪{t}) ≤ ℓ(S)+4) but never given a formal proof. The surrounding text in Steps 3 and 4 provides ingredients but the proof is never formally assembled.\n\n## What is missing\n\nThe proof must:\n1. Let A = {t ∉ S : ℓ(t, V\\S) ≤ 4} and B = {t ∉ S : U(S,t) < 1}.\n2. Show |A| > (n−|S|)/2 (Step 3, via Claim cl:Tlev).\n3. Show |B| > (n−|S|)/2 (Step 4, via eq:total and Markov).\n4. Conclude A ∩ B ≠ ∅ because |A|+|B| > n−|S|.\n5. For t ∈ A ∩ B: explicitly identify that condition U(S,t) < 1 is EXACTLY the hypothesis of Lemma lem:bu with A_matrix = L̃_S and B_matrix = L̃_{S,{t}}.\n6. Invoke lem:bu to conclude B^σ_{u+δ}(S∪{t}) ≤ B^σ_u(S) ≤ φ.\n7. Conclude ℓ(S∪{t}) ≤ ℓ(S) + ℓ(t, V\\S) ≤ ℓ(S) + 4.\n\n## The critical missing link (step 5)\n\nLemma lem:bu is stated for abstract PSD matrices A, B with rank(B) ≤ σ, where the hypothesis is:\n  Tr_σ(M^{-2}B) / (B^σ_u(A) − B^σ_{u+δ}(A)) + Tr_σ(M^{-1}B) < 1,\nwith M = (u+δ)I − A.\n\nThe quantity U(S,t) in eq. (eq:U) is exactly this expression with A = L̃_S and B = L̃_{S,{t}}. This identification is never stated. Without it, the reader cannot see why lem:bu implies the barrier does not increase when adding vertex t.\n\nAdditionally, the rank condition rank(L̃_{S,{t}}) ≤ σ (needed for lem:bu) is mentioned inline but not connected to the lemma invocation.\n\n## Impact\n\nWithout a formal proof of lem:greedy, the main induction (Step 5) that iterates it σ times is formally unjustified.",
+      "created_at": "2026-06-17T09:09:16Z"
+    },
+    {
+      "id": "c7fd34fac",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolution: formal proof of Lemma~\\ref{lem:greedy} assembled\n\nI added a dedicated `\\begin{proof}[Proof of Lemma~\\ref{lem:greedy}, modulo the two averaging bounds]` block immediately after the lemma statement, and rewrote the closing paragraphs of Steps 3 and 4 so the two ingredients are stated as the explicit cardinality bounds the proof consumes. The full chain requested in the issue is now present:\n\n1. **Defines the two candidate sets** explicitly:\n   A = {t∉S : ℓ(t,V\\S) ≤ 4}, B = {t∉S : U(S,t) < 1}, with m := n−|S|.\n2. **|A| > m/2** — Step 3 now finishes via Claim cl:Tlev (Σ ℓ(t,V\\S) ≤ 2(m−1) < 2m) and Markov at threshold 4, concluding fewer than m/2 candidates fail, so |A| > m/2.\n3. **|B| > m/2** — Step 4 now finishes via eq:total (Σ U(S,t) ≤ 5/δ + 5φ = 10n/21) and Markov at threshold 1: the number of failures is ≤ (10n/21)/(41n/42) = 20/41 < 1/2, so |B| > m/2.\n4. **A ∩ B ≠ ∅** — since |A|+|B| > m = |V\\S|, pick t ∈ A ∩ B.\n5. **The critical missing link is now explicit (step 5 of the issue).** Part (ii) of the proof states the substitution A_matrix = L̃_S, B_matrix = L̃_{S,t}, M = (u+δ)I − L̃_S, and verifies that with this substitution the LHS of the hypothesis of Lemma lem:bu is **verbatim** the quantity U(S,t) of eq:U. Hence t ∈ B (i.e. U(S,t) < 1) is exactly the hypothesis of lem:bu. I also added the key additive identity L_{S∪{t}} = L_S + L_{S,{t}} (no edge inside {t}), giving L̃_{S∪{t}} = L̃_S + L̃_{S,t} = A_matrix + B_matrix, so the conclusion B^σ_{u+δ}(A+B) ≤ B^σ_u(A) of lem:bu is *literally* B^σ_{u+δ}(S∪{t}) ≤ B^σ_u(S).\n6. **Rank + finiteness hypotheses of lem:bu are now connected to the invocation**: rank(B_matrix) = rank(L̃_{S,t}) ≤ σ (sum of ≤|S|≤σ rank-one terms / Laplacian rank bound on ≤σ+1 vertices), and B^σ_u(A) = B^σ_u(S) ≤ φ < ∞ from the lemma hypothesis. lem:bu then yields B^σ_{u+δ}(S∪{t}) ≤ B^σ_u(S) ≤ φ.\n7. **Leverage conclusion** — part (i): ℓ(S∪{t}) = ℓ(S∪{t}, V\\(S∪{t})) ≤ ℓ(S∪{t},V\\S) = ℓ(S)+ℓ(t,V\\S) ≤ ℓ(S)+4 since t ∈ A.\n\n### Checks performed\n- Numerically confirmed U(S,t) equals the lem:bu LHS verbatim and that U<1 ⟹ B^σ_{u+δ}(A+B) ≤ B^σ_u(A) on random PSD instances.\n- Verified the structural identity L_{S∪{t}} = L_S + L_{S,{t}}.\n- Verified the Markov arithmetic exactly: (5/δ+5φ)/m = (10n/21)/(41n/42) = 20/41 < 1/2.\n- Checked LaTeX environment/label/brace balance (all matched; no LaTeX toolchain available to compile).\n\nThe main induction (Step 5) is now formally justified, since each greedy step is a complete application of lem:greedy. Marking resolved.",
+      "created_at": "2026-06-17T18:41:35Z"
+    },
+    {
+      "id": "evb8689990",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-17T18:41:38Z"
+    }
+  ]
+}

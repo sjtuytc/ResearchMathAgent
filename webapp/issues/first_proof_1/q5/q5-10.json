@@ -1,0 +1,44 @@
+{
+  "id": "q5-10",
+  "problem_id": "q5",
+  "dataset": "first_proof_1",
+  "title": "Formula Phi^G(N^T S^1) = S^{|T/G|} used but never proved",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-17T15:40:38Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "ev4fefd82c",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-17T15:40:38Z"
+    },
+    {
+      "id": "c974f3b93",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Gap: Geometric fixed point computation for norm spectra\n\nIn Lemma 1 (forward direction), the proof writes:\n\n> Decompose $T = \\sum_H n_H G/H$. Then $\\Phi^G(N^T S^1) = S^{|T/G|}$ with $|T/G| = \\sum_H n_H$.\n\nThis formula — which identifies the geometric $G$-fixed points of the norm $N^T S^1$ with a sphere of dimension equal to the *number of G-orbits* of $T$ — is the key computation underlying the entire forward direction. It is used without proof or precise citation in both Lemma 1 and Lemma 2.\n\n**What needs to be established:**\n\n1. For a transitive G-set $T = G/H$, $\\Phi^G(N^{G/H} S^1) \\simeq S^1$ (each orbit contributes one suspension).\n2. $\\Phi^G$ commutes with smash products: $\\Phi^G(X \\wedge Y) \\simeq \\Phi^G X \\wedge \\Phi^G Y$.\n3. Hence $\\Phi^G(N^T S^1) = \\Phi^G(\\bigwedge_i N^{G/H_i} S^1)^{\\wedge n_i} = \\bigwedge_i S^{n_i} = S^{\\sum_i n_i} = S^{|T/G|}$.\n\n**Difficulty of step (1):** $N^{G/H} S^1 = N^G_H(i_H^* S^1)$ is the Hill--Hopkins--Ravenel norm of the trivial spectrum $S^1$. Computing $\\Phi^G$ of this requires the double-coset formula for geometric fixed points of norms. For $H < G$, the relevant result is:\n\n$$\\Phi^G(N^G_H X) \\simeq \\Phi^{G/H}(\\Phi^H X) \\quad (H \\unlhd G),$$\n\nor, for general $H$, a more involved double-coset decomposition (HHR, §9). For $H$ normal: $\\Phi^{G/H}(\\Phi^H(S^1)) = \\Phi^{G/H}(S^1) = S^1$ (geometric fixed points of $S^1$ with trivial action is $S^1$). For non-normal $H$ the formula is more complex but the conclusion $\\Phi^G(N^{G/H} S^1) = S^1$ should still hold.\n\n**Why it matters:** This formula is used without qualification in:\n- Lemma 1 (forward direction): it is the only way to convert $E \\in \\tau^{\\mathcal{O}}_{\\geq n}$ into connectivity information.\n- Lemma 2 (geometric slices upper bound): the computation $\\Phi^G(N^T S^1) = S^{|T/G|}$ is invoked in the chain of isomorphisms for the mapping spaces.\n\nA missing proof or precise citation to [HHR16, §9] or [HillPrimer, §6] should be supplied.",
+      "created_at": "2026-06-17T15:40:38Z"
+    },
+    {
+      "id": "c23175310",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolved: formula $\\Phi^G(N^T S^1)\\simeq S^{|T/G|}$ now proved in full\n\nI added a dedicated **Proposition (geometric fixed points of a $T$-norm sphere)** with complete proof, plus a supporting **Remark** clarifying the validity of the diagonal formula for non-normal $H$. The two prior uses of the formula (in `lem:forward` and in `lem:geom`(3)) now cite this Proposition instead of the compressed phrase \"by \\eqref{eq:phinorm} and monoidality\".\n\n### What is now established (matching the three requested steps)\n\n**Step (2) — monoidality.** $\\Phi^G$ is symmetric monoidal (unit-preserving, $\\Phi^G(X\\otimes Y)\\simeq\\Phi^G X\\otimes\\Phi^G Y$), cited to [HHR16, Prop. B.96, §2.5.2] and [HillPrimer §6]. Combined with multiplicativity of the $T$-norm on disjoint unions, this reduces $\\Phi^G(N^TS^1)$ to $\\bigotimes_{i=1}^m \\Phi^G(N^{G/H_i}S^1)$ for the orbit decomposition $T\\cong\\coprod_{i=1}^m G/H_i$, $m=|T/G|$.\n\n**Step (1) — single orbit gives $S^1$.** Via $N^{G/H}=N^G_H i_H^\\ast$ and the diagonal formula $\\Phi^G(N^G_H Y)\\simeq\\Phi^H(Y)$, one gets $\\Phi^G(N^{G/H}S^1)\\simeq\\Phi^H(i_H^\\ast S^1)$. Then $i_H^\\ast S^1$ is the trivial-action circle $=S^V$ with $V$ the trivial $1$-dim'l real $H$-rep, and $\\Phi^H S^V\\simeq S^{V^H}=S^1$ since $V^H=V$. This is the standard representation-sphere computation [HillPrimer §6], [HHR16 Prop. B.96]. **No normality of $H$ is needed.**\n\n**Step (3) — assemble.** $\\Phi^G(N^TS^1)\\simeq\\bigotimes_{i=1}^m S^1\\simeq S^m=S^{|T/G|}$.\n\n### On the \"non-normal $H$\" worry raised in the issue\nThe issue suggested non-normal $H$ requires a more involved double-coset decomposition. In fact the clean HHR **diagonal formula** $\\Phi^G(N^G_H Y)\\simeq\\Phi^H(Y)$ holds for *arbitrary* subgroups $H\\le G$ — this is [HHR16, Prop. B.96], and equation \\eqref{eq:phinorm} in the manuscript is exactly its $Y=i_H^\\ast X$ instance. The double-coset formula \\eqref{eq:resnorm} is **not** needed for the geometric-fixed-point identity (it is only used elsewhere, for restriction/admissibility). I added a Remark (`rem:phinorm-general`) stating this explicitly, with a one-line indication of why normality is not required (it reduces to $(G\\times_H Z)^G=Z^H$).\n\n### Verification\n- Environment/brace balance checked programmatically (balanced).\n- Labels `prop:phiNT`, `rem:phinorm-general` defined once, referenced from `lem:forward` and `lem:geom`.\n- Degenerate cases consistent: $T=\\emptyset\\Rightarrow S^0$; $T=G/G\\Rightarrow S^1$.\n- (No LaTeX toolchain available in the sandbox to compile, but the fragment is syntactically balanced.)\n\nThe gap is fully closed: the formula is now a stated, proved, and cited Proposition rather than an asserted identity.",
+      "created_at": "2026-06-18T01:09:06Z"
+    },
+    {
+      "id": "ev52f32ce9",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-18T01:09:12Z"
+    }
+  ]
+}

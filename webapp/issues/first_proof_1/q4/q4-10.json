@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "Limiting Argument (§2): Backward inequality direction in reduction to simple roots",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "## Issue\n\nLines 148–165 claim:\n\n\"LHS: 1/Φ_n(p ⊞_n q) ≥ limsup_{ε→0} 1/Φ_n(T_ε²(p ⊞_n q))\"\n\nBut this direction is problematic given lower semicontinuity of Φ_n.\n\n## Analysis\n\nIf Φ_n is lower semicontinuous (LSC) and T_ε²(p ⊞_n q) → p ⊞_n q as ε→0, then:\n\nliminf_{ε→0} Φ_n(T_ε²(p ⊞_n q)) ≥ Φ_n(p ⊞_n q)\n\nTaking reciprocals (with 1/x decreasing):\n\nlimsup_{ε→0} 1/Φ_n(T_ε²(p ⊞_n q)) ≤ 1/Φ_n(p ⊞_n q)\n\nThis is the OPPOSITE direction from what is claimed.\n\n## What's Missing\n\n1. **Convergence verification**: Does T_ε²(p ⊞_n q) → p ⊞_n q as ε→0? This requires showing:\n   - T_ε p → p and T_ε q → q (as polynomials)\n   - By continuity of root map: roots converge\n   - By continuity of ⊞_n on roots: T_ε²(p ⊞_n q) → p ⊞_n q\n\n2. **Limiting argument**: If convergence holds, take limits of both sides:\n   1/Φ_n(T_ε²(p ⊞_n q)) ≥ 1/Φ_n(T_ε p) + 1/Φ_n(T_ε q)\n   ↓\n   1/Φ_n(p ⊞_n q) ≥ 1/Φ_n(p) + 1/Φ_n(q)\n   \n   This works by continuity, but uses limsup/liminf incorrectly.\n\n## Impact\n\nThe reduction to simple roots is essential. Without a correct limiting argument, the extension from simple-root case to general roots is not justified.",
       "created_at": "2026-06-16T23:06:00Z"
+    },
+    {
+      "id": "cc00db1ab",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Analysis and Fix\n\n### On the Critic's Direction Claim\n\nThe critic states that the LHS inequality direction is wrong, but this is incorrect. The proof claims:\n\n> `1/K(p ⊞_n q) ≥ limsup_{ε→0} 1/K(T_ε²(p ⊞_n q))`\n\nThe critic's own derivation gives:\n\n> `limsup_{ε→0} 1/K(T_ε²(p ⊞_n q)) ≤ 1/K(p ⊞_n q)`\n\nThese are **the same inequality** written from opposite sides. The LHS claim in the proof is correct: it follows directly from LSC of K (so 1/K is USC), applied to the convergence T_ε²(p ⊞_n q) → p ⊞_n q.\n\n### Actual Gaps in the Original Proof\n\nThe original \"Taking ε→0\" paragraph had three real omissions:\n\n1. **Convergence not stated**: T_ε p → p as ε→0 was never established. By the binomial expansion T_ε r = Σ_{k=0}^n C(n,k)(−ε)^k r^(k), all k≥1 terms vanish as ε→0, giving T_ε p → p coefficientwise. Similarly T_ε²(p ⊞_n q) → p ⊞_n q.\n\n2. **RHS limit not justified**: The equality 1/K(p) + 1/K(q) = limsup_{ε→0}(1/K(T_ε p) + 1/K(T_ε q)) needs a case analysis:\n   - *Simple roots*: K is continuous at p (score function is continuous on distinct-root configs), so 1/K(T_ε p) → 1/K(p) directly.\n   - *Repeated roots*: K(p) = ∞, so 1/K(p) = 0. By LSC and T_ε p → p, we get liminf K(T_ε p) ≥ ∞, hence 1/K(T_ε p) → 0 = 1/K(p). The limit actually exists (= limsup).\n\n3. **Inequality chain not assembled**: The proof never explicitly wrote the chain:\n   `1/K(p ⊞_n q) ≥ limsup a_ε ≥ limsup b_ε = lim b_ε = 1/K(p) + 1/K(q)`\n   where a_ε ≥ b_ε for all ε (the ε-inequality), so limsup a_ε ≥ limsup b_ε; and b_ε converges so limsup b_ε = lim b_ε.\n\n### Fix Applied\n\nReplaced the vague \"Taking ε→0\" paragraph with a three-step argument:\n- **Step A**: Convergence T_ε r → r via binomial expansion.\n- **Step B**: Case analysis showing lim_{ε→0} 1/K(T_ε p) = 1/K(p) for both simple and repeated root cases.\n- **Step C**: LSC of K gives limsup 1/K(T_ε²(p ⊞_n q)) ≤ 1/K(p ⊞_n q) (correct direction, via inversion of liminf K ≥ K).\n- **Chain**: Since a_ε ≥ b_ε and b_ε → L, any subsequence achieving limsup of a also satisfies ≥ L; combined with Step C gives the full inequality.\n\nThe gap is now closed. The reduction to simple roots is fully justified.",
+      "created_at": "2026-06-17T08:41:07Z"
+    },
+    {
+      "id": "ev144881bf",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-17T08:41:11Z"
     }
   ]
 }

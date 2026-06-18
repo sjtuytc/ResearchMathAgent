@@ -6,8 +6,52 @@ import json
 import os
 from pathlib import Path
 
-DEFAULT_REGION = "global"
+DEFAULT_REGION = "us-east5"  # primary Anthropic-on-Vertex region
 DEFAULT_MODEL = "claude-opus-4-8"
+
+# USD per million tokens (estimates — Vertex list prices, may differ from your contract).
+_VERTEX_PRICING_PER_MTOK: dict[str, tuple[float, float]] = {
+    "claude-opus-4-8": (15.0, 75.0),
+    "claude-opus-4": (15.0, 75.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-haiku-4-5": (0.8, 4.0),
+    "default": (15.0, 75.0),
+}
+
+
+def estimate_vertex_cost_usd(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    *,
+    cache_read_input_tokens: int = 0,
+    cache_creation_input_tokens: int = 0,
+) -> float:
+    """Rough USD estimate for a Vertex Claude call from token counts."""
+    in_rate, out_rate = _VERTEX_PRICING_PER_MTOK.get(model, _VERTEX_PRICING_PER_MTOK["default"])
+    billable_in = (
+        int(input_tokens)
+        + int(cache_read_input_tokens) * 0.1
+        + int(cache_creation_input_tokens) * 1.25
+    )
+    return round(
+        billable_in / 1_000_000 * in_rate + int(output_tokens) / 1_000_000 * out_rate,
+        6,
+    )
+
+
+def gcp_console_urls(project_id: str) -> dict[str, str]:
+    """Deep links into the GCP console for billing and Vertex usage."""
+    pid = (project_id or "").strip()
+    if not pid:
+        return {}
+    return {
+        "billing": f"https://console.cloud.google.com/billing/reports?project={pid}",
+        "vertex_usage": (
+            f"https://console.cloud.google.com/vertex-ai/generative/language/usage?project={pid}"
+        ),
+        "dashboard": f"https://console.cloud.google.com/home/dashboard?project={pid}",
+    }
 
 
 def adc_credentials_path() -> Path | None:

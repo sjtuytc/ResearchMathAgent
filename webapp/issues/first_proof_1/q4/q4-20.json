@@ -1,0 +1,44 @@
+{
+  "id": "q4-20",
+  "problem_id": "q4",
+  "dataset": "first_proof_1",
+  "title": "Limiting argument: USC gives limsup<=value, not equality — reduction step incomplete",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "created_at": "2026-06-17T08:31:43Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "evc43585c9",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-17T08:31:43Z"
+    },
+    {
+      "id": "ccfa2e459",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Gap: Reduction to simple roots — unjustified equality in limit\n\nIn the reduction section the solution writes:\n\n    RHS: 1/Phi_n(p) + 1/Phi_n(q) = limsup_{eps->0}[ 1/Phi_n(T_eps p) + 1/Phi_n(T_eps q) ]\n\nBut Lemma (simple)(ii) only establishes **lower semicontinuity of Phi_n**, which gives **upper semicontinuity of 1/Phi_n**. USC gives only\n\n    limsup_{eps->0} 1/Phi_n(T_eps p) <= 1/Phi_n(p),\n\ni.e., an inequality in the WRONG DIRECTION for the equality claimed.\n\nThe full limiting chain must be:\n1. 1/Phi_n(p boxplus q) >= limsup_eps [1/Phi_n(T_eps^2(p boxplus q))]  (by USC)\n2. 1/Phi_n(T_eps^2(p boxplus q)) >= 1/Phi_n(T_eps p) + 1/Phi_n(T_eps q)  (simple-root proof)\n3. Therefore 1/Phi_n(p boxplus q) >= limsup_eps [1/Phi_n(T_eps p) + 1/Phi_n(T_eps q)].\n4. **MISSING:** limsup_eps [1/Phi_n(T_eps p) + 1/Phi_n(T_eps q)] = 1/Phi_n(p) + 1/Phi_n(q).\n\nStep 4 requires showing 1/Phi_n has no negative jump along T_eps-paths — i.e., that the USC inequality is tight. This needs a case analysis:\n\n- **Simple-root case:** T_eps p -> p (coefficient convergence as eps->0); since p has simple roots, by IFT the roots of T_eps p converge smoothly to those of p, so Phi_n(T_eps p) -> Phi_n(p) and 1/Phi_n(T_eps p) -> 1/Phi_n(p).\n\n- **Repeated-root case:** 1/Phi_n(p) = 0. USC gives limsup <= 0; combined with 1/Phi_n >= 0 this forces limsup = 0. This uses that Phi_n(T_eps p) -> +infinity, which follows because |alpha_i^eps - alpha_j^eps| -> 0 when alpha_i = alpha_j (T_eps p -> p coefficient-by-coefficient, so coincident roots remain close).\n\nNeither case is explicitly treated in the solution. The claimed equality holds, but the proof for it is absent.",
+      "created_at": "2026-06-17T08:31:43Z"
+    },
+    {
+      "id": "c55c9ade4",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolved — reduction limit now fully justified, with a genuine bug fix\n\nI examined the \"Completion of the reduction\" section. The overall limiting **architecture** was already correct and matches the critic's prescription:\n\n- **Step C** uses USC (from LSC of $\\Phi_n$) correctly: $\\limsup_\\epsilon a_\\epsilon \\le 1/\\Phi_n(p\\boxplus q)$.\n- **Step B** establishes the *equality* the critic flagged as missing (their \"Step 4\"): it shows $1/\\Phi_n(T_\\epsilon p)\\to 1/\\Phi_n(p)$ as a genuine **limit** (not just limsup), splitting into the simple-root case (continuity of the score) and the repeated-root case ($1/\\Phi_n(p)=0$, forced by $\\Phi_n(T_\\epsilon p)\\to+\\infty$).\n- The assembly $a_\\epsilon\\ge b_\\epsilon$, $b_\\epsilon\\to L$, $\\limsup a_\\epsilon\\le 1/\\Phi_n(p\\boxplus q)$ then gives the result. So the \"wrong-direction USC\" concern is handled: USC is used only on the LHS, while the RHS converges as an exact limit.\n\n**However**, while verifying the repeated-root case I found a real flaw underneath it. The justification that $\\Phi_n(T_\\epsilon p)\\to+\\infty$ relied on Lemma (simple)(ii), whose proof used the **invalid** single-term bound\n$$\\Phi_n(\\alpha_k)=\\|S(\\alpha_k)\\|^2 \\ge \\big(1/(\\alpha_{k,i}-\\alpha_{k,j})\\big)^2.$$\nThis is false: $S(\\alpha_k)_i=\\sum_{l\\ne i}1/(\\alpha_{k,i}-\\alpha_{k,l})$ is a **sum**, and the large term can cancel. Concretely, for the symmetric triple $(-\\delta,0,\\delta)$ the middle score is **exactly $0$** (verified numerically), so no single coordinate is controlled by one gap. The desired conclusion is true but the proof was not.\n\n### Fix\nI added **Lemma (gap blow-up)** and rewrote the proof of Lemma (simple)(ii) to use it. The new lemma proves rigorously that distinct-entry vectors $\\xi^{(k)}\\to\\xi$ with a repeated limit entry satisfy $\\Phi_n(\\xi^{(k)})\\to+\\infty$, via a **cluster $\\ell^2$-scaling** argument:\n\n1. Split each cluster score into internal + external parts; external parts are bounded (denominators $\\to$ nonzero limits).\n2. The internal parts form the score vector of the cluster sub-configuration $\\eta^{(k)}$, so $\\sum_{i\\in G}(I^{(k)}_i)^2=\\Phi_m(\\eta^{(k)})$.\n3. Scaling: $\\Phi_m(\\mu+d\\,\\zeta)=\\Phi_m(\\zeta)/d^2$ (verified numerically). With $\\zeta^{(k)}$ normalized to diameter $1$, $\\Phi_m(\\zeta^{(k)})\\ge\\rho_m$ where $\\rho_m\\ge(m-1)^2\\ge1$ (largest-coordinate score $\\ge m-1$, a direct bound needing no compactness).\n4. Hence $\\sum_{i\\in G}(I^{(k)}_i)^2\\ge \\rho_m/d_k^2\\to\\infty$, and $(a+b)^2\\ge\\tfrac12a^2-b^2$ gives $\\Phi_n(\\xi^{(k)})\\ge \\rho_m/(2d_k^2)-mC^2\\to+\\infty$.\n\nI numerically confirmed the sharp phenomenon $\\Phi_n(\\alpha)\\ge 2/g^2$ ($g$ = minimal gap) holds universally for $n=3,4,5$ (min of $\\Phi_n\\cdot g^2 = 2.000$), consistent with the lemma; the lemma itself proves the weaker $\\to\\infty$ statement that is all that is needed, with a clean constant.\n\nStep B's repeated-root bullet and Lemma (simple)(ii) now both cite this lemma; the invalid single-term bound is explicitly flagged as invalid in the text.\n\n### Verification\n- Scaling identity, $\\rho_m\\ge1$, and $(a+b)^2\\ge a^2/2-b^2$ all checked numerically.\n- End-to-end check on $p=(x-1)^2(x-4)$ (repeated), $q$ simple: $1/\\Phi_n(p)=0$, RHS $=1/\\Phi_n(q)$, and the theorem inequality holds.\n- LaTeX: environments and math delimiters balanced (no toolchain available to compile).\n\nThe gap raised in this issue is resolved, and a related latent error in the LSC lemma it depended on is now also fixed.",
+      "created_at": "2026-06-18T01:00:53Z"
+    },
+    {
+      "id": "ev84009185",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-18T01:00:57Z"
+    }
+  ]
+}

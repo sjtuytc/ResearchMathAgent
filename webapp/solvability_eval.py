@@ -13,10 +13,7 @@ refreshed.
 from __future__ import annotations
 
 import json
-import os
 import re
-import shutil
-import subprocess
 import threading
 import time
 from datetime import datetime, timezone
@@ -90,31 +87,10 @@ def _save_eval(repo_root: Path, qid: str, data: dict) -> None:
     p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def _call_claude(prompt: str, system: str, model: str = _EVAL_MODEL) -> str | None:
-    """Call claude CLI with a single prompt and return the text result."""
-    binary = shutil.which("claude")
-    if not binary:
-        return None
-    env = dict(os.environ)
-    env.pop("ANTHROPIC_API_KEY", None)
-    env.pop("ANTHROPIC_AUTH_TOKEN", None)
-    cmd = [
-        binary, "-p", prompt,
-        "--output-format", "json",
-        "--model", model,
-        "--no-session-persistence",
-        "--append-system-prompt", system,
-    ]
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, env=env, timeout=_EVAL_TIMEOUT
-        )
-        if result.returncode != 0:
-            return None
-        obj = json.loads(result.stdout)
-        return obj.get("result", "") or obj.get("text", "")
-    except Exception:
-        return None
+def _call_vertex(prompt: str, system: str, model: str = _EVAL_MODEL) -> str | None:
+    """Call Vertex AI with a single prompt and return the text result."""
+    from .vertex_llm import complete
+    return complete(prompt, system=system, model=model, max_tokens=4096)
 
 
 def _parse_score_json(text: str) -> dict | None:
@@ -161,7 +137,7 @@ def evaluate_problem(repo_root: Path, qid: str, force: bool = False) -> dict | N
             problem_tex = "% Relevant macro definitions:\n" + "\n".join(macro_lines) + "\n\n" + problem_tex
 
     prompt = _USER_PROMPT_TEMPLATE.format(problem_tex=problem_tex[:8000])
-    raw = _call_claude(prompt, _SYSTEM_PROMPT)
+    raw = _call_vertex(prompt, _SYSTEM_PROMPT)
     if not raw:
         return None
 
