@@ -100,7 +100,7 @@ MathJax = {
   .tool-io .lbl{color:var(--muted);margin-top:6px;font-size:12px}
   .turn-sep{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 6px}
   .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-  .dot.run{background:var(--amber);animation:pulse 1.2s infinite}.dot.ok{background:var(--green)}.dot.err{background:var(--red)}
+  .dot.run{background:var(--amber);animation:pulse 1.2s infinite}.dot.ok{background:var(--green)}.dot.err{background:var(--red)}.dot.warn{background:#e3a00a}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .usage{font-size:12px;color:var(--muted);margin-left:auto}
   .usage b{color:var(--text)}
@@ -645,6 +645,16 @@ MathJax = {
           <span class="usage" id="usage"></span>
         </div>
         <div id="prov-note" class="muted" style="margin-bottom:10px;font-size:12px"></div>
+        <div id="vertex-billing-bar" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:rgba(52,168,83,.08);border:1px solid rgba(52,168,83,.28);border-radius:7px;font-size:12px">
+          <span style="font-weight:600;color:#3fb950">GCloud</span>
+          <span id="vertex-billing-project" style="color:var(--muted)"></span>
+          <span id="vertex-billing-totals" style="color:var(--text)"></span>
+          <span id="vertex-billing-today" style="color:var(--muted)"></span>
+          <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+            <a id="vertex-billing-link" href="#" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-size:11px">GCP billing ↗</a>
+            <a id="vertex-usage-link" href="#" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-size:11px">Vertex usage ↗</a>
+          </span>
+        </div>
         <div class="tok-chart-wrap" id="tok-chart-wrap">
           <canvas id="tok-chart" height="72"></canvas>
           <div class="tok-chart-legend">
@@ -1035,7 +1045,7 @@ if(typeof pdfjsLib!=="undefined"){
   pdfjsLib.GlobalWorkerOptions.workerSrc=
     "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 }
-let problems=[], selected=null, selectedDataset="first_proof_1", claudeCode=false, vertexCfg={available:false,project:"",region:"global",model:"claude-opus-4-8"}, es=null, runId=null;
+let problems=[], selected=null, selectedDataset="first_proof_1", vertexCfg={available:false,project:"",region:"global",model:"claude-opus-4-8"}, vertexUsage=null, es=null, runId=null;
 let cur={text:null,think:null}; const toolCards={}; let lastArtifact=null;
 let tokenHistory=[], curTurnSep=null, curAssistantCard=null;
 let allDatasets=[];
@@ -1074,22 +1084,55 @@ function solvBadge(score){
 }
 
 // ── Dataset picker ───────────────────────────────────────────────────────────
+// ── Static fallback data (renders instantly, no server needed) ──────────────
+const STATIC_DATASETS=[
+  {slug:"first_proof_1",name:"First Proof — Benchmark Round 1",problem_count:10},
+  {slug:"first_proof_2",name:"First Proof — Benchmark Round 2",problem_count:10},
+  {slug:"erdos_problems",name:"Erdős Problems",problem_count:1217},
+  {slug:"aim_problem_lists",name:"AIM Problem Lists",problem_count:101},
+  {slug:"formal_conjectures",name:"Formal Conjectures (Google DeepMind)",problem_count:4557},
+  {slug:"unsolved_math",name:"Unsolved Math",problem_count:2084},
+];
+const STATIC_PROBLEMS=[
+  {id:"q1",dataset:"first_proof_1",title:"Problem 1: Equivalence of Φ⁴₃ Measure under Shift",tags:["stochastic","PDE","measure theory"],difficulty:0.85},
+  {id:"q2",dataset:"first_proof_1",title:"Problem 2: Whittaker Functions and Rankin–Selberg Integrals",tags:["representation theory","automorphic forms","L-functions"],difficulty:0.9},
+  {id:"q3",dataset:"first_proof_1",title:"Problem 3: Markov Chain with Interpolation Macdonald Stationary Distribution",tags:["algebraic combinatorics","Markov chains","Macdonald polynomials"],difficulty:0.75},
+  {id:"q4",dataset:"first_proof_1",title:"Problem 4: Subharmonicity of 1/Φₙ under Finite Free Convolution",tags:["spectral graph theory","free probability","polynomials"],difficulty:0.8},
+  {id:"q5",dataset:"first_proof_1",title:"Problem 5: Slice Filtration for N∞ Operads",tags:["algebraic topology","operads","equivariant homotopy"],difficulty:0.88},
+  {id:"q6",dataset:"first_proof_1",title:"Problem 6: ε-Light Subsets in Graphs",tags:["spectral graph theory","graph theory","combinatorics"],difficulty:0.7},
+  {id:"q7",dataset:"first_proof_1",title:"Problem 7: Uniform Lattices with 2-Torsion as Fundamental Groups",tags:["Lie groups","lattices","group theory"],difficulty:0.82},
+  {id:"q8",dataset:"first_proof_1",title:"Problem 8: Lagrangian Smoothings of Polyhedral Lagrangian Surfaces",tags:["symplectic geometry","Lagrangian","topology"],difficulty:0.87},
+  {id:"q9",dataset:"first_proof_1",title:"Problem 9: Algebraic Relations on Determinantal Tensors",tags:["tensor analysis","algebraic geometry","determinants"],difficulty:0.78},
+  {id:"q10",dataset:"first_proof_1",title:"Problem 10: Preconditioned CG for RKHS-Constrained CP Decomposition",tags:["numerical linear algebra","RKHS","optimization"],difficulty:0.72},
+];
+function fetchWithTimeout(url, ms=5000){
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>ctrl.abort(),ms);
+  return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(tid));
+}
+
 async function loadDatasets(){
+  // Render static datasets immediately so selector is never empty
+  function populateDsSel(datasets){
+    const sel=$("ds-select"); sel.innerHTML="";
+    sel.appendChild(new Option("All datasets",""));
+    for(const ds of datasets){
+      sel.appendChild(new Option(`${ds.name} (${ds.problem_count||"?"})`, ds.slug));
+    }
+    sel.value="first_proof_1"; selectedDataset="first_proof_1";
+    sel.onchange=()=>{selectedDataset=sel.value; loadProblems();};
+  }
+  populateDsSel(STATIC_DATASETS);
+  // Then try to refresh from server in background
   try{
-    const r=await fetch("/api/datasets");
+    const r=await fetchWithTimeout("/api/datasets",5000);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d=await r.json();
     allDatasets=d.datasets||[];
-    const sel=$("ds-select"); sel.innerHTML="";
-    sel.appendChild(new Option("All datasets",""));
-    for(const ds of allDatasets){
-      sel.appendChild(new Option(`${ds.name} (${ds.problem_count||"?"})`, ds.slug));
-    }
-    sel.value="first_proof_1";
-    selectedDataset="first_proof_1";
-    sel.onchange=()=>{selectedDataset=sel.value; loadProblems();};
+    populateDsSel(allDatasets);
   }catch(e){
-    $("ds-select").innerHTML=`<option value="">Error loading datasets</option>`;
+    allDatasets=STATIC_DATASETS;
+    // Static fallback already rendered above — no error shown to user
   }
 }
 
@@ -1122,17 +1165,25 @@ async function loadProblems(){
   const status=$("f-status").value; if(status) params.set("status",status);
 
   const list=$("qlist");
-  list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">Loading…</div>';
+  // Show static problems immediately so sidebar is never empty
+  const staticFiltered = !selectedDataset || selectedDataset==="first_proof_1"
+    ? STATIC_PROBLEMS
+    : STATIC_PROBLEMS.filter(p=>p.dataset===selectedDataset);
+  if(!problems.length) renderProblemList(staticFiltered);
+  // Then fetch live data in background
   try{
-    const r=await fetch("/api/ds/problems?"+params);
+    const r=await fetchWithTimeout("/api/ds/problems?"+params,5000);
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d=await r.json();
     problems=d.problems||[];
-    claudeCode=d.claude_code||claudeCode;
     renderProblemList(problems);
   }catch(e){
-    list.innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed: ${esc(String(e))}</div>`;
-    setStatus("server error","err");
+    // Static data already shown — only show server-error if no real data yet
+    if(!problems.length){
+      problems=staticFiltered;
+      renderProblemList(problems);
+      setStatus("offline — showing cached data","warn");
+    }
   }
 }
 
@@ -1160,26 +1211,31 @@ function renderProblemList(ps){
 
 async function init(){
   try{
-    // Load datasets, initial problem list, and start overview
+    // Load datasets and problems — fire-and-forget so page is never stuck loading
     startOvRefresh();
-    await loadDatasets();
-    await loadProblems();
-    // Provider options from server capabilities (Vertex ADC, Claude Code CLI, API)
+    loadDatasets().then(()=>loadProblems()).catch(()=>{
+      if(!problems.length){ problems=STATIC_PROBLEMS; renderProblemList(problems); }
+    });
+    // Provider options from server capabilities (non-blocking)
     try{
-      const r=await fetch("/api/capabilities");
+      const r=await fetchWithTimeout("/api/capabilities",5000);
       if(r.ok){
         const d=await r.json();
-        claudeCode=d.claude_code||false;
         vertexCfg=d.vertex||vertexCfg;
       }
     }catch(_){}
     const prov=$("provider"); prov.innerHTML="";
-    if(vertexCfg.available) prov.appendChild(new Option("Google Cloud (Vertex AI)","vertex"));
-    if(claudeCode) prov.appendChild(new Option("Claude Code (subscription)","claude-code"));
-    prov.appendChild(new Option("Anthropic API","api"));
-    prov.value=vertexCfg.available?"vertex":(claudeCode?"claude-code":"api");
+    if(vertexCfg.available){
+      prov.appendChild(new Option("Google Cloud (Vertex AI)","vertex"));
+      prov.value="vertex";
+    } else {
+      prov.appendChild(new Option("Google Cloud (Vertex AI — not configured)","vertex"));
+      prov.value="vertex";
+    }
+    prov.appendChild(new Option("Anthropic API (fallback)","api"));
     if(vertexCfg.project) $("gcp-project").value=vertexCfg.project;
     prov.onchange=onProviderChange; onProviderChange();
+    await refreshVertexUsage();
   }catch(e){
     $("qlist").innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed to load:<br>${esc(String(e))}<br><br>Is the server running?</div>`;
     setStatus("server error","err");
@@ -1188,17 +1244,55 @@ async function init(){
 
 function onProviderChange(){
   const p=$("provider").value;
-  $("model").value = p==="claude-code" ? "sonnet" : (vertexCfg.model||"claude-opus-4-8");
+  $("model").value = vertexCfg.model||"claude-opus-4-8";
   const isVertex = p==="vertex";
   $("gcp-project-wrap").style.display = isVertex ? "" : "none";
   const autoProject = vertexCfg.project && $("gcp-project").value.trim()===vertexCfg.project;
-  $("prov-note").innerHTML = p==="claude-code"
-    ? "Runs the local <code>claude</code> CLI using your Pro/Max subscription — no API credits. Models: <code>sonnet</code>, <code>opus</code>, <code>haiku</code>."
-    : isVertex
-    ? (autoProject
-      ? `Uses Claude on Google Cloud Vertex AI via ADC (project <code>${esc(vertexCfg.project)}</code>, region <code>${esc(vertexCfg.region||"global")}</code>). Model: <code>claude-opus-4-8</code>.`
-      : "Uses Claude on Google Cloud Vertex AI via ADC. Enter your GCP Project ID above, or set <code>GOOGLE_CLOUD_PROJECT</code> on the server.")
-    : "Uses the Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
+  $("prov-note").innerHTML = isVertex
+    ? (vertexCfg.available
+      ? (autoProject
+        ? `Default provider: Claude on Google Cloud Vertex AI (project <code>${esc(vertexCfg.project)}</code>, region <code>${esc(vertexCfg.region||"global")}</code>). Model: <code>${esc(vertexCfg.model||"claude-opus-4-8")}</code>.`
+        : "Claude on Google Cloud Vertex AI via ADC. Enter your GCP Project ID above, or set <code>GOOGLE_CLOUD_PROJECT</code> on the server.")
+      : `Vertex AI not configured: ${esc(vertexCfg.error||"check ADC credentials")}`)
+    : "Fallback: Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
+  renderVertexBillingBar();
+}
+
+function fmtUsd(n){
+  const v=Number(n||0);
+  if(v>=1) return `$${v.toFixed(2)}`;
+  if(v>=0.01) return `$${v.toFixed(3)}`;
+  return `$${v.toFixed(4)}`;
+}
+
+function renderVertexBillingBar(){
+  const bar=$("vertex-billing-bar");
+  if(!bar) return;
+  const show=vertexCfg.available || ($("provider")&&$("provider").value==="vertex");
+  bar.style.display=show?"flex":"none";
+  if(!show) return;
+  const u=vertexUsage||{};
+  const project=u.project||vertexCfg.project||($("gcp-project")&&$("gcp-project").value.trim())||"—";
+  $("vertex-billing-project").textContent=`project ${project}`;
+  const est=u.estimated?"est. ":"";
+  $("vertex-billing-totals").innerHTML=
+    `${est}spent <b>${fmtUsd(u.total_cost)}</b> total · `+
+    `<b>${(u.total_in||0).toLocaleString()}</b> in / <b>${(u.total_out||0).toLocaleString()}</b> out · `+
+    `${u.total_runs||0} runs`;
+  $("vertex-billing-today").textContent=
+    `today ${fmtUsd(u.today_cost)} · ${(u.today_in||0).toLocaleString()} in / ${(u.today_out||0).toLocaleString()} out`;
+  const urls=u.urls||{};
+  if(urls.billing) $("vertex-billing-link").href=urls.billing;
+  if(urls.vertex_usage) $("vertex-usage-link").href=urls.vertex_usage;
+  bar.title="Estimated from webapp agent runs. Open GCP billing for full project charges (all services).";
+}
+
+async function refreshVertexUsage(){
+  if(!vertexCfg.available && !($("provider")&&$("provider").value==="vertex")) return;
+  try{
+    const r=await fetch("/api/vertex/usage");
+    if(r.ok){ vertexUsage=await r.json(); renderVertexBillingBar(); }
+  }catch(_){}
 }
 
 // ---- Overview tab ----
@@ -1804,6 +1898,7 @@ function setTab(name){
   if(name==="concepts"){ if(selected) loadConcepts(selected); }
   if(name==="devlog"){ loadDevLog(); }
   if(name==="meet"){ if(selected) loadMeetRooms(selected); }
+  if(name==="agent") refreshVertexUsage();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -2695,6 +2790,43 @@ function handle(ev){
           d.appendChild(el("pre",null,`<code>${esc(text)}</code>`));out.appendChild(d);}
         c.appendChild(out);
       } scroll(); break;}
+    case "saved":{
+      const c=el("div","card artifact");
+      c.appendChild(el("div","tag",`<span class="dot ok"></span> Saved to documents`));
+      if(ev.message) c.appendChild(el("div","body",esc(ev.message)));
+      const links=ev.links||[];
+      if(links.length){
+        const box=el("div","tool-io");
+        box.appendChild(el("div","lbl","document links"));
+        const ul=document.createElement("ul");
+        ul.style.cssText="margin:6px 0 0 18px;padding:0;font-size:12px";
+        for(const lk of links){
+          const li=document.createElement("li");
+          const a=el("a",null,esc(lk.label||lk.path||"document"));
+          a.href=lk.url||("#");
+          a.target="_blank";
+          a.style.color="var(--accent)";
+          a.onclick=async (e)=>{
+            if(!lk.path) return;
+            e.preventDefault();
+            setTab("documents");
+            const parts=lk.path.split("/");
+            if(parts[0]==="questions" && parts.length>=3 && /^q\d+$/i.test(parts[1])){
+              await loadQuestionDocs(parts[1], parts.slice(2).join("/"));
+            } else {
+              await loadDocuments();
+              await selectDocument(lk.path);
+            }
+          };
+          li.appendChild(a);
+          ul.appendChild(li);
+        }
+        box.appendChild(ul);
+        c.appendChild(box);
+      }
+      $("stream").appendChild(c);
+      scroll();
+      break;}
     case "artifact":{
       lastArtifact=ev;
       const c=el("div","card artifact");
@@ -2790,6 +2922,7 @@ function finish(reason){
   const ok=["end_turn","stop_sequence","done",undefined].includes(reason);
   setStatus(ok?"done":String(reason),ok?"ok":"err");
   clearTimeout(_tsTimer); typeset($("stream"));
+  refreshVertexUsage();
 }
 $("run").onclick=start;
 $("stop").onclick=stop;
