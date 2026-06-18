@@ -31,7 +31,7 @@ from .dataset_store import (
 )
 from .issue_agents import run_discovery_agent, run_resolver_agent, run_verifier_agent, get_working_proof, save_working_proof, run_discussion_agent, generate_issue_summary
 from .proofs import get_proof, list_experiments, get_best_proof, list_best_proofs, consolidate_best, maybe_update_best, compile_best_pdf, _proof_outputs_root, _best_dir
-from .issues import append_activity, list_issues, list_all_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log, link_issue, add_issue_document, ISSUE_TYPES, PRIORITY_LEVELS
+from .issues import append_activity, list_issues, get_issue, create_issue, add_comment, update_issue, log_event, get_activity_log, link_issue, add_issue_document
 from .todos import list_todos, create_todo, update_todo, delete_todo
 from .meet import (
     create_room as meet_create, get_room as meet_get, list_rooms as meet_list,
@@ -42,16 +42,14 @@ from .meet_agents import run_discussion_turn, run_synthesis, run_step_execution
 from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
-from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary, vertex_usage_summary, log_usage_delta, by_provider_summary, by_kind_summary
+from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary, vertex_usage_summary, log_usage_delta
 from .solve_finalize import finalize_solve_run
 from .tools import _expand_tex_inputs, _extract_title, _problem_sort_key
 from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
 from .literature import load_index as lit_load, add_paper as lit_add, update_paper as lit_update, delete_paper as lit_delete, discover_literature, ensure_all_lit
 from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
 from .devlog import read_log as devlog_read, append_entry as devlog_append
-from .proof_eval import load_proof_eval, evaluate_proof
-from .prefix import load_prefix, add_entry as prefix_add, update_entry as prefix_update, delete_entry as prefix_delete, reorder_entries as prefix_reorder, build_prefix_md
-from .hero import assemble_context, build_hero_prompt, context_stats, SECTION_COLORS, SECTION_LABELS
+from .insights import get_system_insight, get_dataset_insight, get_question_insight
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -208,9 +206,6 @@ threading.Thread(
 ).start()
 from .issue_loop import run_issue_loop, evolve_once as _evolve_issues_once
 threading.Thread(target=run_issue_loop, args=(REPO_ROOT,), daemon=True).start()
-from .insight_loop import run_insight_loop
-threading.Thread(target=run_insight_loop, args=(REPO_ROOT,), daemon=True).start()
-from .insights import get_system_insight, get_dataset_insight, get_question_insight, list_all_insights
 
 
 @app.get("/api/problems")
@@ -252,8 +247,6 @@ def api_ds_problems(
     min_solvability: float = Query(None),
     max_solvability: float = Query(None),
     search: str = Query(None),
-    limit: int = Query(200),          # max items to return
-    offset: int = Query(0),           # start index (for pagination)
 ) -> JSONResponse:
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
     if dataset:
@@ -267,11 +260,7 @@ def api_ds_problems(
         min_solvability=min_solvability, max_solvability=max_solvability,
         search=search,
     )
-    total = len(problems)
-    limit = max(1, min(limit, 2000))
-    offset = max(0, offset)
-    page = problems[offset: offset + limit]
-    return JSONResponse({"problems": page, "total": total, "offset": offset, "limit": limit, **_capabilities_payload()})
+    return JSONResponse({"problems": problems, **_capabilities_payload()})
 
 
 @app.get("/api/ds/problem/{dataset}/{problem_id}")
@@ -347,8 +336,6 @@ def create_issue_ep(problem_id: str, payload: dict = Body(...), dataset: str = Q
         author=str(payload.get("author", "human")),
         labels=payload.get("labels", []),
         dataset=ds,
-        issue_type=payload.get("issue_type"),
-        priority=payload.get("priority"),
     )
     return JSONResponse(issue)
 
@@ -725,35 +712,6 @@ def meet_execute_step(problem_id: str, room_id: str, step_idx: int, run_id: str 
             yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
-
-
-@app.get("/api/insights")
-def get_all_insights() -> JSONResponse:
-    return JSONResponse({"insights": list_all_insights(REPO_ROOT)})
-
-
-@app.get("/api/insights/system")
-def get_insight_system() -> JSONResponse:
-    d = get_system_insight(REPO_ROOT)
-    if d is None:
-        return JSONResponse({"error": "not generated yet"}, status_code=404)
-    return JSONResponse(d)
-
-
-@app.get("/api/insights/dataset/{slug}")
-def get_insight_dataset(slug: str) -> JSONResponse:
-    d = get_dataset_insight(REPO_ROOT, slug)
-    if d is None:
-        return JSONResponse({"error": "not generated yet"}, status_code=404)
-    return JSONResponse(d)
-
-
-@app.get("/api/insights/question/{qid}")
-def get_insight_question(qid: str, dataset: str = Query("first_proof_1")) -> JSONResponse:
-    d = get_question_insight(REPO_ROOT, qid, dataset)
-    if d is None:
-        return JSONResponse({"error": "not generated yet"}, status_code=404)
-    return JSONResponse(d)
 
 
 @app.get("/api/todos/{problem_id}")
@@ -1252,8 +1210,6 @@ def overview_ep() -> JSONResponse:
     total_in = sum(e.get("in", 0) for e in log_entries)
     total_out = sum(e.get("out", 0) for e in log_entries)
     total_cost = sum(e.get("cost") or 0.0 for e in log_entries)
-    cost_by_provider = by_provider_summary(log_entries)
-    cost_by_purpose = by_kind_summary(log_entries)
 
     # Simple improvement suggestions based on issue stats
     suggestions: list[str] = []
@@ -1371,8 +1327,6 @@ def overview_ep() -> JSONResponse:
             "in": total_in, "out": total_out,
             "cost": round(total_cost, 6), "runs": len(log_entries),
         },
-        "cost_by_provider": cost_by_provider,
-        "cost_by_purpose": cost_by_purpose,
         "suggestions": suggestions,
         "today": today_summary(REPO_ROOT),
         "question_summaries": question_summaries,
@@ -1770,171 +1724,37 @@ def concepts_generate_ep(problem_id: str) -> StreamingResponse:
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-# ── Proof Evaluation ─────────────────────────────────────────────────────────
-
-@app.get("/api/proof-eval/{problem_id}")
-def proof_eval_ep(problem_id: str, force: bool = Query(False)) -> JSONResponse:
-    """Return LLM-based evaluation scores for the best proof. Caches result."""
-    if not _PROBLEM_RE.match(problem_id):
-        return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    if force:
-        result = evaluate_proof(REPO_ROOT, problem_id, force=True)
-    else:
-        cached = load_proof_eval(REPO_ROOT, problem_id)
-        if cached:
-            return JSONResponse(cached)
-        result = evaluate_proof(REPO_ROOT, problem_id, force=False)
-    if "error" in result:
-        return JSONResponse(result, status_code=404 if "No best proof" in result.get("error", "") else 500)
-    return JSONResponse(result)
-
-
 # ── Dev Log ──────────────────────────────────────────────────────────────────
-
-# ── Issue taxonomy & cross-question endpoints ────────────────────────────────
-
-@app.get("/api/issue-taxonomy")
-def issue_taxonomy() -> JSONResponse:
-    """Returns the canonical issue type list and priority levels."""
-    return JSONResponse({"types": ISSUE_TYPES, "priorities": PRIORITY_LEVELS})
-
-
-@app.get("/api/issues-all")
-def all_issues_ep(dataset: str = Query(None), status: str = Query(None)) -> JSONResponse:
-    """All issues across all questions for a dataset, sorted by priority."""
-    ds = _ds_from_query(dataset)
-    issues = list_all_issues(REPO_ROOT, ds)
-    if status:
-        issues = [i for i in issues if i.get("status") == status]
-    return JSONResponse({"issues": issues, "dataset": ds, "total": len(issues)})
-
-
-# ── Hero inference endpoints ─────────────────────────────────────────────────
-
-@app.get("/api/hero/context/{problem_id}")
-def hero_context_ep(problem_id: str, dataset: str = Query(None), budget: int = Query(180000)) -> JSONResponse:
-    """Assemble and return context sections with token counts for the context diagram."""
-    ds = _ds_from_query(dataset)
-    sections = assemble_context(REPO_ROOT, problem_id, ds, max_tokens=budget)
-    stats = context_stats(sections, budget)
-    return JSONResponse({
-        "sections": [
-            {k: v for k, v in s.items() if k != "content"}  # strip content for the diagram view
-            for s in sections
-        ],
-        "stats": stats,
-        "budget": budget,
-        "problem_id": problem_id,
-    })
-
-
-@app.get("/api/hero/section/{problem_id}/{section_id}")
-def hero_section_ep(problem_id: str, section_id: str, dataset: str = Query(None), budget: int = Query(180000)) -> JSONResponse:
-    """Return the full content of a single context section for preview."""
-    ds = _ds_from_query(dataset)
-    sections = assemble_context(REPO_ROOT, problem_id, ds, max_tokens=budget)
-    sec = next((s for s in sections if s["id"] == section_id), None)
-    if sec is None:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return JSONResponse(sec)
-
-
-@app.post("/api/hero/run/{problem_id}")
-def hero_run_ep(problem_id: str, payload: dict = Body(default={}), dataset: str = Query(None)) -> StreamingResponse:
-    """Run a hero inference pass — assembles full context and streams the result."""
-    ds = _ds_from_query(dataset)
-    enabled = payload.get("enabled_sections")
-    budget  = int(payload.get("budget", 180_000))
-    model   = str(payload.get("model", DEFAULT_MODEL))
-    sections = assemble_context(REPO_ROOT, problem_id, ds, max_tokens=budget, enabled_sections=enabled)
-    system_prompt, user_prompt = build_hero_prompt(sections)
-    stats = context_stats(sections, budget)
-
-    import uuid as _uuid
-    run_id = f"hero-{problem_id}-{_uuid.uuid4().hex[:8]}"
-
-    def stream():
-        yield f"data: {json.dumps({'type': 'hero_start', 'run_id': run_id, 'stats': stats})}\n\n"
-        try:
-            import os as _os
-            workspace = REPO_ROOT / "webapp" / ".runs" / run_id
-            workspace.mkdir(parents=True, exist_ok=True)
-            for s in sections:
-                if s["enabled"] and s["content"].strip():
-                    (workspace / f"ctx_{s['id']}.md").write_text(s["content"], encoding="utf-8")
-            # Use Vertex AI if available, fall back to Anthropic API
-            from .vertex import vertex_adc_project, vertex_region
-            project_id = vertex_adc_project().strip()
-            if project_id:
-                from anthropic import AnthropicVertex
-                client = AnthropicVertex(region=vertex_region(), project_id=project_id)
-            elif _os.environ.get("ANTHROPIC_API_KEY"):
-                import anthropic as _ant
-                client = _ant.Anthropic()
-            else:
-                raise RuntimeError("No API credentials: set GOOGLE_CLOUD_PROJECT (Vertex AI) or ANTHROPIC_API_KEY")
-            with client.messages.stream(
-                model=model,
-                max_tokens=8192,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-            ) as stream_obj:
-                for text in stream_obj.text_stream:
-                    yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
-            final = stream_obj.get_final_message()
-            usage = final.usage
-            yield f"data: {json.dumps({'type': 'hero_done', 'input_tokens': usage.input_tokens, 'output_tokens': usage.output_tokens})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
-
-    return StreamingResponse(stream(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
-
-
-# ── Prefix endpoints ─────────────────────────────────────────────────────────
-
-@app.get("/api/prefix/{problem_id}")
-def get_prefix(problem_id: str) -> JSONResponse:
-    return JSONResponse({"entries": load_prefix(REPO_ROOT, problem_id)})
-
-
-@app.post("/api/prefix/{problem_id}")
-def post_prefix(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
-    entry = prefix_add(
-        REPO_ROOT, problem_id,
-        type=str(payload.get("type", "background")),
-        title=str(payload.get("title", "Untitled")),
-        content=str(payload.get("content", "")),
-        enabled=bool(payload.get("enabled", True)),
-    )
-    return JSONResponse({"entry": entry, "entries": load_prefix(REPO_ROOT, problem_id)})
-
-
-@app.put("/api/prefix/{problem_id}/{entry_id}")
-def put_prefix(problem_id: str, entry_id: str, payload: dict = Body(...)) -> JSONResponse:
-    entry = prefix_update(REPO_ROOT, problem_id, entry_id, payload)
-    if entry is None:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return JSONResponse({"entry": entry, "entries": load_prefix(REPO_ROOT, problem_id)})
-
-
-@app.delete("/api/prefix/{problem_id}/{entry_id}")
-def del_prefix(problem_id: str, entry_id: str) -> JSONResponse:
-    ok = prefix_delete(REPO_ROOT, problem_id, entry_id)
-    if not ok:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return JSONResponse({"entries": load_prefix(REPO_ROOT, problem_id)})
-
-
-@app.post("/api/prefix/{problem_id}/reorder")
-def reorder_prefix(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
-    entries = prefix_reorder(REPO_ROOT, problem_id, payload.get("ids", []))
-    return JSONResponse({"entries": entries})
-
 
 @app.get("/api/devlog")
 def devlog_list() -> JSONResponse:
     return JSONResponse({"entries": devlog_read(REPO_ROOT)})
+
+
+# ── Insights endpoints ────────────────────────────────────────────────────────
+
+@app.get("/api/insights/system")
+def insights_system() -> JSONResponse:
+    data = get_system_insight(REPO_ROOT)
+    if not data:
+        return JSONResponse({"summary": None}, status_code=404)
+    return JSONResponse(data)
+
+
+@app.get("/api/insights/dataset/{slug}")
+def insights_dataset(slug: str) -> JSONResponse:
+    data = get_dataset_insight(REPO_ROOT, slug)
+    if not data:
+        return JSONResponse({"summary": None}, status_code=404)
+    return JSONResponse(data)
+
+
+@app.get("/api/insights/question/{dataset}/{qid}")
+def insights_question(dataset: str, qid: str) -> JSONResponse:
+    data = get_question_insight(REPO_ROOT, qid, dataset)
+    if not data:
+        return JSONResponse({"summary": None}, status_code=404)
+    return JSONResponse(data)
 
 
 # Serve the SPA. Mounted last so /api/* routes take precedence.
