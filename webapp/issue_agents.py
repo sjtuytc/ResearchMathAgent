@@ -126,6 +126,11 @@ def _seed_workspace(
                 encoding="utf-8",
             )
 
+    # Write enabled prefix entries as prefix.md for agent context
+    pfx_md = build_prefix_md(repo_root, problem_id)
+    if pfx_md:
+        (ws / "prefix.md").write_text(pfx_md, encoding="utf-8")
+
     return ws
 
 
@@ -162,15 +167,22 @@ def run_discovery_agent(
             "sub-lemmas that must be proved.\n"
         )
 
+    has_prefix = (ws / "prefix.md").is_file()
     docs_note = (
         "Existing documentation is in docs_*.md files in your workspace — read them first "
         "to understand prior progress and avoid duplicating known gaps. docs_index.txt lists them."
         if (repo_root / "documents" / "questions" / problem_id).is_dir()
         else ""
     )
+    prefix_note = (
+        "A curated context prefix is in prefix.md — read it first for background theorems, "
+        "definitions, key papers, and proof strategies relevant to this problem."
+        if has_prefix else ""
+    )
 
     prompt = f"""You are the critic-agent reviewing problem {problem_id}.
 
+{prefix_note}
 {proof_section}
 {docs_note}
 
@@ -235,7 +247,8 @@ def run_resolver_agent(
     dataset: str = "first_proof_1",
 ) -> Iterator[AgentEvent]:
     """Solver agent: works a specific open issue, updates proof, posts resolution."""
-    from .issues import get_issue
+    from .prefix import build_prefix_md
+from .issues import get_issue
     issue = get_issue(repo_root, problem_id, issue_id, dataset)
     if issue is None:
         yield AgentEvent("error", {"message": f"Issue {issue_id} not found"})

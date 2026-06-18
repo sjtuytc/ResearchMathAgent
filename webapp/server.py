@@ -50,6 +50,7 @@ from .literature import load_index as lit_load, add_paper as lit_add, update_pap
 from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
 from .devlog import read_log as devlog_read, append_entry as devlog_append
 from .proof_eval import load_proof_eval, evaluate_proof
+from .prefix import load_prefix, add_entry as prefix_add, update_entry as prefix_update, delete_entry as prefix_delete, reorder_entries as prefix_reorder, build_prefix_md
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -1776,6 +1777,47 @@ def proof_eval_ep(problem_id: str, force: bool = Query(False)) -> JSONResponse:
 
 
 # ── Dev Log ──────────────────────────────────────────────────────────────────
+
+# ── Prefix endpoints ─────────────────────────────────────────────────────────
+
+@app.get("/api/prefix/{problem_id}")
+def get_prefix(problem_id: str) -> JSONResponse:
+    return JSONResponse({"entries": load_prefix(REPO_ROOT, problem_id)})
+
+
+@app.post("/api/prefix/{problem_id}")
+def post_prefix(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+    entry = prefix_add(
+        REPO_ROOT, problem_id,
+        type=str(payload.get("type", "background")),
+        title=str(payload.get("title", "Untitled")),
+        content=str(payload.get("content", "")),
+        enabled=bool(payload.get("enabled", True)),
+    )
+    return JSONResponse({"entry": entry, "entries": load_prefix(REPO_ROOT, problem_id)})
+
+
+@app.put("/api/prefix/{problem_id}/{entry_id}")
+def put_prefix(problem_id: str, entry_id: str, payload: dict = Body(...)) -> JSONResponse:
+    entry = prefix_update(REPO_ROOT, problem_id, entry_id, payload)
+    if entry is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse({"entry": entry, "entries": load_prefix(REPO_ROOT, problem_id)})
+
+
+@app.delete("/api/prefix/{problem_id}/{entry_id}")
+def del_prefix(problem_id: str, entry_id: str) -> JSONResponse:
+    ok = prefix_delete(REPO_ROOT, problem_id, entry_id)
+    if not ok:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse({"entries": load_prefix(REPO_ROOT, problem_id)})
+
+
+@app.post("/api/prefix/{problem_id}/reorder")
+def reorder_prefix(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
+    entries = prefix_reorder(REPO_ROOT, problem_id, payload.get("ids", []))
+    return JSONResponse({"entries": entries})
+
 
 @app.get("/api/devlog")
 def devlog_list() -> JSONResponse:

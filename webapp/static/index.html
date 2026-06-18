@@ -722,15 +722,58 @@ MathJax = {
       <div id="d-q-view" style="display:none">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
           <span id="d-q-label" style="font-size:13px;font-weight:700;color:var(--accent)"></span>
-          <div style="display:flex;gap:5px">
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
             <button class="btn-sec d-q-btn" data-file="overview.md"   style="font-size:11px;padding:3px 10px">Overview</button>
             <button class="btn-sec d-q-btn" data-file="timeline.md"   style="font-size:11px;padding:3px 10px">Timeline</button>
             <button class="btn-sec d-q-btn" data-file="progress.md"   style="font-size:11px;padding:3px 10px">Progress</button>
             <button class="btn-sec d-q-btn" data-file="strategies.md" style="font-size:11px;padding:3px 10px">Strategies</button>
+            <button class="btn-sec" id="d-pfx-btn" style="font-size:11px;padding:3px 10px;border-color:var(--accent2);color:var(--accent2)" onclick="showPrefixView()">Prefix ▸</button>
           </div>
           <span id="d-q-doc-label" style="font-size:11px;color:var(--muted);margin-left:4px"></span>
         </div>
         <div class="rendered" id="d-q-content" style="min-height:200px"><span class="muted">Select a document above.</span></div>
+      </div>
+
+      <!-- ── Prefix view panel ────────────────────────────────────────── -->
+      <div id="d-pfx-view" style="display:none">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700;color:var(--accent2)">Context Prefix</span>
+          <span id="d-pfx-qid" style="font-size:12px;color:var(--muted)"></span>
+          <span style="font-size:11px;color:var(--muted);flex:1">Entries are injected into every agent workspace as <code>prefix.md</code>. Toggle to enable/disable.</span>
+          <button class="btn-sec" style="font-size:11px;padding:3px 10px" onclick="hidePrefixView()">← Docs</button>
+        </div>
+        <!-- Token budget bar -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:7px">
+          <span style="font-size:11px;color:var(--muted)">Estimated tokens in active prefix:</span>
+          <span id="d-pfx-tokens" style="font-size:12px;font-weight:700;color:var(--accent)">0</span>
+          <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div id="d-pfx-tokbar" style="height:100%;background:var(--accent);width:0%;transition:width .3s;border-radius:3px"></div>
+          </div>
+          <span style="font-size:10px;color:var(--muted)">/ ~50k budget</span>
+        </div>
+        <!-- Entry list -->
+        <div id="d-pfx-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+        <!-- Add entry form -->
+        <div id="d-pfx-add-form" class="card" style="margin-top:4px;padding:12px 14px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text)">Add prefix entry</div>
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;margin-bottom:8px">
+            <select id="d-pfx-type" style="font-size:12px;padding:4px 7px;background:var(--input,var(--panel2));border:1px solid var(--border);border-radius:5px;color:var(--text)">
+              <option value="background">Background</option>
+              <option value="theorem">Theorem</option>
+              <option value="definition">Definition</option>
+              <option value="paper">Paper</option>
+              <option value="strategy">Strategy</option>
+              <option value="note">Note</option>
+            </select>
+            <input id="d-pfx-title" type="text" placeholder="Entry title" style="font-size:12px;padding:4px 8px;background:var(--input,var(--panel2));border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none">
+          </div>
+          <textarea id="d-pfx-content" rows="5" placeholder="Enter mathematical content, theorem statement, paper excerpt, or proof strategy…" style="width:100%;box-sizing:border-box;font-size:12px;font-family:inherit;padding:6px 9px;background:var(--input,var(--panel2));border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none;resize:vertical;margin-bottom:8px"></textarea>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-pri" style="font-size:12px;padding:5px 14px" onclick="addPrefixEntry()">Add Entry</button>
+            <span id="d-pfx-add-status" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+        </div>
       </div>
 
       <!-- All-docs view (shown when no question selected, or "All docs" clicked) -->
@@ -769,10 +812,25 @@ MathJax = {
         </div>
         <div id="pf-batch-info" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>
         <div id="pf-checks" style="margin-bottom:12px"></div>
-        <!-- Evaluation panel -->
-        <div id="pf-eval-section" style="margin-bottom:14px;border:1px solid var(--border);border-radius:7px;overflow:hidden">
+        <!-- Comprehensive metrics card (top) -->
+        <div id="pf-metrics-card" style="margin-bottom:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:none">
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--panel2);border-bottom:1px solid var(--border)">
+            <span style="font-size:13px;font-weight:700">Proof Quality Evaluation</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:4px">First Proof benchmark rubric</span>
+            <button class="btn-sec" id="pf-metrics-refresh" style="font-size:11px;padding:3px 9px;margin-left:auto">Re-evaluate</button>
+            <span id="pf-metrics-status" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div id="pf-metrics-body" style="padding:14px 16px">
+            <div id="pf-metrics-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
+            <div id="pf-metrics-verdict" style="font-size:12px;color:var(--text);line-height:1.5;border-top:1px solid var(--border);padding-top:10px;margin-top:2px"></div>
+          </div>
+        </div>
+        <div id="pf-pdf-wrap" style="background:#404040;border-radius:6px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:200px"></div>
+        <pre id="pf-raw" style="display:none;margin-top:12px"><code id="pf-raw-code" class="language-latex"></code></pre>
+        <!-- Critic evaluation panel (bottom) -->
+        <div id="pf-eval-section" style="margin-top:14px;border:1px solid var(--border);border-radius:7px;overflow:hidden">
           <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel2)">
-            <span style="font-size:12px;font-weight:600;color:var(--fg)">Proof Evaluation</span>
+            <span style="font-size:12px;font-weight:600;color:var(--fg)">Critic Agent Evaluation</span>
             <button class="btn-sec" id="pf-eval-btn" style="font-size:11px;padding:3px 10px">Evaluate</button>
             <span id="pf-eval-status" style="font-size:11px;color:var(--muted)"></span>
             <button class="btn-sec" id="pf-eval-stop" style="display:none;font-size:11px;padding:3px 8px">Stop</button>
@@ -784,8 +842,6 @@ MathJax = {
           <div id="pf-eval-issues" style="display:none;padding:10px 12px;border-top:1px solid var(--border)"></div>
           <div id="pf-eval-hint" style="padding:10px 12px;font-size:12px;color:var(--muted)">Run <strong>Evaluate</strong> to have the critic agent read this proof, identify problems, and file them as issues.</div>
         </div>
-        <div id="pf-pdf-wrap" style="background:#404040;border-radius:6px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:200px"></div>
-        <pre id="pf-raw" style="display:none;margin-top:12px"><code id="pf-raw-code" class="language-latex"></code></pre>
       </div>
       <div id="pf-empty" class="empty" style="display:none">No proof results found. Select a question and run the agent, then click <b>Consolidate</b>.</div>
     </section>
@@ -3515,6 +3571,9 @@ async function loadProofDetail(pid){
   pfSelectedProb=pid;
   $("pf-detail").style.display="none";
   $("pf-status").textContent=`loading ${pid}…`;
+  // Reset metrics card
+  $("pf-metrics-card").style.display="none";
+  $("pf-metrics-status").textContent="";
   // Reset evaluation panel
   if(pfEvalEs){ pfEvalEs.close(); pfEvalEs=null; }
   $("pf-eval-btn").disabled=false;
@@ -3557,6 +3616,8 @@ async function loadProofDetail(pid){
     $("pf-raw").style.display="none";
     $("pf-detail").style.display="block";
     $("pf-status").textContent="";
+    // Load proof quality metrics (non-blocking)
+    loadProofMetrics(pid);
     // Pre-load any existing issues into the eval panel (non-blocking)
     const evalDs=selectedDataset||"first_proof_1";
     fetch(`/api/issues/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(evalDs)}`)
@@ -3570,6 +3631,62 @@ async function loadProofDetail(pid){
     await pdfLoad(pdfUrl, wrap, d=>{pfDoc=d;}, pfScale);
   }catch(e){$("pf-status").textContent="error: "+e.message;}
 }
+
+function _pfMetricBar(label, score, maxScore){
+  const pct = maxScore===1 ? (score*100) : (score/maxScore*100);
+  const color = pct>=80?"var(--green)":pct>=50?"var(--amber)":"var(--red)";
+  const scoreLabel = maxScore===1 ? (score===1?"✓ Correct":"✗ Incorrect") : `${score}/${maxScore}`;
+  return `<div style="background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${label}</div>
+    <div style="font-size:20px;font-weight:700;color:${color};margin-bottom:6px">${scoreLabel}</div>
+    <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+      <div style="height:100%;width:${pct.toFixed(0)}%;background:${color};transition:width .4s"></div>
+    </div>
+  </div>`;
+}
+
+async function loadProofMetrics(pid, force=false){
+  const card=$("pf-metrics-card");
+  const status=$("pf-metrics-status");
+  card.style.display="none";
+  status.textContent="loading…";
+  try{
+    const url=`/api/proof-eval/${encodeURIComponent(pid)}`+(force?"?force=true":"");
+    const r=await fetch(url);
+    const d=await r.json();
+    if(d.error){
+      status.textContent=d.error.includes("No best proof")?"(no proof yet)":"eval unavailable";
+      return;
+    }
+    const grid=$("pf-metrics-grid");
+    grid.innerHTML=[
+      _pfMetricBar("Answer Accuracy", d.answer_accuracy, 1),
+      _pfMetricBar("Logical Correctness", d.logical_correctness, 5),
+      _pfMetricBar("Proof Completeness", d.proof_completeness, 5),
+      _pfMetricBar("Proof Clarity", d.proof_clarity, 5),
+    ].join("");
+    const verdictEl=$("pf-metrics-verdict");
+    verdictEl.innerHTML="";
+    if(d.verdict){
+      const vp=document.createElement("div");
+      vp.style.cssText="font-weight:600;margin-bottom:4px;font-size:12px";
+      vp.textContent="Overall: "+d.verdict;
+      verdictEl.appendChild(vp);
+    }
+    if(d.notes){
+      const np=document.createElement("div");
+      np.style.cssText="color:var(--muted);font-size:12px";
+      np.textContent=d.notes;
+      verdictEl.appendChild(np);
+    }
+    status.textContent="";
+    card.style.display="block";
+  }catch(e){status.textContent="error: "+e.message;}
+}
+
+$("pf-metrics-refresh").onclick=()=>{
+  if(pfSelectedProb) loadProofMetrics(pfSelectedProb, true);
+};
 
 $("pf-show-all").onclick=loadProofs;
 $("pf-consolidate").onclick=async function(){
