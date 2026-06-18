@@ -49,6 +49,7 @@ from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
 from .literature import load_index as lit_load, add_paper as lit_add, update_paper as lit_update, delete_paper as lit_delete, discover_literature, ensure_all_lit
 from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
 from .devlog import read_log as devlog_read, append_entry as devlog_append
+from .proof_eval import load_proof_eval, evaluate_proof
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -205,6 +206,9 @@ threading.Thread(
 ).start()
 from .issue_loop import run_issue_loop, evolve_once as _evolve_issues_once
 threading.Thread(target=run_issue_loop, args=(REPO_ROOT,), daemon=True).start()
+from .insight_loop import run_insight_loop
+threading.Thread(target=run_insight_loop, args=(REPO_ROOT,), daemon=True).start()
+from .insights import get_system_insight, get_dataset_insight, get_question_insight, list_all_insights
 
 
 @app.get("/api/problems")
@@ -711,6 +715,35 @@ def meet_execute_step(problem_id: str, room_id: str, step_idx: int, run_id: str 
             yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+@app.get("/api/insights")
+def get_all_insights() -> JSONResponse:
+    return JSONResponse({"insights": list_all_insights(REPO_ROOT)})
+
+
+@app.get("/api/insights/system")
+def get_insight_system() -> JSONResponse:
+    d = get_system_insight(REPO_ROOT)
+    if d is None:
+        return JSONResponse({"error": "not generated yet"}, status_code=404)
+    return JSONResponse(d)
+
+
+@app.get("/api/insights/dataset/{slug}")
+def get_insight_dataset(slug: str) -> JSONResponse:
+    d = get_dataset_insight(REPO_ROOT, slug)
+    if d is None:
+        return JSONResponse({"error": "not generated yet"}, status_code=404)
+    return JSONResponse(d)
+
+
+@app.get("/api/insights/question/{qid}")
+def get_insight_question(qid: str, dataset: str = Query("first_proof_1")) -> JSONResponse:
+    d = get_question_insight(REPO_ROOT, qid, dataset)
+    if d is None:
+        return JSONResponse({"error": "not generated yet"}, status_code=404)
+    return JSONResponse(d)
 
 
 @app.get("/api/todos/{problem_id}")
@@ -1721,6 +1754,25 @@ def concepts_generate_ep(problem_id: str) -> StreamingResponse:
 
     return StreamingResponse(_gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ── Proof Evaluation ─────────────────────────────────────────────────────────
+
+@app.get("/api/proof-eval/{problem_id}")
+def proof_eval_ep(problem_id: str, force: bool = Query(False)) -> JSONResponse:
+    """Return LLM-based evaluation scores for the best proof. Caches result."""
+    if not _PROBLEM_RE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    if force:
+        result = evaluate_proof(REPO_ROOT, problem_id, force=True)
+    else:
+        cached = load_proof_eval(REPO_ROOT, problem_id)
+        if cached:
+            return JSONResponse(cached)
+        result = evaluate_proof(REPO_ROOT, problem_id, force=False)
+    if "error" in result:
+        return JSONResponse(result, status_code=404 if "No best proof" in result.get("error", "") else 500)
+    return JSONResponse(result)
 
 
 # ── Dev Log ──────────────────────────────────────────────────────────────────

@@ -204,6 +204,19 @@ MathJax = {
   .meet-step-card.running{border-color:var(--amber)}
   .meet-persona-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:11px;cursor:pointer;transition:border-color .12s}
   .meet-persona-chip:hover{border-color:var(--accent)}
+  /* Insights tab */
+  .ins-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px;max-width:900px}
+  .ins-section{margin-bottom:14px}
+  .ins-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+  .ins-item{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.5}
+  .ins-item:last-child{border-bottom:none}
+  .ins-item-icon{flex-shrink:0;width:16px}
+  .ins-prio{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0}
+  .ins-prio.high{background:rgba(248,81,73,.15);color:var(--red)}
+  .ins-prio.medium{background:rgba(227,160,10,.15);color:var(--amber)}
+  .ins-prio.low{background:rgba(63,185,80,.12);color:var(--green)}
+  .ins-generated{font-size:10px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+  .ins-level-btn.active-ins{background:var(--accent);color:#fff;border-color:var(--accent)}
   /* Dataset badge on qitem */
   .ds-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);margin-left:auto;flex-shrink:0}
   .qitem-top{display:flex;align-items:center;gap:4px}
@@ -218,7 +231,7 @@ MathJax = {
   <span class="sub" id="header-sub">Research-level math problems · multi-dataset · live solver</span>
   <span class="status" id="status">select a question</span>
   <button id="cmd-open-btn" class="btn-sec" style="padding:4px 10px;font-size:11px;font-weight:500;display:flex;align-items:center;gap:6px;flex-shrink:0" title="Command palette (Ctrl+K)">
-    <svg width=12 height=12 viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width=2><circle cx=6 cy=6 r=5/><path d='M10.5 10.5l4 4'/></svg>
+    <svg width=12 height=12 viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width=2><circle cx="6" cy="6" r="5"/><path d='M10.5 10.5l4 4'/></svg>
     Search <kbd style="font-size:9px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:3px;padding:0 4px;margin-left:2px">Ctrl K</kbd>
   </button>
   <button id="bug-report-btn" class="btn-sec" style="padding:4px 10px;font-size:11px;font-weight:500;margin-left:8px;flex-shrink:0" title="Report a bug or issue with a proof">Report bug</button>
@@ -279,6 +292,7 @@ MathJax = {
       <div class="tab" data-tab="meet">Meet</div>
       <div class="tab" data-tab="literature">Literature</div>
       <div class="tab" data-tab="concepts">Concepts</div>
+      <div class="tab" data-tab="insights">Insights</div>
       <div class="tab" data-tab="devlog">Dev Log</div>
     </div>
 
@@ -909,6 +923,44 @@ MathJax = {
       <div id="dl-empty" class="empty" style="display:none">No log entries yet.</div>
     </section>
 
+    <!-- ── Insights pane ──────────────────────────────────── -->
+    <section class="pane" id="pane-insights" style="padding:18px 22px;overflow-y:auto">
+      <div class="bar" style="margin-bottom:16px">
+        <span style="font-size:14px;font-weight:700">Insights</span>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px">AI-generated daily intelligence — system · dataset · question</span>
+        <span id="ins-status" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
+      </div>
+
+      <!-- Level selector -->
+      <div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap">
+        <button id="ins-tab-system"  class="btn-sec ins-level-btn active-ins" style="font-size:12px;padding:5px 14px">🌐 System</button>
+        <button id="ins-tab-dataset" class="btn-sec ins-level-btn" style="font-size:12px;padding:5px 14px">📦 Dataset</button>
+        <button id="ins-tab-question" class="btn-sec ins-level-btn" style="font-size:12px;padding:5px 14px">❓ Question</button>
+      </div>
+
+      <!-- System insight panel -->
+      <div id="ins-panel-system">
+        <div id="ins-system-card" style="display:none"></div>
+        <div id="ins-system-empty" class="muted" style="padding:20px;font-size:13px">No system insight generated yet. The daemon runs daily at 09:05.</div>
+      </div>
+
+      <!-- Dataset insight panel -->
+      <div id="ins-panel-dataset" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <select id="ins-ds-select" style="font-size:12px;background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;color:var(--text)"></select>
+        </div>
+        <div id="ins-dataset-card" style="display:none"></div>
+        <div id="ins-dataset-empty" class="muted" style="padding:20px;font-size:13px">No insight for this dataset yet.</div>
+      </div>
+
+      <!-- Question insight panel -->
+      <div id="ins-panel-question" style="display:none">
+        <div id="ins-q-header" style="font-size:12px;color:var(--muted);margin-bottom:12px">Select a question from the sidebar to see its insight.</div>
+        <div id="ins-question-card" style="display:none"></div>
+        <div id="ins-question-empty" class="muted" style="padding:20px;font-size:13px;display:none">No insight for this question yet.</div>
+      </div>
+    </section>
+
     <!-- ── Virtual Meet pane ────────────────────────────── -->
     <section class="pane" id="pane-meet" style="padding:0;overflow:hidden">
       <div id="meet-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Select a question to start a meeting.</div>
@@ -1054,7 +1106,7 @@ MathJax = {
 <div id="cmd-backdrop"></div>
 <div id="cmd-palette" role="dialog" aria-modal="true" aria-label="Command palette">
   <div id="cmd-input-wrap">
-    <svg width=16 height=16 viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width=2><circle cx=6 cy=6 r=5/><path d='M10.5 10.5l4 4'/></svg>
+    <svg width=16 height=16 viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width=2><circle cx="6" cy="6" r="5"/><path d='M10.5 10.5l4 4'/></svg>
     <input id="cmd-input" type="text" placeholder="Search tabs, questions… or type /proof /agent /issue">
     <span id="cmd-hint">ESC to close</span>
   </div>
@@ -1658,11 +1710,13 @@ function renderOverview(d, pid){
 
   // Daemon badge
   const running=d.daemon_running;
-  const badge=$("ov-daemon-badge");
-  badge.textContent=running?"● RUNNING":"○ STOPPED";
-  badge.style.background=running?"rgba(63,185,80,.15)":"rgba(248,81,73,.15)";
-  badge.style.color=running?"var(--green)":"var(--red)";
-  badge.style.border=running?"1px solid rgba(63,185,80,.4)":"1px solid rgba(248,81,73,.4)";
+  const daemonBadge=$("ov-daemon-badge");
+  if(daemonBadge){
+    daemonBadge.textContent=running?"● RUNNING":"○ STOPPED";
+    daemonBadge.style.background=running?"rgba(63,185,80,.15)":"rgba(248,81,73,.15)";
+    daemonBadge.style.color=running?"var(--green)":"var(--red)";
+    daemonBadge.style.border=running?"1px solid rgba(63,185,80,.4)":"1px solid rgba(248,81,73,.4)";
+  }
 
   // Schedule
   const secs=d.seconds_until_next||0;
@@ -1967,6 +2021,7 @@ function setTab(name){
   if(name==="concepts"){ if(selected) loadConcepts(selected); }
   if(name==="devlog"){ loadDevLog(); }
   if(name==="meet"){ if(selected) loadMeetRooms(selected); }
+  if(name==="insights"){ loadInsights(); }
   if(name==="agent") refreshVertexUsage();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
@@ -2350,6 +2405,7 @@ async function selectQuestion(qid, node, dataset){
   if(document.querySelector(".tab.active[data-tab='literature']")) loadLiterature(qid);
   if(document.querySelector(".tab.active[data-tab='concepts']")) loadConcepts(qid);
   if(document.querySelector(".tab.active[data-tab='meet']")) loadMeetRooms(qid);
+  if(document.querySelector(".tab.active[data-tab='insights']")) loadInsightQuestion(qid);
 }
 
 $("q-toggle").onclick=()=>{
@@ -4255,6 +4311,149 @@ $("meet-modal-ok").onclick=async()=>{
   const items=[...$("meet-room-list").querySelectorAll(".qitem")];
   const last=items[items.length-1]; if(last)last.classList.add("active");
 };
+
+// ============================================================
+// ── Insights tab ────────────────────────────────────────────
+// ============================================================
+
+let _insLevel = "system";
+
+function _insSetLevel(level){
+  _insLevel = level;
+  document.querySelectorAll(".ins-level-btn").forEach(b=>{
+    b.classList.toggle("active-ins", b.id === "ins-tab-"+level);
+  });
+  $("ins-panel-system").style.display   = level==="system"   ? "" : "none";
+  $("ins-panel-dataset").style.display  = level==="dataset"  ? "" : "none";
+  $("ins-panel-question").style.display = level==="question" ? "" : "none";
+}
+
+$("ins-tab-system").onclick  = ()=>{ _insSetLevel("system");   loadInsightSystem(); };
+$("ins-tab-dataset").onclick = ()=>{ _insSetLevel("dataset");  loadInsightDataset(); };
+$("ins-tab-question").onclick= ()=>{ _insSetLevel("question"); loadInsightQuestion(selected); };
+
+function _renderInsightCard(data, container, emptyEl){
+  if(!data || data.error){
+    container.style.display = "none";
+    emptyEl.style.display = "";
+    return;
+  }
+  emptyEl.style.display = "none";
+  container.style.display = "";
+
+  const genAt = data.generated_at
+    ? new Date(data.generated_at).toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"})
+    : "unknown";
+  const levelLabel = data.level==="system" ? "System"
+    : data.level==="dataset" ? `Dataset: ${esc(data.dataset||data.id||"")}`
+    : `Question: ${esc(data.id||"")} (${esc(data.dataset||"")})`;
+
+  const problems = (data.problems||[]);
+  const highlights = (data.highlights||[]);
+  const todos = (data.suggested_todos||[]);
+
+  const problemsHtml = problems.length
+    ? problems.map(p=>`<div class="ins-item"><span class="ins-item-icon">⚠</span><span>${esc(p)}</span></div>`).join("")
+    : `<div class="ins-item" style="color:var(--muted)"><span class="ins-item-icon">✓</span><span>No problems identified.</span></div>`;
+
+  const highlightsHtml = highlights.length
+    ? highlights.map(h=>`<div class="ins-item"><span class="ins-item-icon">✨</span><span>${esc(h)}</span></div>`).join("")
+    : `<div class="ins-item" style="color:var(--muted)"><span class="ins-item-icon">—</span><span>None yet.</span></div>`;
+
+  const todosHtml = todos.length
+    ? todos.map(t=>{
+        const p=(t.priority||"medium").toLowerCase();
+        return `<div class="ins-item"><span class="ins-prio ${p}">${p.toUpperCase()}</span><span>${esc(t.title||t)}</span></div>`;
+      }).join("")
+    : `<div class="ins-item" style="color:var(--muted)"><span class="ins-item-icon">—</span><span>None suggested.</span></div>`;
+
+  container.innerHTML = `
+    <div class="ins-card">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px">${levelLabel}</div>
+      ${data.summary ? `<div style="font-size:13px;line-height:1.6;margin-bottom:14px;color:var(--text)">${esc(data.summary)}</div>` : ""}
+      <div class="ins-section">
+        <div class="ins-section-title">⚠ Problems</div>
+        ${problemsHtml}
+      </div>
+      <div class="ins-section">
+        <div class="ins-section-title">✨ Highlights</div>
+        ${highlightsHtml}
+      </div>
+      <div class="ins-section">
+        <div class="ins-section-title">✅ Suggested TODOs</div>
+        ${todosHtml}
+      </div>
+      <div class="ins-generated">Generated by document-manager · ${genAt}</div>
+    </div>`;
+}
+
+async function loadInsightSystem(){
+  $("ins-status").textContent = "loading…";
+  try{
+    const r = await fetch("/api/insights/system");
+    if(r.ok){
+      _renderInsightCard(await r.json(), $("ins-system-card"), $("ins-system-empty"));
+    } else {
+      $("ins-system-card").style.display = "none";
+      $("ins-system-empty").style.display = "";
+    }
+  }catch(_){}
+  $("ins-status").textContent = "";
+}
+
+async function loadInsightDataset(){
+  // Populate dataset selector once
+  const sel = $("ins-ds-select");
+  if(!sel.options.length){
+    const datasets = (allDatasets&&allDatasets.length) ? allDatasets : [{slug:"first_proof_1",name:"First Proof 1"}];
+    for(const d of datasets){
+      sel.appendChild(new Option(d.name||d.slug, d.slug));
+    }
+    sel.onchange = loadInsightDataset;
+  }
+  const slug = sel.value || "first_proof_1";
+  $("ins-status").textContent = "loading…";
+  try{
+    const r = await fetch(`/api/insights/dataset/${encodeURIComponent(slug)}`);
+    if(r.ok){
+      _renderInsightCard(await r.json(), $("ins-dataset-card"), $("ins-dataset-empty"));
+    } else {
+      $("ins-dataset-card").style.display = "none";
+      $("ins-dataset-empty").style.display = "";
+    }
+  }catch(_){}
+  $("ins-status").textContent = "";
+}
+
+async function loadInsightQuestion(qid){
+  const hdr = $("ins-q-header");
+  if(!qid){
+    hdr.style.display = "";
+    $("ins-question-card").style.display = "none";
+    $("ins-question-empty").style.display = "none";
+    return;
+  }
+  hdr.style.display = "none";
+  const ds = selectedDataset||"first_proof_1";
+  $("ins-status").textContent = "loading…";
+  try{
+    const r = await fetch(`/api/insights/question/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds)}`);
+    if(r.ok){
+      _renderInsightCard(await r.json(), $("ins-question-card"), $("ins-question-empty"));
+    } else {
+      $("ins-question-card").style.display = "none";
+      $("ins-question-empty").style.display = "";
+    }
+  }catch(_){}
+  $("ins-status").textContent = "";
+}
+
+async function loadInsights(){
+  _insSetLevel(_insLevel);
+  if(_insLevel==="system")   await loadInsightSystem();
+  else if(_insLevel==="dataset")  await loadInsightDataset();
+  else if(_insLevel==="question") await loadInsightQuestion(selected);
+}
 </script>
 </body>
 </html>
