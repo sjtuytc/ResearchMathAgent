@@ -20,7 +20,14 @@ _SYSTEM = (
 _JSON_SCHEMA = (
     '{"summary":"<2-3 sentence overview>","problems":["<issue 1>","..."],'
     '"highlights":["<positive finding 1>","..."],'
-    '"suggested_todos":[{"title":"<action>","priority":"high|medium|low"},"..."]}'
+    '"suggested_todos":[{"title":"<action>","priority":"high|medium|low"}]}'
+)
+
+_SYSTEM_JSON_SCHEMA = (
+    '{"summary":"<2-3 sentence strategic overview>","problems":["<blocker 1>","..."],'
+    '"highlights":["<positive finding 1>","..."],'
+    '"suggested_todos":[{"title":"<action>","priority":"high|medium|low"}],'
+    '"mistakes":["<recurring mistake or lesson learned 1>","..."]}'
 )
 
 
@@ -225,13 +232,15 @@ def generate_system_insight(repo_root: Path) -> dict:
     prompt = (
         f"{_SYSTEM}\n\n"
         f"{ctx}\n\n"
-        "Based on the above system-wide context, produce a research project insight report.\n\n"
+        "Based on the above system-wide context, produce a strategic research project insight report.\n\n"
         "Focus on:\n"
         "- Overall progress and blockers across all problems\n"
         "- Which problems are closest to being solved vs. most stuck\n"
         "- Resource usage and efficiency\n"
-        "- High-level strategic recommendations\n\n"
-        f"Respond with ONLY valid JSON matching this schema:\n{_JSON_SCHEMA}"
+        "- High-level strategic recommendations for what to do next with the whole project\n"
+        "- Common MISTAKES the team has made repeatedly: wrong proof strategies, failed approaches, "
+        "recurring verification errors, misunderstood hypotheses — things to avoid going forward\n\n"
+        f"Respond with ONLY valid JSON matching this schema:\n{_SYSTEM_JSON_SCHEMA}"
     )
     data = _one_shot(prompt)
     from .insights import save_system_insight

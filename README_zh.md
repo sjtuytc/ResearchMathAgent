@@ -25,7 +25,7 @@
 | **多智能体流水线** | 初始化器 → 提议器 → 验证器 → 精炼器，通过结构化共享记忆协调 |
 | **领先实验结果** | 在 First Proof 上解决 **8 / 10** 道问题，超越 GPT-5.2R 与 Aletheia |
 | **双 Claude 后端** | Anthropic Messages API（按 token 付费）*或* Claude Code 本地 CLI（Pro/Max 订阅额度） |
-| **实时 Web 界面** | 逐步流式输出、实时 PDF 预览、问题追踪器、token 费用显示 |
+| **实时 Web 界面** | 逐步流式输出、实时 PDF 预览、问题追踪器、token 费用显示（含来源归因与饼图） |
 | **自主每日工作器** | 无需人工干预，定时运行求解器，将有日期的报告写入 `documents/` |
 | **基准公平沙箱** | 代码层面强制污染边界——求解器绝不读取历史解答 |
 | **多智能体 GitHub Issues API** | REST 接口 (`/api/gh/issues`) 让多个智能体在真实 GitHub Issues 上协作 |
@@ -272,16 +272,18 @@ ssh -L 8000:localhost:8000 user@server
 <details>
 <summary>Web 应用功能列表</summary>
 
+- **概览（Overview）标签页** — 三级层次结构（系统 → 数据集 → 问题）；SVG 环形饼图展示费用来源归因（NAIRR / Google Cloud Vertex AI 与个人 Anthropic 订阅）及用途分类（证明研究 vs 网站开发）；所有图表与信息图标支持悬停提示
 - **问题（Question）标签页** — 以 KaTeX 渲染 `.tex` 问题陈述；支持原始/渲染切换
-- **议题（Issue）标签页** — 类 GitHub 风格的每题议题追踪器（多智能体评论线程、状态、标签）；同时暴露 `/api/gh/issues` 用于直接控制 GitHub Issues
+- **议题（Issue）标签页** — 类 GitHub 风格的每题议题追踪器（多智能体评论线程、状态、标签）；支持完整 LaTeX / MathJax 渲染；同时暴露 `/api/gh/issues` 用于直接控制 GitHub Issues
 - **智能体（Agent）标签页** — 实时流式运行求解器，显示推理过程 + 工具调用 + 渲染数学公式 + token 费用
-- **文档（Documents）标签页** — 浏览有日期的每日报告；支持手动触发智能体运行
+- **文档（Documents）标签页** — 浏览有日期的每日报告；支持手动触发智能体运行；支持公式完整渲染
+- **开发日志（Dev Log）标签页** — 网站更新历史，可通过命令面板快速访问（`Ctrl K → devlog`）
 - **双 Claude 后端** — API 密钥或本地 Claude Code 订阅（`claude` CLI 无头模式，消耗 Pro/Max 订阅额度而非 API 额度）
 - **逐步实时流** — 推理块、助手文本、工具调用及结果实时显示
 - **停止按钮** — `POST /api/cancel` 立即终止后端进程组，停止消耗订阅额度
 - **活跃运行面板** — 列出所有进行中的运行，每个运行均有独立停止按钮，便于并行运行管理
 - **PDF 预览** — 在线编译 `solution.tex`（需服务器端 LaTeX）；无 LaTeX 时优雅降级
-- **Token / 费用显示** — 每轮用量图表与每张卡片的费用标注
+- **Token / 费用显示** — 每轮用量图表、每张卡片费用标注及按来源分类（NAIRR vs 订阅）的费用明细
 - **自主每日工作器** — `python -m webapp.daily` 每晚自动运行求解器，写入 `documents/YYYY-MM-DD.md`，并将每次运行记录到对应问题的议题线程
 
 </details>

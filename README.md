@@ -27,7 +27,7 @@
 | **Multi-agent pipeline** | Initializer → Proposer → Verifier → Refiner, coordinated through shared structured memory |
 | **State-of-the-art results** | Solves **8 / 10** First Proof problems; outperforms GPT-5.2R and Aletheia |
 | **Two Claude backends** | Anthropic Messages API (pay-per-token) *or* Claude Code local CLI (Pro/Max subscription) |
-| **Live web UI** | Streaming step-by-step viewer, live PDF preview, per-question issue tracker, token cost display |
+| **Live web UI** | Streaming step-by-step viewer, live PDF preview, per-question issue tracker, token cost display with provider attribution and pie charts |
 | **Autonomous daily worker** | Runs the solver overnight with no human in the loop, writes dated reports to `documents/` |
 | **Benchmark-fair sandbox** | Contamination boundary enforced in code — prior solutions are never read by the solver |
 | **Agentic GitHub Issues API** | REST API (`/api/gh/issues`) so multiple agents can coordinate on real GitHub Issues |
@@ -274,16 +274,18 @@ ssh -L 8000:localhost:8000 user@server
 <details>
 <summary>Web app feature list</summary>
 
+- **Overview tab** — 3-level hierarchy (System → Dataset → Question) with SVG donut pie charts; cost attribution by source (NAIRR / Google Cloud Vertex AI vs personal Anthropic subscription) and by purpose (proof research vs website dev); hover tooltips on all charts and info icons
 - **Question tab** — renders the `.tex` problem statement with KaTeX; toggle raw/rendered
-- **Issue tab** — GitHub-style per-problem issue tracker (multi-agent comment threads, status, labels); also exposes `/api/gh/issues` for direct GitHub Issues control
+- **Issue tab** — GitHub-style per-problem issue tracker (multi-agent comment threads, status, labels); full LaTeX / MathJax rendering; also exposes `/api/gh/issues` for direct GitHub Issues control
 - **Agent tab** — run the solver live with streaming thinking + tool calls + rendered math + token cost
-- **Documents tab** — browse dated daily reports; trigger a manual agent run
+- **Documents tab** — browse dated daily reports; trigger a manual agent run; full LaTeX rendering for equations
+- **Dev Log tab** — website change history accessible from the command palette (`Ctrl K → devlog`)
 - **Two Claude backends** — API key or local Claude Code subscription (the `claude` CLI in headless mode, so runs draw from your Pro/Max subscription, not API credits)
 - **Live step-by-step stream** — every thinking block, assistant text, tool call, and result appear in real time
 - **Stop button** — `POST /api/cancel` kills the backend process group immediately, stopping subscription consumption
 - **Active runs panel** — lists every in-flight run with per-run Stop buttons for parallel-run control
 - **PDF preview** — compile `solution.tex` inline (requires server-side LaTeX); degrades gracefully
-- **Token / cost display** — per-turn usage chart and per-card annotation
+- **Token / cost display** — per-turn usage chart, per-card annotation, and per-provider breakdown (NAIRR vs subscription)
 - **Autonomous daily worker** — `python -m webapp.daily` runs the solver nightly, writes `documents/YYYY-MM-DD.md`, logs each run to the question's issue thread
 
 </details>

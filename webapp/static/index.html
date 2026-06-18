@@ -2496,8 +2496,8 @@ function setTab(name){
   if(name==="issue"){ issSetLevel(_issLevel); }
   if(name==="documents"){ if(q) loadQuestionDocs(q); else loadDocuments(); }
   if(name==="proofs"){ if(q) loadProofForQuestion(q); else if(!pfProbs.length) loadProofs(); }
-  if(name==="literature"){ loadLiterature(q||null); }
-  if(name==="concepts"){ loadConcepts(q||null); }
+  if(name==="literature"){ if(q) loadLiterature(q); }
+  if(name==="concepts"){ if(q) loadConcepts(q); }
   if(name==="devlog"){ loadDevLog(); }
   if(name==="hero"){ heroRefreshDiagram(); }
   if(name==="meet"){ if(q||selected) loadMeetRooms(q||selected); }
@@ -5251,15 +5251,100 @@ function _renderInsightCard(data, container, emptyEl){
 
 async function loadInsightSystem(){
   $("ins-status").textContent = "loading…";
+
+  // ── 1. Main system insight (roadmap / general) ──
   try{
     const r = await fetch("/api/insights/system");
     if(r.ok){
-      _renderInsightCard(await r.json(), $("ins-system-card"), $("ins-system-empty"));
+      const sys = await r.json();
+      _renderInsightCard(sys, $("ins-system-card"), $("ins-system-empty"));
+
+      // ── Mistakes section ──
+      const mistakesList = sys.mistakes||[];
+      const mistakesWrap = $("ins-sys-mistakes-wrap");
+      const mistakesEl   = $("ins-sys-mistakes");
+      if(mistakesList.length){
+        mistakesEl.innerHTML = mistakesList.map(m=>
+          `<div class="ins-item"><span class="ins-item-icon">✗</span><span>${esc(m)}</span></div>`
+        ).join("");
+        mistakesWrap.style.display = "";
+      } else {
+        mistakesWrap.style.display = "none";
+      }
     } else {
       $("ins-system-card").style.display = "none";
       $("ins-system-empty").style.display = "";
     }
   }catch(_){}
+
+  // ── 2. Per-dataset mini-cards ──
+  const datasets = (allDatasets&&allDatasets.length) ? allDatasets : [{slug:"first_proof_1",name:"First Proof 1"}];
+  const dsWrap = $("ins-sys-datasets-wrap");
+  const dsEl   = $("ins-sys-datasets");
+  try{
+    const dsInsights = await Promise.all(datasets.map(async d=>{
+      try{
+        const r=await fetch(`/api/insights/dataset/${encodeURIComponent(d.slug)}`);
+        if(r.ok){ const data=await r.json(); return {ds:d, data}; }
+      }catch(_){}
+      return {ds:d, data:null};
+    }));
+    const cards = dsInsights.filter(x=>x.data&&!x.data.error);
+    if(cards.length){
+      dsEl.innerHTML = cards.map(({ds,data})=>{
+        const todos=(data.suggested_todos||[]).slice(0,3);
+        const todosHtml=todos.map(t=>{
+          const p=(t.priority||"medium").toLowerCase();
+          return `<div class="ins-item" style="margin-top:4px"><span class="ins-prio ${p}">${p.toUpperCase()}</span><span>${esc(t.title||t)}</span></div>`;
+        }).join("");
+        return `<div class="ins-card" style="margin-bottom:12px;max-width:820px">
+          <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">📦 ${esc(ds.name||ds.slug)}</div>
+          ${data.summary?`<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:8px">${esc(data.summary)}</div>`:""}
+          ${todosHtml}
+        </div>`;
+      }).join("");
+      dsWrap.style.display="";
+    } else {
+      dsWrap.style.display="none";
+    }
+  }catch(_){ dsWrap.style.display="none"; }
+
+  // ── 3. Notable questions (highest open issue count) ──
+  const notableWrap = $("ins-sys-notable-wrap");
+  const notableEl   = $("ins-sys-notable");
+  try{
+    const r=await fetch("/api/insights");
+    if(r.ok){
+      const all=await r.json();
+      const qInsights=all.filter(i=>i.level==="question").slice(0,10);
+      if(qInsights.length){
+        // Fetch each to check problems array length
+        const qCards = await Promise.all(qInsights.map(async i=>{
+          try{
+            const r2=await fetch(`/api/insights/question/${encodeURIComponent(i.id)}?dataset=${encodeURIComponent(i.dataset||"first_proof_1")}`);
+            if(r2.ok){ const d=await r2.json(); return {meta:i,data:d}; }
+          }catch(_){}
+          return {meta:i,data:null};
+        }));
+        const notable=qCards.filter(x=>x.data&&(x.data.problems||[]).length>0)
+          .sort((a,b)=>(b.data.problems||[]).length-(a.data.problems||[]).length)
+          .slice(0,5);
+        if(notable.length){
+          notableEl.innerHTML = notable.map(({meta,data})=>{
+            const probs=(data.problems||[]).slice(0,2);
+            const probsHtml=probs.map(p=>`<div class="ins-item" style="margin-top:4px"><span class="ins-item-icon">⚠</span><span>${esc(p)}</span></div>`).join("");
+            return `<div class="ins-card" style="margin-bottom:10px;max-width:820px">
+              <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">❓ ${esc(meta.id)} <span style="font-weight:400;color:var(--muted)">(${esc(meta.dataset||"")})</span></div>
+              ${data.summary?`<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:6px">${esc(data.summary)}</div>`:""}
+              ${probsHtml}
+            </div>`;
+          }).join("");
+          notableWrap.style.display="";
+        } else { notableWrap.style.display="none"; }
+      } else { notableWrap.style.display="none"; }
+    } else { notableWrap.style.display="none"; }
+  }catch(_){ notableWrap.style.display="none"; }
+
   $("ins-status").textContent = "";
 }
 
