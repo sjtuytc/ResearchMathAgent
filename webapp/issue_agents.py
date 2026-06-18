@@ -146,6 +146,7 @@ def _seed_workspace(
             )
 
     # Write enabled prefix entries as prefix.md for agent context
+    from .prefix import build_prefix_md
     pfx_md = build_prefix_md(repo_root, problem_id)
     if pfx_md:
         (ws / "prefix.md").write_text(pfx_md, encoding="utf-8")

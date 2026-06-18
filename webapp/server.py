@@ -56,7 +56,7 @@ from .literature import (
     pdf_path_for as lit_pdf_path, get_pdf_status as lit_pdf_status,
     download_paper_pdf as lit_download_pdf, seed_global_library,
 )
-from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
+from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts, ensure_fp2_concepts
 from .devlog import read_log as devlog_read, append_entry as devlog_append
 from .insights import get_system_insight, get_dataset_insight, get_question_insight
 from .issue_pdf import compile_issue_pdf
@@ -216,6 +216,7 @@ threading.Thread(target=seed_global_library, args=(REPO_ROOT,), daemon=True).sta
 threading.Thread(
     target=ensure_all_concepts, args=(REPO_ROOT, _Q_TITLES), daemon=True
 ).start()
+threading.Thread(target=ensure_fp2_concepts, args=(REPO_ROOT,), daemon=True).start()
 from .issue_loop import run_issue_loop, evolve_once as _evolve_issues_once
 threading.Thread(target=run_issue_loop, args=(REPO_ROOT,), daemon=True).start()
 
@@ -1471,6 +1472,59 @@ def api_evolve_issues() -> JSONResponse:
     return JSONResponse({"started": True})
 
 
+@app.post("/api/push-forward")
+def push_forward_ep(payload: dict = Body(default={})) -> JSONResponse:
+    """Trigger the global daily push-forward across ALL problems (background thread).
+
+    Runs issue discovery + resolution for every active problem, then creates
+    a new meeting room with expert mathematician personas and runs one round of
+    AI discussion. Gated to once-per-day unless force=true is passed.
+    """
+    from .push_forward import run_push_forward, already_ran_today, running_job
+
+    force = bool(payload.get("force", False))
+    problems = payload.get("problems") or None  # optional list to restrict scope
+
+    if not force and already_ran_today(REPO_ROOT):
+        return JSONResponse({
+            "started": False,
+            "reason": "already ran today — pass {\"force\": true} to override",
+        })
+
+    active = running_job()
+    if active:
+        return JSONResponse({
+            "started": False,
+            "reason": "push-forward already running",
+            "job_id": active["job_id"],
+        })
+
+    job_id = uuid.uuid4().hex
+    threading.Thread(
+        target=run_push_forward,
+        args=(REPO_ROOT, job_id),
+        kwargs={"problems": problems},
+        daemon=True,
+    ).start()
+    return JSONResponse({"started": True, "job_id": job_id})
+
+
+@app.get("/api/push-forward/status")
+def push_forward_status_ep() -> JSONResponse:
+    """Return the state of all push-forward jobs (in-memory) + persisted run history."""
+    from .push_forward import list_jobs, load_state
+    return JSONResponse({"jobs": list_jobs(), "state": load_state(REPO_ROOT)})
+
+
+@app.get("/api/push-forward/status/{job_id}")
+def push_forward_job_ep(job_id: str) -> JSONResponse:
+    from .push_forward import get_job
+    info = get_job(job_id)
+    if info is None:
+        return JSONResponse({"status": "unknown"}, status_code=404)
+    return JSONResponse(info)
+
+
 @app.post("/api/eval/solvability/refresh")
 def refresh_solvability_eval(force: bool = Query(False)) -> JSONResponse:
     """Re-evaluate AI solvability for all q1-q10 using Claude Opus (background)."""
@@ -1918,6 +1972,228 @@ def insights_question(dataset: str, qid: str) -> JSONResponse:
     if not data:
         return JSONResponse({"summary": None}, status_code=404)
     return JSONResponse(data)
+
+
+# ── Export ───────────────────────────────────────────────────────────────────
+
+_WORKFLOW_INTROS = {
+    "verify": (
+        "Please **verify the proof** below step by step. Identify any logical gaps, "
+        "incorrect lemma applications, or unsupported claims. For each issue found, "
+        "describe it clearly and suggest a fix."
+    ),
+    "fix": (
+        "Please **fix the open issues** listed below. For each issue, provide a concrete "
+        "resolution — corrected LaTeX, a new lemma, or a revised argument — then output "
+        "an updated clean proof incorporating all fixes."
+    ),
+    "improve": (
+        "Please **try to improve the constant** in the proof below. The current best "
+        "is c = 1/42 (Spielman). The conjectured tight bound is c = 1/2. Explore whether "
+        "a sharper barrier-function argument or a different greedy selection rule can "
+        "push the constant higher."
+    ),
+    "review": (
+        "Please give a **general review and feedback** on the proof below. Assess: "
+        "(1) overall strategy, (2) correctness of key steps, (3) clarity and completeness, "
+        "(4) any promising directions to strengthen the result."
+    ),
+}
+
+_RESPONSE_FORMAT = """\
+=== TASK_VERDICT ===
+<your overall assessment — 1-3 paragraphs>
+=== END_TASK_VERDICT ===
+
+=== TASK_FIX ===
+<corrected LaTeX for any issues found, or "No fix needed.">
+=== END_TASK_FIX ===
+
+=== TASK_PROOF ===
+<the full clean proof LaTeX (if you produced one), otherwise leave empty>
+=== END_TASK_PROOF ===
+
+=== TASK_NEW_ISSUES_JSON ===
+[{"title":"...","body":"...","severity":"minor|major|critical"}, ...]
+=== END_TASK_NEW_ISSUES_JSON ===
+"""
+
+
+@app.get("/api/export/{problem_id}")
+def export_bundle(
+    problem_id: str,
+    include_problem: int = Query(1),
+    include_issues: int = Query(1),
+    include_proof: int = Query(1),
+    include_docs: int = Query(0),
+    workflow: str = Query("verify"),
+    dataset: str = Query(None),
+) -> JSONResponse:
+    """Generate a self-contained markdown bundle to send to a collaborator."""
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid problem id"}, status_code=400)
+    ds = _ds_from_query(dataset)
+
+    lines: list[str] = []
+    pid = problem_id
+
+    # ── Header ────────────────────────────────────────────────────────────────
+    title = _Q_TITLES.get(pid, pid)
+    lines += [
+        f"# Research Collaboration Bundle — {pid.upper()}: {title}",
+        "*Send this entire document to Claude. Ask Claude to follow the WORKFLOW section.*",
+        "",
+        "---",
+        "",
+        "## 0. INSTRUCTIONS FOR YOUR FRIEND",
+        "",
+        "Hi! Please paste this full document into Claude and say:",
+        "",
+        '> "Please follow the WORKFLOW at the end of this document exactly, producing all requested deliverables."',
+        "",
+        "Enable extended thinking if you can (Claude Pro → Extended thinking toggle). "
+        "Then copy **the complete Claude response** and send it back to me.",
+        "",
+        "---",
+        "",
+    ]
+
+    # ── Problem statement ─────────────────────────────────────────────────────
+    if include_problem:
+        tex = ""
+        tex_path = REPO_ROOT / "problems" / f"{pid}.tex"
+        if tex_path.is_file():
+            tex = _expand_tex_inputs(
+                tex_path.read_text(encoding="utf-8", errors="replace"), REPO_ROOT
+            )
+        if not tex:
+            try:
+                p = ds_get_problem(ds, pid)
+                if p:
+                    tex = p.get("tex") or p.get("statement", "")
+            except Exception:  # noqa: BLE001
+                pass
+        if tex:
+            lines += [
+                "## 1. PROBLEM STATEMENT",
+                "",
+                "```latex",
+                tex.strip(),
+                "```",
+                "",
+                "---",
+                "",
+            ]
+
+    # ── Working proof ─────────────────────────────────────────────────────────
+    if include_proof:
+        from .issue_agents import get_working_proof as _gwp
+        proof_tex = _gwp(REPO_ROOT, pid)
+        if not proof_tex:
+            try:
+                best = get_best_proof(pid)
+                if best:
+                    proof_tex = best.get("solution_tex", "")
+            except Exception:  # noqa: BLE001
+                pass
+        if proof_tex:
+            lines += [
+                "## 2. CURRENT WORKING PROOF",
+                "",
+                "```latex",
+                proof_tex.strip(),
+                "```",
+                "",
+                "---",
+                "",
+            ]
+
+    # ── Open issues ───────────────────────────────────────────────────────────
+    if include_issues:
+        try:
+            all_issues = list_issues(REPO_ROOT, pid, ds)
+        except Exception:  # noqa: BLE001
+            all_issues = []
+        open_issues = [i for i in all_issues if i.get("status") in ("open", "in_progress")]
+        if open_issues:
+            lines += [
+                "## 3. OPEN ISSUES",
+                "",
+                f"There are currently **{len(open_issues)}** open issue(s) for this problem:",
+                "",
+            ]
+            for idx, iss in enumerate(open_issues, 1):
+                sev = iss.get("severity", "")
+                sev_str = f" [{sev.upper()}]" if sev else ""
+                lines.append(f"### Issue {idx}: {iss.get('title','Untitled')}{sev_str}")
+                lines.append("")
+                body = iss.get("body", "").strip()
+                if body:
+                    lines.append(body)
+                    lines.append("")
+                # Latest agent comment (if any)
+                comments = iss.get("comments", [])
+                agent_comments = [c for c in comments if c.get("role") in ("agent", "assistant")]
+                if agent_comments:
+                    last = agent_comments[-1]
+                    lines.append(f"**Latest analysis ({last.get('author','agent')}):**")
+                    lines.append("")
+                    lines.append(last.get("body", "").strip()[:800])
+                    lines.append("")
+            lines += ["---", ""]
+
+    # ── Key documents ─────────────────────────────────────────────────────────
+    if include_docs:
+        qdir = REPO_ROOT / "documents" / "questions" / pid
+        doc_names = ["overview.md", "strategies.md", "progress.md"]
+        included_any = False
+        for dname in doc_names:
+            dp = qdir / dname
+            if dp.is_file():
+                try:
+                    content = dp.read_text(encoding="utf-8", errors="replace")[:2000]
+                    if not included_any:
+                        lines += ["## 4. KEY DOCUMENTS", ""]
+                        included_any = True
+                    lines += [
+                        f"### {dname}",
+                        "",
+                        content.strip(),
+                        "",
+                    ]
+                except Exception:  # noqa: BLE001
+                    pass
+        if included_any:
+            lines += ["---", ""]
+
+    # ── Workflow instructions ─────────────────────────────────────────────────
+    wf_key = workflow if workflow in _WORKFLOW_INTROS else "verify"
+    wf_text = _WORKFLOW_INTROS[wf_key]
+    sec_num = 5 if include_docs else (4 if (include_proof or include_issues) else 2)
+    lines += [
+        f"## {sec_num}. WORKFLOW",
+        "",
+        wf_text,
+        "",
+        "Please produce **all four** structured output blocks:",
+        "",
+        "```",
+        _RESPONSE_FORMAT.strip(),
+        "```",
+        "",
+        "---",
+        "",
+        f"*Bundle generated {__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} "
+        f"for problem {pid} ({ds}).*",
+    ]
+
+    markdown = "\n".join(lines)
+    return JSONResponse({
+        "problem_id": pid,
+        "title": title,
+        "markdown": markdown,
+        "char_count": len(markdown),
+    })
 
 
 # Serve the SPA. Mounted last so /api/* routes take precedence.

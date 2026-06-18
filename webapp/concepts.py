@@ -119,17 +119,77 @@ def ensure_all_concepts(repo_root: Path, q_titles: dict | None = None) -> None:
                            err.data.get("message") if err else "unknown")
 
 
-def generate_concepts(repo_root: Path, qid: str, title: str) -> Iterator[AgentEvent]:
-    """Call Claude to extract concepts from the problem, save and yield AgentEvents."""
-    problem_path = repo_root / "problems" / f"{qid}.tex"
-    if not problem_path.is_file():
-        yield AgentEvent("error", {"message": f"Problem file not found: {qid}.tex"})
-        yield AgentEvent("done", {"reason": "error"})
+def ensure_fp2_concepts(repo_root: Path) -> None:
+    """Background: extract concepts for any first_proof_2 problem missing a concepts file.
+
+    Mirrors ensure_all_concepts but reads problem statements from the dataset
+    store rather than problems/*.tex files.
+    """
+    try:
+        from .dataset_store import list_problems as ds_list, get_problem as ds_get
+    except Exception as exc:
+        logger.warning("ensure_fp2_concepts: could not import dataset_store — %s", exc)
         return
+
+    problems = ds_list("first_proof_2") or []
+    if not problems:
+        logger.debug("ensure_fp2_concepts: no first_proof_2 problems found, skipping")
+        return
+
+    logger.info("ensure_fp2_concepts: checking %d first_proof_2 problems…", len(problems))
+    first = True
+    for prob in problems:
+        pid = prob.get("id", "")
+        if not pid:
+            continue
+        if load_concepts(repo_root, pid):
+            logger.debug("ensure_fp2_concepts: %s already has concepts, skipping", pid)
+            continue
+        if not first:
+            time.sleep(_EXTRACTION_GAP_SECS)
+        first = False
+        title = prob.get("title", pid)
+        # Fetch full record to get the statement/tex
+        full = ds_get("first_proof_2", pid)
+        if not full:
+            logger.warning("ensure_fp2_concepts: could not load problem record for %s", pid)
+            continue
+        statement = full.get("statement") or full.get("tex") or ""
+        if not statement:
+            logger.warning("ensure_fp2_concepts: %s has no statement text, skipping", pid)
+            continue
+        logger.info("ensure_fp2_concepts: extracting concepts for %s", pid)
+        results = list(generate_concepts(repo_root, pid, title, problem_tex=statement))
+        done = next((e for e in results if e.type == "done"), None)
+        if done and done.data.get("count", 0) > 0:
+            logger.info("ensure_fp2_concepts: %s — %d concepts extracted", pid, done.data["count"])
+        else:
+            err = next((e for e in results if e.type == "error"), None)
+            logger.warning(
+                "ensure_fp2_concepts: %s failed — %s", pid,
+                err.data.get("message") if err else "unknown",
+            )
+
+
+def generate_concepts(
+    repo_root: Path, qid: str, title: str, problem_tex: str | None = None
+) -> Iterator[AgentEvent]:
+    """Call Claude to extract concepts from the problem, save and yield AgentEvents.
+
+    If *problem_tex* is provided it is used directly; otherwise the text is read
+    from problems/{qid}.tex (first_proof_1 behaviour).
+    """
+    if problem_tex is None:
+        problem_path = repo_root / "problems" / f"{qid}.tex"
+        if not problem_path.is_file():
+            yield AgentEvent("error", {"message": f"Problem file not found: {qid}.tex"})
+            yield AgentEvent("done", {"reason": "error"})
+            return
+        problem_tex = problem_path.read_text(encoding="utf-8", errors="replace")
 
     yield AgentEvent("status", {"state": "running", "message": "Extracting concepts with Claude…"})
 
-    problem_tex = problem_path.read_text(encoding="utf-8", errors="replace")[:6000]
+    problem_tex = problem_tex[:6000]
     prompt = _EXTRACT_PROMPT.format(qid=qid, title=title, problem_tex=problem_tex)
     raw = _call_llm(prompt, _EXTRACT_SYSTEM)
 

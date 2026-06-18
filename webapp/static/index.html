@@ -59,7 +59,6 @@ MathJax = {
   .qitem .qt{display:block;font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .main{display:flex;flex-direction:column;min-width:0}
   .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 14px}
-  .tab-freq{display:inline-block;margin-left:4px;font-size:9px;font-weight:700;background:var(--accent);color:#fff;border-radius:8px;padding:0 4px;vertical-align:middle;opacity:.75;line-height:14px}
   .tab{padding:11px 16px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;font-size:13px}
   .tab.active{color:var(--text);border-bottom-color:var(--accent)}
   .pane{flex:1;overflow-y:auto;padding:18px 22px;display:none}
@@ -241,6 +240,7 @@ MathJax = {
     <svg width=12 height=12 viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width=2><circle cx=6 cy=6 r=5/><path d='M10.5 10.5l4 4'/></svg>
     Search <kbd style="font-size:9px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:3px;padding:0 4px;margin-left:2px">Ctrl K</kbd>
   </button>
+  <a href="/rmac/filter/" class="btn-sec" style="text-decoration:none;padding:4px 10px;font-size:11px;font-weight:500;margin-left:8px;flex-shrink:0" title="Browse the 14k dataset">Filter ↗</a>
   <button id="bug-report-btn" class="btn-sec" style="padding:4px 10px;font-size:11px;font-weight:500;margin-left:8px;flex-shrink:0" title="Report a bug or issue with a proof">Report bug</button>
 </header>
 <div class="layout">
@@ -313,9 +313,34 @@ MathJax = {
       <div class="tab" data-tab="concepts">Concepts</div>
       <div class="tab" data-tab="meet">Meet</div>
       <div class="tab" data-tab="devlog">Dev Log</div>
+      <div class="tab" data-tab="export">Export</div>
     </div>
 
     <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
+
+      <!-- ── Global Push Forward ──────────────────────────────────────── -->
+      <div id="ov-push-card" class="card" style="margin-bottom:14px;border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.04)">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <span style="font-size:14px;font-weight:800;color:var(--green)">Push Forward All</span>
+          <span id="pf-all-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)">idle</span>
+          <span id="pf-all-last" style="font-size:11px;color:var(--muted)"></span>
+          <button id="pf-all-btn" class="btn-pri" style="margin-left:auto;padding:5px 18px;font-size:13px">Push Forward ▶</button>
+          <button id="pf-all-force-btn" class="btn-sec" style="font-size:11px;padding:3px 10px" title="Force re-run even if already ran today">Force re-run</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+          Runs once per day across <strong>all 10 problems</strong>: discover proof gaps → resolve open issues → create expert mathematician meetings → run a round of AI discussion. Uses Vertex AI.
+        </div>
+        <div id="pf-all-progress" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span id="pf-all-current" style="font-size:12px;color:var(--accent);font-weight:600"></span>
+            <span id="pf-all-counter" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div style="height:5px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-bottom:8px">
+            <div id="pf-all-bar" style="height:100%;width:0;background:var(--green);border-radius:3px;transition:width .4s"></div>
+          </div>
+          <div id="pf-all-log" style="font-size:10px;color:var(--muted);max-height:100px;overflow-y:auto;font-family:monospace;white-space:pre-wrap;border:1px solid var(--border);border-radius:4px;padding:4px 8px;background:var(--bg)"></div>
+        </div>
+      </div>
 
       <!-- ── System summary (always visible first) ──────────────────── -->
       <div id="ov-system-card" class="card" style="margin-bottom:14px">
@@ -1068,6 +1093,55 @@ MathJax = {
       </div>
     </section>
 
+    <!-- ── Export tab ──────────────────────────────────────────────────── -->
+    <section class="pane" id="pane-export" style="padding:18px 22px;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span style="font-size:15px;font-weight:700">Export Context Bundle</span>
+        <span id="exp-q-label" style="font-size:13px;color:var(--muted)">No question selected</span>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 14px">
+        Generate a self-contained markdown document that wraps this problem's context —
+        problem statement, open issues, and current working proof — so you can paste it
+        into Claude or send it to a collaborator. They paste it and follow the embedded workflow.
+      </p>
+
+      <!-- Options -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px">Include in bundle</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <label class="inline"><input type="checkbox" id="exp-inc-problem" checked> Problem statement</label>
+          <label class="inline"><input type="checkbox" id="exp-inc-issues" checked> Open issues</label>
+          <label class="inline"><input type="checkbox" id="exp-inc-proof" checked> Working proof</label>
+          <label class="inline"><input type="checkbox" id="exp-inc-docs"> Key documents</label>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--muted)">Workflow intent:</label>
+          <select id="exp-workflow" style="font-size:12px;padding:4px 8px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:5px">
+            <option value="verify">Verify proof &amp; find issues</option>
+            <option value="fix">Fix open issues</option>
+            <option value="improve">Improve the constant</option>
+            <option value="review">General review &amp; feedback</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bar">
+        <button class="btn-pri" id="exp-gen-btn" disabled>Generate bundle</button>
+        <button class="btn-sec" id="exp-copy-btn" disabled>Copy to clipboard</button>
+        <button class="btn-sec" id="exp-dl-btn" disabled>Download .md</button>
+        <span id="exp-status" style="font-size:12px;color:var(--muted);margin-left:4px"></span>
+      </div>
+
+      <!-- Preview -->
+      <div id="exp-preview-wrap" style="display:none;margin-top:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Preview</span>
+          <span id="exp-char-count" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+        <textarea id="exp-preview" readonly style="min-height:480px;font-size:12px;line-height:1.5;resize:vertical"></textarea>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -1470,19 +1544,40 @@ async function loadAgentStatus(pid){
   const badge=$("a-status-proof-badge"); const preview=$("a-status-proof-preview");
   const runsLbl=$("a-status-runs-label");
   if(badge) badge.textContent="loading…";
-  if(preview) preview.textContent="";
+  if(preview){ preview.textContent=""; preview.style.whiteSpace=""; }
   if(runsLbl) runsLbl.textContent="";
   // Load working proof status
   try{
     const d=await(await fetchWithTimeout(`/api/working-proof/${encodeURIComponent(pid)}`,6000)).json();
     if(d.tex){
       const lines=d.tex.trim().split("\n");
-      const preview_text=lines.slice(0,12).join("\n")+(lines.length>12?"\n…":"");
       if(badge){ badge.textContent="Working proof · "+lines.length+" lines"; badge.style.background="rgba(63,185,80,.15)"; badge.style.color="#3fb950"; }
-      if(preview) preview.textContent=preview_text;
+      if(preview){
+        // Show PDF instead of raw LaTeX — compile on demand
+        preview.innerHTML="";
+        preview.style.whiteSpace="normal";
+        const proofName=`working_proof_${pid}_${Date.now()}`;
+        const pdfWrap=document.createElement("div");
+        pdfWrap.style.cssText="margin-top:6px;background:#404040;border-radius:5px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px;max-height:55vh;overflow-y:auto";
+        preview.appendChild(pdfWrap);
+        // Compile and render
+        try{
+          const res=await(await fetch("/api/compile",{method:"POST",headers:{"content-type":"application/json"},
+            body:JSON.stringify({content:d.tex,name:proofName})})).json();
+          if(res.ok){
+            await pdfLoad(res.pdf_url,pdfWrap,()=>{},1.1);
+            const dlLink=document.createElement("a"); dlLink.href=res.pdf_url; dlLink.target="_blank";
+            dlLink.textContent="Open PDF ↗"; dlLink.style.cssText="font-size:11px;color:var(--accent);margin-top:4px";
+            preview.appendChild(dlLink);
+          }else{
+            pdfWrap.textContent="PDF compile failed — "+((res.log||"").slice(0,120));
+            pdfWrap.style.color="var(--red)"; pdfWrap.style.fontSize="11px";
+          }
+        }catch(e){ pdfWrap.textContent="PDF unavailable: "+e.message; pdfWrap.style.color="var(--muted)"; }
+      }
     } else {
       if(badge){ badge.textContent="No proof yet"; badge.style.background=""; badge.style.color="var(--muted)"; }
-      if(preview) preview.textContent="No working proof found. Push Forward to start solving.";
+      if(preview){ preview.textContent="No working proof found. Push Forward to start solving."; preview.style.whiteSpace="pre-wrap"; }
     }
   }catch(e){
     if(badge){ badge.textContent="unavailable"; }
@@ -1592,6 +1687,8 @@ async function loadOverview(){
   renderOverview(d, selected);
   // Refresh problem list status dots + stats when overview data arrives
   if(problems.length) renderProblemList(problems);
+  // Sync push-forward status card
+  loadPushForwardStatus();
 }
 
 function clearOvFilter(){
@@ -2129,17 +2226,6 @@ function setGlobalLevel(level){
 
 const _CSS_FLEX_PANES = new Set(["pane-issue","pane-final-proof","pane-overview"]);
 function setTab(name){
-  // Track click frequency in localStorage
-  const _tcc=JSON.parse(localStorage.getItem("tabClicks")||"{}");
-  _tcc[name]=(_tcc[name]||0)+1; localStorage.setItem("tabClicks",JSON.stringify(_tcc));
-  document.querySelectorAll(".tab[data-tab]").forEach(t=>{
-    const cnt=_tcc[t.dataset.tab]||0;
-    let badge=t.querySelector(".tab-freq");
-    if(cnt>=3){
-      if(!badge){badge=document.createElement("span");badge.className="tab-freq";t.appendChild(badge);}
-      badge.textContent=cnt>=100?"99+":cnt;
-    } else if(badge){badge.remove();}
-  });
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
   document.querySelectorAll(".pane").forEach(p=>{
     const active=p.id==="pane-"+name;
@@ -2162,6 +2248,7 @@ function setTab(name){
   if(name==="agent"){ refreshVertexUsage(); if(selected) loadAgentStatus(selected); }
   if(name==="issue"){ loadIssues(); }
   if(name==="hero"){ heroRefreshDiagram(); }
+  if(name==="export"){ initExportTab(); }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -2180,6 +2267,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab)
     {id:"insights",  icon:"💡",  label:"Insights",    sub:"AI-generated strategic insights"},
     {id:"devlog",   icon:"📝",  label:"Dev Log",     sub:"Website change history"},
     {id:"meet",      icon:"👥",  label:"Meet",        sub:"Multi-agent chat rooms"},
+    {id:"export",    icon:"📤",  label:"Export",      sub:"Bundle context to send to a friend"},
   ];
 
   // Slash aliases: /proof → proofs, /concept → concepts, etc.
@@ -2195,6 +2283,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab)
     meet:"meet",chat:"meet",
     overview:"overview",home:"overview",
     insights:"insights",insight:"insights",
+    export:"export",bundle:"export",share:"export",send:"export",
   };
 
   let selIdx = 0;
@@ -2571,6 +2660,7 @@ async function selectQuestion(qid, node, dataset){
   if(document.querySelector(".tab.active[data-tab='literature']")) loadLiterature(qid);
   if(document.querySelector(".tab.active[data-tab='concepts']")) loadConcepts(qid);
   if(document.querySelector(".tab.active[data-tab='meet']")) loadMeetRooms(qid);
+  if(document.querySelector(".tab.active[data-tab='export']")) initExportTab();
   loadMeetPersonas(qid).catch(()=>{}); // pre-fetch so New Meeting modal is instant
 }
 
@@ -3281,13 +3371,17 @@ function handle(ev){
       lastArtifact=ev;
       const c=el("div","card artifact");
       c.appendChild(el("div","tag",`<span class="dot ok"></span> Artifact · ${esc(ev.name)}`));
-      const d=el("details");d.appendChild(el("summary",null,`${ev.name} (${(ev.content||"").length} chars)`));
-      d.appendChild(el("pre",null,`<code>${esc(ev.content||"")}</code>`));c.appendChild(d);
-      const log=el("button","btn-sec","Log run to issue");log.style.marginTop="8px";
-      log.onclick=()=>logRun(ev);c.appendChild(log);
-      const pdf=el("button","btn-sec","Compile PDF");pdf.style.marginTop="8px";pdf.style.marginLeft="8px";
-      pdf.onclick=()=>compilePdf(ev.content,`${selected||"solution"}_${Date.now()}`,c,pdf);c.appendChild(pdf);
-      $("stream").appendChild(c); scroll(); break;}
+      // Raw LaTeX hidden in a collapsible — PDF rendered automatically below
+      const d=el("details"); d.style.marginTop="8px";
+      d.appendChild(el("summary",null,`View raw LaTeX (${(ev.content||"").length} chars)`));
+      d.appendChild(el("pre",null,`<code>${esc(ev.content||"")}</code>`));
+      c.appendChild(d);
+      const logBtn=el("button","btn-sec","Log run to issue"); logBtn.style.marginTop="8px";
+      logBtn.onclick=()=>logRun(ev); c.appendChild(logBtn);
+      $("stream").appendChild(c); scroll();
+      // Auto-compile and embed the PDF — no manual click required
+      compilePdf(ev.content,`${selected||"solution"}_${Date.now()}`,c,{disabled:false,textContent:""});
+      break;}
     case "turn_usage":{
       tokenHistory.push({in:ev.input_tokens||0, out:ev.output_tokens||0, t:Date.now()});
       $("tok-chart-wrap").style.display="block";
@@ -3379,13 +3473,19 @@ $("stop").onclick=stop;
 window.addEventListener("beforeunload",cancelBackend);
 
 // ---- PDF compile (artifact card → PDF.js) ----
+// btn may be a real button element or a dummy {disabled,textContent} object for auto-compile
 async function compilePdf(content,name,card,btn){
-  btn.disabled=true; const old=btn.textContent; btn.textContent="compiling…";
+  if(btn&&btn.nodeType===1){btn.disabled=true;}
+  const old=btn?btn.textContent:""; if(btn) btn.textContent="compiling…";
+  // Show a compiling status line in the card while we wait
+  const compiling=el("div","tool-io"); compiling.style.color="var(--muted)"; compiling.style.fontSize="12px";
+  compiling.textContent="Compiling PDF…"; card.appendChild(compiling); scroll();
   let res;
   try{ res=await (await fetch("/api/compile",{method:"POST",headers:{"content-type":"application/json"},
     body:JSON.stringify({content,name})})).json(); }
   catch(e){ res={ok:false,log:String(e)}; }
-  btn.disabled=false; btn.textContent=old;
+  compiling.remove();
+  if(btn&&btn.nodeType===1){btn.disabled=false; btn.textContent=old;}
   card.querySelectorAll(".pdf-viewer,.compile-log").forEach(n=>n.remove());
   if(res.ok){
     const a=el("div","tool-io"); a.appendChild(el("div","lbl","PDF compiled — "));
@@ -3507,6 +3607,95 @@ $("daily-run-btn").onclick = async()=>{
   }, 10000);
   setTimeout(()=>{ $("daily-run-btn").disabled = false; }, 30000);
 };
+
+// ---- Global Push Forward ----
+let _pfAllJobId = null;
+let _pfAllPollIv = null;
+
+function _pfAllSetBadge(text, color){
+  const b=$("pf-all-badge"); if(!b) return;
+  b.textContent=text; b.style.color=color||"var(--muted)";
+  b.style.background=color?"rgba(63,185,80,.12)":"var(--panel2)";
+  b.style.border=color?`1px solid ${color}`:"1px solid var(--border)";
+}
+
+async function _pfAllPoll(jobId){
+  try{
+    const r=await(await fetch(`/api/push-forward/status/${jobId}`)).json();
+    const done=r.done||0; const total=r.total||10;
+    const pct=total>0?Math.round(done/total*100):0;
+    const bar=$("pf-all-bar"); if(bar) bar.style.width=pct+"%";
+    const counter=$("pf-all-counter"); if(counter) counter.textContent=`${done}/${total} problems`;
+    const cur=$("pf-all-current"); if(cur) cur.textContent=r.current?`Working on ${r.current}…`:"";
+    const logEl=$("pf-all-log");
+    if(logEl && r.log && r.log.length){ logEl.textContent=(r.log||[]).slice(-30).join("\n"); logEl.scrollTop=logEl.scrollHeight; }
+    if(r.status==="done"){
+      clearInterval(_pfAllPollIv); _pfAllPollIv=null; _pfAllJobId=null;
+      _pfAllSetBadge("done ✓","#3fb950");
+      const cur=$("pf-all-current"); if(cur) cur.textContent=`Completed ${total} problems`;
+      $("pf-all-btn").disabled=false; $("pf-all-force-btn").disabled=false;
+      $("pf-all-last").textContent="Last run: just now";
+      // Refresh overview to show new meetings/issues
+      setTimeout(loadOverview, 1000);
+    } else if(r.status==="error"){
+      clearInterval(_pfAllPollIv); _pfAllPollIv=null; _pfAllJobId=null;
+      _pfAllSetBadge("error","var(--red)");
+      $("pf-all-btn").disabled=false; $("pf-all-force-btn").disabled=false;
+    }
+  }catch(_){}
+}
+
+async function triggerPushForward(force){
+  if($("pf-all-btn")) $("pf-all-btn").disabled=true;
+  if($("pf-all-force-btn")) $("pf-all-force-btn").disabled=true;
+  _pfAllSetBadge("starting…","var(--amber)");
+  try{
+    const res=await(await fetch("/api/push-forward",{method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({force:!!force})})).json();
+    if(!res.started){
+      _pfAllSetBadge(res.reason||"blocked","var(--amber)");
+      $("pf-all-btn").disabled=false; $("pf-all-force-btn").disabled=false;
+      return;
+    }
+    _pfAllJobId=res.job_id;
+    _pfAllSetBadge("running…","#3fb950");
+    $("pf-all-progress").style.display="block";
+    $("pf-all-bar").style.width="0";
+    $("pf-all-log").textContent="";
+    // Poll every 10s
+    clearInterval(_pfAllPollIv);
+    _pfAllPollIv=setInterval(()=>_pfAllPoll(_pfAllJobId),10000);
+    _pfAllPoll(_pfAllJobId);
+  }catch(e){
+    _pfAllSetBadge("error: "+e.message,"var(--red)");
+    $("pf-all-btn").disabled=false; $("pf-all-force-btn").disabled=false;
+  }
+}
+
+async function loadPushForwardStatus(){
+  try{
+    const r=await(await fetch("/api/push-forward/status")).json();
+    const state=r.state||{};
+    if(state.last_run_date){
+      $("pf-all-last").textContent=`Last run: ${state.last_run_date}`;
+    }
+    // Recover any running job
+    const jobs=r.jobs||[];
+    const running=jobs.find(j=>j.status==="running");
+    if(running && !_pfAllJobId){
+      _pfAllJobId=running.job_id;
+      _pfAllSetBadge("running…","#3fb950");
+      $("pf-all-progress").style.display="block";
+      $("pf-all-btn").disabled=true; $("pf-all-force-btn").disabled=true;
+      clearInterval(_pfAllPollIv);
+      _pfAllPollIv=setInterval(()=>_pfAllPoll(_pfAllJobId),10000);
+    }
+  }catch(_){}
+}
+
+if($("pf-all-btn")) $("pf-all-btn").onclick=()=>triggerPushForward(false);
+if($("pf-all-force-btn")) $("pf-all-force-btn").onclick=()=>triggerPushForward(true);
 
 // ---- Evolve issues button ----
 $("evolve-issues-btn").onclick = async()=>{
@@ -4900,6 +5089,72 @@ $("meet-new-btn").onclick=async()=>{
   await loadMeetPersonas(selected);
   meetRenderParticipantCards();
 };
+// ── Export tab ────────────────────────────────────────────────────────────────
+let _expBundle = "";
+
+function initExportTab(){
+  const q = _lvlQ() || selected;
+  const lbl = $("exp-q-label");
+  const genBtn = $("exp-gen-btn");
+  lbl.textContent = q ? `Problem: ${q}` : "No question selected — pick one from the sidebar";
+  genBtn.disabled = !q;
+}
+
+$("exp-gen-btn").onclick = async () => {
+  const q = _lvlQ() || selected;
+  if(!q) return;
+  const genBtn = $("exp-gen-btn");
+  const status = $("exp-status");
+  genBtn.disabled = true;
+  status.textContent = "Generating…";
+  try {
+    const params = new URLSearchParams({
+      include_problem: $("exp-inc-problem").checked ? "1" : "0",
+      include_issues:  $("exp-inc-issues").checked  ? "1" : "0",
+      include_proof:   $("exp-inc-proof").checked   ? "1" : "0",
+      include_docs:    $("exp-inc-docs").checked    ? "1" : "0",
+      workflow:        $("exp-workflow").value,
+      dataset:         selectedDataset || "first_proof_1",
+    });
+    const res = await fetch(`/api/export/${encodeURIComponent(q)}?${params}`);
+    const data = await res.json();
+    if(data.error){ status.textContent = "Error: " + data.error; return; }
+    _expBundle = data.markdown || "";
+    $("exp-preview").value = _expBundle;
+    $("exp-char-count").textContent = `${_expBundle.length.toLocaleString()} chars · ~${Math.round(_expBundle.split(/\s+/).length).toLocaleString()} words`;
+    $("exp-preview-wrap").style.display = "block";
+    $("exp-copy-btn").disabled = false;
+    $("exp-dl-btn").disabled = false;
+    status.textContent = "Ready";
+  } catch(e) {
+    status.textContent = "Error: " + e;
+  } finally {
+    genBtn.disabled = false;
+  }
+};
+
+$("exp-copy-btn").onclick = async () => {
+  if(!_expBundle) return;
+  try {
+    await navigator.clipboard.writeText(_expBundle);
+    $("exp-status").textContent = "Copied!";
+    setTimeout(()=>{ $("exp-status").textContent = "Ready"; }, 2000);
+  } catch(e) {
+    $("exp-status").textContent = "Copy failed — select all in the textarea and copy manually";
+  }
+};
+
+$("exp-dl-btn").onclick = () => {
+  if(!_expBundle) return;
+  const q = _lvlQ() || selected || "bundle";
+  const blob = new Blob([_expBundle], {type:"text/markdown"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${q}_context_bundle.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
 $("meet-modal-cancel").onclick=()=>$("meet-modal").style.display="none";
 $("meet-modal-ok").onclick=async()=>{
   if(!selected) return;

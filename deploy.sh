@@ -58,25 +58,31 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
     fi
 fi
 
-# ── 2. Restart the production server ─────────────────────────────────────────
-echo "[deploy] Restarting production server (port ${PROD_PORT})..."
-PROD_PID=$(lsof -ti:${PROD_PORT} 2>/dev/null || true)
-if [[ -n "$PROD_PID" ]]; then
-    # SIGTERM → watchdog in start_server.sh catches the exit and relaunches with new code
-    kill -TERM $PROD_PID 2>/dev/null || true
-    sleep 2
-    NEW_PID=$(lsof -ti:${PROD_PORT} 2>/dev/null || true)
-    if [[ -n "$NEW_PID" ]]; then
-        echo "[deploy] Production server restarted (PID ${NEW_PID}) ✓"
-    else
-        echo "[deploy] WARNING: prod server not yet back on port ${PROD_PORT}. Watchdog should restart it within 3s."
+# ── 2. Restart all production processes ──────────────────────────────────────
+# New layout: proxy (8000) + solve (8010) + filter (8013)
+echo "[deploy] Restarting production processes…"
+for PORT in 8000 8010 8013; do
+    PIDS=$(lsof -ti:${PORT} 2>/dev/null || true)
+    if [[ -n "$PIDS" ]]; then
+        kill -TERM $PIDS 2>/dev/null || true
+        echo "[deploy]   Killed port ${PORT} (PIDs: ${PIDS})"
     fi
+done
+sleep 3
+
+# Watchdog loops in start_server.sh will restart each process automatically.
+# If nothing is running, give guidance.
+PROXY_PID=$(lsof -ti:${PROD_PORT} 2>/dev/null || true)
+if [[ -n "$PROXY_PID" ]]; then
+    echo "[deploy] Proxy back on port ${PROD_PORT} (PID ${PROXY_PID}) ✓"
 else
-    echo "[deploy] WARNING: no process found on port ${PROD_PORT}. Start it with: bash start_server.sh &"
+    echo "[deploy] WARNING: proxy not yet on port ${PROD_PORT}. Watchdog should restart within 3s."
+    echo "[deploy] If nothing starts: run  bash start_server.sh &"
 fi
 
 echo ""
 echo "=== Deploy complete ==="
-echo "  Production: https://zipfile-legume-gaining.ngrok-free.dev"
-echo "  Dev:        https://rma-dev.serveo.net  (if dev tunnel is running)"
+echo "  Production solve:  https://zipfile-legume-gaining.ngrok-free.dev/rmac/solve/"
+echo "  Production filter: https://zipfile-legume-gaining.ngrok-free.dev/rmac/filter/"
+echo "  Dev:               https://rma-dev.serveo.net/rmac/solve/  (if dev tunnel is running)"
 echo ""

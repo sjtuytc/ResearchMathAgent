@@ -1,29 +1,49 @@
 #!/usr/bin/env bash
 # Production server watchdog.
-# NO --reload: prod stays stable until you run deploy.sh.
-# The outer loop restarts automatically on crash.
+# Starts proxy + solve + filter as independent processes, each auto-restarting.
+#
+# Use deploy.sh to apply code changes to production.
 set -euo pipefail
 
-PYTHON=/sw/user/python/miniforge3-pytorch-2.11.0/bin/python3.12
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-PORT="${RMA_PORT:-8000}"
-HOST="${RMA_HOST:-0.0.0.0}"
+LOG_DIR="${ROOT}/logs"
+mkdir -p "$LOG_DIR"
 
-cd "$ROOT"
-# shellcheck source=/dev/null
-source "$ROOT/scripts/ensure_webapp_deps.sh"
-
-echo "[prod] ResearchMathAgent production server on ${HOST}:${PORT}"
-echo "[prod] Run deploy.sh to apply code changes to production."
-
-while true; do
-    echo "[prod $(date '+%Y-%m-%d %H:%M:%S')] launching..."
-    PYTHONPATH="${HOME}/.local/lib/python3.12/site-packages${PYTHONPATH:+:$PYTHONPATH}" \
-    GOOGLE_CLOUD_PROJECT="nairr-260096-569948" \
-    GOOGLE_CLOUD_REGION="us-east5" \
-    "$PYTHON" -m uvicorn webapp.server:app \
-        --host "$HOST" \
-        --port "$PORT" || true
-    echo "[prod $(date '+%Y-%m-%d %H:%M:%S')] exited, restarting in 3s..."
-    sleep 3
+# Kill anything on our ports
+for PORT in 8000 8010 8013; do
+    PIDS=$(lsof -ti:${PORT} 2>/dev/null || true)
+    if [[ -n "$PIDS" ]]; then
+        echo "  Clearing port ${PORT} (PIDs: $PIDS)…"
+        kill -TERM $PIDS 2>/dev/null || true
+        sleep 0.5
+    fi
 done
+
+cleanup() {
+    echo ""
+    echo "[prod] Stopping all prod processes…"
+    kill $PROXY_PID $SOLVE_PID $FILTER_PID 2>/dev/null || true
+    wait 2>/dev/null || true
+    exit 0
+}
+trap cleanup INT TERM
+
+echo "[prod] Starting PROD solve app (port 8010)…"
+bash "${ROOT}/start_solve_server.sh" > "${LOG_DIR}/solve_prod.log" 2>&1 &
+SOLVE_PID=$!
+
+echo "[prod] Starting PROD filter app (port 8013)…"
+bash "${ROOT}/start_filter_server.sh" > "${LOG_DIR}/filter_prod.log" 2>&1 &
+FILTER_PID=$!
+
+sleep 2
+
+echo "[prod] Starting PROD proxy (port 8000)…"
+bash "${ROOT}/start_proxy_server.sh" > "${LOG_DIR}/proxy_prod.log" 2>&1 &
+PROXY_PID=$!
+
+echo "[prod] All production processes started."
+echo "  Logs: tail -f logs/proxy_prod.log logs/solve_prod.log logs/filter_prod.log"
+echo "  Run deploy.sh to apply code changes to production."
+
+wait $PROXY_PID $SOLVE_PID $FILTER_PID
