@@ -48,7 +48,14 @@ from .token_log import append_usage, read_log, daily_summary, per_problem_summar
 from .solve_finalize import finalize_solve_run
 from .tools import _expand_tex_inputs, _extract_title, _problem_sort_key
 from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
-from .literature import load_index as lit_load, add_paper as lit_add, update_paper as lit_update, delete_paper as lit_delete, discover_literature, ensure_all_lit
+from .literature import (
+    load_index as lit_load, add_paper as lit_add, update_paper as lit_update,
+    delete_paper as lit_delete, discover_literature, ensure_all_lit,
+    list_global as lit_list_global, add_to_global as lit_add_global,
+    update_global as lit_update_global, delete_from_global as lit_del_global,
+    pdf_path_for as lit_pdf_path, get_pdf_status as lit_pdf_status,
+    download_paper_pdf as lit_download_pdf, seed_global_library,
+)
 from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
 from .devlog import read_log as devlog_read, append_entry as devlog_append
 from .insights import get_system_insight, get_dataset_insight, get_question_insight
@@ -205,6 +212,7 @@ threading.Thread(
 threading.Thread(
     target=ensure_all_lit, args=(REPO_ROOT, _Q_TITLES), daemon=True
 ).start()
+threading.Thread(target=seed_global_library, args=(REPO_ROOT,), daemon=True).start()
 threading.Thread(
     target=ensure_all_concepts, args=(REPO_ROOT, _Q_TITLES), daemon=True
 ).start()
@@ -1426,6 +1434,14 @@ def overview_ep() -> JSONResponse:
     })
 
 
+@app.post("/api/seed/first_proof_2")
+def api_seed_fp2() -> JSONResponse:
+    """Seed skeleton .tex docs + Vertex-generated concepts/literature for all fp2 problems."""
+    from .seed_fp2 import seed_fp2_background
+    threading.Thread(target=seed_fp2_background, args=(REPO_ROOT,), daemon=True).start()
+    return JSONResponse({"started": True, "message": "Seeding first_proof_2 in background (check server logs)"})
+
+
 @app.post("/api/run-daily")
 def run_daily() -> JSONResponse:
     """Trigger one daily-report run in the background (returns immediately)."""
@@ -1760,6 +1776,60 @@ def lit_delete_ep(problem_id: str, paper_id: str) -> JSONResponse:
         return JSONResponse({"error": "invalid id"}, status_code=400)
     ok = lit_delete(REPO_ROOT, problem_id, paper_id)
     return JSONResponse({"ok": ok})
+
+
+@app.get("/api/lit-global")
+def lit_global_list_ep() -> JSONResponse:
+    papers = lit_list_global(REPO_ROOT)
+    for p in papers:
+        p["pdf_status"] = lit_pdf_status(REPO_ROOT, p["id"])
+    return JSONResponse({"papers": papers})
+
+
+@app.post("/api/lit-global")
+def lit_global_add_ep(payload: dict = Body(...)) -> JSONResponse:
+    paper = lit_add_global(REPO_ROOT, payload)
+    return JSONResponse({"paper": paper})
+
+
+@app.patch("/api/lit-global/{paper_id}")
+def lit_global_update_ep(paper_id: str, payload: dict = Body(...)) -> JSONResponse:
+    result = lit_update_global(REPO_ROOT, paper_id, **payload)
+    if result is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse({"paper": result})
+
+
+@app.delete("/api/lit-global/{paper_id}")
+def lit_global_delete_ep(paper_id: str) -> JSONResponse:
+    ok = lit_del_global(REPO_ROOT, paper_id)
+    return JSONResponse({"ok": ok})
+
+
+@app.post("/api/lit-global/{paper_id}/download")
+def lit_global_download_ep(paper_id: str) -> JSONResponse:
+    papers = lit_list_global(REPO_ROOT)
+    p = next((x for x in papers if x["id"] == paper_id), None)
+    if not p:
+        return JSONResponse({"error": "paper not found"}, status_code=404)
+    def _do_download():
+        lit_download_pdf(REPO_ROOT, paper_id, p.get("url", ""))
+    threading.Thread(target=_do_download, daemon=True).start()
+    return JSONResponse({"status": "downloading", "paper_id": paper_id})
+
+
+@app.get("/api/lit-global/{paper_id}/pdf")
+def lit_global_pdf_ep(paper_id: str):
+    pdf = lit_pdf_path(REPO_ROOT, paper_id)
+    if not pdf.is_file():
+        return JSONResponse({"error": "PDF not available"}, status_code=404)
+    return FileResponse(str(pdf), media_type="application/pdf")
+
+
+@app.post("/api/lit-global/seed")
+def lit_global_seed_ep() -> JSONResponse:
+    count = seed_global_library(REPO_ROOT)
+    return JSONResponse({"seeded": count})
 
 
 @app.get("/api/literature/{problem_id}/discover")

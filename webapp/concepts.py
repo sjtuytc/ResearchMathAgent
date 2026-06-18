@@ -167,7 +167,7 @@ def generate_concepts(repo_root: Path, qid: str, title: str) -> Iterator[AgentEv
     # Add metadata
     meta = {
         "_generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "_model": "claude-sonnet-4-6",
+        "_model": "claude-opus-4-8",
         "_qid": qid,
     }
     save_concepts(repo_root, qid, valid)
