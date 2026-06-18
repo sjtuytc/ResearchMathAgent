@@ -532,6 +532,10 @@ MathJax = {
           <!-- sidebar: issue list + activity toggle -->
           <div id="iss-sidebar" style="border-right:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column">
             <div style="padding:10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+              <div style="display:flex;align-items:center;gap:6px;padding:4px 2px">
+                <span style="font-size:11px;color:var(--muted)">Issues for</span>
+                <span id="iss-q-badge" style="font-size:12px;font-weight:700;color:var(--accent)">—</span>
+              </div>
               <div style="display:flex;gap:4px">
                 <button class="btn-pri" id="i-new-btn" style="flex:1;font-size:12px;padding:6px 8px">+ New Issue</button>
                 <button class="btn-sec" id="i-discover-btn" title="Run critic agent to discover issues" style="font-size:11px;padding:6px 8px">Discover</button>
@@ -2262,6 +2266,7 @@ async function selectQuestion(qid, node, dataset){
   // Load issues (non-blocking) — scoped to dataset
   const ds2=selectedDataset||"first_proof_1";
   fetch(`/api/issues/${encodeURIComponent(qid)}?dataset=${encodeURIComponent(ds2)}`).then(r=>r.json()).then(d=>{
+    if(qid!==selected) return; // stale response — user already switched question
     loadIssueList(qid,d.issues||[]);
     // If activity log is visible, refresh it too
     if(_issCurrentView==="log") loadActivityLog(qid);
@@ -2350,6 +2355,9 @@ function issShowView(view){
 }
 
 function loadIssueList(qid, issues){
+  if(qid!==selected) return; // drop stale responses
+  // Show question context in sidebar header
+  const badge=$("iss-q-badge"); if(badge) badge.textContent=qid;
   $("i-empty").style.display="none"; $("i-body").style.display="block";
   const list=$("iss-list"); list.innerHTML="";
   for(const iss of issues){
@@ -2372,6 +2380,25 @@ function loadIssueList(qid, issues){
   }
 }
 
+function showProofModal(tex){
+  let modal=$("proof-modal");
+  if(!modal){
+    modal=el("div"); modal.id="proof-modal";
+    modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:900;display:flex;align-items:center;justify-content:center";
+    modal.innerHTML=`<div style="background:var(--panel);border:1px solid var(--border);border-radius:8px;width:min(900px,96vw);height:80vh;display:flex;flex-direction:column;overflow:hidden">
+      <div class="bar" style="padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <span style="font-weight:600;font-size:13px">Working Proof</span>
+        <button class="btn-sec" style="margin-left:auto;font-size:11px;padding:3px 10px" onclick="document.getElementById('proof-modal').style.display='none'">Close</button>
+      </div>
+      <pre id="proof-modal-content" style="flex:1;overflow:auto;margin:0;padding:14px 16px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--fg)"></pre>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener("click",e=>{ if(e.target===modal) modal.style.display="none"; });
+  }
+  modal.style.display="flex";
+  $("proof-modal-content").textContent=tex;
+}
+
 function renderIssueThread(issue){
   issSelectedId=issue.id;
   $("iss-thread-empty").style.display="none";
@@ -2383,6 +2410,27 @@ function renderIssueThread(issue){
   $("iss-status-sel").value=issue.status;
   $("iss-status-msg").textContent="";
   const comments=$("iss-comments"); comments.innerHTML="";
+
+  // ── Working proof progress banner ─────────────────────────────────────────
+  if(selected){
+    const pfBanner=el("div");
+    pfBanner.id="iss-proof-banner";
+    pfBanner.style.cssText="display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);margin-bottom:4px;font-size:12px;flex-shrink:0";
+    pfBanner.innerHTML=`<span style="color:var(--muted);font-size:11px">📝 Working proof</span><span id="iss-pf-status" style="color:var(--muted);font-size:11px">loading…</span><button class="btn-sec" id="iss-pf-view" style="font-size:11px;padding:2px 8px;margin-left:auto;display:none">View</button>`;
+    comments.appendChild(pfBanner);
+    fetchWithTimeout(`/api/working-proof/${encodeURIComponent(selected)}`,5000).then(r=>r.json()).then(d=>{
+      const el2=$("iss-pf-status"), btn=$("iss-pf-view");
+      if(!el2) return;
+      if(d.has_proof && d.tex){
+        const lines=d.tex.split("\n").length;
+        el2.textContent=`${lines} lines · last updated by agents`;
+        el2.style.color="var(--green)";
+        if(btn){ btn.style.display=""; btn.onclick=()=>showProofModal(d.tex); }
+      } else {
+        el2.textContent="no proof yet";
+      }
+    }).catch(()=>{ const el2=$("iss-pf-status"); if(el2) el2.textContent="unavailable"; });
+  }
 
   // ── Metadata section: linked issues + documents ──────────────────────────
   const linked=(issue.linked_issues||[]);
@@ -2399,9 +2447,21 @@ function renderIssueThread(issue){
         const relColor={blocks:"var(--red)",depends_on:"var(--amber)",resolves:"var(--green)",related:"var(--accent)"}[lk.relation]||"var(--muted)";
         chip.innerHTML=`<span style="color:${relColor}">${esc(lk.relation)}</span>&nbsp;<span style="color:var(--accent);font-weight:600">${esc(lk.id)}</span>`;
         chip.onclick=()=>{
+          // First try within current list
           const items=[...$("iss-list").querySelectorAll(".qitem")];
           const m=items.find(i=>i.textContent.includes(lk.id));
           if(m){ m.click(); return; }
+          // Cross-question: navigate to the right question, then select the issue
+          const lkPid=(lk.id||"").replace(/-\d+$/,"");
+          if(lkPid && lkPid!==selected){
+            const qEl=[...$("qlist").querySelectorAll(".qitem")].find(i=>i.dataset.pid===lkPid);
+            if(qEl) qEl.click(); else selectQuestion(lkPid,null,selectedDataset||"first_proof_1");
+            setTab("issue");
+            setTimeout(()=>{
+              const it=[...$("iss-list").querySelectorAll(".qitem")].find(i=>i.textContent.includes(lk.id));
+              if(it) it.click();
+            }, 1400);
+          }
         };
         row.appendChild(chip);
       }
@@ -2420,10 +2480,18 @@ function renderIssueThread(issue){
             const parts=(doc.path||"").replace("__meet__","").split("/");
             setTab("meet");
             setTimeout(()=>{ if(parts[1]) loadMeetRoom(parts[0], parts[1]); }, 200);
+          } else if((doc.path||"").startsWith("__proof__")){
+            // Working proof shortcut
+            fetchWithTimeout(`/api/working-proof/${encodeURIComponent(selected)}`,5000)
+              .then(r=>r.json()).then(d=>{ if(d.tex) showProofModal(d.tex); }).catch(()=>{});
           } else {
             setTab("documents");
             const p=doc.path||"";
-            setTimeout(()=>{ loadQuestionDocs(p.split("/")[1]||selected, p.split("/").slice(2).join("/")); }, 200);
+            // cross-question doc: navigate to that question's doc
+            const parts=p.split("/");
+            const docQid=(parts.length>=3)?parts[1]:selected;
+            const docFile=(parts.length>=3)?parts.slice(2).join("/"):p;
+            setTimeout(()=>{ loadQuestionDocs(docQid||selected, docFile); }, 200);
           }
         };
         row.appendChild(chip);

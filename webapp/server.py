@@ -2,13 +2,14 @@
 
 Serves a single-page UI with three views per question — the Question file, its
 Issue, and a live Agent runner — and an SSE endpoint that streams the agent loop
-step by step. The agent can run via the paid Messages API or via the local
-``claude`` CLI (Pro/Max subscription, no API credits).
+step by step. The agent runs via Google Cloud Vertex AI (default) or the
+Anthropic Messages API.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -20,9 +21,8 @@ from fastapi.staticfiles import StaticFiles
 import threading
 import uuid
 
-from .agent import DEFAULT_MODEL, AgentConfig, run_agent, run_agent_vertex
-from .claude_code import claude_code_available, run_claude_code_agent
-from .vertex import vertex_status
+from .agent import DEFAULT_MODEL, AgentConfig, run_agent, run_agent_vertex, build_prefix_context
+from .vertex import vertex_status, vertex_adc_project, gcp_console_urls
 from .documents import list_documents, read_document
 from .dataset_store import (
     list_datasets, get_dataset_meta, list_problems as ds_list_problems,
@@ -42,8 +42,9 @@ from .meet_agents import run_discussion_turn, run_synthesis, run_step_execution
 from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
-from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary
-from .tools import _extract_title, _problem_sort_key  # reuse internal helpers
+from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary, vertex_usage_summary, log_usage_delta
+from .solve_finalize import finalize_solve_run
+from .tools import _expand_tex_inputs, _extract_title, _problem_sort_key
 from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
 from .literature import load_index as lit_load, add_paper as lit_add, update_paper as lit_update, delete_paper as lit_delete, discover_literature, ensure_all_lit
 from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
@@ -57,15 +58,16 @@ _PROBLEM_RE = re.compile(r"^q(?:10|[1-9])$")
 def _default_provider() -> str:
     if vertex_status()["available"]:
         return "vertex"
-    if claude_code_available():
-        return "claude-code"
-    return "api"
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return "api"
+    return "vertex"
 
 
 def _capabilities_payload() -> dict:
+    vtx = vertex_status()
     return {
-        "claude_code": bool(claude_code_available()),
-        "vertex": vertex_status(),
+        "claude_code": False,
+        "vertex": vtx,
         "latex": bool(latex_available()),
         "default_provider": _default_provider(),
         "default_model": DEFAULT_MODEL,
@@ -401,6 +403,22 @@ def link_issue_ep(problem_id: str, issue_id: str, payload: dict = Body(...), dat
         target_dataset=payload.get("target_dataset"),
         relation=str(payload.get("relation", "related")),
         added_by=str(payload.get("added_by", "human")),
+        dataset=ds,
+    )
+    if issue is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(issue)
+
+
+@app.post("/api/issues/{problem_id}/{issue_id}/doc")
+def add_doc_to_issue_ep(problem_id: str, issue_id: str, payload: dict = Body(...), dataset: str = Query(None)) -> JSONResponse:
+    """Link a document path/title to an issue (used by agents and the UI)."""
+    ds = _ds_from_query(dataset)
+    issue = add_issue_document(
+        REPO_ROOT, problem_id, issue_id,
+        title=str(payload.get("title", "Document")),
+        path=str(payload.get("path", "")),
+        created_by=str(payload.get("created_by", "agent")),
         dataset=ds,
     )
     if issue is None:
@@ -785,7 +803,7 @@ def get_personas() -> JSONResponse:
 def solve(
     problem: str = Query(..., description="Problem id, e.g. q6"),
     model: str = Query(""),
-    provider: str = Query("", description="claude-code | api | vertex (default: auto)"),
+    provider: str = Query("", description="api | vertex (default: auto)"),
     thinking: int = Query(1),
     run_id: str = Query(""),
     gcp_project: str = Query("", description="GCP project ID for Vertex AI provider"),
@@ -818,7 +836,8 @@ def document(name: str) -> JSONResponse:
     content = read_document(REPO_ROOT, name)
     if content is None:
         return JSONResponse({"error": "not found"}, status_code=404)
-    return JSONResponse({"name": name, "markdown": content})
+    fmt = "latex" if name.endswith(".tex") else "markdown"
+    return JSONResponse({"name": name, "format": fmt, "markdown": content, "content": content})
 
 
 @app.get("/api/problem-pdf/{problem_id}")
@@ -983,6 +1002,19 @@ def capabilities() -> JSONResponse:
     return JSONResponse(_capabilities_payload())
 
 
+@app.get("/api/vertex/usage")
+def vertex_usage() -> JSONResponse:
+    """Estimated Vertex spend from webapp token log + GCP console billing links."""
+    project = vertex_adc_project()
+    summary = vertex_usage_summary(REPO_ROOT)
+    return JSONResponse({
+        **summary,
+        "project": project,
+        "urls": gcp_console_urls(project),
+        "available": bool(vertex_status()["available"]),
+    })
+
+
 _FINAL_PROOFS_PATH = (
     Path(__file__).resolve().parents[2]
     / "ResearchMathAgent" / "data" / "first_proof_1" / "final_solutions" / "all_proofs_merged.tex"
@@ -1096,6 +1128,7 @@ def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None, da
         "kind": "issue-agent",
     })
     yield send({"type": "start", "problem": problem_id, "issue": issue_id, "run_id": run_id})
+    usage_prev: dict = {}
     try:
         if issue_id:
             gen = runner_fn(repo_root, problem_id, issue_id, handle, dataset=dataset)
@@ -1105,9 +1138,10 @@ def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None, da
             if event.type == "usage":
                 try:
                     d = event.data or {}
-                    append_usage(repo_root, problem_id, kind,
-                                 d.get("input_tokens", 0), d.get("output_tokens", 0),
-                                 d.get("cost_usd"))
+                    log_usage_delta(
+                        repo_root, problem_id, kind, d, usage_prev,
+                        provider="vertex", model=DEFAULT_MODEL,
+                    )
                 except Exception:  # noqa: BLE001
                     pass
             yield send(event.to_dict())
@@ -1353,15 +1387,22 @@ def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str, g
         yield send({"type": "done", "reason": "error"})
         return
 
+    provider = provider or _default_provider()
+    problem_text = _expand_tex_inputs(
+        problem_path.read_text(encoding="utf-8", errors="replace"), REPO_ROOT
+    )
+    prefix_context = build_prefix_context(REPO_ROOT, problem)
+
     cfg = AgentConfig(
         problem_id=problem,
-        problem_text=problem_path.read_text(encoding="utf-8", errors="replace"),
+        problem_text=problem_text,
         model=model or (DEFAULT_MODEL if provider in ("api", "vertex") else ""),
         repo_root=REPO_ROOT,
         workspace=REPO_ROOT / "webapp" / ".runs" / f"{problem}_{int(time.time())}",
         thinking=thinking,
         provider=provider,
         gcp_project=gcp_project,
+        prefix_context=prefix_context,
     )
     if provider == "claude-code":
         runner = run_claude_code_agent
@@ -1371,21 +1412,64 @@ def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str, g
         runner = run_agent
     handle = REGISTRY.register(run_id, {"problem": problem, "provider": provider, "model": cfg.model})
 
+    transcript_parts: list[str] = []
+    artifact: dict | None = None
+    usage: dict = {}
+    reason = "end_turn"
+
     yield send({"type": "start", "problem": problem, "model": cfg.model,
                 "provider": provider, "run_id": run_id})
+    usage_prev: dict = {}
     try:
         for event in runner(cfg, handle):
-            if event.type == "usage":
+            if event.type == "text_delta":
+                transcript_parts.append(event.data.get("text", ""))
+            elif event.type == "artifact":
+                artifact = event.data
+            elif event.type == "usage":
+                usage = dict(event.data or {})
                 try:
-                    d = event.data or {}
-                    append_usage(REPO_ROOT, problem, "solve",
-                                 d.get("input_tokens", 0), d.get("output_tokens", 0),
-                                 d.get("cost_usd"))
+                    log_usage_delta(
+                        REPO_ROOT, problem, "solve", usage, usage_prev,
+                        provider=provider, model=cfg.model,
+                    )
                 except Exception:  # noqa: BLE001
                     pass
+            elif event.type == "done":
+                reason = event.data.get("reason", "end_turn")
+                try:
+                    saved = finalize_solve_run(
+                        REPO_ROOT,
+                        problem,
+                        transcript="".join(transcript_parts),
+                        artifact=artifact,
+                        usage=usage,
+                        reason=reason,
+                        provider=provider,
+                        model=cfg.model,
+                    )
+                    yield send({"type": "saved", **saved})
+                except Exception as exc:  # noqa: BLE001
+                    yield send({"type": "error", "message": f"Failed to save results: {exc}"})
+                yield send(event.to_dict())
+                return
             yield send(event.to_dict())
     except Exception as exc:  # noqa: BLE001 - keep the stream well-formed
         yield send({"type": "error", "message": f"Server error: {exc}"})
+        try:
+            saved = finalize_solve_run(
+                REPO_ROOT,
+                problem,
+                transcript="".join(transcript_parts),
+                artifact=artifact,
+                usage=usage,
+                reason="error",
+                provider=provider,
+                model=cfg.model,
+            )
+            yield send({"type": "saved", **saved})
+        except Exception:  # noqa: BLE001
+            pass
         yield send({"type": "done", "reason": "error"})
     finally:
         REGISTRY.unregister(run_id)

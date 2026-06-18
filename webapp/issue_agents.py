@@ -1,6 +1,6 @@
 """Multi-agent issue discovery, resolution, and verification.
 
-Each agent runs the local ``claude`` CLI in an isolated scratch workspace.
+Each agent runs via Google Cloud Vertex AI in an isolated scratch workspace.
 Agents communicate back to the issue tracker via ``curl`` calls to
 ``http://localhost:8000/api/...`` — the same FastAPI server that hosts the UI.
 
@@ -24,17 +24,14 @@ copied back here so subsequent agents see the improvement.
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
-import subprocess
 import tempfile
-import threading
 import time
 from pathlib import Path
 from typing import Iterator
 
-from .agent import AgentEvent
+from .agent import AgentConfig, DEFAULT_MODEL, AgentEvent, run_agent_vertex
 from .runs import RunHandle
 
 _ALLOWED_TOOLS = "Read Write Edit Bash Glob"
@@ -112,6 +109,23 @@ def _seed_workspace(
     for name, content in (extra_files or {}).items():
         (ws / name).write_text(content, encoding="utf-8")
 
+    # Copy question-level documents into workspace for agent context
+    q_docs_dir = repo_root / "documents" / "questions" / problem_id
+    if q_docs_dir.is_dir():
+        doc_index_lines = []
+        for doc_file in sorted(q_docs_dir.glob("*.md")):
+            dest = ws / f"docs_{doc_file.name}"
+            try:
+                shutil.copyfile(doc_file, dest)
+                doc_index_lines.append(f"- {dest.name} ({doc_file.stat().st_size} bytes)")
+            except Exception:
+                pass
+        if doc_index_lines:
+            (ws / "docs_index.txt").write_text(
+                f"Existing documents for {problem_id}:\n" + "\n".join(doc_index_lines),
+                encoding="utf-8",
+            )
+
     return ws
 
 
@@ -148,19 +162,30 @@ def run_discovery_agent(
             "sub-lemmas that must be proved.\n"
         )
 
+    docs_note = (
+        "Existing documentation is in docs_*.md files in your workspace — read them first "
+        "to understand prior progress and avoid duplicating known gaps. docs_index.txt lists them."
+        if (repo_root / "documents" / "questions" / problem_id).is_dir()
+        else ""
+    )
+
     prompt = f"""You are the critic-agent reviewing problem {problem_id}.
 
 {proof_section}
+{docs_note}
+
 Your tasks:
 1. Read problem.tex to understand exactly what must be proved.
+   {"Also read docs_*.md files (prior strategies, progress notes) before reviewing." if docs_note else ""}
 2. {"Read solution.tex and identify mathematical gaps, errors, unproven claims, or missing cases." if has_proof else "Identify the key mathematical sub-lemmas needed to solve the problem."}
 
 3. Write a detailed mathematical analysis to analysis.md in your workspace:
    - Section "## Background": key theorems, definitions, and tools relevant to this problem
    - Section "## Proof Structure": outline of what a complete proof requires
-   - Section "## Gap Analysis": specific gaps or open sub-lemmas found
+   - Section "## Gap Analysis": specific gaps or open sub-lemmas found (cite solution.tex line/step)
    - Section "## Difficulty Assessment": why each gap is hard to close
    - Section "## Suggested Approaches": concrete proof strategies to try
+   - Section "## References": prior docs you read, theorems cited
 
 4. For each genuine mathematical gap found, create it in the tracker:
 
@@ -176,12 +201,17 @@ Your tasks:
      -H 'Content-Type: application/json' \\
      -d '{{"author": "critic-agent", "body": "## Mathematical Review\\n\\nFull analysis here..."}}'
 
+6. Link the analysis document to the main issue (so it appears in the Issue tab):
+   curl -s -X POST {_API_BASE}/api/issues/{problem_id}/{problem_id}-1/doc \\
+     -H 'Content-Type: application/json' \\
+     -d '{{"path": "questions/{problem_id}/analysis.md", "title": "Critic Analysis"}}'
+
 Be specific. Cite exact theorems by name. Include the mathematical details that would help
 a solver agent understand exactly what needs to be proved.
-After all curl calls, summarize what you found."""
+Always reference the docs you read. After all curl calls, summarize what you found."""
 
     yield from _run_agent(
-        ws, prompt, _DISCOVERY_SYSTEM, handle, f"critic/{problem_id}",
+        repo_root, ws, prompt, _DISCOVERY_SYSTEM, handle, f"critic/{problem_id}",
         on_done=lambda: _merge_analysis_into_document(repo_root, problem_id, ws),
     )
 
@@ -250,7 +280,7 @@ Your tasks:
 Report what you actually established, not what you hoped to prove."""
 
     yield from _run_agent(
-        ws, prompt, _RESOLVER_SYSTEM, handle, f"solver/{problem_id}/{issue_id}",
+        repo_root, ws, prompt, _RESOLVER_SYSTEM, handle, f"solver/{problem_id}/{issue_id}",
         on_done=lambda: _save_improved_proof(repo_root, problem_id, ws),
     )
 
@@ -350,7 +380,7 @@ Your tasks:
 
 Be thorough. A false positive (approving a wrong proof) is worse than a false negative."""
 
-    yield from _run_agent(ws, prompt, _VERIFIER_SYSTEM, handle, f"verifier/{problem_id}/{issue_id}")
+    yield from _run_agent(repo_root, ws, prompt, _VERIFIER_SYSTEM, handle, f"verifier/{problem_id}/{issue_id}")
 
 
 # ── daily issue cycle ────────────────────────────────────────────────────────
@@ -425,25 +455,13 @@ def _thread_to_text(issue: dict, max_chars: int = 6000) -> str:
     return text[-max_chars:] if len(text) > max_chars else text
 
 
-def _claude_one_shot(prompt: str, repo_root: Path, timeout: int = 120) -> str:
-    binary = shutil.which("claude")
-    if not binary:
-        return "(claude CLI not found)"
-    env = dict(os.environ)
-    env.pop("ANTHROPIC_API_KEY", None)
-    env.pop("ANTHROPIC_AUTH_TOKEN", None)
-    try:
-        result = subprocess.run(
-            [binary, "-p", prompt, "--output-format", "text",
-             "--no-session-persistence", "--permission-mode", "acceptEdits"],
-            capture_output=True, text=True, timeout=timeout,
-            cwd=str(repo_root), env=env,
-        )
-        return result.stdout.strip() or result.stderr.strip() or "(empty response)"
-    except subprocess.TimeoutExpired:
-        return "(timed out)"
-    except Exception as exc:
-        return f"(error: {exc})"
+def _vertex_one_shot(prompt: str, timeout: int = 120) -> str:
+    from .vertex_llm import complete
+
+    text = complete(prompt, max_tokens=4096)
+    if text:
+        return text
+    return "(Vertex AI returned no response)"
 
 
 def run_discussion_agent(
@@ -494,7 +512,7 @@ def run_discussion_agent(
 
         yield AgentEvent("text_delta", {"text": f"[discuss] {agent_name} thinking…\n"})
 
-        response = _claude_one_shot(prompt, repo_root)
+        response = _vertex_one_shot(prompt)
         if response:
             add_comment(repo_root, problem_id, issue_id, agent_name, response, dataset)
             yield AgentEvent("text_delta", {"text": f"[discuss] {agent_name} posted.\n"})
@@ -549,6 +567,7 @@ def generate_issue_summary(
 # ── internal: generic agent driver ──────────────────────────────────────────
 
 def _run_agent(
+    repo_root: Path,
     workspace: Path,
     prompt: str,
     system_extra: str,
@@ -556,148 +575,37 @@ def _run_agent(
     label: str,
     on_done: "callable | None" = None,
     max_turns: int | None = None,
-    allowed_tools: str | None = None,
 ) -> Iterator[AgentEvent]:
-    binary = shutil.which("claude")
-    if not binary:
-        yield AgentEvent("error", {"message": "claude CLI not found on PATH"})
-        yield AgentEvent("done", {"reason": "error"})
-        return
+    """Drive an issue/meet agent via Vertex AI tool loop."""
+    cfg = AgentConfig(
+        problem_id=label.replace("/", "_")[:32] or "issue",
+        problem_text="",
+        initial_message=prompt,
+        system_prompt=system_extra,
+        status_label=label,
+        model=DEFAULT_MODEL,
+        workspace=workspace,
+        repo_root=repo_root,
+        provider="vertex",
+        thinking=False,
+        max_wall_seconds=_WALL_SECONDS,
+        max_iterations=max_turns or _MAX_TURNS,
+    )
 
-    cmd = [
-        binary, "-p", prompt,
-        "--output-format", "stream-json",
-        "--verbose",
-        "--include-partial-messages",
-        "--permission-mode", "acceptEdits",
-        "--allowedTools", allowed_tools or _ALLOWED_TOOLS,
-        "--max-turns", str(max_turns if max_turns is not None else _MAX_TURNS),
-        "--append-system-prompt", system_extra,
-        "--no-session-persistence",
-    ]
-
-    env = dict(os.environ)
-    env.pop("ANTHROPIC_API_KEY", None)
-    env.pop("ANTHROPIC_AUTH_TOKEN", None)
-
-    yield AgentEvent("status", {"state": "running", "label": label, "workspace": str(workspace)})
-
+    saw_done = False
+    reason = "error"
     try:
-        proc = subprocess.Popen(
-            cmd, cwd=str(workspace), env=env, text=True, bufsize=1,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            start_new_session=True,
-        )
-    except OSError as exc:
-        yield AgentEvent("error", {"message": f"Failed to start claude CLI: {exc}"})
-        yield AgentEvent("done", {"reason": "error"})
-        return
-
-    if handle is not None:
-        handle.attach_proc(proc)
-
-    stderr_chunks: list[str] = []
-    drain = threading.Thread(target=_drain, args=(proc.stderr, stderr_chunks), daemon=True)
-    drain.start()
-
-    deadline = time.time() + _WALL_SECONDS
-    saw_result = False
-    cancelled = False
-    timed_out = False
-
-    try:
-        assert proc.stdout is not None
-        for line in proc.stdout:
-            if handle is not None and handle.cancelled:
-                cancelled = True
-                handle.kill_proc()
-                break
-            if time.time() > deadline:
-                timed_out = True
-                if handle:
-                    handle.kill_proc()
-                else:
-                    proc.terminate()
-                break
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            for ev in _translate(obj):
-                if ev.type == "done":
-                    saw_result = True
-                yield ev
+        for ev in run_agent_vertex(cfg, handle):
+            if ev.type == "done":
+                saw_done = True
+                reason = ev.data.get("reason", "end_turn")
+            yield ev
     finally:
-        try:
-            proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-
-    if on_done:
-        try:
-            on_done()
-        except Exception:  # noqa: BLE001
-            pass
-
-    if cancelled:
-        yield AgentEvent("done", {"reason": "stopped"})
-        return
-    if timed_out:
-        yield AgentEvent("error", {"message": "Agent exceeded time limit."})
-        yield AgentEvent("done", {"reason": "timeout"})
-        return
-    if not saw_result:
-        msg = "".join(stderr_chunks).strip() or "claude CLI exited without a result"
-        yield AgentEvent("error", {"message": msg[-1500:]})
-        yield AgentEvent("done", {"reason": "error"})
+        if on_done and saw_done and reason not in ("error", "timeout", "stopped"):
+            try:
+                on_done()
+            except Exception:  # noqa: BLE001
+                pass
 
 
-def _drain(stream, sink: list[str]) -> None:
-    try:
-        for line in stream:
-            sink.append(line)
-    except Exception:  # noqa: BLE001
-        pass
-
-
-def _translate(obj: dict) -> Iterator[AgentEvent]:
-    """Map one Claude Code stream-json line to AgentEvents."""
-    etype = obj.get("type")
-    if etype == "stream_event":
-        event = obj.get("event", {})
-        if event.get("type") == "content_block_delta":
-            delta = event.get("delta", {})
-            dtype = delta.get("type")
-            if dtype == "text_delta" and delta.get("text"):
-                yield AgentEvent("text_delta", {"text": delta["text"]})
-            elif dtype == "thinking_delta" and delta.get("thinking"):
-                yield AgentEvent("thinking_delta", {"text": delta["thinking"]})
-        return
-    if etype == "assistant":
-        msg = obj.get("message", {})
-        usage = msg.get("usage") or {}
-        if usage.get("input_tokens") or usage.get("output_tokens"):
-            yield AgentEvent("turn_usage", {
-                "input_tokens": usage.get("input_tokens", 0),
-                "output_tokens": usage.get("output_tokens", 0),
-            })
-        for block in msg.get("content", []):
-            if block.get("type") == "tool_use":
-                yield AgentEvent("tool_use", {
-                    "id": block.get("id", ""),
-                    "name": block.get("name", "tool"),
-                    "input": block.get("input", {}),
-                })
-        return
-    if etype == "result":
-        usage = obj.get("usage") or {}
-        yield AgentEvent("usage", {
-            "input_tokens": usage.get("input_tokens", 0),
-            "output_tokens": usage.get("output_tokens", 0),
-            "cost_usd": obj.get("total_cost_usd"),
-            "num_turns": obj.get("num_turns"),
-        })
-        yield AgentEvent("done", {"reason": "error" if obj.get("is_error") else "end_turn"})
+# Legacy CLI helpers removed — all agents use Vertex AI.
