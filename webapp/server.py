@@ -50,6 +50,7 @@ from .literature import load_index as lit_load, add_paper as lit_add, update_pap
 from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts
 from .devlog import read_log as devlog_read, append_entry as devlog_append
 from .insights import get_system_insight, get_dataset_insight, get_question_insight
+from .issue_pdf import compile_issue_pdf
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -458,6 +459,21 @@ def generate_doc_ep(
     result = generate_issue_summary(REPO_ROOT, problem_id, issue_id, ds)
     if "error" in result:
         return JSONResponse(result, status_code=404)
+    return JSONResponse(result)
+
+
+@app.get("/api/issue-pdf/{problem_id}/{issue_id}")
+def issue_pdf_ep(
+    problem_id: str,
+    issue_id: str,
+    dataset: str = Query(None),
+    force: bool = Query(False),
+) -> JSONResponse:
+    ds = _ds_from_query(dataset)
+    issue = get_issue(REPO_ROOT, problem_id, issue_id, ds)
+    if issue is None:
+        return JSONResponse({"error": "issue not found"}, status_code=404)
+    result = compile_issue_pdf(REPO_ROOT, issue, force=force)
     return JSONResponse(result)
 
 

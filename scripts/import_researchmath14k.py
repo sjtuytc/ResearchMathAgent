@@ -213,6 +213,16 @@ def main():
     print(f"\nDone. Imported: {imported}, skipped: {skipped}, errors: {errors}")
     print(f"Dataset at: {DATASET_DIR}")
 
+    # Build the list index so queries are fast (avoids reading 14k files on every request)
+    print("Building _index.json for fast queries...")
+    import sys; sys.path.insert(0, str(REPO_ROOT))
+    try:
+        from webapp.dataset_store import build_index
+        build_index(DATASET_SLUG)
+        print("Index built.")
+    except Exception as e:
+        print(f"Warning: could not build index: {e}")
+
 
 if __name__ == "__main__":
     main()

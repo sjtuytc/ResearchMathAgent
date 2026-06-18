@@ -70,6 +70,58 @@ def _problem_dir(slug: str) -> Path:
     return DATASETS_DIR / slug / "problems"
 
 
+def _index_path(slug: str) -> Path:
+    return DATASETS_DIR / slug / "_index.json"
+
+
+def _load_index(slug: str) -> list[dict] | None:
+    """Load the pre-built list index (no tex field). Returns None if missing/stale."""
+    p = _index_path(slug)
+    if not p.is_file():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def build_index(slug: str) -> list[dict]:
+    """Read all problem files and write _index.json. Returns the indexed list."""
+    pdir = _problem_dir(slug)
+    records: list[dict] = []
+    for pfile in sorted(pdir.glob("*.json")):
+        try:
+            p = json.loads(pfile.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        p.setdefault("dataset", slug)
+        records.append({k: v for k, v in p.items() if k != "tex"})
+    _index_path(slug).write_text(json.dumps(records, ensure_ascii=False), encoding="utf-8")
+    return records
+
+
+def _load_problems_for_slug(slug: str) -> list[dict]:
+    """Return all problems for a dataset, using the index when available."""
+    cached = _load_index(slug)
+    if cached is not None:
+        for p in cached:
+            p.setdefault("dataset", slug)
+        return cached
+    # Fall back to reading individual files (small datasets or first run)
+    pdir = _problem_dir(slug)
+    if not pdir.is_dir():
+        return []
+    records: list[dict] = []
+    for pfile in sorted(pdir.glob("*.json")):
+        try:
+            p = json.loads(pfile.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        p.setdefault("dataset", slug)
+        records.append({k: v for k, v in p.items() if k != "tex"})
+    return records
+
+
 def list_problems(
     dataset: str | None = None,
     sort: str = "id",
@@ -85,25 +137,17 @@ def list_problems(
     sort values: "id", "title", "difficulty_asc", "difficulty_desc",
                  "solvability_asc", "solvability_desc"
     """
-    slugs = [dataset] if dataset else [d.name for d in sorted(DATASETS_DIR.iterdir()) if d.is_dir()]
+    slugs = [dataset] if dataset else [d.name for d in sorted(DATASETS_DIR.iterdir()) if d.is_dir() and not d.name.startswith("_")]
     problems: list[dict] = []
 
     for slug in slugs:
-        pdir = _problem_dir(slug)
-        if not pdir.is_dir():
-            continue
         scores = _load_solvability_cache(slug)
-        for pfile in sorted(pdir.glob("*.json")):
-            try:
-                p = json.loads(pfile.read_text(encoding="utf-8"))
-            except Exception:
-                continue
-            p.setdefault("dataset", slug)
-            pid = p.get("id", pfile.stem)
-            # merge live solvability score
+        slug_problems = _load_problems_for_slug(slug)
+        for p in slug_problems:
+            pid = p.get("id", "")
             if pid in scores:
                 p["solvability_score"] = scores[pid]
-            problems.append(p)
+        problems.extend(slug_problems)
 
     # ── filters ──
     if tags:
@@ -137,8 +181,7 @@ def list_problems(
         # default: group by dataset, then natural sort by id
         problems.sort(key=lambda p: (p.get("dataset", ""), _natural_key(p.get("id", ""))))
 
-    # Strip the heavy tex field from list view
-    return [{k: v for k, v in p.items() if k != "tex"} for p in problems]
+    return problems
 
 
 def get_problem(dataset: str, problem_id: str) -> dict | None:

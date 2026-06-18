@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 # Deploy current working-tree state to production.
 #
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  ⚠️  REQUIRES EXPLICIT USER PERMISSION BEFORE RUNNING                  ║
+# ║                                                                          ║
+# ║  Claude (AI assistant) must NOT run this script autonomously.           ║
+# ║  Always test changes on the dev server (port 8001) first, then ask      ║
+# ║  the user: "Ready to deploy to production?" and wait for approval.      ║
+# ║                                                                          ║
+# ║  Deploying broken code to production breaks the live public website.    ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
 # What this does:
 #   1. Optionally commit + push to GitHub (if there are uncommitted changes)
 #   2. Gracefully restart the production server (port 8000) so it picks up new code
