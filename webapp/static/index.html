@@ -266,7 +266,6 @@ MathJax = {
     </div>
     <h2 style="display:flex;align-items:center;gap:6px">Problems <span id="q-count" style="font-size:10px;font-weight:400;color:var(--muted)"></span></h2>
     <div id="qlist"></div>
-    <h2 style="margin-top:18px">Active runs</h2><div id="runlist"><div class="muted" style="padding:6px 10px;font-size:12px">none</div></div>
     <h2 style="margin-top:18px">Daily cycle</h2>
     <div style="padding:6px 10px">
       <button class="btn-sec" id="daily-run-btn" style="width:100%;font-size:12px;margin-bottom:6px">Run daily cycle now</button>
@@ -307,6 +306,35 @@ MathJax = {
     </div>
 
     <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
+
+      <!-- ── System summary (always visible first) ──────────────────── -->
+      <div id="ov-system-card" class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <span style="font-size:13px;font-weight:700">Research System Overview</span>
+          <span id="ov-sys-badge" style="font-size:11px;padding:2px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--border);color:var(--muted)">loading…</span>
+        </div>
+        <div id="ov-sys-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:14px"></div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Datasets</div>
+        <div id="ov-ds-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px"></div>
+      </div>
+
+      <!-- Issue progress -->
+      <div id="ov-card-issues" class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">Issue Progress — click any problem to view issues</div>
+        <div id="ov-issue-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px"></div>
+      </div>
+
+      <!-- Per-question status grid -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700">Problem Status &amp; AI Solvability</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="ov-eval-status" style="font-size:11px;color:var(--muted)"></span>
+            <button class="btn-sec" id="ov-eval-btn" style="font-size:11px;padding:3px 10px">Re-evaluate (Opus)</button>
+          </div>
+        </div>
+        <div id="ov-q-grid" style="display:flex;flex-direction:column;gap:7px"></div>
+      </div>
 
       <!-- ── Question filter banner ──────────────────────────────── -->
       <div id="ov-filter-bar" style="display:none;align-items:center;gap:10px;margin-bottom:14px;padding:8px 12px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.3);border-radius:7px">
@@ -417,50 +445,6 @@ MathJax = {
 
       </div>
 
-      <!-- ── Today's usage ─────────────────────────────────────── -->
-      <div id="ov-card-tokens" class="card" style="margin-bottom:14px;border-color:rgba(88,166,255,.35)">
-        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-          <span style="font-size:13px;font-weight:700">Today's Token Usage</span>
-          <span id="ov-today-date" style="font-size:11px;color:var(--muted)"></span>
-          <span id="ov-today-cost" style="font-size:12px;color:var(--green);margin-left:auto"></span>
-        </div>
-        <div style="font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:6px 10px;margin-bottom:14px;line-height:1.7">
-          Counts tokens from <strong style="color:var(--text)">webapp-launched agents</strong>:
-          daily daemon · Discover · Auto-Resolve · Verify · Solve buttons.
-          <br>Direct Claude Code conversations are not tracked here — see
-          <a href="https://claude.ai/settings/billing" target="_blank" style="color:var(--accent);text-decoration:none">claude.ai/settings/billing ↗</a>
-          for your full account usage.
-        </div>
-
-        <!-- big numbers -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
-          <div style="text-align:center;padding:12px 6px;background:var(--panel2);border-radius:6px">
-            <div id="ov-today-in" style="font-size:24px;font-weight:700;color:var(--accent);line-height:1">—</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">input tokens</div>
-          </div>
-          <div style="text-align:center;padding:12px 6px;background:var(--panel2);border-radius:6px">
-            <div id="ov-today-out" style="font-size:24px;font-weight:700;color:var(--accent2);line-height:1">—</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">output tokens</div>
-          </div>
-          <div style="text-align:center;padding:12px 6px;background:var(--panel2);border-radius:6px">
-            <div id="ov-today-runs" style="font-size:24px;font-weight:700;color:var(--green);line-height:1">—</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">agent runs</div>
-          </div>
-        </div>
-
-        <!-- distribution by kind -->
-        <div style="margin-bottom:14px">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">By type</div>
-          <div id="ov-today-kind"><span style="color:var(--muted);font-size:12px">no runs today yet</span></div>
-        </div>
-
-        <!-- distribution by problem -->
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">By problem</div>
-          <div id="ov-today-prob"><span style="color:var(--muted);font-size:12px">—</span></div>
-        </div>
-      </div>
-
       <!-- Schedule card -->
       <div id="ov-card-schedule" class="card" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
@@ -478,28 +462,35 @@ MathJax = {
         </div>
       </div>
 
-      <!-- Active runs -->
-      <div id="ov-card-active" class="card" style="margin-bottom:14px">
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px">Active Runs <span id="ov-active-count" style="color:var(--muted);font-size:12px;font-weight:400"></span></div>
-        <div id="ov-active-runs" style="font-size:12px;color:var(--muted)">none</div>
-      </div>
-
-      <!-- Issue progress -->
-      <div id="ov-card-issues" class="card" style="margin-bottom:14px">
-        <div style="font-size:13px;font-weight:700;margin-bottom:12px">Issue Progress — click any problem to view issues</div>
-        <div id="ov-issue-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px"></div>
-      </div>
-
-      <!-- Per-question status grid -->
-      <div class="card" style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
-          <span style="font-size:13px;font-weight:700">Problem Status &amp; AI Solvability</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="ov-eval-status" style="font-size:11px;color:var(--muted)"></span>
-            <button class="btn-sec" id="ov-eval-btn" style="font-size:11px;padding:3px 10px" title="Re-evaluate AI solvability using Claude Opus for all 10 problems">Re-evaluate (Opus)</button>
+      <!-- ── Today's usage (lower priority) ──────────────────────── -->
+      <div id="ov-card-tokens" class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700">Today's Token Usage</span>
+          <span id="ov-today-date" style="font-size:11px;color:var(--muted)"></span>
+          <span id="ov-today-cost" style="font-size:12px;color:var(--green);margin-left:auto"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+          <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
+            <div id="ov-today-in" style="font-size:20px;font-weight:700;color:var(--accent);line-height:1">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">input tokens</div>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
+            <div id="ov-today-out" style="font-size:20px;font-weight:700;color:var(--accent2);line-height:1">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">output tokens</div>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:var(--panel2);border-radius:6px">
+            <div id="ov-today-runs" style="font-size:20px;font-weight:700;color:var(--green);line-height:1">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">agent runs</div>
           </div>
         </div>
-        <div id="ov-q-grid" style="display:flex;flex-direction:column;gap:7px"></div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">By type</div>
+          <div id="ov-today-kind"><span style="color:var(--muted);font-size:12px">no runs today yet</span></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">By problem</div>
+          <div id="ov-today-prob"><span style="color:var(--muted);font-size:12px">—</span></div>
+        </div>
       </div>
 
       <!-- Token usage daily chart -->
@@ -538,7 +529,10 @@ MathJax = {
     <section class="pane" id="pane-question" style="display:none">
       <div id="q-empty" class="empty">Pick a question on the left.</div>
       <div id="q-body" style="display:none">
-        <h2 class="ttl" id="q-title"></h2>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <button class="btn-sec" style="font-size:11px;padding:2px 8px" onclick="clearQuestion()">← back</button>
+          <h2 class="ttl" id="q-title" style="margin:0;flex:1"></h2>
+        </div>
         <div class="bar">
           <button class="btn-sec" id="q-toggle">View raw .tex</button>
           <button class="btn-sec" id="q-pdf-btn" style="display:none">Compile PDF</button>
@@ -1206,6 +1200,12 @@ async function loadDatasets(){
     sel.onchange=()=>{
       if(!SUPPORTED_DATASETS.has(sel.value)&&sel.value){ sel.value=selectedDataset; return; }
       selectedDataset=sel.value;
+      // Deselect question so all tabs reload in dataset context
+      selected=null;
+      document.querySelectorAll(".qitem").forEach(n=>n.classList.remove("active"));
+      $("q-empty").style.display="";
+      $("q-body").style.display="none";
+      const lvlQEl=$("lvl-q-name"); if(lvlQEl){ lvlQEl.textContent="none"; lvlQEl.className="lvl-value none"; }
       const dsNameEl=$("lvl-ds-name");
       if(dsNameEl){
         const chosen=allDatasets.find(d=>d.slug===sel.value);
@@ -1214,7 +1214,11 @@ async function loadDatasets(){
         dsNameEl.className="lvl-value"+(sel.value?"":" none");
       }
       if(sel.value) setGlobalLevel("dataset");
+      else setGlobalLevel("system");
       loadProblems();
+      // Reload active tab for new dataset (no question selected)
+      const _activeTab=document.querySelector(".tab.active");
+      if(_activeTab) setTab(_activeTab.dataset.tab);
     };
   }
   populateDsSel(STATIC_DATASETS);
@@ -1622,11 +1626,51 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 
 // IDs of global-only overview cards to hide when a question is focused
-const _OV_GLOBAL_CARDS = ["ov-card-tokens","ov-card-schedule","ov-card-active",
+const _OV_GLOBAL_CARDS = ["ov-card-tokens","ov-card-schedule",
   "ov-card-issues","ov-card-chart","ov-card-prob-tokens","ov-card-suggestions","ov-card-activity"];
 
 function renderOverview(d, pid){
   if(!d) return;
+
+  // ── System summary card (always update) ──────────────────────────
+  const qSums=d.question_summaries||[];
+  const totalQ=qSums.length;
+  const attempted=qSums.filter(q=>(q.total_runs||0)>0).length;
+  const verified=qSums.filter(q=>q.proof_status==="verified").length;
+  const exploring=qSums.filter(q=>q.proof_status==="exploring"||q.proof_status==="in_progress").length;
+  const totalOpenIssues=qSums.reduce((s,q)=>s+((q.issue_stats||{}).open||0),0);
+  const sysBadge=$("ov-sys-badge");
+  if(sysBadge) sysBadge.textContent=`${[...SUPPORTED_DATASETS].length} datasets · ${totalQ} problems`;
+  const statsEl=$("ov-sys-stats");
+  if(statsEl) statsEl.innerHTML=[
+    {n:verified,   l:"Verified ✓",  c:"var(--green)"},
+    {n:exploring,  l:"Exploring",   c:"var(--accent2)"},
+    {n:attempted,  l:"Attempted",   c:"var(--accent)"},
+    {n:totalOpenIssues, l:"Open Issues", c:"var(--amber)"},
+    {n:totalQ-attempted, l:"Not Started", c:"var(--muted)"},
+  ].map(({n,l,c})=>`<div style="text-align:center;padding:8px 4px;background:var(--panel2);border-radius:7px;border:1px solid var(--border)"><div style="font-size:20px;font-weight:800;color:${c}">${n}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${l}</div></div>`).join("");
+  const dsGrid=$("ov-ds-grid");
+  if(dsGrid){
+    const activeDSs=allDatasets.filter(ds=>SUPPORTED_DATASETS.has(ds.slug));
+    dsGrid.innerHTML=(activeDSs.length?activeDSs:allDatasets).map(ds=>{
+      const dsQs=qSums.filter(q=>q.dataset===ds.slug||(!q.dataset&&ds.slug==="first_proof_1"));
+      const dsTotal=ds.problem_count||dsQs.length||0;
+      const dsAtt=dsQs.filter(q=>(q.total_runs||0)>0).length;
+      const dsVer=dsQs.filter(q=>q.proof_status==="verified").length;
+      const pct=dsTotal>0?Math.round(dsAtt/dsTotal*100):0;
+      return `<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:6px">${esc(ds.name||ds.slug)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--accent)"></div></div>
+          <span style="font-size:10px;color:var(--muted)">${dsAtt}/${dsTotal}</span>
+        </div>
+        <div style="display:flex;gap:10px;font-size:10px;color:var(--muted)">
+          <span style="color:var(--green)">✓ ${dsVer} verified</span>
+          <span>${dsTotal-dsAtt} unstarted</span>
+        </div>
+      </div>`;
+    }).join("");
+  }
 
   // ── Question focus vs. global mode ──
   const filterBar=$("ov-filter-bar");
@@ -1696,22 +1740,6 @@ function renderOverview(d, pid){
   $("ov-countdown").textContent=`${h}h ${m}m`;
   $("ov-next-run").textContent=(d.next_run_iso||"").replace("T"," ");
   $("ov-daemon-pid").textContent=d.daemon_pid?`#${d.daemon_pid}`:"not found";
-
-  // Active runs
-  const runs=(d.active_runs||[]).filter(r=>!pid||r.problem===pid);
-  $("ov-active-count").textContent=runs.length?`(${runs.length})`:"";
-  if(runs.length){
-    $("ov-active-runs").innerHTML=runs.map(r=>`
-      <div style="padding:4px 8px;background:var(--panel2);border-radius:4px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
-        <span class="dot run"></span>
-        <span style="color:var(--accent2)">${esc(r.kind||"run")}</span>
-        <span style="color:var(--muted)">·</span>
-        <span>${esc(r.problem||"")}${r.issue?" #"+esc(r.issue):""}</span>
-        <span style="margin-left:auto;color:var(--muted)">${r.age_s}s</span>
-      </div>`).join("");
-  } else {
-    $("ov-active-runs").innerHTML='<span style="color:var(--muted)">none</span>';
-  }
 
   // Issue grid
   const stats=d.issue_stats||{};
@@ -2009,6 +2037,12 @@ function setTab(name){
   if(name==="meet"){ if(q||selected) loadMeetRooms(q||selected); }
   if(name==="insights"){ loadInsights(); }
   if(name==="agent") refreshVertexUsage();
+  if(name==="issue"){
+    // If no question selected, drop to dataset level
+    if(!selected && _issLevel==="question") issSetLevel("dataset");
+    else issSetLevel(_issLevel);
+  }
+  if(name==="hero"){ heroRefreshDiagram(); }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -2283,6 +2317,20 @@ function extractStatement(tex){
            .replace(/\\author\{[^}]*\}/g,"").replace(/\\date\{[^}]*\}/g,"")
            .replace(/\\input\{[^}]*\}/g,"");
   return body.trim();
+}
+
+function clearQuestion(){
+  selected=null;
+  document.querySelectorAll(".qitem").forEach(n=>n.classList.remove("active"));
+  $("q-empty").style.display="";
+  $("q-body").style.display="none";
+  const lvlQ=$("lvl-q-name"); if(lvlQ){ lvlQ.textContent="none"; lvlQ.className="lvl-value none"; }
+  setGlobalLevel("dataset");
+  // Drop issue tab to dataset level
+  if(typeof _issLevel!=="undefined" && _issLevel==="question") issSetLevel("dataset");
+  // Refresh the active tab in dataset-level context
+  const activeTab=document.querySelector(".tab.active");
+  if(activeTab) setTab(activeTab.dataset.tab);
 }
 
 async function selectQuestion(qid, node, dataset){
@@ -3111,28 +3159,6 @@ function finish(reason){
 $("run").onclick=start;
 $("stop").onclick=stop;
 window.addEventListener("beforeunload",cancelBackend);
-
-// ---- Active runs panel ----
-async function pollRuns(){
-  let runs=[];
-  try{ runs=(await (await fetch("/api/runs")).json()).runs||[]; }catch(e){ return; }
-  const box=$("runlist");
-  if(!runs.length){ box.innerHTML='<div class="muted" style="padding:6px 10px;font-size:12px">none</div>'; return; }
-  box.innerHTML="";
-  for(const r of runs){
-    const it=el("div","runitem");
-    const kind=r.kind?`<span class="kind">${esc(r.kind)}</span> `:"";
-    it.innerHTML=`${kind}<b>${esc(r.problem||"?")}</b> <span class="meta">· ${esc(r.provider||"")} ${esc(r.model||"")} · ${r.status} · ${r.age_s}s</span>`;
-    const b=el("button",null,"Stop"); b.onclick=()=>cancelRun(r.run_id,b); it.appendChild(b);
-    box.appendChild(it);
-  }
-}
-async function cancelRun(id,btn){
-  if(btn){btn.disabled=true;btn.textContent="stopping…";}
-  try{ await fetch("/api/cancel",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({run_id:id})}); }catch(e){}
-  setTimeout(pollRuns,800);
-}
-setInterval(pollRuns,4000); pollRuns();
 
 // ---- PDF compile (artifact card → PDF.js) ----
 async function compilePdf(content,name,card,btn){
