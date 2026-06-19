@@ -58,10 +58,10 @@ def _save_metrics(repo_root: Path, metrics: dict) -> None:
     p.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
 
-def snapshot_metrics(repo_root: Path, job_id: str, problems: list[str]) -> dict:
+def snapshot_metrics(repo_root: Path, job_id: str, problems: list[str], dataset: str = "first_proof_1") -> dict:
     """Compute document-size and issue-resolve metrics for a set of problems."""
     doc_root = repo_root / "documents" / "questions"
-    issues_root = repo_root / "webapp" / "issues" / "first_proof_1"
+    issues_root = repo_root / "webapp" / "issues" / dataset
 
     _DOC_EXTS = {".tex", ".md", ".txt"}
 
@@ -216,6 +216,7 @@ def run_push_forward(
     problems: list[str] | None = None,
     max_resolve: int = 2,
     n_meeting_rounds: int = _DEFAULT_MEETING_ROUNDS,
+    dataset: str = "first_proof_1",
 ) -> None:
     """Execute the global push-forward. Blocking — call from a daemon thread.
 
@@ -231,9 +232,14 @@ def run_push_forward(
     from .meet_agents import run_round_offline, run_synthesis
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    default_problems = [f"q{i}" for i in range(1, 11)]
+    if dataset == "first_proof_2":
+        default_problems = [f"prob-{i:02d}" for i in range(1, 11)]
+        active_check = lambda p: True  # problems are in dataset store, not .tex files
+    else:
+        default_problems = [f"q{i}" for i in range(1, 11)]
+        active_check = lambda p: (repo_root / "problems" / f"{p}.tex").is_file()
     candidate = problems or default_problems
-    active = [p for p in candidate if (repo_root / "problems" / f"{p}.tex").is_file()]
+    active = [p for p in candidate if active_check(p)]
 
     with _LOCK:
         _JOBS[job_id] = {
@@ -261,31 +267,49 @@ def run_push_forward(
                 job = _JOBS.get(job_id, {})
                 job["current"] = pid
 
-            # Snapshot issue counts before cycle
+            # Snapshot issue counts + IDs before cycle
             try:
-                _before = _list_issues(repo_root, pid, "first_proof_1")
+                _before = _list_issues(repo_root, pid, dataset)
                 open_before = sum(1 for i in _before if i.get("status") in ("open", "in_progress"))
                 total_before = len(_before)
+                _before_ids = {i["id"] for i in _before}
+                _before_open_ids = {i["id"] for i in _before if i.get("status") in ("open", "in_progress")}
             except Exception:
                 open_before = total_before = 0
+                _before_ids = set()
+                _before_open_ids = set()
 
             _log(f"{pid}: starting issue cycle (discover + resolve up to {max_resolve})")
             cycle_error = None
             try:
-                cycle_log = run_issue_cycle(repo_root, pid, max_resolve=max_resolve)
+                cycle_log = run_issue_cycle(repo_root, pid, max_resolve=max_resolve, dataset=dataset)
                 _log(f"{pid}: issue cycle done ({len(cycle_log)} log lines)")
             except Exception as exc:
                 cycle_log = []
                 cycle_error = str(exc)
                 _log(f"{pid}: issue cycle error: {exc}")
 
-            # Snapshot after cycle to measure what changed
+            # Snapshot after cycle — capture titles of new/resolved issues
+            new_issue_titles: list[str] = []
+            resolved_issue_titles: list[str] = []
             try:
-                _after = _list_issues(repo_root, pid, "first_proof_1")
+                _after = _list_issues(repo_root, pid, dataset)
                 open_after = sum(1 for i in _after if i.get("status") in ("open", "in_progress"))
                 total_after = len(_after)
                 issues_discovered = max(0, total_after - total_before)
                 issues_resolved = max(0, open_before - open_after)
+                # Collect titles of truly new issues
+                new_issue_titles = [
+                    i.get("title", i["id"])
+                    for i in _after
+                    if i["id"] not in _before_ids
+                ][:6]
+                # Collect titles of issues that were open before but are now resolved
+                resolved_issue_titles = [
+                    i.get("title", i["id"])
+                    for i in _after
+                    if i["id"] in _before_open_ids and i.get("status") == "resolved"
+                ][:6]
             except Exception:
                 open_after = total_after = issues_discovered = issues_resolved = 0
 
@@ -317,10 +341,24 @@ def run_push_forward(
                     _log(f"{pid}: {n_meeting_rounds} discussion rounds complete")
 
                     # Synthesis: coordinator reads transcript and produces an action plan
+                    action_plan_summary = ""
                     try:
                         for _ in run_synthesis(repo_root, pid, room_id):
                             pass
                         _log(f"{pid}: action plan synthesized")
+                        # Pull the summary from the synthesised room plan
+                        try:
+                            from .meet import get_room as _get_room
+                            _room = _get_room(repo_root, pid, room_id)
+                            if _room:
+                                plan = _room.get("plan") or {}
+                                action_plan_summary = plan.get("summary", "")
+                                if not action_plan_summary:
+                                    steps = plan.get("steps", [])
+                                    if steps:
+                                        action_plan_summary = steps[0].get("title", "")
+                        except Exception:
+                            pass
                     except Exception as exc:
                         _log(f"{pid}: synthesis error: {exc}")
 
@@ -344,8 +382,11 @@ def run_push_forward(
                     "issues_open_after": open_after,
                     "issues_discovered": issues_discovered,
                     "issues_resolved": issues_resolved,
+                    "new_issue_titles": new_issue_titles,
+                    "resolved_issue_titles": resolved_issue_titles,
                     "room_id": room_id,
                     "meeting_participants": meeting_participants,
+                    "action_plan_summary": action_plan_summary,
                     "notes_path": str(notes_path) if notes_path else None,
                     "error": cycle_error,
                 })
@@ -369,11 +410,23 @@ def run_push_forward(
 
         # Snapshot metrics into data/push_forward_metrics.json
         try:
-            snap = snapshot_metrics(repo_root, job_id, active)
+            snap = snapshot_metrics(repo_root, job_id, active, dataset=dataset)
             append_metrics_snapshot(repo_root, snap)
             _log(f"metrics snapshot round {snap['round']} saved")
         except Exception as me:
             log.warning("metrics snapshot failed: %s", me)
+
+        # Update system-level literature survey
+        try:
+            from .literature import discover_system_literature
+            _log("updating system literature survey…")
+            added = 0
+            for event in discover_system_literature(repo_root):
+                if event.get("type") == "done":
+                    added = event.get("added", 0)
+            _log(f"system literature updated ({added} papers added/refreshed)")
+        except Exception as le:
+            log.warning("system literature update failed: %s", le)
 
         with _LOCK:
             job = _JOBS.get(job_id, {})
