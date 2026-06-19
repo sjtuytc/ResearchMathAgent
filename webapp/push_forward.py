@@ -23,6 +23,7 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 _STATE_FILE = "push_forward_state.json"
+_METRICS_FILE = "push_forward_metrics.json"
 
 # job_id → progress dict (lives in memory for the server lifetime)
 _JOBS: dict[str, dict] = {}
@@ -33,6 +34,95 @@ _LOCK = threading.Lock()
 
 def _state_path(repo_root: Path) -> Path:
     return repo_root / "webapp" / _STATE_FILE
+
+
+# ── Metrics persistence (survives restarts, stored in data/) ──────────────────
+
+def _metrics_path(repo_root: Path) -> Path:
+    return repo_root / "data" / _METRICS_FILE
+
+
+def load_metrics(repo_root: Path) -> dict:
+    p = _metrics_path(repo_root)
+    if p.is_file():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"snapshots": []}
+
+
+def _save_metrics(repo_root: Path, metrics: dict) -> None:
+    p = _metrics_path(repo_root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+
+
+def snapshot_metrics(repo_root: Path, job_id: str, problems: list[str]) -> dict:
+    """Compute document-size and issue-resolve metrics for a set of problems."""
+    doc_root = repo_root / "documents" / "questions"
+    issues_root = repo_root / "webapp" / "issues" / "first_proof_1"
+
+    _DOC_EXTS = {".tex", ".md", ".txt"}
+
+    total_bytes = 0
+    per_problem_bytes: dict[str, int] = {}
+    total_issues = 0
+    resolved_issues = 0
+    per_problem_issues: dict[str, dict] = {}
+
+    for pid in problems:
+        # Document size: all .tex/.md/.txt under documents/questions/<pid>/
+        size = 0
+        pid_doc = doc_root / pid
+        if pid_doc.is_dir():
+            for f in pid_doc.rglob("*"):
+                if f.is_file() and f.suffix in _DOC_EXTS:
+                    try:
+                        size += f.stat().st_size
+                    except OSError:
+                        pass
+        per_problem_bytes[pid] = size
+        total_bytes += size
+
+        # Issue counts
+        open_c = resolved_c = 0
+        pid_issues = issues_root / pid
+        if pid_issues.is_dir():
+            for f in pid_issues.glob("*.json"):
+                try:
+                    d = json.loads(f.read_text(encoding="utf-8"))
+                    if d.get("status") == "resolved":
+                        resolved_c += 1
+                    else:
+                        open_c += 1
+                except Exception:
+                    pass
+        per_problem_issues[pid] = {"open": open_c, "resolved": resolved_c}
+        total_issues += open_c + resolved_c
+        resolved_issues += resolved_c
+
+    n = len(problems)
+    return {
+        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "job_id": job_id,
+        "total_doc_bytes": total_bytes,
+        "avg_doc_bytes": total_bytes // n if n else 0,
+        "total_issues": total_issues,
+        "resolved_issues": resolved_issues,
+        "open_issues": total_issues - resolved_issues,
+        "solve_rate": round(resolved_issues / total_issues, 4) if total_issues else 0.0,
+        "per_problem_doc_bytes": per_problem_bytes,
+        "per_problem_issues": per_problem_issues,
+    }
+
+
+def append_metrics_snapshot(repo_root: Path, snap: dict) -> None:
+    metrics = load_metrics(repo_root)
+    snapshots = metrics.setdefault("snapshots", [])
+    snap["round"] = len(snapshots) + 1
+    snapshots.append(snap)
+    _save_metrics(repo_root, metrics)
 
 
 def load_state(repo_root: Path) -> dict:
@@ -276,6 +366,14 @@ def run_push_forward(
         # Keep at most 30 run records to avoid unbounded growth
         state["runs"] = state["runs"][-30:]
         _save_state(repo_root, state)
+
+        # Snapshot metrics into data/push_forward_metrics.json
+        try:
+            snap = snapshot_metrics(repo_root, job_id, active)
+            append_metrics_snapshot(repo_root, snap)
+            _log(f"metrics snapshot round {snap['round']} saved")
+        except Exception as me:
+            log.warning("metrics snapshot failed: %s", me)
 
         with _LOCK:
             job = _JOBS.get(job_id, {})

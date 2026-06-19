@@ -384,6 +384,31 @@ MathJax = {
         <div id="ov-ds-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px"></div>
       </div>
 
+      <!-- ── Push Forward Progress Charts ──────────────────────────── -->
+      <div id="pf-charts-card" class="card" style="margin-bottom:14px;display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700">Push Forward Progress</span>
+          <span id="pf-charts-rounds" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Total Document Size</div>
+            <canvas id="chart-doc-total" style="width:100%;display:block"></canvas>
+            <div id="chart-doc-total-val" style="font-size:11px;color:var(--accent);margin-top:4px;text-align:right"></div>
+          </div>
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Avg Document Size / Problem</div>
+            <canvas id="chart-doc-avg" style="width:100%;display:block"></canvas>
+            <div id="chart-doc-avg-val" style="font-size:11px;color:var(--accent);margin-top:4px;text-align:right"></div>
+          </div>
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Issue Resolve Rate</div>
+            <canvas id="chart-solve-rate" style="width:100%;display:block"></canvas>
+            <div id="chart-solve-rate-val" style="font-size:11px;color:var(--green);margin-top:4px;text-align:right"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Issue progress -->
       <div id="ov-card-issues" class="card" style="margin-bottom:14px">
         <div style="font-size:13px;font-weight:700;margin-bottom:12px">Issue Progress — click any problem to view issues</div>
@@ -885,83 +910,97 @@ MathJax = {
       </div>
     </section>
 
-    <section class="pane" id="pane-literature">
-      <!-- Global shared library (always visible) -->
-      <div id="lit-global-section" style="margin-bottom:18px">
-        <div class="bar" style="margin-bottom:10px">
-          <span style="font-size:13px;font-weight:700">Global Library</span>
-          <span id="lit-g-count" style="font-size:11px;color:var(--muted);margin-left:6px"></span>
-          <button class="btn-sec" id="lit-g-seed-btn" style="font-size:11px;padding:3px 10px;margin-left:8px" title="Seed with foundational papers">Seed Refs</button>
-          <span id="lit-g-status" style="font-size:11px;color:var(--muted);margin-left:8px"></span>
-        </div>
-        <div id="lit-g-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px"></div>
+    <section class="pane" id="pane-literature" style="padding:18px 22px;overflow-y:auto">
+      <!-- Level selector -->
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0">
+        <button id="lit-lvl-system" class="lit-lvl-btn lit-lvl-active" onclick="litSetLevel('system')" style="padding:6px 18px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--accent);cursor:pointer">System</button>
+        <button id="lit-lvl-question" class="lit-lvl-btn" onclick="litSetLevel('question')" style="padding:6px 18px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer">Question</button>
       </div>
-      <div id="lit-empty" class="empty">Pick a question to see its question-specific literature.</div>
-      <div id="lit-body" style="display:none">
-        <div class="bar" style="margin-bottom:14px">
-          <span style="font-size:13px;font-weight:700;color:var(--accent)" id="lit-q-label"></span>
-          <button class="btn-sec" id="lit-add-btn" style="font-size:12px;padding:5px 12px">+ Add Paper</button>
-          <span id="lit-status" style="font-size:12px;color:var(--muted)"></span>
+
+      <!-- ── System panel ──────────────────────────────────────────────── -->
+      <div id="lit-panel-system">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700">Agent Research Literature</span>
+          <span id="lit-sys-count" style="font-size:11px;color:var(--muted)"></span>
+          <button class="btn-pri" id="lit-sys-survey-btn" style="font-size:11px;padding:4px 12px;margin-left:auto">Survey Literature ▶</button>
+          <span id="lit-sys-status" style="font-size:11px;color:var(--muted)"></span>
         </div>
-        <!-- Add paper form -->
-        <div id="lit-add-form" style="display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
-          <div style="font-size:13px;font-weight:700;margin-bottom:10px">Add Paper</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-            <div>
-              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">URL (arXiv / DOI)</label>
-              <input type="text" id="lit-f-url" placeholder="https://arxiv.org/abs/…" style="width:100%" />
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Title</label>
-              <input type="text" id="lit-f-title" placeholder="Paper title" style="width:100%" />
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Authors (comma-separated)</label>
-              <input type="text" id="lit-f-authors" placeholder="Smith, J., Doe, A." style="width:100%" />
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Year</label>
-              <input type="text" id="lit-f-year" placeholder="2024" style="width:100%" />
-            </div>
+        <div id="lit-sys-log" style="display:none;font-size:11px;color:var(--muted);font-family:monospace;white-space:pre-wrap;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px;max-height:120px;overflow-y:auto;margin-bottom:12px"></div>
+        <div id="lit-sys-areas" style="display:flex;flex-direction:column;gap:16px"></div>
+        <div id="lit-sys-empty" class="muted" style="padding:24px;font-size:13px">No system literature surveyed yet. Click "Survey Literature" to generate a curated reading list for improving RMAC.</div>
+      </div>
+
+      <!-- ── Question panel ────────────────────────────────────────────── -->
+      <div id="lit-panel-question" style="display:none">
+        <div id="lit-empty" class="empty" style="display:none">Pick a question to see its literature.</div>
+        <div id="lit-body">
+          <div class="bar" style="margin-bottom:14px">
+            <span style="font-size:13px;font-weight:700;color:var(--accent)" id="lit-q-label"></span>
+            <button class="btn-sec" id="lit-discover-btn" style="font-size:11px;padding:4px 10px">Discover ▶</button>
+            <button class="btn-sec" id="lit-add-btn" style="font-size:12px;padding:5px 12px">+ Add Paper</button>
+            <span id="lit-status" style="font-size:12px;color:var(--muted)"></span>
           </div>
-          <div style="margin-bottom:10px">
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Abstract (optional)</label>
-            <textarea id="lit-f-abstract" style="min-height:72px;font-size:12px" placeholder="Brief abstract or summary…"></textarea>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select id="lit-f-relevance" style="font-size:12px;padding:5px 8px">
-              <option value="high">High relevance</option>
-              <option value="medium" selected>Medium relevance</option>
-              <option value="low">Low relevance</option>
-            </select>
-            <button class="btn-pri" id="lit-f-submit" style="font-size:12px;padding:5px 14px">Add Paper</button>
-            <button class="btn-sec" id="lit-f-cancel" style="font-size:12px;padding:5px 14px">Cancel</button>
-            <span id="lit-f-status" style="font-size:12px;color:var(--muted)"></span>
-          </div>
-        </div>
-        <!-- Two-column: paper list + paper detail -->
-        <div style="display:grid;grid-template-columns:280px 1fr;gap:14px">
-          <div id="lit-list" style="display:flex;flex-direction:column;gap:6px"></div>
-          <div id="lit-detail">
-            <div id="lit-detail-empty" class="empty" style="padding:30px;text-align:center">Select a paper on the left.</div>
-            <div id="lit-detail-content" style="display:none">
-              <h3 id="lit-d-title" style="margin:0 0 6px;font-size:15px"></h3>
-              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-                <span id="lit-d-authors"></span>
-                <span id="lit-d-year" style="margin-left:10px;font-weight:600;color:var(--accent)"></span>
-                <span id="lit-d-relevance" style="margin-left:10px"></span>
+          <!-- Add paper form -->
+          <div id="lit-add-form" style="display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">Add Paper</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div>
+                <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">URL (arXiv / DOI)</label>
+                <input type="text" id="lit-f-url" placeholder="https://arxiv.org/abs/…" style="width:100%" />
               </div>
-              <div id="lit-d-tags" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px"></div>
-              <div id="lit-d-abstract" class="rendered" style="font-size:12px;margin-bottom:14px;min-height:50px"></div>
-              <div style="margin-bottom:8px">
-                <div style="font-size:12px;font-weight:700;margin-bottom:6px">Research Notes</div>
-                <textarea id="lit-d-notes" style="min-height:160px;font-size:12px" placeholder="Key lemmas used, how this paper is relevant, your reading notes…"></textarea>
+              <div>
+                <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Title</label>
+                <input type="text" id="lit-f-title" placeholder="Paper title" style="width:100%" />
               </div>
-              <div style="display:flex;gap:8px;align-items:center">
-                <button class="btn-pri" id="lit-d-save" style="font-size:12px;padding:5px 14px">Save Notes</button>
-                <a id="lit-d-url" href="#" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none">Open ↗</a>
-                <button class="btn-sec" id="lit-d-delete" style="font-size:12px;padding:5px 14px;color:var(--red);border-color:var(--red);margin-left:auto">Delete</button>
-                <span id="lit-d-status" style="font-size:12px;color:var(--muted)"></span>
+              <div>
+                <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Authors (comma-separated)</label>
+                <input type="text" id="lit-f-authors" placeholder="Smith, J., Doe, A." style="width:100%" />
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Year</label>
+                <input type="text" id="lit-f-year" placeholder="2024" style="width:100%" />
+              </div>
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Abstract (optional)</label>
+              <textarea id="lit-f-abstract" style="min-height:72px;font-size:12px" placeholder="Brief abstract or summary…"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="lit-f-relevance" style="font-size:12px;padding:5px 8px">
+                <option value="high">High relevance</option>
+                <option value="medium" selected>Medium relevance</option>
+                <option value="low">Low relevance</option>
+              </select>
+              <button class="btn-pri" id="lit-f-submit" style="font-size:12px;padding:5px 14px">Add Paper</button>
+              <button class="btn-sec" id="lit-f-cancel" style="font-size:12px;padding:5px 14px">Cancel</button>
+              <span id="lit-f-status" style="font-size:12px;color:var(--muted)"></span>
+            </div>
+          </div>
+          <!-- Two-column: area-grouped list + paper detail -->
+          <div style="display:grid;grid-template-columns:300px 1fr;gap:14px;align-items:start">
+            <div id="lit-list" style="display:flex;flex-direction:column;gap:12px"></div>
+            <div id="lit-detail">
+              <div id="lit-detail-empty" class="empty" style="padding:30px;text-align:center">Select a paper on the left.</div>
+              <div id="lit-detail-content" style="display:none">
+                <h3 id="lit-d-title" style="margin:0 0 6px;font-size:15px"></h3>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+                  <span id="lit-d-authors"></span>
+                  <span id="lit-d-year" style="margin-left:10px;font-weight:600;color:var(--accent)"></span>
+                  <span id="lit-d-relevance" style="margin-left:10px"></span>
+                </div>
+                <div id="lit-d-tags" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px"></div>
+                <div id="lit-d-abstract" class="rendered" style="font-size:12px;margin-bottom:14px;min-height:50px"></div>
+                <div style="margin-bottom:8px">
+                  <div style="font-size:12px;font-weight:700;margin-bottom:6px">Research Notes</div>
+                  <textarea id="lit-d-notes" style="min-height:120px;font-size:12px" placeholder="Key lemmas used, how this paper is relevant…"></textarea>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <button class="btn-pri" id="lit-d-save" style="font-size:12px;padding:5px 14px">Save Notes</button>
+                  <a id="lit-d-url" href="#" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none">Open ↗</a>
+                  <button class="btn-sec" id="lit-d-pin" style="font-size:12px;padding:5px 14px" title="Download PDF and add as problem prefix">Pin to Prefix</button>
+                  <button class="btn-sec" id="lit-d-delete" style="font-size:12px;padding:5px 14px;color:var(--red);border-color:var(--red);margin-left:auto">Delete</button>
+                  <span id="lit-d-status" style="font-size:12px;color:var(--muted)"></span>
+                </div>
               </div>
             </div>
           </div>
@@ -1733,6 +1772,117 @@ async function loadOverview(){
   if(problems.length) renderProblemList(problems);
   // Sync push-forward status card
   loadPushForwardStatus();
+  // Load progress charts
+  loadPfCharts();
+}
+
+// ── Push Forward Progress Charts ──────────────────────────────────────────────
+
+function _fmtBytes(b){
+  if(b>=1048576) return (b/1048576).toFixed(1)+' MB';
+  if(b>=1024) return (b/1024).toFixed(0)+' KB';
+  return b+' B';
+}
+
+function drawLineChart(canvasId, points, color, yFmt, labelFmt){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas || !points.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth || 280;
+  const H = 80;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD_L = 8, PAD_R = 8, PAD_T = 6, PAD_B = 18;
+  const W2 = W - PAD_L - PAD_R;
+  const H2 = H - PAD_T - PAD_B;
+
+  const vals = points.map(p => p.y);
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+
+  function px(i){ return PAD_L + (points.length > 1 ? (i / (points.length-1)) * W2 : W2/2); }
+  function py(v){ return PAD_T + H2 - ((v - minV) / range) * H2; }
+
+  // Grid line at max and min
+  ctx.strokeStyle = '#2a3140'; ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  [minV, maxV].forEach(v => {
+    const y = py(v);
+    ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W-PAD_R, y); ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // Line
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = px(i), y = py(p.y);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Dots
+  points.forEach((p, i) => {
+    const x = px(i), y = py(p.y);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+  });
+
+  // X labels
+  ctx.fillStyle = '#8b949e'; ctx.font = `${10 * dpr / dpr}px system-ui`; ctx.textAlign = 'center';
+  points.forEach((p, i) => {
+    ctx.fillText(labelFmt ? labelFmt(p, i) : `R${p.x}`, px(i), H - 4);
+  });
+
+  // Y min/max labels
+  ctx.textAlign = 'right';
+  ctx.fillText(yFmt(maxV), W - PAD_R + 6, PAD_T + 8);
+  ctx.fillText(yFmt(minV), W - PAD_R + 6, PAD_T + H2 + 2);
+}
+
+let _pfMetrics = null;
+
+async function loadPfCharts(){
+  try{
+    const r = await fetch('/api/push-forward/metrics');
+    if(!r.ok) return;
+    const data = await r.json();
+    _pfMetrics = data;
+    renderPfCharts(data);
+  } catch(e){}
+}
+
+function renderPfCharts(data){
+  const snaps = (data.snapshots || []).filter(s => s.round != null);
+  const card = document.getElementById('pf-charts-card');
+  if(!snaps.length){ if(card) card.style.display='none'; return; }
+  if(card) card.style.display='';
+
+  document.getElementById('pf-charts-rounds').textContent =
+    `${snaps.length} round${snaps.length===1?'':'s'} recorded`;
+
+  const latest = snaps[snaps.length-1];
+
+  const ptsTotal = snaps.map(s=>({x:s.round, y:s.total_doc_bytes, label:s.date}));
+  const ptsAvg   = snaps.map(s=>({x:s.round, y:s.avg_doc_bytes,   label:s.date}));
+  const ptsSolve = snaps.map(s=>({x:s.round, y:s.solve_rate*100,  label:s.date}));
+
+  const lbl = (p, i) => p.label ? p.label.slice(5) : `R${p.x}`; // "MM-DD"
+
+  drawLineChart('chart-doc-total',  ptsTotal, '#58a6ff', _fmtBytes, lbl);
+  drawLineChart('chart-doc-avg',    ptsAvg,   '#bc8cff', _fmtBytes, lbl);
+  drawLineChart('chart-solve-rate', ptsSolve, '#3fb950', v => v.toFixed(1)+'%', lbl);
+
+  document.getElementById('chart-doc-total-val').textContent  =
+    'Latest: ' + _fmtBytes(latest.total_doc_bytes);
+  document.getElementById('chart-doc-avg-val').textContent    =
+    'Latest: ' + _fmtBytes(latest.avg_doc_bytes);
+  document.getElementById('chart-solve-rate-val').textContent =
+    `Latest: ${(latest.solve_rate*100).toFixed(1)}% (${latest.resolved_issues}/${latest.total_issues} issues)`;
 }
 
 function clearOvFilter(){

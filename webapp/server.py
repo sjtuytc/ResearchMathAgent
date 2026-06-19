@@ -55,6 +55,7 @@ from .literature import (
     update_global as lit_update_global, delete_from_global as lit_del_global,
     pdf_path_for as lit_pdf_path, get_pdf_status as lit_pdf_status,
     download_paper_pdf as lit_download_pdf, seed_global_library,
+    discover_system_literature, pin_paper_to_prefix, _SYSTEM_LIT_QID,
 )
 from .concepts import load_concepts, save_concepts, generate_concepts, ensure_all_concepts, ensure_fp2_concepts
 from .devlog import read_log as devlog_read, append_entry as devlog_append
@@ -1604,6 +1605,13 @@ def push_forward_job_ep(job_id: str) -> JSONResponse:
     return JSONResponse(info)
 
 
+@app.get("/api/push-forward/metrics")
+def push_forward_metrics_ep() -> JSONResponse:
+    """Return persisted per-round metrics from data/push_forward_metrics.json."""
+    from .push_forward import load_metrics
+    return JSONResponse(load_metrics(REPO_ROOT))
+
+
 @app.post("/api/eval/solvability/refresh")
 def refresh_solvability_eval(force: bool = Query(False)) -> JSONResponse:
     """Re-evaluate AI solvability for all q1-q10 using Claude Opus (background)."""
@@ -1982,6 +1990,46 @@ def lit_discover_ep(problem_id: str) -> StreamingResponse:
 
     return StreamingResponse(_gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/literature/system")
+def lit_system_list_ep() -> JSONResponse:
+    papers = lit_load(REPO_ROOT, _SYSTEM_LIT_QID)
+    return JSONResponse({"papers": papers})
+
+
+@app.get("/api/literature/system/discover")
+def lit_system_discover_ep() -> StreamingResponse:
+    def _gen():
+        def send(e): return f"data: {json.dumps(e)}\n\n"
+        try:
+            for ev in discover_system_literature(REPO_ROOT):
+                yield send(ev.to_dict())
+        except Exception as exc:
+            yield send({"type": "error", "message": str(exc)})
+            yield send({"type": "done", "reason": "error"})
+    return StreamingResponse(_gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/literature/{problem_id}/{paper_id}/pin")
+def lit_pin_ep(problem_id: str, paper_id: str) -> JSONResponse:
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid problem_id"}, status_code=400)
+    # Find paper in per-question index or system index
+    papers = lit_load(REPO_ROOT, problem_id) + lit_load(REPO_ROOT, _SYSTEM_LIT_QID)
+    paper = next((p for p in papers if p.get("id") == paper_id), None)
+    if not paper:
+        # Try global library
+        paper = next((p for p in lit_list_global(REPO_ROOT) if p.get("id") == paper_id), None)
+    if not paper:
+        return JSONResponse({"error": "paper not found"}, status_code=404)
+
+    def _do_pin():
+        pin_paper_to_prefix(REPO_ROOT, problem_id, paper)
+
+    threading.Thread(target=_do_pin, daemon=True).start()
+    return JSONResponse({"status": "pinning", "paper_id": paper_id, "problem_id": problem_id})
 
 
 # ── Concepts ─────────────────────────────────────────────────────────────────

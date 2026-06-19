@@ -344,6 +344,163 @@ def _resolve_pdf_url(url: str) -> str | None:
     return None
 
 
+# ── System-level literature (agent/AI research) ────────────────────────────
+
+_SYSTEM_LIT_QID = "_system_"
+
+_SYSTEM_SURVEY_SYSTEM = (
+    "You are a research systems engineer surveying the academic literature relevant to "
+    "building AI research agents for advanced mathematics. "
+    "Your goal is to identify key papers that would help engineers improve the RMAC system: "
+    "its agents, pipelines, evaluation methodology, and tool use. "
+    "Be precise: cite real papers with real arXiv IDs where available."
+)
+
+_SYSTEM_SURVEY_PROMPT = """\
+Survey the most important recent academic literature in the following areas relevant to
+building and improving RMAC (Research Math Agent Cluster), an AI system that uses LLM agents
+to make progress on research-level mathematics problems.
+
+Identify 5-7 papers per area from the following areas:
+
+1. Multi-agent LLM systems and collaboration (e.g. debate, reflection, critic-solver patterns)
+2. LLM reasoning and mathematical problem solving (e.g. chain-of-thought, process reward models)
+3. AI-assisted theorem proving and formal verification (e.g. Lean, Isabelle assistants)
+4. Retrieval-augmented generation for scientific literature
+5. Agent evaluation and benchmark design for complex reasoning tasks
+6. Tool-augmented agents (code execution, search, APIs in reasoning loops)
+
+For each paper return:
+- Real arXiv URL if available (or a credible source URL)
+- Full title exactly as published
+- Authors (surname, firstname format)
+- Year
+- 2-3 sentence abstract summary
+- Tags matching the area name above (use consistent short tags)
+- Relevance to RMAC: high / medium
+- Notes: 1-2 sentences on specifically how this paper could improve the RMAC system
+
+Return ONLY valid JSON array — no markdown fences, no explanation:
+[
+  {{
+    "url": "https://arxiv.org/abs/XXXX.XXXXX",
+    "title": "Full paper title",
+    "authors": ["Surname, Firstname"],
+    "year": YYYY,
+    "abstract": "2-3 sentence summary",
+    "tags": ["multi-agent", "LLM"],
+    "relevance": "high",
+    "notes": "How this specifically helps RMAC"
+  }}
+]
+"""
+
+
+def discover_system_literature(repo_root: Path) -> Iterator[AgentEvent]:
+    """Survey agent/AI research literature for the RMAC system via Vertex AI."""
+    yield AgentEvent("status", {"state": "running", "message": "Surveying agent research literature…"})
+    raw = _call_vertex_json(_SYSTEM_SURVEY_PROMPT, _SYSTEM_SURVEY_SYSTEM)
+    if not raw:
+        yield AgentEvent("error", {"message": "Vertex returned no response."})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    import re as _re
+    raw = raw.strip()
+    m = _re.search(r"\[.*\]", raw, _re.DOTALL)
+    if m:
+        raw = m.group(0)
+
+    try:
+        papers = json.loads(raw)
+    except Exception:
+        yield AgentEvent("error", {"message": f"Could not parse JSON: {raw[:300]}"})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    added = []
+    for p in papers:
+        if not isinstance(p, dict) or not p.get("title"):
+            continue
+        # Store using per-question storage with special _system_ qid
+        entry = add_paper(
+            repo_root, _SYSTEM_LIT_QID,
+            url=p.get("url", ""),
+            title=p.get("title", ""),
+            authors=p.get("authors", []),
+            year=p.get("year"),
+            abstract=p.get("abstract", ""),
+            tags=p.get("tags", []),
+            relevance=p.get("relevance", "medium"),
+            notes=p.get("notes", ""),
+            added_by="system-survey-agent",
+        )
+        added.append(entry)
+        yield AgentEvent("text_delta", {"text": f"+ {entry['title']} ({entry.get('year','')})\n"})
+
+    yield AgentEvent("done", {"reason": "end_turn", "added": len(added), "papers": added})
+
+
+def pin_paper_to_prefix(
+    repo_root: Path,
+    problem_id: str,
+    paper: dict,
+) -> dict:
+    """Download paper PDF and add it as a prefix entry for the given problem.
+
+    Returns {"ok": bool, "prefix_id": str|None, "pdf_status": str, "message": str}
+    """
+    from .prefix import add_entry as prefix_add_entry
+
+    paper_id = paper.get("id") or _paper_id(paper.get("url", ""))
+    url = paper.get("url", "")
+
+    # Download PDF in-process (blocking; call from a thread for the endpoint)
+    pdf_status = "none"
+    if url:
+        try:
+            result = download_paper_pdf(repo_root, paper_id, url)
+            pdf_status = "available" if result in ("ok", "exists") else f"error:{result}"
+        except Exception as exc:
+            pdf_status = f"error:{exc}"
+
+    # Build prefix content from paper metadata
+    authors_str = ", ".join(paper.get("authors") or [])
+    year = paper.get("year", "")
+    tags_str = ", ".join(paper.get("tags") or [])
+    abstract = (paper.get("abstract") or "").strip()
+    notes = (paper.get("notes") or "").strip()
+
+    content_lines = [
+        f"**{paper.get('title', 'Untitled')}**",
+        f"{authors_str} ({year})" if (authors_str or year) else "",
+        f"Tags: {tags_str}" if tags_str else "",
+        "",
+        abstract,
+    ]
+    if notes:
+        content_lines += ["", f"*Relevance to this problem:* {notes}"]
+    if url:
+        content_lines += ["", f"Source: {url}"]
+    content = "\n".join(l for l in content_lines if l is not None).strip()
+
+    # Add as prefix entry
+    try:
+        entry = prefix_add_entry(
+            repo_root, problem_id,
+            type="background",
+            title=f"Literature: {paper.get('title', '')[:60]}",
+            content=content,
+        )
+        prefix_id = entry["id"]
+    except Exception as exc:
+        return {"ok": False, "prefix_id": None, "pdf_status": pdf_status,
+                "message": f"Prefix add failed: {exc}"}
+
+    return {"ok": True, "prefix_id": prefix_id, "pdf_status": pdf_status,
+            "message": "Pinned to prefix."}
+
+
 # ── Seed global library with foundational references ───────────────────────
 
 _SEED_PAPERS = [
