@@ -60,7 +60,7 @@ from .concepts import load_concepts, save_concepts, generate_concepts, ensure_al
 from .devlog import read_log as devlog_read, append_entry as devlog_append
 from .insights import get_system_insight, get_dataset_insight, get_question_insight
 from .issue_pdf import compile_issue_pdf
-from .doc_bundle import build_bundle_pdf
+from .doc_bundle import build_bundle_pdf, prebuild_bundle_pdf, _bundle_cache_path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -217,6 +217,7 @@ threading.Thread(
     target=ensure_all_concepts, args=(REPO_ROOT, _Q_TITLES), daemon=True
 ).start()
 threading.Thread(target=ensure_fp2_concepts, args=(REPO_ROOT,), daemon=True).start()
+threading.Thread(target=prebuild_bundle_pdf, args=(REPO_ROOT,), daemon=True).start()
 from .issue_loop import run_issue_loop, evolve_once as _evolve_issues_once
 threading.Thread(target=run_issue_loop, args=(REPO_ROOT,), daemon=True).start()
 
@@ -334,14 +335,14 @@ def list_issues_all_ep(level: str = Query("dataset"), dataset: str = Query(None)
 
 
 @app.get("/api/issues/{problem_id}")
-def list_issues_ep(problem_id: str, dataset: str = Query(None)) -> JSONResponse:
+def list_issues_ep(problem_id: str, dataset: str = Query(None), status: str = Query(None)) -> JSONResponse:
     ds = _ds_from_query(dataset)
     pid = problem_id
     if ds == "first_proof_1" and not _PROBLEM_RE.match(pid):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
     elif not _ID_RE_LOOSE.match(pid):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    return JSONResponse({"issues": list_issues(REPO_ROOT, pid, ds)})
+    return JSONResponse({"issues": list_issues(REPO_ROOT, pid, ds, status=status)})
 
 
 @app.post("/api/issues/{problem_id}")
@@ -913,8 +914,24 @@ def document(name: str) -> JSONResponse:
 
 @app.get("/api/documents/bundle.pdf")
 def documents_bundle(dataset: str | None = None, question: str | None = None):
-    """Return a combined PDF of all documents (or filtered by dataset/question)."""
+    """Return a combined PDF of all documents (or filtered by dataset/question).
+
+    For the unfiltered full bundle, serves the pre-built cache written at startup.
+    Filtered requests (dataset or question) are compiled on demand.
+    """
     from fastapi.responses import Response
+    if dataset is None and question is None:
+        cached = _bundle_cache_path(REPO_ROOT)
+        if cached.is_file():
+            return Response(
+                content=cached.read_bytes(),
+                media_type="application/pdf",
+                headers={"Content-Disposition": "inline; filename=context_bundle.pdf"},
+            )
+        return JSONResponse(
+            {"error": "bundle not ready yet — server is still building it at startup"},
+            status_code=503,
+        )
     try:
         pdf_bytes = build_bundle_pdf(REPO_ROOT, dataset=dataset, qid=question)
     except Exception as e:
@@ -1256,7 +1273,7 @@ def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None, da
 
 
 @app.get("/api/overview")
-def overview_ep() -> JSONResponse:
+def overview_ep(dataset: str = Query(None)) -> JSONResponse:
     import subprocess as _sp
     from datetime import datetime, timedelta
     now = datetime.now()
@@ -1273,11 +1290,25 @@ def overview_ep() -> JSONResponse:
     except Exception:  # noqa: BLE001
         pass
 
-    issue_stats: dict[str, dict] = {}
-    for i in range(1, 11):
-        pid = f"q{i}"
+    # ── Determine the active problem set based on dataset param ──────────────
+    _use_fp1 = not dataset or dataset == "first_proof_1"
+    _ds_eff = "first_proof_1" if _use_fp1 else dataset
+
+    if _use_fp1:
+        active_pids = [f"q{i}" for i in range(1, 11)]
+        _ds_problems: list[dict] = []  # not needed for fp1 path
+    else:
         try:
-            issues = list_issues(REPO_ROOT, pid)
+            _ds_problems = ds_list_problems(dataset=_ds_eff, sort="id")
+        except Exception:  # noqa: BLE001
+            _ds_problems = []
+        active_pids = [p["id"] for p in _ds_problems]
+
+    # ── Issue stats ───────────────────────────────────────────────────────────
+    issue_stats: dict[str, dict] = {}
+    for pid in active_pids:
+        try:
+            issues = list_issues(REPO_ROOT, pid, _ds_eff)
         except Exception:  # noqa: BLE001
             issues = []
         issue_stats[pid] = {
@@ -1287,11 +1318,11 @@ def overview_ep() -> JSONResponse:
             "total": len(issues),
         }
 
+    # ── Recent activity ───────────────────────────────────────────────────────
     recent: list[dict] = []
-    for i in range(1, 11):
-        pid = f"q{i}"
+    for pid in active_pids:
         try:
-            for iss in list_issues(REPO_ROOT, pid):
+            for iss in list_issues(REPO_ROOT, pid, _ds_eff):
                 for c in iss.get("comments", []):
                     recent.append({
                         "problem": pid,
@@ -1313,7 +1344,7 @@ def overview_ep() -> JSONResponse:
     total_out = sum(e.get("out", 0) for e in log_entries)
     total_cost = sum(e.get("cost") or 0.0 for e in log_entries)
 
-    # Simple improvement suggestions based on issue stats
+    # ── Suggestions ───────────────────────────────────────────────────────────
     suggestions: list[str] = []
     most_open = sorted(issue_stats.items(), key=lambda x: x[1]["open"], reverse=True)
     if most_open and most_open[0][1]["open"] > 0:
@@ -1330,90 +1361,131 @@ def overview_ep() -> JSONResponse:
         top = by_prob[0]
         suggestions.append(f"{top['problem']} consumed the most tokens ({(top['in']+top['out']):,}) — consider shorter prompts or fewer resolve cycles.")
 
-    # Per-question summaries: merge doc info + issue stats
+    # ── Per-question summaries ────────────────────────────────────────────────
     question_summaries: list[dict] = []
-    for i in range(1, 11):
-        pid = f"q{i}"
-        qs = _question_summary(REPO_ROOT, pid)
-        ist = issue_stats.get(pid, {"open": 0, "in_progress": 0, "resolved": 0, "total": 0})
-        total_iss = ist["total"]
-        resolved = ist["resolved"]
-        # Proof status: best proof verification takes priority over issue counts
-        try:
-            best = get_best_proof(pid)
-            best_verified = bool(best and best.get("verification_passed"))
-            best_issues = int(best.get("issue_count", 99)) if best else 99
-        except Exception:  # noqa: BLE001
-            best_verified, best_issues = False, 99
-        if best_verified:
-            proof_status = "verified"
-        elif total_iss == 0 and not qs["has_doc"]:
-            proof_status = "not_started"
-        elif resolved == total_iss and total_iss > 0:
-            proof_status = "verified"
-        elif resolved > 0:
-            proof_status = "in_progress"
-        elif ist["in_progress"] > 0:
-            proof_status = "exploring"
-        elif qs["has_doc"]:
-            proof_status = "open_issues"
-        else:
-            proof_status = "not_started"
-        # Accuracy = issue resolution rate
-        accuracy_pct = round(resolved / total_iss * 100) if total_iss > 0 else None
-        # Solvability: hierarchy of evidence (best first)
-        # 1. Verified proof → 100%
-        # 2. Partial proof progress → heuristic from issue count
-        # 3. Opus evaluation (authoritative AI solvability score)
-        # 4. Run history success rate
-        # 5. Issue resolution rate as proxy
-        total_runs = qs["total_runs"]
-        success_runs = qs["success_runs"]
-        opus_eval = qs.get("opus_eval")
-        if best_verified:
-            solvability_pct = 100
-        elif best_issues < 99:
-            solvability_pct = max(0, round((1 - best_issues / 18) * 100))
-        elif opus_eval and "score" in opus_eval:
-            solvability_pct = int(opus_eval["score"])
-        elif total_runs > 0:
-            solvability_pct = round(success_runs / total_runs * 100)
-        elif total_iss > 0:
-            solvability_pct = accuracy_pct
-        else:
-            solvability_pct = None
-        # Extra fields for per-question dashboard
-        last_model = ""
-        mem_path = REPO_ROOT / "documents" / "strategy_memory.jsonl"
-        if mem_path.is_file():
-            for line in reversed(mem_path.read_text(encoding="utf-8", errors="replace").splitlines()):
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    e = json.loads(line)
-                    if e.get("problem_id") == pid:
-                        last_model = e.get("model", "")
-                        break
-                except Exception:  # noqa: BLE001
-                    continue
-        # Check if critic has ever run (has a critic-agent comment in any issue)
-        has_critic_run = False
-        for iss in list_issues(REPO_ROOT, pid):
-            if any(c.get("author") == "critic-agent" for c in iss.get("comments", [])):
-                has_critic_run = True
-                break
-        question_summaries.append({
-            **qs,
-            "issue_stats": ist,
-            "proof_status": proof_status,
-            "accuracy_pct": accuracy_pct,
-            "solvability_pct": solvability_pct,
-            "best_issues": best_issues if best_issues < 99 else None,
-            "best_verified": best_verified,
-            "last_model": last_model,
-            "has_critic_run": has_critic_run,
-        })
+
+    if _use_fp1:
+        # fp1 path: rich summaries from strategy_memory, opus evals, best proofs
+        for pid in active_pids:
+            qs = _question_summary(REPO_ROOT, pid)
+            ist = issue_stats.get(pid, {"open": 0, "in_progress": 0, "resolved": 0, "total": 0})
+            total_iss = ist["total"]
+            resolved = ist["resolved"]
+            try:
+                best = get_best_proof(pid)
+                best_verified = bool(best and best.get("verification_passed"))
+                best_issues = int(best.get("issue_count", 99)) if best else 99
+            except Exception:  # noqa: BLE001
+                best_verified, best_issues = False, 99
+            if best_verified:
+                proof_status = "verified"
+            elif total_iss == 0 and not qs["has_doc"]:
+                proof_status = "not_started"
+            elif resolved == total_iss and total_iss > 0:
+                proof_status = "verified"
+            elif resolved > 0:
+                proof_status = "in_progress"
+            elif ist["in_progress"] > 0:
+                proof_status = "exploring"
+            elif qs["has_doc"]:
+                proof_status = "open_issues"
+            else:
+                proof_status = "not_started"
+            accuracy_pct = round(resolved / total_iss * 100) if total_iss > 0 else None
+            total_runs = qs["total_runs"]
+            success_runs = qs["success_runs"]
+            opus_eval = qs.get("opus_eval")
+            if best_verified:
+                solvability_pct = 100
+            elif best_issues < 99:
+                solvability_pct = max(0, round((1 - best_issues / 18) * 100))
+            elif opus_eval and "score" in opus_eval:
+                solvability_pct = int(opus_eval["score"])
+            elif total_runs > 0:
+                solvability_pct = round(success_runs / total_runs * 100)
+            elif total_iss > 0:
+                solvability_pct = accuracy_pct
+            else:
+                solvability_pct = None
+            last_model = ""
+            mem_path = REPO_ROOT / "documents" / "strategy_memory.jsonl"
+            if mem_path.is_file():
+                for line in reversed(mem_path.read_text(encoding="utf-8", errors="replace").splitlines()):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        e = json.loads(line)
+                        if e.get("problem_id") == pid:
+                            last_model = e.get("model", "")
+                            break
+                    except Exception:  # noqa: BLE001
+                        continue
+            has_critic_run = False
+            for iss in list_issues(REPO_ROOT, pid):
+                if any(c.get("author") == "critic-agent" for c in iss.get("comments", [])):
+                    has_critic_run = True
+                    break
+            question_summaries.append({
+                **qs,
+                "issue_stats": ist,
+                "proof_status": proof_status,
+                "accuracy_pct": accuracy_pct,
+                "solvability_pct": solvability_pct,
+                "best_issues": best_issues if best_issues < 99 else None,
+                "best_verified": best_verified,
+                "last_model": last_model,
+                "has_critic_run": has_critic_run,
+            })
+    else:
+        # Non-fp1 dataset: lighter summaries built from dataset store + issue counts
+        _ds_prob_map = {p["id"]: p for p in _ds_problems}
+        for pid in active_pids:
+            p = _ds_prob_map.get(pid, {})
+            ist = issue_stats.get(pid, {"open": 0, "in_progress": 0, "resolved": 0, "total": 0})
+            total_iss = ist["total"]
+            resolved = ist["resolved"]
+            if total_iss == 0:
+                proof_status = "not_started"
+            elif resolved == total_iss:
+                proof_status = "verified"
+            elif resolved > 0:
+                proof_status = "in_progress"
+            elif ist["in_progress"] > 0:
+                proof_status = "exploring"
+            else:
+                proof_status = "open_issues"
+            accuracy_pct = round(resolved / total_iss * 100) if total_iss > 0 else None
+            raw_solv = p.get("solvability_score")
+            solvability_pct = int(round(raw_solv * 100)) if raw_solv is not None else None
+            has_critic_run = any(
+                c.get("author") == "critic-agent"
+                for iss in list_issues(REPO_ROOT, pid, _ds_eff)
+                for c in iss.get("comments", [])
+            )
+            question_summaries.append({
+                "qid": pid,
+                "title": p.get("title", pid),
+                "area": p.get("area", ""),
+                "dataset": _ds_eff,
+                "has_doc": total_iss > 0,
+                "candidate_answer": None,
+                "total_runs": 0,
+                "success_runs": 0,
+                "fail_runs": 0,
+                "last_outcome": None,
+                "last_run_date": None,
+                "opus_eval": None,
+                "labels": (p.get("tags") or [])[:6],
+                "issue_stats": ist,
+                "proof_status": proof_status,
+                "accuracy_pct": accuracy_pct,
+                "solvability_pct": solvability_pct,
+                "best_issues": None,
+                "best_verified": False,
+                "last_model": "",
+                "has_critic_run": has_critic_run,
+            })
 
     return JSONResponse({
         "daemon_running": daemon_pid is not None,
@@ -1432,6 +1504,7 @@ def overview_ep() -> JSONResponse:
         "suggestions": suggestions,
         "today": today_summary(REPO_ROOT),
         "question_summaries": question_summaries,
+        "dataset": _ds_eff,
     })
 
 
@@ -1476,14 +1549,20 @@ def api_evolve_issues() -> JSONResponse:
 def push_forward_ep(payload: dict = Body(default={})) -> JSONResponse:
     """Trigger the global daily push-forward across ALL problems (background thread).
 
-    Runs issue discovery + resolution for every active problem, then creates
-    a new meeting room with expert mathematician personas and runs one round of
-    AI discussion. Gated to once-per-day unless force=true is passed.
+    For each problem: runs issue discovery + resolution, then conducts a full
+    meeting (multiple discussion rounds + synthesis + documented notes).
+    Gated to once-per-day unless force=true is passed.
+
+    Optional payload fields:
+      force (bool): bypass once-per-day gate
+      problems (list[str]): restrict to specific problem IDs
+      n_meeting_rounds (int): discussion rounds per meeting (default 3)
     """
-    from .push_forward import run_push_forward, already_ran_today, running_job
+    from .push_forward import run_push_forward, already_ran_today, running_job, _DEFAULT_MEETING_ROUNDS
 
     force = bool(payload.get("force", False))
-    problems = payload.get("problems") or None  # optional list to restrict scope
+    problems = payload.get("problems") or None
+    n_meeting_rounds = int(payload.get("n_meeting_rounds", _DEFAULT_MEETING_ROUNDS))
 
     if not force and already_ran_today(REPO_ROOT):
         return JSONResponse({
@@ -1503,10 +1582,10 @@ def push_forward_ep(payload: dict = Body(default={})) -> JSONResponse:
     threading.Thread(
         target=run_push_forward,
         args=(REPO_ROOT, job_id),
-        kwargs={"problems": problems},
+        kwargs={"problems": problems, "n_meeting_rounds": n_meeting_rounds},
         daemon=True,
     ).start()
-    return JSONResponse({"started": True, "job_id": job_id})
+    return JSONResponse({"started": True, "job_id": job_id, "n_meeting_rounds": n_meeting_rounds})
 
 
 @app.get("/api/push-forward/status")
@@ -1958,6 +2037,27 @@ def insights_system() -> JSONResponse:
     return JSONResponse(data)
 
 
+@app.post("/api/insights/system/regenerate")
+def insights_system_regenerate() -> JSONResponse:
+    from .insight_agents import generate_system_insight
+    data = generate_system_insight(REPO_ROOT)
+    return JSONResponse(data)
+
+
+@app.post("/api/insights/dataset/{slug}/regenerate")
+def insights_dataset_regenerate(slug: str) -> JSONResponse:
+    from .insight_agents import generate_dataset_insight
+    data = generate_dataset_insight(REPO_ROOT, slug)
+    return JSONResponse(data)
+
+
+@app.post("/api/insights/question/{dataset}/{qid}/regenerate")
+def insights_question_regenerate(dataset: str, qid: str) -> JSONResponse:
+    from .insight_agents import generate_question_insight
+    data = generate_question_insight(REPO_ROOT, qid, dataset)
+    return JSONResponse(data)
+
+
 @app.get("/api/insights/dataset/{slug}")
 def insights_dataset(slug: str) -> JSONResponse:
     data = get_dataset_insight(REPO_ROOT, slug)
@@ -2194,6 +2294,33 @@ def export_bundle(
         "markdown": markdown,
         "char_count": len(markdown),
     })
+
+
+# ── /rmac/solve/ aliases — same SPA, works through the proxy ─────────────────
+from fastapi.responses import RedirectResponse as _Redir
+
+@app.get("/rmac/solve")
+def rmac_solve_root() -> _Redir:
+    return _Redir("/rmac/solve/", status_code=302)
+
+if STATIC_DIR.is_dir():
+    @app.get("/rmac/solve/")
+    def rmac_solve_index() -> FileResponse:
+        return FileResponse(STATIC_DIR / "index.html")
+
+
+# ── /rmac/filter/ — filter sub-application (read-only, 14k dataset) ──────────
+# Mounted as a FastAPI sub-app so it runs in-process but with its own routes.
+# This means: if the filter app's request handling fails, only that request
+# gets a 500 — the solve app continues. Heavy solve operations (agents, PDF
+# compilation, background threads) live only in the solve app and cannot be
+# triggered from the filter sub-app.
+try:
+    from webapp_filter.server import app as _filter_app
+    app.mount("/rmac/filter", _filter_app)
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning("filter sub-app not available: %s", _e)
 
 
 # Serve the SPA. Mounted last so /api/* routes take precedence.

@@ -1,54 +1,59 @@
 {
-  "summary": "The project has resolved 81 of 118 issues (69%), with all problems closed except for active work concentrated in first_proof_1 (q4, q5, q6). Two problems (q7 at 58%, q10 at 57%) show strong solvability potential, while the remainder cluster in the 9-20% range indicating systemic difficulty. Resource usage today is minimal ($0.19, 2 runs), suggesting underutilized compute capacity relative to the open workload.",
+  "summary": "RMAC uses a four-stage pipeline (issue discovery → resolution → collaborative discussion → solvability evaluation) with a single model (claude-opus-4-8) and a daily push-forward automation. The system has strong issue-tracking discipline and meeting infrastructure, but lacks model diversity, agent observability, and adaptive scheduling. Several systemic design gaps limit throughput and make failure modes invisible to engineers.",
   "problems": [
-    "q4 is the largest active blocker with 22 open issues against 23 resolved, indicating an unstable or contested proof path",
-    "q5 has 14 open vs only 10 resolved — the only problem where open issues outnumber resolved, signaling a stuck or misdirected approach",
-    "q8 has the lowest solvability score (9%), suggesting either a misunderstood problem statement or an intractable chosen strategy",
-    "Most problems (q1-q6, q9) sit in the 13-20% solvability band, indicating no clear breakthrough path despite resolution counts",
-    "Best-proof generation is uniform (100 issues, claude_opus_5-4 across all q1-q10), implying lack of model/strategy diversification"
+    "Single-model dependency: all agents (critic, solver, meeting personas, evaluator) use claude-opus-4-8 exclusively — one quota exhaustion event halts the entire pipeline",
+    "No fallback or graceful degradation when Vertex AI quota is exhausted; agents silently return empty results rather than queuing or alerting",
+    "Meeting discussion rounds run synchronously in a daemon thread; if the push-forward job is interrupted mid-run, partial state is lost and there is no resume mechanism",
+    "The solvability evaluator and the critic agent share the same prompt architecture — both are susceptible to the same systematic blind spots in how they interpret proof gaps",
+    "Agent logs are only retained in memory during the server session; there is no persistent per-agent run log for post-mortem debugging of failed issue cycles",
+    "The issue discovery step has no deduplication guard — the critic can open semantically identical issues across multiple push-forward runs, inflating open-issue counts without real new gaps"
   ],
   "highlights": [
-    "q7 (58%) and q10 (57%) are by far the closest to solvable and should be prioritized for completion",
-    "69% overall resolution rate with 0 in-progress stalls shows the team clears issues to closure rather than letting them linger",
-    "All AIM problem lists, Erdos problems, and first_proof_2 are fully resolved, demonstrating capability on well-scoped problems",
-    "q6 is nearly complete with only 1 open issue against 15 resolved",
-    "Resource cost is extremely low, leaving substantial budget headroom for intensified runs"
+    "The push-forward automation successfully ran across all 10 benchmark problems, creating meeting rooms and running AI discussions without manual intervention",
+    "The issue lifecycle (open → in_progress → resolved) is well-structured and consistently applied, giving a reliable signal of pipeline throughput",
+    "Mathematician persona routing (per-field expert selection) is domain-aware and produces more relevant discussion than a generic assistant would",
+    "The meeting system persists all messages to disk, making discussion history inspectable after the fact",
+    "The SSE streaming frontend gives real-time visibility into agent output, reducing the black-box feeling of long-running AI tasks"
   ],
   "suggested_todos": [
     {
-      "title": "Close out q7 and q10 first — highest solvability scores and best ROI for completed proofs",
+      "title": "Add a secondary model fallback (e.g. claude-sonnet or haiku) for insight and solvability eval when Opus quota is exhausted",
       "priority": "high"
     },
     {
-      "title": "Resolve the final open issue on q6 to fully close it",
+      "title": "Implement issue deduplication in the critic agent: compare new issue titles/content against existing open issues before creating",
       "priority": "high"
     },
     {
-      "title": "Conduct a root-cause review of q5 where open issues exceed resolved, and reconsider the proof strategy entirely",
+      "title": "Add a persistent push-forward run log (append-only JSONL) so engineers can inspect what each agent did, even after a server restart",
       "priority": "high"
     },
     {
-      "title": "Re-examine the q8 problem statement and hypotheses given its 9% solvability — likely a misunderstood premise",
+      "title": "Add quota monitoring: alert (log warning + badge in UI) when Vertex token usage approaches the daily limit, before it hits 429",
       "priority": "medium"
     },
     {
-      "title": "Diversify proof-generation models/strategies beyond uniform claude_opus_5-4 to break stalls on low-solvability problems",
+      "title": "Make push-forward resumable: checkpoint which problems have completed so a crash mid-run can continue from where it left off",
       "priority": "medium"
     },
     {
-      "title": "Scale up daily runs to use available budget, focusing compute on the 22 open q4 issues",
+      "title": "Evaluate whether one round of meeting discussion per push-forward is producing actionable output — consider measuring discussion quality by checking if meeting messages reference specific proof gaps",
       "priority": "medium"
+    },
+    {
+      "title": "Add a critic diversity mode: occasionally prompt the critic to challenge assumptions it normally accepts (e.g. problem statement interpretation, chosen proof strategy class)",
+      "priority": "low"
     }
   ],
   "mistakes": [
-    "Over-reliance on a single model (claude_opus_5-4) and uniform proof count (100 issues) for every problem, ignoring per-problem difficulty differences",
-    "Continuing to generate proofs on low-solvability problems (q8 at 9%, q3 at 13%) without revisiting whether the problem statement or hypotheses were correctly interpreted",
-    "Allowing q5 to accumulate more open issues than resolved, indicating a wrong proof direction was pursued without an early pivot",
-    "Treating high resolved-issue counts as progress signals while solvability scores remain low — closing sub-issues without converging on a valid overall proof",
-    "Underutilizing available compute/budget (only 2 runs today) while 37 issues remain open, slowing momentum on solvable targets like q7 and q10"
+    "Over-centralizing on a single Vertex AI model creates a single point of failure — quota exhaustion on claude-opus-4-8 silently breaks every pipeline step simultaneously",
+    "Running the push-forward on the dev server (with --reload) previously killed the daemon thread mid-run; long-running jobs must be triggered on the production server",
+    "Insight generation was prompting for per-problem analysis instead of system-level meta-improvement, producing misleading strategic recommendations",
+    "The daily automation writes state to push_forward_state.json but does not write a per-run transcript, making it impossible to audit what the agent actually did on a given day",
+    "Meeting rooms are created unconditionally every push-forward run even if the previous round's discussion was not read or acted upon — accumulating rooms without feedback loop"
   ],
   "generated_by": "document-manager",
-  "generated_at": "2026-06-18T04:27:19.552062+00:00",
+  "generated_at": "2026-06-19T07:15:00.000000+00:00",
   "level": "system",
   "id": "system"
 }

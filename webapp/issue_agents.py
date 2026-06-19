@@ -162,7 +162,10 @@ _DISCOVERY_SYSTEM = (
     "proof attempt, if any). You have Bash available to call the issue tracker API "
     "via curl. Be precise and mathematical. Only raise genuine gaps, not style issues. "
     "Write your full mathematical analysis (background, gap identification, difficulty assessment) "
-    "to analysis.md in the workspace — this feeds the documentation system."
+    "to analysis.md in the workspace — this feeds the documentation system. "
+    "IMPORTANT: When querying the issue tracker, always use ?status=open,in_progress to filter "
+    "out resolved issues. Only open and in-progress issues are in scope for your work; "
+    "do not re-open or comment on resolved issues."
 )
 
 
@@ -226,8 +229,8 @@ Your tasks:
      -d '{{"title": "SHORT TITLE", "body": "DETAILED DESCRIPTION WITH MATH", "author": "critic-agent", "labels": ["proof-gap"]}}'
 
 5. Post your full analysis as a comment on the main issue:
-   First get the issue list:
-   curl -s {_API_BASE}/api/issues/{problem_id}
+   First get the open issue list (never query resolved issues):
+   curl -s "{_API_BASE}/api/issues/{problem_id}?status=open,in_progress"
    Then post to the first issue's id (e.g. {problem_id}-1):
    curl -s -X POST {_API_BASE}/api/issues/{problem_id}/{problem_id}-1/comment \\
      -H 'Content-Type: application/json' \\
@@ -255,7 +258,10 @@ _RESOLVER_SYSTEM = (
     "You have Read, Write, Edit, Bash, and Glob tools. Your workspace has problem.tex "
     "(the problem), preamble.tex, solution.tex (the current proof), and issue.json "
     "(the issue you must resolve). Use Bash(curl) to post updates to the issue tracker. "
-    "Write your improved proof to solution.tex. Be rigorous and honest."
+    "Write your improved proof to solution.tex. Be rigorous and honest. "
+    "IMPORTANT: Only work on the issue assigned to you in issue.json. If you query the "
+    "issue tracker for context, always use ?status=open,in_progress — never read or "
+    "act on resolved issues."
 )
 
 
@@ -376,7 +382,9 @@ _VERIFIER_SYSTEM = (
     "You are a mathematical verifier agent for the First Proof benchmark. "
     "You check whether a proposed fix for a proof gap is mathematically correct. "
     "Use Bash(curl) to post your verdict. Be rigorous — do not approve a fix "
-    "unless you have checked the mathematics step by step."
+    "unless you have checked the mathematics step by step. "
+    "IMPORTANT: Only verify the issue assigned to you. When querying the issue tracker, "
+    "always filter with ?status=open,in_progress — never read or act on resolved issues."
 )
 
 

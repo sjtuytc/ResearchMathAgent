@@ -3,8 +3,10 @@
 Runs once per day (gated by date stamp, overridable with force=True):
   1. For every active problem: discover new proof gaps (critic agent)
   2. Resolve up to N open issues per problem (solver agent)
-  3. Create a new meeting room with expert mathematician personas
-  4. Run one round of AI discussion in each new room
+  3. Create a meeting room with field-appropriate mathematician personas
+  4. Run multiple rounds of discussion (each participant responds to the others)
+  5. Synthesize the discussion into a concrete action plan
+  6. Save meeting notes to documents/questions/{pid}/meets/{room_id}-notes.md
 
 All agents use Vertex AI (AnthropicVertex via ADC).
 State is persisted in webapp/push_forward_state.json.
@@ -71,18 +73,72 @@ def running_job() -> dict | None:
     return None
 
 
+# ── Meeting documentation ─────────────────────────────────────────────────────
+
+def _save_meeting_notes(repo_root: Path, pid: str, room_id: str) -> Path | None:
+    """Write a markdown notes file for a completed meeting room.
+
+    Saved to documents/questions/{pid}/meets/{room_id}-notes.md so it is
+    surfaced in the Documents tab and survives server restarts.
+    """
+    from .meet import get_room, transcript_text
+    room = get_room(repo_root, pid, room_id)
+    if not room:
+        return None
+
+    lines: list[str] = [
+        f"# Meeting Notes: {room.get('topic', room_id)}",
+        f"**Goal:** {room.get('goal', '')}",
+        f"**Date:** {room.get('created_at', '')[:10]}",
+        f"**Participants:** {', '.join(room.get('participants', []))}",
+        "",
+        "## Discussion Transcript",
+        "",
+        transcript_text(room),
+    ]
+
+    plan = room.get("plan")
+    if plan:
+        lines += ["", "## Action Plan", "", plan.get("summary", "")]
+        for i, step in enumerate(plan.get("steps", []), 1):
+            title = step.get("title", f"Step {i}")
+            body = step.get("body", step.get("description", ""))
+            agent = step.get("agent", "")
+            lines.append(f"\n### {i}. {title}" + (f" *(agent: {agent})*" if agent else ""))
+            if body:
+                lines.append(body)
+
+    doc_dir = repo_root / "documents" / "questions" / pid / "meets"
+    doc_dir.mkdir(parents=True, exist_ok=True)
+    doc_path = doc_dir / f"{room_id}-notes.md"
+    doc_path.write_text("\n".join(lines), encoding="utf-8")
+    return doc_path
+
+
 # ── Main runner ───────────────────────────────────────────────────────────────
+
+_DEFAULT_MEETING_ROUNDS = 3
+
 
 def run_push_forward(
     repo_root: Path,
     job_id: str,
     problems: list[str] | None = None,
     max_resolve: int = 2,
+    n_meeting_rounds: int = _DEFAULT_MEETING_ROUNDS,
 ) -> None:
-    """Execute the global push-forward. Blocking — call from a daemon thread."""
+    """Execute the global push-forward. Blocking — call from a daemon thread.
+
+    For each problem:
+      1. Run a full issue cycle (discover + resolve)
+      2. Create a meeting room with field-appropriate mathematician personas
+      3. Run n_meeting_rounds of interleaved discussion
+      4. Synthesize the discussion into a concrete action plan
+      5. Save meeting notes to documents/questions/{pid}/meets/{room_id}-notes.md
+    """
     from .issue_agents import run_issue_cycle
     from .meet import create_room, get_personas_for_problem
-    from .meet_agents import run_round_offline
+    from .meet_agents import run_round_offline, run_synthesis
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     default_problems = [f"q{i}" for i in range(1, 11)]
@@ -108,64 +164,117 @@ def run_push_forward(
                 job["log"].append(msg)
 
     try:
+        from .issues import list_issues as _list_issues
+
         for pid in active:
             with _LOCK:
                 job = _JOBS.get(job_id, {})
                 job["current"] = pid
 
+            # Snapshot issue counts before cycle
+            try:
+                _before = _list_issues(repo_root, pid, "first_proof_1")
+                open_before = sum(1 for i in _before if i.get("status") in ("open", "in_progress"))
+                total_before = len(_before)
+            except Exception:
+                open_before = total_before = 0
+
             _log(f"{pid}: starting issue cycle (discover + resolve up to {max_resolve})")
-            issue_lines = 0
+            cycle_error = None
             try:
                 cycle_log = run_issue_cycle(repo_root, pid, max_resolve=max_resolve)
-                issue_lines = len(cycle_log)
-                _log(f"{pid}: issue cycle done ({issue_lines} log lines)")
+                _log(f"{pid}: issue cycle done ({len(cycle_log)} log lines)")
             except Exception as exc:
+                cycle_log = []
+                cycle_error = str(exc)
                 _log(f"{pid}: issue cycle error: {exc}")
 
-            # Create a meeting room with field-appropriate mathematician personas
+            # Snapshot after cycle to measure what changed
+            try:
+                _after = _list_issues(repo_root, pid, "first_proof_1")
+                open_after = sum(1 for i in _after if i.get("status") in ("open", "in_progress"))
+                total_after = len(_after)
+                issues_discovered = max(0, total_after - total_before)
+                issues_resolved = max(0, open_before - open_after)
+            except Exception:
+                open_after = total_after = issues_discovered = issues_resolved = 0
+
+            # Full meeting: multi-round discussion → synthesis → documented notes
             room_id = None
+            notes_path = None
+            meeting_participants: list[str] = []
             try:
                 personas = get_personas_for_problem(pid)
                 if personas:
-                    participants = ["coordinator"] + [p["id"] for p in personas[:3]]
+                    meeting_participants = ["coordinator"] + [p["id"] for p in personas[:3]]
                     topic = f"Push-forward {today} — {pid} proof review"
                     goal = (
                         f"Review today's issue discovery and resolution results for {pid}. "
-                        "Agree on the highest-priority remaining gaps and a concrete next step."
+                        "Agree on the highest-priority remaining gaps and produce a concrete action plan."
                     )
                     room = create_room(repo_root, pid, topic=topic, goal=goal,
-                                      participants=participants)
+                                      participants=meeting_participants)
                     room_id = room["id"]
-                    _log(f"{pid}: created meeting room {room_id} (participants: {participants})")
+                    _log(f"{pid}: created meeting room {room_id} ({len(meeting_participants)} participants, "
+                         f"{n_meeting_rounds} rounds planned)")
 
-                    # One round of discussion (each non-human participant posts one turn)
+                    # Multi-round interleaved discussion
+                    run_round_offline(
+                        repo_root, pid, room_id,
+                        f"{job_id}-{pid}-meet",
+                        n_rounds=n_meeting_rounds,
+                    )
+                    _log(f"{pid}: {n_meeting_rounds} discussion rounds complete")
+
+                    # Synthesis: coordinator reads transcript and produces an action plan
                     try:
-                        run_round_offline(repo_root, pid, room_id,
-                                          f"{job_id}-{pid}-meet", n_rounds=1)
-                        _log(f"{pid}: meeting discussion round complete")
+                        for _ in run_synthesis(repo_root, pid, room_id):
+                            pass
+                        _log(f"{pid}: action plan synthesized")
                     except Exception as exc:
-                        _log(f"{pid}: meeting discussion error: {exc}")
+                        _log(f"{pid}: synthesis error: {exc}")
+
+                    # Persist meeting notes to disk
+                    try:
+                        notes_path = _save_meeting_notes(repo_root, pid, room_id)
+                        if notes_path:
+                            _log(f"{pid}: meeting notes saved → {notes_path.name}")
+                    except Exception as exc:
+                        _log(f"{pid}: notes save error: {exc}")
+
             except Exception as exc:
-                _log(f"{pid}: meeting creation error: {exc}")
+                _log(f"{pid}: meeting error: {exc}")
 
             with _LOCK:
                 job = _JOBS.get(job_id, {})
                 job["done"] = job.get("done", 0) + 1
                 job["results"].append({
                     "problem": pid,
-                    "issue_log_lines": issue_lines,
+                    "issues_open_before": open_before,
+                    "issues_open_after": open_after,
+                    "issues_discovered": issues_discovered,
+                    "issues_resolved": issues_resolved,
                     "room_id": room_id,
+                    "meeting_participants": meeting_participants,
+                    "notes_path": str(notes_path) if notes_path else None,
+                    "error": cycle_error,
                 })
 
         # Persist run record
         state = load_state(repo_root)
         state["last_run_date"] = today
+        with _LOCK:
+            saved_results = list(_JOBS.get(job_id, {}).get("results", []))
         state.setdefault("runs", []).append({
             "date": today,
             "job_id": job_id,
             "problems": active,
+            "n_meeting_rounds": n_meeting_rounds,
             "completed_at": datetime.now(timezone.utc).isoformat(),
+            "results": saved_results,
         })
+        # Keep at most 30 run records to avoid unbounded growth
+        state["runs"] = state["runs"][-30:]
         _save_state(repo_root, state)
 
         with _LOCK:

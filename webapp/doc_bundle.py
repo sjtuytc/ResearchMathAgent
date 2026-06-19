@@ -211,6 +211,30 @@ def _tex_escape_title(s: str) -> str:
 
 # ── Bundle PDF generation ─────────────────────────────────────────────────────
 
+def _bundle_cache_path(repo_root: Path) -> Path:
+    d = repo_root / "documents" / "pdf"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "bundle.pdf"
+
+
+def prebuild_bundle_pdf(repo_root: Path) -> None:
+    """Build the full document bundle offline and cache it to documents/pdf/bundle.pdf.
+
+    Called as a background daemon thread at startup so the Documents tab
+    never has to wait for compilation.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("prebuild_bundle_pdf: building document bundle…")
+    try:
+        pdf_bytes = build_bundle_pdf(repo_root)
+        dest = _bundle_cache_path(repo_root)
+        dest.write_bytes(pdf_bytes)
+        logger.info("prebuild_bundle_pdf: saved %d bytes to %s", len(pdf_bytes), dest)
+    except Exception as exc:
+        logger.warning("prebuild_bundle_pdf: failed — %s", exc)
+
+
 def build_bundle_pdf(repo_root: Path, dataset: str | None = None, qid: str | None = None) -> bytes:
     """Build a combined PDF of all documents. Returns raw PDF bytes."""
     from .documents import documents_dir

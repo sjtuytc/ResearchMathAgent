@@ -31,11 +31,14 @@ _SYSTEM_JSON_SCHEMA = (
 )
 
 
-def _one_shot(prompt: str) -> dict:
-    """Call Vertex one-shot, parse JSON, return dict."""
-    from .issue_agents import _vertex_one_shot
+_INSIGHT_MODEL = "claude-opus-4-8"
 
-    raw = _vertex_one_shot(prompt, timeout=120)
+
+def _one_shot(prompt: str) -> dict:
+    """Call Vertex one-shot using Sonnet (fast, low quota usage), parse JSON, return dict."""
+    from .vertex_llm import complete
+
+    raw = complete(prompt, max_tokens=4096, model=_INSIGHT_MODEL) or ""
     raw = raw.strip()
     # Strip markdown fences if model added them
     if raw.startswith("```"):
@@ -55,70 +58,138 @@ def _one_shot(prompt: str) -> dict:
 
 
 def _gather_system_context(repo_root: Path) -> str:
-    """Build a text summary of the whole project for the LLM."""
-    lines: list[str] = ["# System Context\n"]
+    """Build system-architecture context for RMAC meta-improvement analysis."""
+    lines: list[str] = ["# RMAC System Context\n"]
 
-    # Issue stats across all problems
+    # Aggregate issue pipeline health (no per-problem breakdown)
     try:
         from .issues import list_issues
         issue_root = repo_root / "webapp" / "issues"
         total_open = total_resolved = total_in_prog = 0
-        per_q: list[str] = []
+        dataset_count = problem_count = 0
         if issue_root.is_dir():
             for ds_dir in sorted(issue_root.iterdir()):
                 if not ds_dir.is_dir():
                     continue
+                dataset_count += 1
                 for prob_dir in sorted(ds_dir.iterdir()):
                     if not prob_dir.is_dir():
                         continue
-                    pid = prob_dir.name
+                    problem_count += 1
                     try:
-                        issues = list_issues(repo_root, pid, ds_dir.name)
+                        issues = list_issues(repo_root, prob_dir.name, ds_dir.name)
                     except Exception:
                         continue
-                    o = sum(1 for i in issues if i.get("status") == "open")
-                    ip = sum(1 for i in issues if i.get("status") == "in_progress")
-                    r = sum(1 for i in issues if i.get("status") == "resolved")
-                    total_open += o; total_resolved += r; total_in_prog += ip
-                    per_q.append(f"  {ds_dir.name}/{pid}: {o} open, {ip} in-progress, {r} resolved")
-        lines.append(f"## Issue Summary\nOpen: {total_open}  In-progress: {total_in_prog}  Resolved: {total_resolved}")
-        lines.extend(per_q[:20])
+                    total_open += sum(1 for i in issues if i.get("status") == "open")
+                    total_in_prog += sum(1 for i in issues if i.get("status") == "in_progress")
+                    total_resolved += sum(1 for i in issues if i.get("status") == "resolved")
+        total_issues = total_open + total_in_prog + total_resolved
+        resolution_rate = (total_resolved / total_issues * 100) if total_issues else 0
+        lines.append(
+            f"## Issue Pipeline (aggregate)\n"
+            f"Datasets: {dataset_count}  Problems tracked: {problem_count}\n"
+            f"Total issues ever: {total_issues}  Open: {total_open}  "
+            f"In-progress: {total_in_prog}  Resolved: {total_resolved}\n"
+            f"Overall resolution rate: {resolution_rate:.0f}%"
+        )
     except Exception as e:
-        lines.append(f"## Issue Summary\n(unavailable: {e})")
+        lines.append(f"## Issue Pipeline\n(unavailable: {e})")
 
-    # Token / run stats
+    # Cumulative token / cost budget usage
     try:
-        from .token_log import today_summary, per_problem_summary
+        from .token_log import today_summary
         today = today_summary(repo_root)
-        lines.append(f"\n## Today's Usage\nRuns: {today.get('runs',0)}  Cost: ${today.get('total_cost',0):.4f}  In: {today.get('total_in',0):,}  Out: {today.get('total_out',0):,}")
-        by_prob = per_problem_summary(repo_root)
-        if by_prob:
-            lines.append("\n## Per-Problem Run Counts")
-            for pid, s in list(by_prob.items())[:10]:
-                lines.append(f"  {pid}: {s.get('total_runs',0)} runs, {s.get('success_runs',0)} success")
+        lines.append(
+            f"\n## Resource Usage (today)\n"
+            f"Runs: {today.get('runs', 0)}  "
+            f"Cost: ${today.get('total_cost', 0):.4f}  "
+            f"Tokens in: {today.get('total_in', 0):,}  out: {today.get('total_out', 0):,}"
+        )
+        try:
+            from .token_log import vertex_usage_summary
+            all_time = vertex_usage_summary(repo_root, days=3650)
+            lines.append(
+                f"Cumulative cost: ${all_time.get('total_cost', 0):.2f}  "
+                f"Total runs: {all_time.get('total_runs', 0)}"
+            )
+        except Exception:
+            pass
     except Exception:
         pass
 
-    # Best proofs
+    # Meeting / collaboration system stats
+    try:
+        meet_root = repo_root / "webapp" / "meetings"
+        total_rooms = total_messages = 0
+        problems_with_meetings: set[str] = set()
+        if meet_root.is_dir():
+            for pid_dir in meet_root.iterdir():
+                if not pid_dir.is_dir():
+                    continue
+                for room_dir in pid_dir.iterdir():
+                    if not room_dir.is_dir():
+                        continue
+                    total_rooms += 1
+                    problems_with_meetings.add(pid_dir.name)
+                    msg_file = room_dir / "messages.json"
+                    if msg_file.is_file():
+                        try:
+                            msgs = json.loads(msg_file.read_text(encoding="utf-8"))
+                            total_messages += len(msgs) if isinstance(msgs, list) else 0
+                        except Exception:
+                            pass
+        lines.append(
+            f"\n## Meeting / Discussion System\n"
+            f"Total rooms created: {total_rooms}  "
+            f"Problems with meetings: {len(problems_with_meetings)}\n"
+            f"Total messages across all rooms: {total_messages}"
+        )
+    except Exception:
+        pass
+
+    # Push-forward automation history
+    try:
+        pf_state_file = repo_root / "webapp" / "push_forward_state.json"
+        if pf_state_file.is_file():
+            pf_state = json.loads(pf_state_file.read_text(encoding="utf-8"))
+            runs = pf_state.get("runs", [])
+            last_date = pf_state.get("last_run_date", "never")
+            lines.append(
+                f"\n## Push-Forward Automation\n"
+                f"Total daily runs completed: {len(runs)}\n"
+                f"Last run date: {last_date}"
+            )
+    except Exception:
+        pass
+
+    # Agent architecture inventory
+    lines.append(
+        "\n## Agent Architecture\n"
+        "Agents in use:\n"
+        "  critic-agent — discovers proof gaps and opens issues\n"
+        "  solver-agent — attempts to resolve open issues\n"
+        "  meeting-participants — mathematician personas for collaborative discussion (per-field)\n"
+        "  solvability-evaluator — scores proof quality 0-100%\n"
+        "  insight-generator (this agent) — meta-analysis\n"
+        "Pipeline steps: issue discovery → issue resolution → meeting discussion → solvability eval\n"
+        "Automation: daily push-forward triggers all steps across all problems\n"
+        "LLM backend: Vertex AI (AnthropicVertex via ADC)\n"
+        "LaTeX compilation: tectonic (local binary)\n"
+        "Proof storage: best-proof JSON + .tex files per problem"
+    )
+
+    # Proof pipeline health (aggregate only)
     try:
         from .proofs import list_best_proofs
         best = list_best_proofs()
-        if best:
-            lines.append("\n## Best Proofs")
-            for b in best[:10]:
-                vflag = "✓ verified" if b.get("verification_passed") else f"{b.get('issue_count','?')} issues"
-                lines.append(f"  {b.get('problem_id','?')}: {vflag}, model={b.get('model','?')}")
-    except Exception:
-        pass
-
-    # Solvability scores
-    try:
-        from .solvability_eval import load_eval
-        lines.append("\n## Solvability Scores (Opus eval)")
-        for qid in [f"q{i}" for i in range(1, 11)]:
-            ev = load_eval(repo_root, qid)
-            if ev and ev.get("score") is not None:
-                lines.append(f"  {qid}: {ev['score']}%")
+        verified = sum(1 for b in best if b.get("verification_passed"))
+        models_used = set(b.get("model", "") for b in best if b.get("model"))
+        lines.append(
+            f"\n## Proof Pipeline Health\n"
+            f"Problems with a best proof: {len(best)}\n"
+            f"Verified proofs: {verified}/{len(best)}\n"
+            f"Models used for proof generation: {', '.join(sorted(models_used)) or 'none'}"
+        )
     except Exception:
         pass
 
@@ -232,14 +303,23 @@ def generate_system_insight(repo_root: Path) -> dict:
     prompt = (
         f"{_SYSTEM}\n\n"
         f"{ctx}\n\n"
-        "Based on the above system-wide context, produce a strategic research project insight report.\n\n"
+        "Based on the above system-wide context, produce a meta-level improvement report for the "
+        "RMAC (Research Math Agent Cluster) system itself — NOT about any specific math problem.\n\n"
+        "Your goal is to give the engineering team concrete suggestions on how to improve the RMAC "
+        "system: its architecture, agents, pipeline, tooling, and methodology.\n\n"
         "Focus on:\n"
-        "- Overall progress and blockers across all problems\n"
-        "- Which problems are closest to being solved vs. most stuck\n"
-        "- Resource usage and efficiency\n"
-        "- High-level strategic recommendations for what to do next with the whole project\n"
-        "- Common MISTAKES the team has made repeatedly: wrong proof strategies, failed approaches, "
-        "recurring verification errors, misunderstood hypotheses — things to avoid going forward\n\n"
+        "- Agent quality: Are critic/solver/meeting prompts well-designed? Where do they likely fail?\n"
+        "- Pipeline design: Are the steps (discover → resolve → discuss → eval) well-sequenced? "
+        "What's missing or redundant?\n"
+        "- Model and strategy diversity: Is the system over-reliant on a single model or approach?\n"
+        "- Automation gaps: What manual steps could be automated? What does the daily push-forward miss?\n"
+        "- Meeting system effectiveness: Are the mathematician persona discussions producing useful output?\n"
+        "- Resource efficiency: Is compute being used well? Any obvious waste or underutilization?\n"
+        "- Benchmark methodology: How sound is the issue-based solvability evaluation? What could bias it?\n"
+        "- Observability and debugging: Can engineers tell when an agent goes wrong? What's invisible?\n"
+        "- Common systemic mistakes: Recurring failure modes in the SYSTEM (not in individual proofs)\n\n"
+        "Do NOT mention specific problem IDs (q1, q2, etc.) or individual math results. "
+        "This report is about improving the RMAC infrastructure and methodology.\n\n"
         f"Respond with ONLY valid JSON matching this schema:\n{_SYSTEM_JSON_SCHEMA}"
     )
     data = _one_shot(prompt)

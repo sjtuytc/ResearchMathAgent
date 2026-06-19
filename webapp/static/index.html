@@ -63,7 +63,7 @@ MathJax = {
   .tab.active{color:var(--text);border-bottom-color:var(--accent)}
   .pane{flex:1;overflow-y:auto;padding:18px 22px;display:none}
   .pane.active{display:block}
-  #pane-issue.active,#pane-final-proof.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
+  #pane-issue.active,#pane-author-solution.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
   #pane-overview.active{display:block}
   /* Cap display math in narrow comment/document views */
   .body mjx-container[display="true"]{font-size:.88em;overflow-x:auto;max-width:100%;margin:.4em 0}
@@ -302,18 +302,18 @@ MathJax = {
     </div>
     <div class="tabs">
       <div class="tab active" data-tab="overview">Overview</div>
+      <div class="tab" data-tab="question">Question</div>
       <div class="tab" data-tab="insights">Insights</div>
       <div class="tab" data-tab="issue">Issue</div>
       <div class="tab" data-tab="agent">Agent</div>
-      <div class="tab" data-tab="question">Question</div>
       <div class="tab" data-tab="proofs">Proofs</div>
       <div class="tab" data-tab="documents">Documents</div>
-      <div class="tab" data-tab="final-proof">Final Proof</div>
       <div class="tab" data-tab="literature">Literature</div>
       <div class="tab" data-tab="concepts">Concepts</div>
       <div class="tab" data-tab="meet">Meet</div>
       <div class="tab" data-tab="devlog">Dev Log</div>
       <div class="tab" data-tab="export">Export</div>
+      <div class="tab" data-tab="author-solution">Author Solution</div>
     </div>
 
     <section class="pane active" id="pane-overview" style="padding:18px 22px;overflow-y:auto">
@@ -340,6 +340,37 @@ MathJax = {
           </div>
           <div id="pf-all-log" style="font-size:10px;color:var(--muted);max-height:100px;overflow-y:auto;font-family:monospace;white-space:pre-wrap;border:1px solid var(--border);border-radius:4px;padding:4px 8px;background:var(--bg)"></div>
         </div>
+      </div>
+
+      <!-- ── Push Forward Summary ───────────────────────────────────── -->
+      <div id="pf-summary-card" class="card" style="margin-bottom:14px;display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700">Last Push Forward Summary</span>
+          <span id="pf-sum-date" style="font-size:11px;color:var(--muted)"></span>
+          <span id="pf-sum-badge" style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.4)"></span>
+          <button id="pf-hist-toggle" class="btn-sec" style="font-size:11px;padding:3px 10px;margin-left:auto">Show history</button>
+        </div>
+        <!-- Aggregate section rows -->
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div id="pf-sum-issues-row" style="display:none;padding:8px 0;border-top:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Issues</div>
+            <div id="pf-sum-issues-body" style="font-size:12px;color:var(--text)"></div>
+          </div>
+          <div id="pf-sum-meets-row" style="display:none;padding:8px 0;border-top:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Meetings</div>
+            <div id="pf-sum-meets-body" style="font-size:12px;color:var(--text)"></div>
+          </div>
+          <div id="pf-sum-table-row" style="padding:8px 0;border-top:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Per Problem</div>
+            <div id="pf-sum-table"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Push Forward History ────────────────────────────────────── -->
+      <div id="pf-history-card" class="card" style="margin-bottom:14px;display:none">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Push Forward History</div>
+        <div id="pf-history-list" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
 
       <!-- ── System summary (always visible first) ──────────────────── -->
@@ -634,7 +665,7 @@ MathJax = {
                 <button class="btn-sec" id="iss-discuss-btn" title="Run a discussion round (critic→solver→verifier→strategist)" style="font-size:11px;padding:4px 9px;flex-shrink:0">Discuss</button>
                 <button class="btn-sec" id="iss-meet-btn" title="Start a meeting room linked to this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Meet</button>
                 <button class="btn-sec" id="iss-gendoc-btn" title="Generate a summary document from this discussion" style="font-size:11px;padding:4px 9px;flex-shrink:0">Gen Doc</button>
-                <button class="btn-sec" id="iss-pdf-btn" title="View issue thread as PDF" style="font-size:11px;padding:4px 9px;flex-shrink:0">PDF</button>
+                <button class="btn-sec" id="iss-pdf-btn" title="Toggle between PDF and raw thread view" style="font-size:11px;padding:4px 9px;flex-shrink:0">Thread</button>
                 <span class="muted" id="iss-status-msg" style="font-size:11px;flex-shrink:0"></span>
               </div>
               <div id="iss-pdf-view" style="display:none;flex:1;overflow-y:auto;position:relative"></div>
@@ -826,7 +857,7 @@ MathJax = {
       <div id="pf-empty" class="empty" style="display:none">No proof results found. Run <code>rma solve --all</code> then click <b>Consolidate</b>.</div>
     </section>
 
-    <section class="pane" id="pane-final-proof" style="padding:0;overflow:hidden">
+    <section class="pane" id="pane-author-solution" style="padding:0;overflow:hidden">
       <div style="display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 98px)">
         <div id="fpf-list" style="border-right:1px solid var(--border);overflow-y:auto;padding:10px">
           <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 8px">Merged</div>
@@ -1071,9 +1102,12 @@ MathJax = {
     <section class="pane" id="pane-insights" style="padding:18px 22px;overflow-y:auto">
       <!-- System level panel -->
       <div id="ins-panel-system">
-        <div class="ins-section-title">Project Roadmap</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div class="ins-section-title" style="margin-bottom:0">System Improvement Suggestions</div>
+          <button class="btn-sec" id="ins-sys-regen-btn" style="font-size:11px;padding:3px 10px" onclick="regenInsightSystem()">Regenerate</button>
+        </div>
         <div id="ins-system-card" style="display:none"></div>
-        <div id="ins-system-empty" class="muted" style="padding:20px;font-size:13px">No system insight generated yet. The daemon runs daily at 09:05.</div>
+        <div id="ins-system-empty" class="muted" style="padding:20px;font-size:13px">No system insight generated yet. Click Regenerate to generate one.</div>
         <div id="ins-sys-mistakes-wrap" style="display:none;margin-top:20px">
           <div class="ins-section-title">Mistakes &amp; Lessons Learned</div>
           <div id="ins-sys-mistakes"></div>
@@ -1081,13 +1115,19 @@ MathJax = {
       </div>
       <!-- Dataset level panel -->
       <div id="ins-panel-dataset" style="display:none">
-        <div class="ins-section-title">Dataset Insights</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div class="ins-section-title" style="margin-bottom:0">Dataset Insights</div>
+          <button class="btn-sec" id="ins-ds-regen-btn" style="font-size:11px;padding:3px 10px" onclick="regenInsightDataset()">Regenerate</button>
+        </div>
         <div id="ins-dataset-card" style="display:none"></div>
         <div id="ins-dataset-empty" class="muted" style="padding:20px;font-size:13px">Select a dataset first, or no insight has been generated yet.</div>
       </div>
       <!-- Question level panel -->
       <div id="ins-panel-question" style="display:none">
-        <div class="ins-section-title">Question Insights</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div class="ins-section-title" style="margin-bottom:0">Question Insights</div>
+          <button class="btn-sec" id="ins-q-regen-btn" style="font-size:11px;padding:3px 10px" onclick="regenInsightQuestion()">Regenerate</button>
+        </div>
         <div id="ins-question-card" style="display:none"></div>
         <div id="ins-question-empty" class="muted" style="padding:20px;font-size:13px">Select a question first, or no insight has been generated yet.</div>
       </div>
@@ -1681,7 +1721,11 @@ let _ovDetailPid=null; // which pid is currently loaded in the detail panel
 
 async function loadOverview(){
   let d;
-  try{ const r=await fetchWithTimeout("/api/overview",10000); if(!r.ok) return; d=await r.json(); }
+  // Pass dataset param when not at system level so the backend scopes to the active dataset
+  const dsForOv = (_globalLevel !== "system" && selectedDataset && selectedDataset !== "first_proof_1")
+    ? selectedDataset : null;
+  const ovUrl = dsForOv ? `/api/overview?dataset=${encodeURIComponent(dsForOv)}` : "/api/overview";
+  try{ const r=await fetchWithTimeout(ovUrl,10000); if(!r.ok) return; d=await r.json(); }
   catch(e){ return; }
   ovData=d;
   renderOverview(d, selected);
@@ -2224,7 +2268,7 @@ function setGlobalLevel(level){
   if(activeTab) setTab(activeTab.dataset.tab);
 }
 
-const _CSS_FLEX_PANES = new Set(["pane-issue","pane-final-proof","pane-overview"]);
+const _CSS_FLEX_PANES = new Set(["pane-issue","pane-author-solution","pane-overview"]);
 function setTab(name){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
   document.querySelectorAll(".pane").forEach(p=>{
@@ -2261,7 +2305,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab)
     {id:"agent",     icon:"🤖",  label:"Agent",       sub:"Run live solver"},
     {id:"documents", icon:"📄",  label:"Documents",   sub:"Daily reports"},
     {id:"proofs",    icon:"📐",  label:"Proofs",      sub:"Best proof per problem"},
-    {id:"final-proof",icon:"✅", label:"Final Proof", sub:"PDF viewer"},
+    {id:"author-solution",icon:"✅", label:"Author Solution", sub:"Author PDF viewer"},
     {id:"literature",icon:"📚",  label:"Literature",  sub:"Related papers"},
     {id:"concepts",  icon:"💡",  label:"Concepts",    sub:"Key concepts"},
     {id:"insights",  icon:"💡",  label:"Insights",    sub:"AI-generated strategic insights"},
@@ -2272,7 +2316,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab)
 
   // Slash aliases: /proof → proofs, /concept → concepts, etc.
   const ALIASES = {
-    proof:"proofs","final-proof":"final-proof",finalproof:"final-proof",
+    proof:"proofs","author-solution":"author-solution",authorsolution:"author-solution",author:"author-solution",
     question:"question",q:"question",
     issue:"issue",issues:"issue",bug:"issue",
     agent:"agent",run:"agent",solve:"agent",
@@ -2854,11 +2898,12 @@ function showProofModal(tex){
 
 function renderIssueThread(issue){
   issSelectedId=issue.id;
-  // Reset PDF view state when switching issues
+  // Reset state; _autoLoadIssuePdf will switch to PDF view and update button label
   _issPdfMode=false;
   $("iss-pdf-view").style.display="none";
   $("iss-comments").style.display="flex";
-  $("iss-pdf-btn").textContent="PDF";
+  $("iss-pdf-btn").textContent="compiling…";
+  $("iss-pdf-btn").disabled=true;
   $("iss-thread-empty").style.display="none";
   $("iss-thread").style.display="flex";
   $("iss-title").textContent=issue.title;
@@ -3000,6 +3045,39 @@ function renderIssueThread(issue){
     }
   }
   comments.scrollTop=comments.scrollHeight;
+  // Auto-load PDF view (fire-and-forget; fall back to thread on error)
+  _autoLoadIssuePdf(issue.id);
+}
+
+async function _autoLoadIssuePdf(issueId){
+  if(!selected) return;
+  const pdfView=$("iss-pdf-view"), commView=$("iss-comments");
+  const btn=$("iss-pdf-btn");
+  const ds=selectedDataset||"first_proof_1";
+  // Show loading indicator in PDF area while keeping comments visible temporarily
+  pdfView.innerHTML=`<div style="padding:24px;color:var(--muted);font-size:13px">Compiling PDF…</div>`;
+  pdfView.style.display="block";
+  commView.style.display="none";
+  if(btn){ btn.disabled=true; btn.textContent="compiling…"; }
+  try{
+    const r=await fetch(`/api/issue-pdf/${encodeURIComponent(selected)}/${encodeURIComponent(issueId)}?dataset=${encodeURIComponent(ds)}`);
+    // Guard: user switched to a different issue while compiling
+    if(issSelectedId!==issueId) return;
+    const d=await r.json();
+    if(d.ok && d.pdf_url){
+      _issPdfMode=true;
+      if(btn){ btn.textContent="Thread"; btn.disabled=false; }
+      await pdfLoad(d.pdf_url, pdfView, ()=>{}, 1.2);
+    } else {
+      // Compile failed — fall back to thread view
+      pdfView.style.display="none"; commView.style.display="flex";
+      if(btn){ btn.textContent="PDF"; btn.disabled=false; }
+    }
+  } catch(e){
+    if(issSelectedId!==issueId) return;
+    pdfView.style.display="none"; commView.style.display="flex";
+    if(btn){ btn.textContent="PDF"; btn.disabled=false; }
+  }
 }
 
 // ---- Unified activity log ----
@@ -3691,8 +3769,122 @@ async function loadPushForwardStatus(){
       clearInterval(_pfAllPollIv);
       _pfAllPollIv=setInterval(()=>_pfAllPoll(_pfAllJobId),10000);
     }
+    // Render summary + history
+    renderPushForwardSummary(state, jobs);
   }catch(_){}
 }
+
+function renderPushForwardSummary(state, jobs){
+  const runs = (state.runs||[]).slice().reverse(); // newest first
+  const sumCard=$("pf-summary-card");
+  if(!runs.length){ if(sumCard) sumCard.style.display="none"; return; }
+
+  const latest = runs[0];
+  if(!sumCard) return;
+  sumCard.style.display="block";
+
+  // Merge in-memory job data if available (richer than persisted state)
+  const memJob = jobs.find(j=>j.job_id===latest.job_id) || {};
+  const results = (latest.results && latest.results.length ? latest.results : null)
+               || (memJob.results && memJob.results.length ? memJob.results : null)
+               || [];
+
+  const dateStr = latest.completed_at
+    ? new Date(latest.completed_at).toLocaleString()
+    : latest.date;
+  const el2=$("pf-sum-date"); if(el2) el2.textContent=dateStr;
+  const badge=$("pf-sum-badge");
+  if(badge) badge.textContent=`${(latest.problems||[]).length} problems`;
+
+  // ── Issues aggregate ──
+  const issuesRow=$("pf-sum-issues-row"), issuesBody=$("pf-sum-issues-body");
+  if(results.length && issuesRow && issuesBody){
+    const totalDisc = results.reduce((s,r)=>s+(r.issues_discovered||0),0);
+    const totalRes  = results.reduce((s,r)=>s+(r.issues_resolved||0),0);
+    const totalOpen = results.reduce((s,r)=>s+(r.issues_open_after!=null?r.issues_open_after:0),0);
+    issuesRow.style.display="block";
+    const parts=[];
+    if(totalDisc>0) parts.push(`<span style="color:var(--accent);font-weight:600">+${totalDisc} discovered</span>`);
+    if(totalRes>0)  parts.push(`<span style="color:var(--green);font-weight:600">${totalRes} resolved</span>`);
+    parts.push(`<span style="color:var(--muted)">${totalOpen} open remaining</span>`);
+    issuesBody.innerHTML=parts.join(" · ");
+  } else if(issuesRow){
+    issuesRow.style.display="none";
+  }
+
+  // ── Meetings aggregate ──
+  const meetsRow=$("pf-sum-meets-row"), meetsBody=$("pf-sum-meets-body");
+  const rooms = results.filter(r=>r.room_id);
+  if(rooms.length && meetsRow && meetsBody){
+    meetsRow.style.display="block";
+    const roomNames = rooms.map(r=>r.room_id).join(", ");
+    const allParts = results.map(r=>r.meeting_participants||[]).flat();
+    const uniqueParts = [...new Set(allParts.filter(p=>p!=="coordinator"))];
+    meetsBody.innerHTML=`<span style="color:var(--green);font-weight:600">${rooms.length} rooms created</span>`
+      +(uniqueParts.length?` · <span style="color:var(--muted)">personas: ${esc(uniqueParts.slice(0,5).join(", "))}${uniqueParts.length>5?" +more":""}</span>`:"")
+      +` · <span style="color:var(--muted);font-size:11px">${esc(rooms.map(r=>r.room_id).join(", "))}</span>`;
+  } else if(meetsRow){
+    meetsRow.style.display="none";
+  }
+
+  // ── Per-problem table ──
+  const tbl=$("pf-sum-table"); if(!tbl) return;
+  const probs = results.length ? results : (latest.problems||[]).map(p=>({problem:p}));
+  tbl.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em">
+      <th style="text-align:left;padding:3px 8px 3px 0;font-weight:600">Problem</th>
+      <th style="text-align:center;padding:3px 6px;font-weight:600">Discovered</th>
+      <th style="text-align:center;padding:3px 6px;font-weight:600">Resolved</th>
+      <th style="text-align:center;padding:3px 6px;font-weight:600">Open after</th>
+      <th style="text-align:left;padding:3px 0 3px 6px;font-weight:600">Meeting</th>
+    </tr></thead>
+    <tbody>${probs.map((r,i)=>{
+      const bg=i%2===0?"":"background:var(--panel2)";
+      const disc=r.issues_discovered!=null?`<span style="color:var(--accent)">+${r.issues_discovered}</span>`:`<span style="color:var(--muted)">—</span>`;
+      const res=r.issues_resolved!=null?`<span style="color:var(--green)">${r.issues_resolved}</span>`:`<span style="color:var(--muted)">—</span>`;
+      const open=r.issues_open_after!=null?r.issues_open_after:`<span style="color:var(--muted)">—</span>`;
+      const meet=r.room_id?`<span style="color:var(--green);font-size:10px">✓ ${esc(r.room_id)}</span>`:`<span style="color:var(--muted);font-size:10px">—</span>`;
+      const errBadge=r.error?` <span style="color:var(--red);font-size:10px" title="${esc(r.error)}">⚠</span>`:"";
+      return `<tr style="${bg}">
+        <td style="padding:4px 8px 4px 0;font-weight:700;color:var(--accent)">${esc(r.problem||"")}${errBadge}</td>
+        <td style="text-align:center;padding:4px 6px">${disc}</td>
+        <td style="text-align:center;padding:4px 6px">${res}</td>
+        <td style="text-align:center;padding:4px 6px">${open}</td>
+        <td style="padding:4px 0 4px 6px">${meet}</td>
+      </tr>`;
+    }).join("")}</tbody></table>`;
+
+  // ── History list (toggled) ──
+  const histList=$("pf-history-list");
+  if(histList && runs.length > 1){
+    histList.innerHTML = runs.slice(1).map(run=>{
+      const numProbs=(run.problems||[]).length;
+      const ts=run.completed_at?new Date(run.completed_at).toLocaleString():run.date;
+      const res=run.results||[];
+      const roomCount=res.filter(r=>r.room_id).length;
+      const totalDisc=res.reduce((s,r)=>s+(r.issues_discovered||0),0);
+      const totalRes=res.reduce((s,r)=>s+(r.issues_resolved||0),0);
+      const detail=res.length
+        ? `${numProbs} problems · +${totalDisc} discovered · ${totalRes} resolved · ${roomCount} rooms`
+        : `${numProbs} problems`;
+      return `<div class="runitem" style="padding:6px 0;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:12px">${esc(ts)}</span>
+          <span style="font-size:11px;color:var(--muted)">${esc(detail)}</span>
+          <span style="font-size:10px;color:var(--muted);font-family:monospace;margin-left:auto">${esc((run.job_id||"").slice(0,8))}</span>
+        </div>
+      </div>`;
+    }).join("");
+  }
+}
+
+let _pfHistShowing=false;
+if($("pf-hist-toggle")) $("pf-hist-toggle").onclick=()=>{
+  _pfHistShowing=!_pfHistShowing;
+  const card=$("pf-history-card");
+  if(card) card.style.display=_pfHistShowing?"block":"none";
+  const btn=$("pf-hist-toggle"); if(btn) btn.textContent=_pfHistShowing?"Hide history":"Show history";
+};
 
 if($("pf-all-btn")) $("pf-all-btn").onclick=()=>triggerPushForward(false);
 if($("pf-all-force-btn")) $("pf-all-force-btn").onclick=()=>triggerPushForward(true);
@@ -4125,7 +4317,7 @@ $("pf-eval-toggle-log").onclick = ()=>{
 
 // proofs tab click is handled by setTab above
 
-// ---- Final Proof tab (PDF.js) ----
+// ---- Author Solution tab (PDF.js) ----
 let fpfLoaded=false, fpfDoc=null, fpfScale=1.5, fpfCurrentUrl=null, fpfViewerActive=false;
 
 function fpfGetCurrentPage(){
@@ -4230,11 +4422,11 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="-"){e.preventDefault();$("fpf-zout").click();}
 });
 
-document.querySelector('.tab[data-tab="final-proof"]').addEventListener("click",()=>{
+document.querySelector('.tab[data-tab="author-solution"]').addEventListener("click",()=>{
   fpfViewerActive=true;
   if(!fpfLoaded) loadFinalProofFiles();
 });
-document.querySelectorAll('.tab:not([data-tab="final-proof"])').forEach(t=>
+document.querySelectorAll('.tab:not([data-tab="author-solution"])').forEach(t=>
   t.addEventListener("click",()=>fpfViewerActive=false));
 
 // ─── Literature Tab ──────────────────────────────────────────────────────────
@@ -4894,30 +5086,12 @@ $("iss-pdf-btn").onclick=async()=>{
   if(!selected||!issSelectedId) return;
   const pdfView=$("iss-pdf-view"), commView=$("iss-comments");
   if(_issPdfMode){
-    // Toggle back to thread view
+    // Toggle back to thread (raw) view
     pdfView.style.display="none"; commView.style.display="flex";
     $("iss-pdf-btn").textContent="PDF"; _issPdfMode=false; return;
   }
-  // Show PDF view
-  const ds=selectedDataset||"first_proof_1";
-  $("iss-pdf-btn").disabled=true; $("iss-pdf-btn").textContent="compiling…";
-  pdfView.style.display="block"; commView.style.display="none";
-  pdfView.innerHTML=`<div style="padding:24px;color:var(--muted);font-size:13px">Compiling PDF…</div>`;
-  try{
-    const r=await fetch(`/api/issue-pdf/${encodeURIComponent(selected)}/${encodeURIComponent(issSelectedId)}?dataset=${encodeURIComponent(ds)}`);
-    const d=await r.json();
-    if(d.ok && d.pdf_url){
-      _issPdfMode=true;
-      $("iss-pdf-btn").textContent="Thread";
-      await pdfLoad(d.pdf_url, pdfView, ()=>{}, 1.2);
-    } else {
-      pdfView.innerHTML=`<details style="padding:12px;width:100%"><summary style="color:var(--red);cursor:pointer">PDF compile failed</summary><pre style="font-size:11px;color:#aaa;white-space:pre-wrap;margin-top:8px">${esc(d.log||"no log")}</pre></details>`;
-      pdfView.style.display="none"; commView.style.display="flex";
-    }
-  } catch(e){
-    pdfView.style.display="none"; commView.style.display="flex";
-    $("iss-status-msg").textContent="PDF error"; setTimeout(()=>$("iss-status-msg").textContent="",3000);
-  } finally{ $("iss-pdf-btn").disabled=false; }
+  // Manually re-trigger PDF (e.g. after auto-compile failed)
+  await _autoLoadIssuePdf(issSelectedId);
 };
 
 // Meet button: create meeting room linked to this issue
@@ -5036,6 +5210,62 @@ async function loadInsights(){
   if(_globalLevel==="system")        loadInsightSystem();
   else if(_globalLevel==="dataset")  loadInsightDataset();
   else if(_globalLevel==="question") loadInsightQuestion(selected);
+}
+
+async function regenInsightSystem(){
+  const btn=$("ins-sys-regen-btn"); if(btn){btn.disabled=true;btn.textContent="Generating…";}
+  const empty=$("ins-system-empty"), card=$("ins-system-card");
+  if(empty){empty.textContent="Regenerating — this may take 30-60s…";empty.style.display="";}
+  if(card) card.style.display="none";
+  try{
+    const r=await fetch("/api/insights/system/regenerate",{method:"POST"});
+    const d=r.ok?await r.json():null;
+    _renderInsightCard(d,card,empty);
+    const mWrap=$("ins-sys-mistakes-wrap"),mEl=$("ins-sys-mistakes");
+    if(mWrap&&mEl&&d&&(d.mistakes||[]).length){
+      mEl.innerHTML=(d.mistakes||[]).map(m=>`<div style="padding:5px 8px;background:var(--panel2);border-radius:5px;margin-bottom:4px;font-size:12px">${esc(m)}</div>`).join("");
+      mWrap.style.display="";
+    }else if(mWrap) mWrap.style.display="none";
+  }catch(e){
+    if(empty){empty.textContent="Regeneration failed: "+e.message;empty.style.display="";}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Regenerate";}
+  }
+}
+
+async function regenInsightDataset(){
+  if(!selectedDataset) return;
+  const btn=$("ins-ds-regen-btn"); if(btn){btn.disabled=true;btn.textContent="Generating…";}
+  const empty=$("ins-dataset-empty"),card=$("ins-dataset-card");
+  if(empty){empty.textContent="Regenerating…";empty.style.display="";}
+  if(card) card.style.display="none";
+  try{
+    const r=await fetch(`/api/insights/dataset/${encodeURIComponent(selectedDataset)}/regenerate`,{method:"POST"});
+    const d=r.ok?await r.json():null;
+    _renderInsightCard(d,card,empty);
+  }catch(e){
+    if(empty){empty.textContent="Regeneration failed: "+e.message;empty.style.display="";}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Regenerate";}
+  }
+}
+
+async function regenInsightQuestion(){
+  if(!selected) return;
+  const btn=$("ins-q-regen-btn"); if(btn){btn.disabled=true;btn.textContent="Generating…";}
+  const empty=$("ins-question-empty"),card=$("ins-question-card");
+  if(empty){empty.textContent="Regenerating…";empty.style.display="";}
+  if(card) card.style.display="none";
+  const ds=selectedDataset||"first_proof_1";
+  try{
+    const r=await fetch(`/api/insights/question/${encodeURIComponent(ds)}/${encodeURIComponent(selected)}/regenerate`,{method:"POST"});
+    const d=r.ok?await r.json():null;
+    _renderInsightCard(d,card,empty);
+  }catch(e){
+    if(empty){empty.textContent="Regeneration failed: "+e.message;empty.style.display="";}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Regenerate";}
+  }
 }
 
 // New meeting modal

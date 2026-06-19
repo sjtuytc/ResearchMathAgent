@@ -77,7 +77,17 @@ def _short_id(problem_id: str, existing: list[dict]) -> str:
 
 # ── list / get ──────────────────────────────────────────────────────────────
 
-def list_issues(repo_root: Path, problem_id: str, dataset: str = "first_proof_1") -> list[dict]:
+def list_issues(
+    repo_root: Path,
+    problem_id: str,
+    dataset: str = "first_proof_1",
+    status: str | None = None,
+) -> list[dict]:
+    """Return issues for problem_id, optionally filtered by status.
+
+    status: comma-separated allowed statuses, e.g. "open,in_progress".
+            None means return all statuses.
+    """
     d = _issues_dir(repo_root, problem_id, dataset)
     issues = []
     for f in sorted(d.glob("*.json"), key=lambda p: p.stat().st_mtime):
@@ -89,6 +99,9 @@ def list_issues(repo_root: Path, problem_id: str, dataset: str = "first_proof_1"
     if not issues:
         issue = _seed_issue_direct(repo_root, problem_id, dataset)
         issues.append(issue)
+    if status:
+        allowed = {s.strip() for s in status.split(",")}
+        issues = [i for i in issues if i.get("status", "open") in allowed]
     return issues
 
 

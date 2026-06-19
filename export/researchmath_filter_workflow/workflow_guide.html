@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResearchMath — Problem Filtering & Ranking Workflow Guide</title>
+<style>
+/* Screen styles */
+:root {
+  --blue: #1a56db;
+  --blue-light: #e8f0fe;
+  --gray: #6b7280;
+  --gray-light: #f3f4f6;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --amber: #92400e;
+  --amber-bg: #fffbeb;
+  --amber-border: #fcd34d;
+  --green: #065f46;
+  --green-bg: #ecfdf5;
+  --green-border: #6ee7b7;
+  --red: #991b1b;
+  --red-bg: #fef2f2;
+  --red-border: #fca5a5;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--text);
+  background: #fff;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 48px 32px;
+}
+h1 { font-size: 26px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
+h2 { font-size: 19px; font-weight: 700; margin: 36px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--blue); color: var(--blue); }
+h3 { font-size: 15px; font-weight: 700; margin: 20px 0 6px; color: var(--text); }
+h4 { font-size: 13px; font-weight: 700; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+p { margin: 8px 0; }
+ul, ol { margin: 8px 0 8px 24px; }
+li { margin: 4px 0; }
+code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12.5px;
+  background: var(--gray-light);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+pre {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  background: #1e2030;
+  color: #cdd6f4;
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+th { background: var(--blue); color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:nth-child(even) td { background: var(--gray-light); }
+.cover { text-align: center; padding: 40px 0 32px; border-bottom: 3px solid var(--blue); margin-bottom: 32px; }
+.cover .subtitle { font-size: 16px; color: var(--muted); margin-top: 8px; }
+.cover .meta { margin-top: 20px; font-size: 13px; color: var(--muted); }
+.callout { border-left: 4px solid var(--blue); background: var(--blue-light); padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 14px 0; font-size: 13.5px; }
+.callout.warn { border-color: var(--amber-border); background: var(--amber-bg); }
+.callout.tip { border-color: var(--green-border); background: var(--green-bg); }
+.steps { counter-reset: step; }
+.step { display: flex; gap: 14px; margin: 12px 0; }
+.step-num { counter-increment: step; content: counter(step); background: var(--blue); color: #fff; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.score-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin: 8px 0; }
+.score-card-title { font-weight: 700; font-size: 14px; color: var(--blue); }
+.score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin-top: 6px; font-size: 12.5px; }
+.score-item { display: flex; gap: 8px; }
+.score-val { font-weight: 700; color: var(--text); min-width: 14px; }
+.score-desc { color: var(--muted); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; border: 1px solid; margin: 0 2px; }
+.b-include { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+.b-borderline { background: var(--amber-bg); border-color: var(--amber-border); color: var(--amber); }
+.b-exclude { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
+.toc { background: var(--gray-light); border-radius: 8px; padding: 16px 20px; margin: 24px 0; }
+.toc ol { margin-left: 20px; }
+.toc li { margin: 4px 0; font-size: 13px; }
+.toc a { color: var(--blue); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); text-align: center; }
+
+/* Print styles */
+@media print {
+  body { padding: 0; max-width: 100%; font-size: 12px; }
+  pre { background: #f3f4f6; color: #111; border: 1px solid #ccc; }
+  pre code { color: #111; }
+  h2 { break-before: auto; }
+  .cover { break-after: page; }
+  .no-print { display: none; }
+  a { color: #1a56db; }
+  @page { margin: 2cm; }
+}
+</style>
+</head>
+<body>
+
+<!-- Cover page -->
+<div class="cover">
+  <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:12px">ResearchMathAgent Project</div>
+  <h1>Problem Filtering &amp; Ranking<br>Workflow Guide</h1>
+  <div class="subtitle">Identifying AI-tractable open math problems using Claude</div>
+  <div class="meta">
+    Version 1.0 &nbsp;·&nbsp; June 2026<br>
+    Covers: 5 datasets &nbsp;·&nbsp; ~22,000 problems
+  </div>
+</div>
+
+<!-- Table of contents -->
+<div class="toc no-print">
+  <strong style="font-size:13px">Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#quickstart">Quick Start</a></li>
+    <li><a href="#datasets">Dataset Overview</a></li>
+    <li><a href="#rubric">Scoring Rubric</a></li>
+    <li><a href="#website">Using the Filter Website</a></li>
+    <li><a href="#script">Running the Scoring Script</a></li>
+    <li><a href="#output">Understanding the Output</a></li>
+    <li><a href="#review">Human Review Guidelines</a></li>
+    <li><a href="#appendix">Appendix</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="overview">1. Overview</h2>
+
+<p>The ResearchMath dataset contains approximately 22,000 open mathematical research problems
+drawn from arXiv papers, the Erdős problem list, AIM workshops, Google DeepMind's Formal
+Conjectures, and an unsolved problems compendium. Problems span analysis, number theory,
+algebraic combinatorics, topology, graph theory, and eight other domains.</p>
+
+<p>The dataset was constructed by an agentic pipeline (see arXiv:2605.28003) that <em>extracted</em>
+problems from source documents and <em>verified their open/solved status</em> via literature search.
+However, <strong>no systematic human filtering or AI-tractability ranking exists</strong>. This
+workflow fills that gap.</p>
+
+<h3>Goals of this workflow</h3>
+<ul>
+  <li>Score each problem on five dimensions relevant to AI-assisted research</li>
+  <li>Produce a ranked shortlist of problems worth prioritising for deep work</li>
+  <li>Enable distributed annotation: different people can score different datasets</li>
+</ul>
+
+<h3>What "filtering" and "ranking" mean here</h3>
+<p><strong>Filtering</strong> is a binary/ternary decision: is this problem worth deeper attention?
+A problem may be excluded because it is poorly stated, extremely niche, or requires
+experimental/physical knowledge that AI cannot access.</p>
+<p><strong>Ranking</strong> orders the included problems by a weighted score across five dimensions.
+This score reflects how good a fit the problem is for AI-assisted mathematical investigation
+— not how easy it is to solve.</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="quickstart">2. Quick Start</h2>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num" style="display:inline-flex;align-items:center;justify-content:center;background:var(--blue);color:#fff;border-radius:50%;width:26px;height:26px;font-size:13px;font-weight:700;flex-shrink:0;margin-top:2px">1</div>
+    <div>
+      <strong>Install the dependency</strong>
+      <pre><code>pip install anthropic</code></pre>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num" style="display:inline-flex;align-items:center;justify-content:center;background:var(--blue);color:#fff;border-radius:50%;width:26px;height:26px;font-size:13px;font-weight:700;flex-shrink:0;margin-top:2px">2</div>
+    <div>
+      <strong>Set your Anthropic API key</strong>
+      <pre><code>export ANTHROPIC_API_KEY="sk-ant-..."</code></pre>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num" style="display:inline-flex;align-items:center;justify-content:center;background:var(--blue);color:#fff;border-radius:50%;width:26px;height:26px;font-size:13px;font-weight:700;flex-shrink:0;margin-top:2px">3</div>
+    <div>
+      <strong>Run the scorer</strong>
+      <pre><code># Score 50 problems from the main dataset
+python rank_problems.py --dataset researchmath_14k --limit 50
+
+# Score all datasets, 20 problems each (faster model = cheaper)
+python rank_problems.py --all-datasets --limit 20 \
+    --model claude-haiku-4-5-20251001</code></pre>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num" style="display:inline-flex;align-items:center;justify-content:center;background:var(--blue);color:#fff;border-radius:50%;width:26px;height:26px;font-size:13px;font-weight:700;flex-shrink:0;margin-top:2px">4</div>
+    <div>
+      <strong>Review the output</strong><br>
+      Results appear in <code>ranked_output/</code> as JSON and CSV files, sorted
+      from highest to lowest rank score.
+    </div>
+  </div>
+</div>
+
+<div class="callout warn">
+  <strong>API cost estimate.</strong> Scoring 50 problems with <code>claude-opus-4-8</code>
+  costs roughly $0.05–$0.15 depending on problem length. Using
+  <code>claude-haiku-4-5-20251001</code> reduces cost by ~20×. See Appendix A for a
+  cost table.
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="datasets">3. Dataset Overview</h2>
+
+<table>
+  <thead>
+    <tr><th>Dataset slug</th><th>Name</th><th>Problems</th><th>Status coverage</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>researchmath_14k</code></td>
+      <td>ResearchMath-14k</td>
+      <td>14,056</td>
+      <td>Mixed (open/solved/partial/unknown)</td>
+      <td>Main dataset. From arXiv papers &amp; workshop problem lists. 11 domains, status-annotated via agent pipeline.</td>
+    </tr>
+    <tr>
+      <td><code>erdos_problems</code></td>
+      <td>Erdős Problems</td>
+      <td>1,217</td>
+      <td>100% unknown</td>
+      <td>Paul Erdős's open problem list. Combinatorics-heavy, often with cash prizes. Highly curated.</td>
+    </tr>
+    <tr>
+      <td><code>aim_problem_lists</code></td>
+      <td>AIM Problem Lists</td>
+      <td>101</td>
+      <td>100% unknown</td>
+      <td>Problems from American Institute of Mathematics workshops. Collaborative, research-frontier problems.</td>
+    </tr>
+    <tr>
+      <td><code>formal_conjectures</code></td>
+      <td>Formal Conjectures (DeepMind)</td>
+      <td>4,557</td>
+      <td>100% unknown</td>
+      <td>Google DeepMind's collection of formal mathematical conjectures. Strong verifiability — may admit formal proof search.</td>
+    </tr>
+    <tr>
+      <td><code>unsolved_math</code></td>
+      <td>Unsolved Math</td>
+      <td>~2,084</td>
+      <td>100% unknown</td>
+      <td>General unsolved problems compendium. Mixed difficulty and precision.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>Excluded from this workflow:</strong> <code>first_proof_1</code> and
+  <code>first_proof_2</code> are benchmark datasets used for model evaluation, not
+  for open-ended problem selection. They are filtered out automatically.
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="rubric">4. Scoring Rubric</h2>
+
+<p>Each problem is scored on five dimensions, each from 1 (lowest) to 5 (highest).
+The final <strong>rank score</strong> is a weighted average:</p>
+
+<pre><code>rank_score = 0.30 × importance
+           + 0.25 × ai_tractability
+           + 0.20 × verifiability
+           + 0.15 × clarity
+           + 0.10 × self_containedness</code></pre>
+
+<h3>Dimension Definitions</h3>
+
+<div class="score-card">
+  <div class="score-card-title">Importance (weight 30%)</div>
+  <p style="font-size:13px;margin-top:6px">Mathematical or scientific significance of solving this problem. How many researchers would care? Does it resolve a longstanding question or unlock a new area?</p>
+  <div class="score-grid">
+    <div class="score-item"><span class="score-val">1</span><span class="score-desc">Recreational or very niche curiosity</span></div>
+    <div class="score-item"><span class="score-val">2</span><span class="score-desc">Of interest within one narrow subfield</span></div>
+    <div class="score-item"><span class="score-val">3</span><span class="score-desc">Recognized open problem in its area</span></div>
+    <div class="score-item"><span class="score-val">4</span><span class="score-desc">Significant; would attract broad attention if solved</span></div>
+    <div class="score-item"><span class="score-val">5</span><span class="score-desc">Central open problem (e.g. Riemann Hypothesis-class)</span></div>
+  </div>
+</div>
+
+<div class="score-card">
+  <div class="score-card-title">AI Tractability (weight 25%)</div>
+  <p style="font-size:13px;margin-top:6px">How amenable is this to AI-assisted research? Does it benefit from exhaustive search, generating many candidate approaches, or formal verification?</p>
+  <div class="score-grid">
+    <div class="score-item"><span class="score-val">1</span><span class="score-desc">Requires deep human geometric intuition or physical experiment</span></div>
+    <div class="score-item"><span class="score-val">2</span><span class="score-desc">Mostly human insight; AI can only assist marginally</span></div>
+    <div class="score-item"><span class="score-val">3</span><span class="score-desc">AI can meaningfully explore sub-cases or related lemmas</span></div>
+    <div class="score-item"><span class="score-val">4</span><span class="score-desc">Strong candidate for AI: verifiable steps, structured search space</span></div>
+    <div class="score-item"><span class="score-val">5</span><span class="score-desc">Amenable to formal proof search or systematic case enumeration</span></div>
+  </div>
+</div>
+
+<div class="score-card">
+  <div class="score-card-title">Verifiability (weight 20%)</div>
+  <p style="font-size:13px;margin-top:6px">Can a proposed solution be checked rigorously? Are success criteria concrete?</p>
+  <div class="score-grid">
+    <div class="score-item"><span class="score-val">1</span><span class="score-desc">No clear criterion; "improvement" is subjective</span></div>
+    <div class="score-item"><span class="score-val">2</span><span class="score-desc">Solution could be checked but requires extensive expertise</span></div>
+    <div class="score-item"><span class="score-val">3</span><span class="score-desc">Checkable with effort by a domain expert</span></div>
+    <div class="score-item"><span class="score-val">4</span><span class="score-desc">Clear logical proof or counterexample verifiable by peer review</span></div>
+    <div class="score-item"><span class="score-val">5</span><span class="score-desc">Machine-checkable (formal proof assistant, computer search)</span></div>
+  </div>
+</div>
+
+<div class="score-card">
+  <div class="score-card-title">Clarity (weight 15%)</div>
+  <p style="font-size:13px;margin-top:6px">Is the problem precisely stated? Are all terms defined? Is it unambiguous what counts as a solution?</p>
+  <div class="score-grid">
+    <div class="score-item"><span class="score-val">1</span><span class="score-desc">Vague, undefined terms, or question is ambiguous</span></div>
+    <div class="score-item"><span class="score-val">3</span><span class="score-desc">Mostly clear but requires background to interpret fully</span></div>
+    <div class="score-item"><span class="score-val">5</span><span class="score-desc">Formally stated; a logician could parse it immediately</span></div>
+  </div>
+</div>
+
+<div class="score-card">
+  <div class="score-card-title">Self-Containedness (weight 10%)</div>
+  <p style="font-size:13px;margin-top:6px">Can the problem be understood from its statement alone, without consulting specific papers?</p>
+  <div class="score-grid">
+    <div class="score-item"><span class="score-val">1</span><span class="score-desc">Completely depends on a specific theorem/definition from a paper</span></div>
+    <div class="score-item"><span class="score-val">3</span><span class="score-desc">Requires standard graduate-level background but no specific paper</span></div>
+    <div class="score-item"><span class="score-val">5</span><span class="score-desc">Fully self-contained; readable by any mathematician</span></div>
+  </div>
+</div>
+
+<h3>Recommendations</h3>
+<p>Based on the rank score, Claude gives a recommendation:</p>
+<ul>
+  <li><span class="badge b-include">include</span> — Rank score &ge; 3.5; good candidate for deep work</li>
+  <li><span class="badge b-borderline">borderline</span> — Rank score 2.5–3.5; worth human review</li>
+  <li><span class="badge b-exclude">exclude</span> — Rank score &lt; 2.5; likely not a good fit</li>
+</ul>
+
+<div class="callout tip">
+  <strong>Tip:</strong> The weights and thresholds are configurable in <code>config_example.yaml</code>.
+  If your use case values formal proofs more, increase <code>verifiability</code>. If you want
+  problems relevant to a specific domain, pre-filter using the filter website first.
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="website">5. Using the Filter Website</h2>
+
+<p>The filter website lets you browse all datasets before running the script, which
+helps you get a sense of the data and pre-filter to a manageable scope.</p>
+
+<h3>URLs</h3>
+<ul>
+  <li><strong>Production:</strong> <code>https://zipfile-legume-gaining.ngrok-free.dev/rmac/filter/</code></li>
+  <li><strong>Insights tab:</strong> click "Insights" in the tab bar to see per-dataset statistics and auto-generated todos</li>
+</ul>
+
+<h3>Typical workflow before scoring</h3>
+<ol>
+  <li>Open the filter website and select a dataset</li>
+  <li>Use the domain filter to narrow to the area you want to focus on</li>
+  <li>Use the status chip to filter to <code>open</code> or <code>unknown</code> problems</li>
+  <li>Note the domain name and problem count — pass these to the script via <code>--status open</code></li>
+</ol>
+
+<p>The filter website is read-only and does not modify any data.</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="script">6. Running the Scoring Script</h2>
+
+<h3>Prerequisites</h3>
+<pre><code>pip install anthropic          # Required
+pip install pyyaml             # Optional: needed only for --config</code></pre>
+
+<p>An <strong>Anthropic API key</strong> is required. Get one at <a href="https://console.anthropic.com">console.anthropic.com</a>.</p>
+
+<h3>Common usage patterns</h3>
+
+<pre><code># ── Basic ──────────────────────────────────────────────────
+# Score the first 50 problems from ResearchMath-14k
+python rank_problems.py --dataset researchmath_14k --limit 50
+
+# Score only 'open' problems (fastest subset with known status)
+python rank_problems.py --dataset researchmath_14k --status open --limit 100
+
+# Use a cheaper model for a quick first pass
+python rank_problems.py --dataset erdos_problems --limit 200 \
+    --model claude-haiku-4-5-20251001
+
+# ── All datasets ────────────────────────────────────────────
+# 20 problems from each of the 5 datasets
+python rank_problems.py --all-datasets --limit 20
+
+# ── Custom output dir ───────────────────────────────────────
+python rank_problems.py --dataset formal_conjectures --limit 50 \
+    --output results/formal_conjectures_june26
+
+# ── Using a config file ─────────────────────────────────────
+cp config_example.yaml config.yaml
+# Edit config.yaml with your settings
+python rank_problems.py --config config.yaml
+
+# ── Local data (if you have the dataset files) ──────────────
+python rank_problems.py --dataset researchmath_14k \
+    --local-data /path/to/ResearchMathAgent-web/data/datasets \
+    --limit 500</code></pre>
+
+<h3>All command-line options</h3>
+<table>
+  <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>--dataset</code></td><td><code>researchmath_14k</code></td><td>Dataset slug to process</td></tr>
+    <tr><td><code>--all-datasets</code></td><td>off</td><td>Process all 5 datasets</td></tr>
+    <tr><td><code>--limit N</code></td><td>50</td><td>Max problems per dataset</td></tr>
+    <tr><td><code>--status S</code></td><td>(all)</td><td>Filter: <code>open</code> | <code>solved</code> | <code>partially_solved</code> | <code>unknown</code></td></tr>
+    <tr><td><code>--model M</code></td><td><code>claude-opus-4-8</code></td><td>Anthropic model ID</td></tr>
+    <tr><td><code>--output DIR</code></td><td><code>ranked_output/</code></td><td>Output directory</td></tr>
+    <tr><td><code>--local-data DIR</code></td><td>(use API)</td><td>Path to local <code>data/datasets/</code> directory</td></tr>
+    <tr><td><code>--delay N</code></td><td>0.5</td><td>Seconds between API calls</td></tr>
+    <tr><td><code>--api-key KEY</code></td><td>(env var)</td><td>Anthropic API key (prefer env var)</td></tr>
+    <tr><td><code>--config FILE</code></td><td>(none)</td><td>YAML config file (overrides CLI)</td></tr>
+  </tbody>
+</table>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="output">7. Understanding the Output</h2>
+
+<p>Each run produces a JSON file and a CSV file in the output directory:</p>
+
+<pre><code>ranked_output/
+├── researchmath_14k_ranked.json   # Full results with reasoning
+├── researchmath_14k_ranked.csv    # Spreadsheet-friendly view
+└── all_datasets_ranked.json       # Combined (if --all-datasets)</code></pre>
+
+<h3>JSON output structure (one entry)</h3>
+<pre><code>{
+  "rank": 1,
+  "dataset": "researchmath_14k",
+  "id": "rm14k_00042",
+  "title": "Bounding the chromatic number of Kneser graphs",
+  "domain": "Discrete Mathematics and Combinatorics",
+  "status": "open",
+  "rank_score": 4.275,
+  "recommendation": "include",
+  "clarity": 5,
+  "importance": 4,
+  "ai_tractability": 4,
+  "verifiability": 5,
+  "self_containedness": 4,
+  "brief_reasoning": "The problem has a crisp graph-theoretic statement
+    with no ambiguity. Chromatic number bounds are central to combinatorics
+    and the question is well-studied enough that AI progress could be
+    verified against known results."
+}</code></pre>
+
+<h3>Interpreting the CSV</h3>
+<p>The CSV has the same fields. Sort by <code>rank_score</code> descending and filter by
+<code>recommendation = include</code> to get your shortlist. Open in Excel or Google Sheets
+and use conditional formatting on <code>rank_score</code> to visualise the distribution.</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="review">8. Human Review Guidelines</h2>
+
+<p>Claude's scores are a starting point, not a final verdict. A human reviewer should:</p>
+
+<ol>
+  <li><strong>Spot-check high-scoring "includes"</strong> — Read the brief_reasoning and verify
+  the score makes sense for the actual problem statement.</li>
+  <li><strong>Rescue "borderline" problems you know</strong> — If you recognise a problem as
+  important from domain expertise, override the recommendation to "include".</li>
+  <li><strong>Reject "includes" with vague statements</strong> — If Claude gave high clarity but
+  the statement relies on undefined notation, downgrade it.</li>
+  <li><strong>Note disagreement patterns</strong> — If Claude consistently overscores a domain
+  (e.g. formal conjectures) you can re-weight dimensions in config.yaml.</li>
+</ol>
+
+<div class="callout">
+  <strong>Dividing the work.</strong> If multiple people are annotating, assign datasets
+  or domain slices rather than problem-level splits. This ensures each person builds
+  domain familiarity rather than reviewing unrelated problems.
+</div>
+
+<h3>Suggested review protocol</h3>
+<ol>
+  <li>Run the script with <code>--limit 50</code> as a pilot to calibrate.</li>
+  <li>Discuss 5–10 disagreements with collaborators to align on interpretation.</li>
+  <li>Re-run with agreed weight adjustments and <code>--limit 200+</code>.</li>
+  <li>Each reviewer independently reads the top 20% by rank_score and flags upgrades/downgrades.</li>
+  <li>Merge decisions: if any reviewer includes, include; if all exclude, exclude.</li>
+</ol>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<h2 id="appendix">Appendix</h2>
+
+<h3>A. Approximate API cost table</h3>
+<table>
+  <thead><tr><th>Model</th><th>Cost per problem</th><th>100 problems</th><th>1,000 problems</th></tr></thead>
+  <tbody>
+    <tr><td><code>claude-opus-4-8</code></td><td>~$0.002–0.004</td><td>~$0.20–0.40</td><td>~$2–4</td></tr>
+    <tr><td><code>claude-sonnet-4-6</code></td><td>~$0.0005–0.001</td><td>~$0.05–0.10</td><td>~$0.50–1</td></tr>
+    <tr><td><code>claude-haiku-4-5-20251001</code></td><td>~$0.0001–0.0002</td><td>~$0.01–0.02</td><td>~$0.10–0.20</td></tr>
+  </tbody>
+</table>
+<p style="font-size:12px;color:var(--muted)">Estimates based on ~500 input tokens + 200 output tokens per problem. Check Anthropic's pricing page for current rates.</p>
+
+<h3>B. Dataset slugs reference</h3>
+<ul>
+  <li><code>researchmath_14k</code> — arXiv-derived, 14,056 problems, 11 domains</li>
+  <li><code>erdos_problems</code> — Erdős problem list, 1,217 problems</li>
+  <li><code>aim_problem_lists</code> — AIM workshops, 101 problems</li>
+  <li><code>formal_conjectures</code> — Google DeepMind, 4,557 conjectures</li>
+  <li><code>unsolved_math</code> — Unsolved problems compendium</li>
+</ul>
+
+<h3>C. Troubleshooting</h3>
+<table>
+  <thead><tr><th>Error</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td><code>ModuleNotFoundError: anthropic</code></td><td>Run <code>pip install anthropic</code></td></tr>
+    <tr><td><code>AuthenticationError</code></td><td>Check <code>ANTHROPIC_API_KEY</code> is set correctly</td></tr>
+    <tr><td><code>HTTP 429</code> (rate limit)</td><td>Increase <code>--delay 2</code> or reduce <code>--limit</code></td></tr>
+    <tr><td>API returns 502 / connection error</td><td>The hosted filter server may be down. Use <code>--local-data</code> if you have the dataset files.</td></tr>
+    <tr><td>JSON parse error warnings</td><td>Usually transient; re-run the same command. Failures are skipped, not fatal.</td></tr>
+  </tbody>
+</table>
+
+<h3>D. Modifying the scoring prompt</h3>
+<p>The prompt is in <code>rank_problems.py</code> as the constant <code>SCORING_PROMPT</code>.
+You can change the dimension definitions, add new dimensions, or target a different
+research goal (e.g. "problem suitability for a graduate seminar" or "prize problem
+tractability"). If you add or remove dimensions, update <code>RANK_WEIGHTS</code> accordingly.</p>
+
+<footer>
+  ResearchMathAgent Project &nbsp;·&nbsp; Contact: sjtuytc@gmail.com &nbsp;·&nbsp;
+  Datasets: <a href="https://arxiv.org/abs/2605.28003">arXiv:2605.28003</a> (CC BY 4.0)
+</footer>
+</body>
+</html>
