@@ -22,6 +22,79 @@ _FONT_BOLD    = "/usr/share/fonts/truetype/DejaVuSans-Bold.ttf"
 
 # ── Markdown → LaTeX conversion ───────────────────────────────────────────────
 
+_EMOJI_MAP = {
+    "✅": r"\checkmark{}",       # ✅
+    "❌": r"$\times$",           # ❌
+    "\U0001f7e1": r"(\textasciitilde{})",  # 🟡
+    "\U0001f534": r"(!)",            # 🔴
+    "\U0001f7e0": r"(!)",            # 🟠
+    "⚪": r"(\textopenbullet{})",# ⚪
+    "⚠️": r"(!)",          # ⚠️
+    "⚠": r"(!)",                # ⚠
+    "\U0001f50d": r"",               # 🔍
+    "\U0001f6ab": r"(!)",            # 🚫
+    "★": r"$\star$",            # ★
+    "▶": r"$\triangleright$",   # ▶
+    "▼": r"$\triangledown$",    # ▼
+    "◐": r"(\textopenbullet{})",# ◐
+    "●": r"$\bullet$",          # ●
+    "○": r"$\circ$",            # ○
+    "\U0001f4dd": r"",               # 📝
+    "\U0001f4c4": r"",               # 📄
+    "\U0001f4d6": r"",               # 📖
+    "\U0001f4a1": r"",               # 💡
+    "\U0001f3af": r"",               # 🎯
+    "\U0001f4c8": r"",               # 📈
+    "\U0001f4ca": r"",               # 📊
+}
+
+
+def _strip_emojis(s: str) -> str:
+    for em, rep in _EMOJI_MAP.items():
+        s = s.replace(em, rep)
+    # Remove any remaining non-Latin characters that LaTeX can't handle
+    return re.sub(r"[^\x00-\xff]", "", s)
+
+
+def _inline(s: str) -> str:
+    """Convert inline markdown to LaTeX, preserving math regions."""
+    # 1. Save all math segments as placeholders so bold/italic regexes can't cross them
+    math_store: list[str] = []
+
+    def _save(m: re.Match) -> str:
+        math_store.append(m.group(0))
+        return f"\x00M{len(math_store)-1}\x00"
+
+    # Protect display math \[...\] and $$ ... $$
+    s = re.sub(r"\\\[.*?\\\]", _save, s, flags=re.DOTALL)
+    s = re.sub(r"\$\$.*?\$\$", _save, s, flags=re.DOTALL)
+    # Protect inline $...$
+    s = re.sub(r"\$[^$\n]+?\$", _save, s)
+
+    # 2. Strip emojis
+    s = _strip_emojis(s)
+
+    # 3. Markdown links [text](url) → just the label
+    s = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", s)
+
+    # 4. Bold **text** and __text__
+    s = re.sub(r"\*\*([^*\n]+?)\*\*", r"\\textbf{\1}", s)
+    s = re.sub(r"__([^_\n]+?)__", r"\\textbf{\1}", s)
+
+    # 5. Italic *text* and _text_
+    s = re.sub(r"\*([^*\n]+?)\*", r"\\textit{\1}", s)
+    s = re.sub(r"(?<!\w)_([^_\n]+?)_(?!\w)", r"\\textit{\1}", s)
+
+    # 6. Inline code `text`
+    s = re.sub(r"`([^`]+)`", r"\\texttt{\1}", s)
+
+    # 7. Restore math placeholders
+    for idx, math in enumerate(math_store):
+        s = s.replace(f"\x00M{idx}\x00", math)
+
+    return s
+
+
 def _md_to_tex(text: str) -> str:
     """Convert markdown structural markup to LaTeX. Preserves existing LaTeX math."""
     lines = text.splitlines()
@@ -39,28 +112,6 @@ def _md_to_tex(text: str) -> str:
         if in_enumerate:
             out.append(r"\end{enumerate}")
             in_enumerate = False
-
-    def _inline(s: str) -> str:
-        """Apply inline conversions: bold, italic, code — but not inside math."""
-        # Split on $...$ to protect math
-        parts = re.split(r"(\$[^$]*\$|\\\[[^\]]*\\\])", s)
-        result = []
-        for p in parts:
-            if p.startswith("$") or p.startswith(r"\["):
-                result.append(p)
-            else:
-                # Bold **text**
-                p = re.sub(r"\*\*([^*]+)\*\*", r"\\textbf{\1}", p)
-                # Italic *text*
-                p = re.sub(r"\*([^*]+)\*", r"\\textit{\1}", p)
-                # Bold __text__
-                p = re.sub(r"__([^_]+)__", r"\\textbf{\1}", p)
-                # Italic _text_ (only when surrounded by spaces or start/end)
-                p = re.sub(r"(?<!\w)_([^_]+)_(?!\w)", r"\\textit{\1}", p)
-                # Inline code `text`
-                p = re.sub(r"`([^`]+)`", r"\\texttt{\1}", p)
-                result.append(p)
-        return "".join(result)
 
     i = 0
     while i < len(lines):
@@ -86,9 +137,8 @@ def _md_to_tex(text: str) -> str:
             i += 1
             continue
 
-        # Markdown table: detect | separator lines and rows
+        # Markdown table
         if "|" in raw and raw.strip().startswith("|"):
-            # Collect all table lines
             table_lines = []
             while i < len(lines) and "|" in lines[i] and lines[i].strip().startswith("|"):
                 table_lines.append(lines[i].rstrip())
@@ -116,18 +166,20 @@ def _md_to_tex(text: str) -> str:
             i += 1
             continue
 
-        # Blockquote
+        # Blockquote — collect consecutive > lines
         if raw.startswith("> "):
             _flush_list()
-            content = _inline(raw[2:])
+            bq_lines = []
+            while i < len(lines) and lines[i].rstrip().startswith("> "):
+                bq_lines.append(_inline(lines[i].rstrip()[2:]))
+                i += 1
             out.append(r"\begin{quote}")
-            out.append(content)
+            out.extend(bq_lines)
             out.append(r"\end{quote}")
-            i += 1
             continue
 
         # Numbered list item
-        m_num = re.match(r"^(\d+)\.\s+(.*)", raw)
+        m_num = re.match(r"^\d+\.\s+(.*)", raw)
         if m_num:
             if in_itemize:
                 out.append(r"\end{itemize}")
@@ -135,7 +187,7 @@ def _md_to_tex(text: str) -> str:
             if not in_enumerate:
                 out.append(r"\begin{enumerate}")
                 in_enumerate = True
-            out.append(r"\item " + _inline(m_num.group(2)))
+            out.append(r"\item " + _inline(m_num.group(1)))
             i += 1
             continue
 
@@ -179,7 +231,7 @@ def _table_to_tex(lines: list[str]) -> list[str]:
     for line in lines:
         if re.match(r"^\s*\|[-| :]+\|\s*$", line):
             continue  # separator row
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        cells = [_inline(c.strip()) for c in line.strip().strip("|").split("|")]
         rows.append(cells)
     if not rows:
         return []
@@ -188,11 +240,9 @@ def _table_to_tex(lines: list[str]) -> list[str]:
     result = [r"\begin{center}", f"\\begin{{tabular}}{{{spec}}}"]
     result.append(r"\hline")
     for k, row in enumerate(rows):
-        # pad
         while len(row) < ncols:
             row.append("")
-        cells_tex = " & ".join(row)
-        result.append(cells_tex + r" \\")
+        result.append(" & ".join(row) + r" \\")
         if k == 0:
             result.append(r"\hline")
     result.append(r"\hline")
@@ -256,13 +306,20 @@ def build_bundle_pdf(repo_root: Path, dataset: str | None = None, qid: str | Non
                     break
 
     if qid:
+        # Only include this question's own documents — no cross-problem daily reports
         _add_q_docs(docs_root / "questions" / qid, qid.upper())
-        # Recent daily reports
-        for p in sorted(docs_root.glob("*.tex"), reverse=True)[:5]:
-            files.append((p.stem, p))
-        for p in sorted(docs_root.glob("*.md"), reverse=True)[:5]:
-            if not (docs_root / (p.stem + ".tex")).exists():
-                files.append((p.stem, p))
+        # Meeting notes for this question only (skip if content is trivially empty)
+        meets_dir = docs_root / "questions" / qid / "meets"
+        if meets_dir.is_dir():
+            for p in sorted(meets_dir.glob("*.md")):
+                txt = p.read_text(encoding="utf-8", errors="replace")
+                # Only include notes that have substantive content beyond the opening line
+                transcript_lines = [ln for ln in txt.splitlines()
+                                    if ln.strip() and not ln.startswith("#") and
+                                    "Meeting opened" not in ln and "Goal:" not in ln and
+                                    "Date:" not in ln and "Participants:" not in ln]
+                if len(transcript_lines) >= 3:
+                    files.append((f"{qid.upper()} — Meeting: {p.stem}", p))
     else:
         for p in sorted(docs_root.glob("*.tex"), reverse=True):
             files.append((p.stem, p))

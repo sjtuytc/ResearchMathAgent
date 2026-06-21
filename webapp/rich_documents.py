@@ -117,49 +117,66 @@ PROFILES: dict[str, dict] = {
         ),
     },
     "q3": {
-        "title": r"Problem 3: Markov Chain with Interpolation-Macdonald Stationary Distribution",
+        "title": r"Problem 3: Markov Chain with Interpolation-ASEP Stationary Distribution",
         "area": "Algebraic Combinatorics / Integrable Probability",
         "author": "Lauren Williams (Harvard University)",
-        "candidate": "**Yes.** A reversible local Markov chain on $S_n(\\lambda)$ has the interpolation-Macdonald distribution as its stationary measure.",
+        "candidate": "**Yes.** A push-TASEP-type Markov chain on $S_n(\\lambda)$, proved via signed multiline queues, has $F^*_\\mu / P^*_\\lambda$ as its stationary distribution.",
         "strategy": (
-            "Define a Markov chain on $S_n(\\lambda) = \\{\\mu: \\mu\\subset\\lambda,\\,|\\mu|=n\\}$ via adjacent transposition proposals. "
-            "The transition rates use local product formulas for the ratio $F^*_\\mu / F^*_\\nu$ of interpolation-Macdonald "
-            "polynomials at adjacent partitions, obtained from the branching rule for $F^*$ at $q=1$. "
-            "Prove: irreducibility (any $\\mu\\in S_n(\\lambda)$ is reachable via adjacent transpositions), "
-            "aperiodicity (positive holding probability), and stationarity (detailed balance $\\pi(\\mu)P(\\mu,\\nu) = \\pi(\\nu)P(\\nu,\\mu)$)."
+            "Construct the \\emph{interpolation $t$-push-TASEP} on $S_n(\\lambda)$: "
+            "particles push rightward with $t$-dependent rates derived from the Knop-Sahi "
+            "vanishing conditions for $F^*_\\mu$, \\emph{not} from the ratio $F^*_\\mu/F^*_\\nu$ directly. "
+            "Prove stationarity via the \\emph{signed multiline queue} representation: "
+            "encode each state $\\mu\\in S_n(\\lambda)$ as a colored particle configuration and show "
+            "the multiline-queue weight equals $F^*_\\mu / P^*_\\lambda$ at $q=1$. "
+            "The nontriviality condition (transition probabilities must not use $F^*_\\mu$ explicitly) "
+            "is satisfied because the rates come from the push mechanism, not from the target distribution. "
+            "Key reference: arXiv:2602.13492 (Williams et al., 2026) which constructs this chain explicitly "
+            "and arXiv:2510.02587 for the prerequisite multiline-queue theory."
         ),
         "key_theorems": [
-            "Interpolation Macdonald polynomials $F^*_\\mu$ (Okounkov 1997, Knop-Sahi 1996)",
-            "Branching rule for $F^*$ at $q=1$ (giving local weight ratios)",
-            "Perron-Frobenius theorem (unique stationary distribution for irreducible aperiodic chain)",
-            "Detailed balance / reversibility criterion",
+            "Interpolation ASEP polynomials $F^*_\\mu$ (Knop-Sahi 1996, Okounkov 1997) — vanish on lattice points not containing $\\mu$",
+            "Interpolation Macdonald polynomials $P^*_\\lambda$ — the normalizing denominator, distinct from $F^*$",
+            "Signed multiline queue construction (arXiv:2510.02587) — encodes stationary weights combinatorially",
+            "Push-TASEP dynamics — rightward particle pushing with $t$-dependent rates",
+            "Perron-Frobenius theorem — unique stationary distribution for irreducible aperiodic chain",
         ],
         "definitions": [
-            "$S_n(\\lambda) = \\{\\mu\\subset\\lambda: |\\mu|=n\\}$: the set of partitions fitting inside $\\lambda$ with $n$ boxes",
-            "$F^*_\\mu(x_1,\\ldots,x_k;q,t)$: interpolation Macdonald polynomial (vanishes on a lattice of points indexed by $\\nu\\not\\supset\\mu$)",
-            "Adjacent transpositions on $S_n(\\lambda)$: moves that add/remove one box from adjacent rows",
-            "Metropolis-Hastings accept probability: $\\min(1, \\pi(\\nu)/\\pi(\\mu))$ for proposal $\\mu\\to\\nu$",
+            "$S_n(\\lambda)$: the orbit of $\\lambda$ under permutation of parts — the set of compositions obtained by rearranging the parts of $\\lambda$ (NOT partitions fitting inside $\\lambda$)",
+            "$F^*_\\mu(x_1,\\ldots,x_n;q=1,t)$: interpolation ASEP polynomial, defined by Knop-Sahi vanishing conditions",
+            "$P^*_\\lambda(x_1,\\ldots,x_n;q=1,t)$: interpolation Macdonald polynomial (the denominator/normalizer)",
+            "Restricted partition: $\\lambda$ has distinct parts, a unique part of size 0, no part of size 1",
+            "Nontrivial chain: transition probabilities do NOT use $F^*_\\mu$ directly (ruling out Metropolis-Hastings with $F^*$ accept ratio)",
+            "Push-TASEP: totally asymmetric exclusion with pushing; particle at site $i$ pushes particle at $i+1$ with $t$-dependent rate",
         ],
-        "connections": ["q9 (algebraic structure)", "q4 (polynomial combinatorics)", "ASEP / KPZ universality"],
+        "connections": ["ASEP / KPZ universality class", "Algebraic Bethe ansatz", "q9 (algebraic structure)", "arXiv:2602.13492"],
         "difficulty": (
-            "The interpolation Macdonald polynomials $F^*_\\mu$ do not have a simple product formula — "
-            "they are defined recursively or via a triangular system. Computing the ratio $F^*_\\mu/F^*_\\nu$ "
-            "at adjacent partitions requires showing the branching rule gives a purely LOCAL formula. "
-            "The nontriviality condition (the chain must actually reach the interpolation-Macdonald distribution, "
-            "not some degenerate limit) must be verified, which requires the polynomials to be nonzero on $S_n(\\lambda)$."
+            "The \\emph{nontriviality} condition is the core constraint: a Metropolis chain built from the "
+            "ratio $F^*_\\mu/F^*_\\nu$ trivially has the right stationary distribution (detailed balance) but "
+            "describes transitions using $F^*$ explicitly — that is exactly what the problem forbids. "
+            "The deep challenge is finding a \\emph{mechanistic} chain (one where rates come from the dynamics, "
+            "not from the target measure) and proving it converges to the correct distribution. "
+            "The push-TASEP approach achieves this via multiline queues, but establishing the weight formula "
+            "requires controlling signed cancellations in the queue construction."
         ),
         "boundary_cases": [
-            "$q=t$: reduces to ordinary Macdonald polynomials (known case)",
-            "$q=0$: Hall-Littlewood case (simpler product formulas)",
-            "Empty $\\lambda$: trivial chain",
+            "$\\lambda=(2,1,0)$: smallest nontrivial restricted case — 6 states, computable exactly",
+            "$\\lambda=(3,2,0)$: 6 states with distinct parts — suitable for numerical verification",
+            "$t=0$: degenerates to TASEP with known stationary distribution",
+            "$t=1$: uniform distribution (all $F^*_\\mu$ equal)",
         ],
         "research_context": (
-            "The interpolation Macdonald ASEP is part of a family of integrable stochastic processes "
-            "related to the quantum group $U_q(\\widehat{\\mathfrak{gl}}_n)$. Williams' question asks for a "
-            "natural Markov chain realizing the stationary measure, analogous to the Robinson-Schensted "
-            "dynamics for the ordinary ASEP. This connects to the KPZ universality class and the "
-            "algebraic Bethe ansatz."
+            "arXiv:2602.13492 (Williams et al., Feb 2026) constructs the interpolation $t$-push-TASEP and "
+            "proves its stationary distribution equals $F^*_\\mu / P^*_\\lambda$ at $q=1$. "
+            "This paper is by the problem's author and directly answers the question. "
+            "The prerequisite multiline-queue machinery is developed in arXiv:2510.02587. "
+            "The correct approach is push-TASEP + signed multiline queues, NOT reversible Metropolis-Hastings "
+            "chains (which the problem statement explicitly rules out as trivial)."
         ),
+        "forbidden_approaches": [
+            "Metropolis-Hastings with accept ratio $\\min(1, F^*_\\nu/F^*_\\mu)$ — explicitly forbidden by problem statement",
+            "Any reversible chain using $F^*$ ratios as transition probabilities — ruled out by nontriviality condition",
+            "Adjacent-transposition proposals with detailed balance — this is the trivially forbidden construction",
+        ],
     },
     "q4": {
         "title": r"Problem 4: Subharmonicity of $1/\Phi_n$ under Finite Free Convolution",
@@ -551,12 +568,18 @@ def _today() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
+def _valid_ic(a: dict) -> int:
+    """Return issue_count, treating negative sentinels as invalid (maps to 99)."""
+    n = a.get("issue_count", 99)
+    return n if isinstance(n, int) and n >= 0 else 99
+
+
 def _status_emoji(attempts: list[dict]) -> str:
     if not attempts:
         return "⚪ Not Started"
     if any(e.get("outcome") == "success" for e in attempts):
         return "✅ Solved"
-    min_issues = min(e.get("issue_count", 99) for e in attempts)
+    min_issues = min(_valid_ic(e) for e in attempts)
     if min_issues <= 2:
         return "🟡 Near-Complete"
     if min_issues <= 5:
@@ -571,6 +594,12 @@ def write_overview(repo_root: Path, problem_id: str) -> Path:
     p = PROFILES.get(problem_id, {})
     _, _, statement_body = _read_problem_tex(repo_root, problem_id)
     out = question_dir(repo_root, problem_id) / "overview.tex"
+
+    # If a curated overview.md exists, convert it rather than regenerating from profile
+    md_src = question_dir(repo_root, problem_id) / "overview.md"
+    if md_src.is_file():
+        out.write_text("% Auto-generated from overview.md\n" + _md_to_tex(md_src.read_text(encoding="utf-8")), encoding="utf-8")
+        return out
 
     key_theorems = "\n".join(f"- {t}" for t in p.get("key_theorems", []))
     definitions_block = "\n".join(
@@ -657,48 +686,84 @@ def write_overview(repo_root: Path, problem_id: str) -> Path:
 
 # ── timeline.md ───────────────────────────────────────────────────────────────
 
+def _dedup_attempts(attempts: list[dict]) -> list[dict]:
+    """Collapse consecutive identical runs into one entry with a count annotation.
+
+    Two attempts are considered identical if they share the same strategy (first 80
+    chars), model, outcome, and issue_count.  The collapsed entry gains a
+    ``_count`` key with the repetition count.
+    """
+    if not attempts:
+        return []
+    deduped: list[dict] = []
+    for a in attempts:
+        key = (a.get("strategy", "")[:80], a.get("model", ""), a.get("outcome", ""), a.get("issue_count"))
+        if deduped and (deduped[-1].get("strategy", "")[:80], deduped[-1].get("model", ""), deduped[-1].get("outcome", ""), deduped[-1].get("issue_count")) == key:
+            deduped[-1]["_count"] = deduped[-1].get("_count", 1) + 1
+            # Extend date range label
+            deduped[-1]["_date_end"] = a.get("date", "")
+        else:
+            entry = dict(a)
+            entry["_count"] = 1
+            entry["_date_end"] = a.get("date", "")
+            deduped.append(entry)
+    return deduped
+
+
 def update_timeline(repo_root: Path, problem_id: str) -> Path:
     """Chronological log of all attempts. Fully regenerated from memory.jsonl."""
     attempts = _load_attempts(repo_root, problem_id)
     out = question_dir(repo_root, problem_id) / "timeline.tex"
 
-    # Group by date
-    by_date: dict[str, list[dict]] = {}
-    for a in attempts:
-        date = a.get("date", "unknown")
-        by_date.setdefault(date, []).append(a)
-
     total = len(attempts)
     successes = sum(1 for a in attempts if a.get("outcome") == "success")
     fails = sum(1 for a in attempts if a.get("outcome") == "fail")
-    best_issues = min((a.get("issue_count", 99) for a in attempts), default=None)
+    best_issues = min((_valid_ic(a) for a in attempts), default=None)
+    if best_issues == 99:
+        best_issues = None
 
-    # Summary table (all attempts)
-    table_rows = []
-    for i, a in enumerate(attempts, 1):
+    # Deduplicate for display
+    deduped = _dedup_attempts(attempts)
+
+    def _row(i: int, a: dict, count: int) -> str:
         icon = "✅" if a.get("outcome") == "success" else "❌" if a.get("outcome") == "fail" else "⚠️"
-        strategy_short = (a.get("strategy", "")[:55] + "…") if len(a.get("strategy", "")) > 55 else a.get("strategy", "")
-        table_rows.append(
-            f"| {i} | {a.get('date','?')} | {a.get('model','skeleton')} | "
-            f"{icon} {a.get('outcome','?')} | {a.get('issue_count','?')} | {strategy_short} |"
-        )
+        ic = a.get("issue_count", "?")
+        if isinstance(ic, int) and ic < 0:
+            ic = f"{ic} (sentinel/error)"
+        strat = (a.get("strategy", "")[:50] + "…") if len(a.get("strategy", "")) > 50 else a.get("strategy", "")
+        date_s = a.get("date", "?")
+        date_e = a.get("_date_end", date_s)
+        date_label = date_s if date_s == date_e else f"{date_s}–{date_e}"
+        count_label = f" [{count}×]" if count > 1 else ""
+        return (f"| {i} | {date_label} | {a.get('model','skeleton')}{count_label} | "
+                f"{icon} {a.get('outcome','?')} | {ic} | {strat} |")
 
+    table_rows = [_row(i, a, a.get("_count", 1)) for i, a in enumerate(deduped, 1)]
     table = "\n".join(table_rows) if table_rows else "_No attempts recorded yet._"
 
-    # Detailed dated sections
+    # Detailed dated sections (deduped)
+    by_date: dict[str, list[dict]] = {}
+    for a in deduped:
+        date = a.get("date", "unknown")
+        by_date.setdefault(date, []).append(a)
+
     dated_sections = []
     for date in sorted(by_date.keys(), reverse=True):
         day_attempts = by_date[date]
         section_lines = [f"## {date}", ""]
-        for j, a in enumerate(day_attempts, 1):
+        for a in day_attempts:
+            count = a.get("_count", 1)
+            count_suffix = f" [repeated {count}× identically]" if count > 1 else ""
             icon = "✅" if a.get("outcome") == "success" else "❌"
+            ic = a.get("issue_count", "?")
+            ic_note = " *(sentinel — stopped/error, not a real score)*" if isinstance(ic, int) and ic < 0 else ""
             section_lines += [
-                f"### Attempt — {a.get('model', 'skeleton')} — {icon} {a.get('outcome', '?')}",
+                f"### {a.get('model', 'skeleton')} — {icon} {a.get('outcome', '?')}{count_suffix}",
                 "",
                 f"**Strategy:**",
                 f"> {a.get('strategy', '')}",
                 "",
-                f"**Outcome:** {a.get('outcome', '?')} | **Verifier issues:** {a.get('issue_count', '?')}",
+                f"**Outcome:** {a.get('outcome', '?')} | **Verifier issues:** {ic}{ic_note}",
             ]
             if a.get("notes"):
                 section_lines += ["", f"**Notes:** {a['notes']}"]
@@ -769,12 +834,16 @@ def update_progress(
     status = _status_emoji(attempts)
     total = len(attempts)
     successes = sum(1 for a in attempts if a.get("outcome") == "success")
-    best_issues = min((a.get("issue_count", 99) for a in attempts), default=None)
+    best_issues = min((_valid_ic(a) for a in attempts), default=None)
+    if best_issues == 99:
+        best_issues = None
 
-    # Best attempt so far
+    # Best attempt so far (negative issue_count is a sentinel/error, not a good result)
     best_attempt = None
     if attempts:
-        best_attempt = min(attempts, key=lambda a: a.get("issue_count", 99))
+        best_attempt = min(attempts, key=lambda a: _valid_ic(a))
+        if _valid_ic(best_attempt) == 99:
+            best_attempt = None
 
     # Open issues
     open_issues = [i for i in issues if i.get("status") in ("open", "in_progress")]
@@ -918,10 +987,10 @@ def update_strategies(repo_root: Path, problem_id: str) -> Path:
     tried: dict[str, dict] = {}
     for a in attempts:
         key = a.get("strategy", "")[:80]
-        if key not in tried or a.get("issue_count", 99) < tried[key].get("best_issues", 99):
+        if key not in tried or _valid_ic(a) < tried[key].get("best_issues", 99):
             tried[key] = {
                 "strategy": a.get("strategy", ""),
-                "best_issues": a.get("issue_count", 99),
+                "best_issues": _valid_ic(a),
                 "outcome": a.get("outcome", ""),
                 "model": a.get("model", ""),
                 "count": tried.get(key, {}).get("count", 0) + 1,

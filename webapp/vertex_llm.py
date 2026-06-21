@@ -13,9 +13,9 @@ from .vertex import DEFAULT_MODEL, vertex_adc_project, vertex_region
 
 logger = logging.getLogger(__name__)
 
-# Per-minute quota on Vertex is shared with streaming agent runs.
-# Back off and retry when quota is exceeded.
-_RETRY_DELAYS = (5, 15, 45)  # seconds between retries on 429
+# Per-minute quota on Vertex is shared with streaming agent runs and other researchers
+# on this NAIRR shared project.  Back off aggressively so we eventually get through.
+_RETRY_DELAYS = (60, 120, 300, 600)  # seconds between retries on 429 (up to ~18 min total)
 
 
 def complete(
@@ -24,10 +24,12 @@ def complete(
     system: str = "",
     model: str | None = None,
     max_tokens: int = 8192,
+    thinking_budget: int = 0,
 ) -> str | None:
     """Run a single-turn Vertex completion. Returns text or None on failure.
 
     Retries automatically on quota errors (HTTP 429) with exponential backoff.
+    Set thinking_budget > 0 to enable extended thinking (budget in tokens).
     """
     try:
         from anthropic import AnthropicVertex
@@ -42,13 +44,16 @@ def complete(
 
     use_model = model or DEFAULT_MODEL
     client = AnthropicVertex(region=vertex_region(), project_id=project_id)
+    effective_max_tokens = max(max_tokens, thinking_budget + 4096) if thinking_budget > 0 else max_tokens
     kwargs: dict = {
         "model": use_model,
-        "max_tokens": max_tokens,
+        "max_tokens": effective_max_tokens,
         "messages": [{"role": "user", "content": prompt}],
     }
     if system:
         kwargs["system"] = system
+    if thinking_budget > 0:
+        kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
 
     last_exc: Exception | None = None
     for attempt, delay in enumerate((*_RETRY_DELAYS, None)):

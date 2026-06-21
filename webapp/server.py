@@ -40,7 +40,6 @@ from .meet import (
     MATHEMATICIAN_PERSONAS as meet_mathematician_personas,
     get_personas_for_problem as meet_get_personas,
 )
-from .meet_agents import run_discussion_turn, run_synthesis, run_step_execution, run_round_offline
 from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
@@ -499,83 +498,6 @@ def issue_pdf_ep(
     return JSONResponse(result)
 
 
-@app.post("/api/meets/{problem_id}/from-issue/{issue_id}")
-def create_meet_from_issue(
-    problem_id: str,
-    issue_id: str,
-    payload: dict = Body(default={}),
-    dataset: str = Query(None),
-) -> JSONResponse:
-    """Create a meeting room seeded with the issue context, and link them."""
-    ds = _ds_from_query(dataset)
-    issue = get_issue(REPO_ROOT, problem_id, issue_id, ds)
-    if issue is None:
-        return JSONResponse({"error": "issue not found"}, status_code=404)
-    topic = str(payload.get("topic", f"Discuss: {issue.get('title', issue_id)[:60]}"))
-    goal = str(payload.get("goal", "Agree on a concrete resolution strategy."))
-    room = meet_create(REPO_ROOT, problem_id, topic=topic, goal=goal)
-    # Embed issue reference in room and link back
-    room["issue_id"] = issue_id
-    room["issue_dataset"] = ds
-    import json as _json
-    (REPO_ROOT / "webapp" / "meets" / problem_id / f"{room['id']}.json").write_text(
-        _json.dumps(room, indent=2), encoding="utf-8"
-    )
-    # Record the meeting link on the issue
-    issue = add_issue_document(
-        REPO_ROOT, problem_id, issue_id,
-        title=f"Meeting: {topic[:50]}",
-        path=f"__meet__{problem_id}/{room['id']}",
-        created_by="document-manager",
-        dataset=ds,
-    )
-    return JSONResponse({"room": room, "issue": issue})
-
-
-@app.post("/api/meets/{problem_id}/{room_id}/save-to-issue")
-def meet_save_to_issue(
-    problem_id: str,
-    room_id: str,
-    payload: dict = Body(default={}),
-    dataset: str = Query(None),
-) -> JSONResponse:
-    """Save meeting synthesis/transcript as a document linked to an issue."""
-    ds = _ds_from_query(dataset)
-    room = meet_get(REPO_ROOT, problem_id, room_id)
-    if room is None:
-        return JSONResponse({"error": "room not found"}, status_code=404)
-    issue_id = str(payload.get("issue_id", room.get("issue_id", "")))
-    if not issue_id:
-        return JSONResponse({"error": "no issue_id"}, status_code=400)
-
-    # Build a markdown document from the room transcript + plan
-    from .meet import transcript_text
-    lines = [
-        f"# Meeting Notes: {room.get('topic', room_id)}",
-        f"**Goal:** {room.get('goal', '')}",
-        "",
-        "## Discussion Transcript",
-        transcript_text(room),
-    ]
-    plan = room.get("plan")
-    if plan:
-        lines += ["", "## Action Plan", plan.get("summary", "")]
-        for i, step in enumerate(plan.get("steps", []), 1):
-            done = "✅" if step.get("done") else "⬜"
-            lines.append(f"{i}. {done} {step.get('description', '')}")
-
-    doc_text = "\n".join(lines)
-    doc_dir = REPO_ROOT / "documents" / "questions" / problem_id / "meets"
-    doc_dir.mkdir(parents=True, exist_ok=True)
-    doc_path = doc_dir / f"{room_id}-notes.md"
-    doc_path.write_text(doc_text, encoding="utf-8")
-
-    rel_path = f"questions/{problem_id}/meets/{room_id}-notes.md"
-    title = f"Meeting Notes — {room.get('topic', room_id)[:50]}"
-    updated_issue = add_issue_document(
-        REPO_ROOT, problem_id, issue_id, title, rel_path, created_by="document-manager", dataset=ds
-    )
-    return JSONResponse({"ok": True, "path": rel_path, "issue": updated_issue})
 
 
 # legacy single-issue endpoints kept for backward compatibility
@@ -666,8 +588,26 @@ def get_meet_personas(problem_id: str) -> JSONResponse:
 
 
 @app.get("/api/meets/{problem_id}")
-def list_meets(problem_id: str) -> JSONResponse:
-    return JSONResponse({"rooms": meet_list(REPO_ROOT, problem_id)})
+def list_meets(problem_id: str, include_empty: bool = Query(False)) -> JSONResponse:
+    from .meet_pdf import room_is_substantive
+    rooms = meet_list(REPO_ROOT, problem_id)
+    if not include_empty:
+        rooms = [r for r in rooms if room_is_substantive(r)]
+    return JSONResponse({"rooms": rooms})
+
+
+@app.get("/api/meet-pdf/{problem_id}/{room_id}")
+def meet_pdf_ep(
+    problem_id: str,
+    room_id: str,
+    force: bool = Query(False),
+) -> JSONResponse:
+    from .meet_pdf import compile_meet_pdf
+    room = meet_get(REPO_ROOT, problem_id, room_id)
+    if room is None:
+        return JSONResponse({"error": "room not found"}, status_code=404)
+    result = compile_meet_pdf(REPO_ROOT, room, force=force)
+    return JSONResponse(result)
 
 
 @app.post("/api/meets/{problem_id}")
@@ -724,66 +664,6 @@ def meet_step_done(problem_id: str, room_id: str, step_idx: int, payload: dict =
     return JSONResponse(room)
 
 
-@app.get("/api/meets/{problem_id}/{room_id}/turn/{participant}")
-def meet_agent_turn(problem_id: str, room_id: str, participant: str, run_id: str = Query("")) -> StreamingResponse:
-    rid = run_id or uuid.uuid4().hex
-    handle = REGISTRY.register(rid, f"meet-turn/{room_id}/{participant}")
-
-    def _stream():
-        yield f"data: {json.dumps({'type': 'status', 'data': {'state': 'running', 'label': f'meet/{room_id}/{participant}'}})}\n\n"
-        for ev in run_discussion_turn(REPO_ROOT, problem_id, room_id, participant, handle):
-            yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
-
-    return StreamingResponse(_stream(), media_type="text/event-stream")
-
-
-@app.get("/api/meets/{problem_id}/{room_id}/synthesize")
-def meet_synthesize(problem_id: str, room_id: str, run_id: str = Query("")) -> StreamingResponse:
-    rid = run_id or uuid.uuid4().hex
-    handle = REGISTRY.register(rid, f"meet-synth/{room_id}")
-
-    def _stream():
-        yield f"data: {json.dumps({'type': 'status', 'data': {'state': 'running', 'label': f'synthesize/{room_id}'}})}\n\n"
-        for ev in run_synthesis(REPO_ROOT, problem_id, room_id, handle):
-            yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
-
-    return StreamingResponse(_stream(), media_type="text/event-stream")
-
-
-@app.get("/api/meets/{problem_id}/{room_id}/execute/{step_idx}")
-def meet_execute_step(problem_id: str, room_id: str, step_idx: int, run_id: str = Query("")) -> StreamingResponse:
-    rid = run_id or uuid.uuid4().hex
-    handle = REGISTRY.register(rid, f"meet-exec/{room_id}/{step_idx}")
-
-    def _stream():
-        yield f"data: {json.dumps({'type': 'status', 'data': {'state': 'running', 'label': f'execute/{room_id}/step{step_idx}'}})}\n\n"
-        for ev in run_step_execution(REPO_ROOT, problem_id, room_id, step_idx, handle):
-            yield f"data: {json.dumps({'type': ev.type, 'data': ev.data})}\n\n"
-
-    return StreamingResponse(_stream(), media_type="text/event-stream")
-
-
-@app.post("/api/meets/{problem_id}/{room_id}/push-round")
-def meet_push_round(problem_id: str, room_id: str, payload: dict = Body(default={})) -> JSONResponse:
-    """Fire-and-forget: run one full round of discussion in a background thread."""
-    from .meet_agents import push_job_status
-    n_rounds = int(payload.get("n_rounds", 1))
-    job_id = uuid.uuid4().hex
-    threading.Thread(
-        target=run_round_offline,
-        args=(REPO_ROOT, problem_id, room_id, job_id, n_rounds),
-        daemon=True,
-    ).start()
-    return JSONResponse({"job_id": job_id, "status": "started"})
-
-
-@app.get("/api/meets/{problem_id}/{room_id}/push-status/{job_id}")
-def meet_push_status(problem_id: str, room_id: str, job_id: str) -> JSONResponse:
-    from .meet_agents import push_job_status
-    info = push_job_status(job_id)
-    if info is None:
-        return JSONResponse({"status": "unknown"})
-    return JSONResponse(info)
 
 
 @app.get("/api/todos/{problem_id}")
@@ -1065,8 +945,8 @@ def best_proof_pdf(problem_id: str):
 
 
 _FINAL_SOLUTIONS_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "ResearchMathAgent" / "data" / "first_proof_1" / "final_solutions"
+    Path(__file__).resolve().parents[3]
+    / "shared" / "data" / "first_proof_1" / "final_solutions"
 )
 _AUTHOR_SOLUTIONS_DIR = _FINAL_SOLUTIONS_DIR / "first_proof_author_solutions"
 _ALLOWED_EXTS = {".pdf", ".tex"}
@@ -1074,14 +954,16 @@ _ALLOWED_EXTS = {".pdf", ".tex"}
 
 @app.get("/api/final-proof-files")
 def final_proof_files() -> JSONResponse:
+    # Author Solution tab is a PDF viewer — only list .pdf files (raw .tex is
+    # not human-readable in the UI and is intentionally excluded here).
     files = []
     if _FINAL_SOLUTIONS_DIR.is_dir():
         for f in sorted(_FINAL_SOLUTIONS_DIR.iterdir()):
-            if f.is_file() and f.suffix in _ALLOWED_EXTS:
+            if f.is_file() and f.suffix == ".pdf":
                 files.append({"name": f.name, "path": f.name, "group": "merged"})
     if _AUTHOR_SOLUTIONS_DIR.is_dir():
         for f in sorted(_AUTHOR_SOLUTIONS_DIR.iterdir()):
-            if f.is_file() and f.suffix in _ALLOWED_EXTS:
+            if f.is_file() and f.suffix == ".pdf":
                 files.append({"name": f.name, "path": f"first_proof_author_solutions/{f.name}", "group": "author"})
     return JSONResponse({"files": files})
 
@@ -1564,6 +1446,8 @@ def push_forward_ep(payload: dict = Body(default={})) -> JSONResponse:
     force = bool(payload.get("force", False))
     problems = payload.get("problems") or None
     n_meeting_rounds = int(payload.get("n_meeting_rounds", _DEFAULT_MEETING_ROUNDS))
+    max_resolve = int(payload.get("max_resolve", 2))
+    dataset = payload.get("dataset", "first_proof_1")
 
     if not force and already_ran_today(REPO_ROOT):
         return JSONResponse({
@@ -1583,10 +1467,12 @@ def push_forward_ep(payload: dict = Body(default={})) -> JSONResponse:
     threading.Thread(
         target=run_push_forward,
         args=(REPO_ROOT, job_id),
-        kwargs={"problems": problems, "n_meeting_rounds": n_meeting_rounds},
+        kwargs={"problems": problems, "n_meeting_rounds": n_meeting_rounds,
+                "max_resolve": max_resolve, "dataset": dataset},
         daemon=True,
     ).start()
-    return JSONResponse({"started": True, "job_id": job_id, "n_meeting_rounds": n_meeting_rounds})
+    return JSONResponse({"started": True, "job_id": job_id, "dataset": dataset,
+                         "n_meeting_rounds": n_meeting_rounds, "max_resolve": max_resolve})
 
 
 @app.get("/api/push-forward/status")
@@ -2049,6 +1935,19 @@ def concepts_save(problem_id: str, payload: dict = Body(...)) -> JSONResponse:
     return JSONResponse({"ok": True})
 
 
+@app.get("/api/concepts/{problem_id}/pdf")
+def concepts_pdf_ep(problem_id: str, force: bool = False) -> JSONResponse:
+    """Compile the question's concepts to a PDF (rendered inline in the Concepts tab)."""
+    if not _ID_RE_LOOSE.match(problem_id):
+        return JSONResponse({"error": "invalid id"}, status_code=400)
+    from .concepts_pdf import compile_concepts_pdf
+    concepts = load_concepts(REPO_ROOT, problem_id)
+    title = _Q_TITLES.get(problem_id, problem_id)
+    result = compile_concepts_pdf(REPO_ROOT, problem_id, title, concepts, force=force)
+    status = 200 if result.get("ok") else 422
+    return JSONResponse(result, status_code=status)
+
+
 @app.get("/api/concepts/{problem_id}/generate")
 def concepts_generate_ep(problem_id: str) -> StreamingResponse:
     if not _ID_RE_LOOSE.match(problem_id):
@@ -2083,6 +1982,31 @@ def insights_system() -> JSONResponse:
     if not data:
         return JSONResponse({"summary": None}, status_code=404)
     return JSONResponse(data)
+
+
+@app.get("/api/design/pdf")
+def design_pdf():
+    """Serve the ACL-format RMA supplementary PDF."""
+    from fastapi.responses import Response
+    pdf_path = REPO_ROOT.parent / "rma_supplementary.pdf"
+    if not pdf_path.is_file():
+        return JSONResponse({"error": "supplementary PDF not found"}, status_code=404)
+    return Response(
+        content=pdf_path.read_bytes(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline; filename=rma_supplementary.pdf"},
+    )
+
+
+@app.post("/api/docs/regenerate-all")
+def docs_regenerate_all() -> JSONResponse:
+    """Regenerate all per-question .tex documents from JSONL log."""
+    from .rich_documents import seed_all_question_documents
+    import threading
+    threading.Thread(
+        target=seed_all_question_documents, args=(REPO_ROOT,), daemon=True
+    ).start()
+    return JSONResponse({"started": True})
 
 
 @app.post("/api/insights/system/regenerate")

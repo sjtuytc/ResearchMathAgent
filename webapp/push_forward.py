@@ -106,6 +106,7 @@ def snapshot_metrics(repo_root: Path, job_id: str, problems: list[str], dataset:
     return {
         "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "job_id": job_id,
+        "dataset": dataset,
         "total_doc_bytes": total_bytes,
         "avg_doc_bytes": total_bytes // n if n else 0,
         "total_issues": total_issues,
@@ -176,20 +177,27 @@ def _save_meeting_notes(repo_root: Path, pid: str, room_id: str) -> Path | None:
     if not room:
         return None
 
+    transcript = transcript_text(room)
+    plan = room.get("plan")
+
+    # Skip saving if the meeting produced no substantive content
+    # (only "Meeting opened" type events, no real discussion)
+    substantive_lines = [
+        ln for ln in transcript.splitlines()
+        if ln.strip() and "Meeting opened" not in ln and not ln.startswith("[coordinator] Meeting")
+    ]
+    if len(substantive_lines) < 2 and not plan:
+        return None
+
     lines: list[str] = [
         f"# Meeting Notes: {room.get('topic', room_id)}",
-        f"**Goal:** {room.get('goal', '')}",
-        f"**Date:** {room.get('created_at', '')[:10]}",
         f"**Participants:** {', '.join(room.get('participants', []))}",
+        f"**Date:** {room.get('created_at', '')[:10]}",
         "",
-        "## Discussion Transcript",
-        "",
-        transcript_text(room),
     ]
 
-    plan = room.get("plan")
-    if plan:
-        lines += ["", "## Action Plan", "", plan.get("summary", "")]
+    if plan and plan.get("summary"):
+        lines += ["## Action Plan", "", plan.get("summary", "")]
         for i, step in enumerate(plan.get("steps", []), 1):
             title = step.get("title", f"Step {i}")
             body = step.get("body", step.get("description", ""))
@@ -197,6 +205,10 @@ def _save_meeting_notes(repo_root: Path, pid: str, room_id: str) -> Path | None:
             lines.append(f"\n### {i}. {title}" + (f" *(agent: {agent})*" if agent else ""))
             if body:
                 lines.append(body)
+        lines.append("")
+
+    if substantive_lines:
+        lines += ["## Discussion Transcript", "", transcript]
 
     doc_dir = repo_root / "documents" / "questions" / pid / "meets"
     doc_dir.mkdir(parents=True, exist_ok=True)
@@ -207,7 +219,7 @@ def _save_meeting_notes(repo_root: Path, pid: str, room_id: str) -> Path | None:
 
 # ── Main runner ───────────────────────────────────────────────────────────────
 
-_DEFAULT_MEETING_ROUNDS = 3
+_DEFAULT_MEETING_ROUNDS = 2  # reduced to limit shared quota pressure
 
 
 def run_push_forward(
@@ -370,8 +382,30 @@ def run_push_forward(
                     except Exception as exc:
                         _log(f"{pid}: notes save error: {exc}")
 
+                    # If the meeting produced no real discussion and no plan
+                    # (e.g. Vertex was quota-blocked), drop the empty shell so
+                    # it never appears as a "null meeting" in the UI.
+                    try:
+                        from .meet_pdf import room_is_substantive
+                        from .meet import get_room as _gr, delete_room as _dr
+                        _chk = _gr(repo_root, pid, room_id)
+                        if not room_is_substantive(_chk):
+                            _dr(repo_root, pid, room_id)
+                            room_id = None
+                            _log(f"{pid}: meeting produced no content — empty room removed")
+                    except Exception as exc:
+                        _log(f"{pid}: empty-room cleanup error: {exc}")
+
             except Exception as exc:
                 _log(f"{pid}: meeting error: {exc}")
+
+            # Update all four documents for this problem (progress, timeline, strategies)
+            try:
+                from .rich_documents import update_question_document
+                update_question_document(repo_root, pid)
+                _log(f"{pid}: documents updated (progress, timeline, strategies)")
+            except Exception as de:
+                log.warning("[push-forward %s] document update for %s failed: %s", job_id[:8], pid, de)
 
             with _LOCK:
                 job = _JOBS.get(job_id, {})
@@ -399,6 +433,7 @@ def run_push_forward(
         state.setdefault("runs", []).append({
             "date": today,
             "job_id": job_id,
+            "dataset": dataset,
             "problems": active,
             "n_meeting_rounds": n_meeting_rounds,
             "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -415,6 +450,14 @@ def run_push_forward(
             _log(f"metrics snapshot round {snap['round']} saved")
         except Exception as me:
             log.warning("metrics snapshot failed: %s", me)
+
+        # Update cross-problem discussion index
+        try:
+            from .rich_documents import update_discussion_index
+            update_discussion_index(repo_root)
+            _log("discussion index updated")
+        except Exception as di:
+            log.warning("discussion index update failed: %s", di)
 
         # Update system-level literature survey
         try:

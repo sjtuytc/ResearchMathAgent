@@ -1,0 +1,70 @@
+{
+  "title": "Verification Report Jun 21 — System Insights",
+  "date": "2026-06-21",
+  "summary": "An external verifier reviewed all 10 AI-generated proofs and found that every answer is correct, but 4 proofs contain critical logical errors (theorems invoked outside their valid hypotheses) and 4 more contain proof gaps. Only Problems 4 and 10 are fully correct. The system consistently finds the right high-level strategy but fails in load-bearing details.",
+  "critical_patterns": [
+    {
+      "title": "Theorem misapplication (scope errors)",
+      "description": "The system applies theorems to mathematical objects they do not cover. Example: the Godement–Jacquet functional equation was applied to Whittaker functions (Problem 2), but it is only valid for matrix coefficients. Example: equivariant cobordism classes equated with rational classes (Problem 7).",
+      "affected_problems": ["P2", "P7"],
+      "severity": "critical"
+    },
+    {
+      "title": "Variable and indexing confusion",
+      "description": "Critical variable substitutions are made with the wrong variable. Problem 1: the counterterm uses variable u instead of v in a key step, and the constant c_{N,2} is defined via an expectation that is identically 0 by parity — a sign error in the renormalization group computation.",
+      "affected_problems": ["P1"],
+      "severity": "critical"
+    },
+    {
+      "title": "Proof given at 'Idea' level — load-bearing step unproved",
+      "description": "Critical steps are asserted as 'Idea' or 'sketch' without proof. Problem 3: Theorem 2 (the identity G*/P* = F*/P*_κ, the engine of the stationarity argument) is asserted but not proved. Problem 5: the discreteness/suspension claim in the setup is mathematically false. Problem 6: the greedy algorithm base case picks an arbitrary vertex v0 which may violate the boundary-leverage invariant.",
+      "affected_problems": ["P3", "P5", "P6"],
+      "severity": "gap"
+    },
+    {
+      "title": "Incorrect attribution to proof method",
+      "description": "The proof references an incorrect mechanism for a cited theorem. The BGLS convexity theorem was attributed to an exterior-power construction (f^{[k]}) that does not exist in general; the correct argument is a variational supremum of affine functions (Ky Fan generalization). This was fixed in the Problem 4 working_solution.tex on 2026-06-21.",
+      "affected_problems": ["P4"],
+      "severity": "minor"
+    },
+    {
+      "title": "Missing normalizations destroying algebraic properties",
+      "description": "Multiple proofs drop a normalization constant that changes the mathematical object. Problem 4 (earlier version): Walsh formula missing 1/n! made the convolution non-monic. Problem 3: reference list truncated mid-entry, removing required citations. These are precision/transcription failures rather than conceptual errors.",
+      "affected_problems": ["P3", "P4"],
+      "severity": "imprecision"
+    }
+  ],
+  "recommendations": [
+    "Add a 'theorem hypothesis audit' step where the critic agent explicitly checks whether each cited theorem's hypotheses are satisfied by the objects it is applied to — especially for theorems with restricted domains (functional equations, equivariant cobordism, renormalization operators).",
+    "Require every proof that uses the phrase 'sketch', 'idea', or 'it can be shown' to immediately flag an issue: these phrases signal unproved load-bearing steps that the critic must evaluate.",
+    "Add a variable-tracking pass that checks consistency of variable names across multi-step computations (e.g., renormalization expansions where u vs v matter).",
+    "For each theorem cited, the solver agent should write one sentence explaining WHY the theorem's hypotheses are satisfied in this specific application — not just cite it. This forces explicit hypothesis checking.",
+    "Prioritize Problems 1, 2, 5, and 7 for re-solving: these have critical errors that invalidate specific proof steps, even though the answer is correct. A correct proof path exists for each."
+  ],
+  "priority_problems": [
+    {"problem": "P1 (Φ⁴₃ measure)", "reason": "2 critical errors in counterterm and renormalization constant — fundamental mistakes in QFT renormalization", "priority": "HIGH"},
+    {"problem": "P2 (Rankin-Selberg)", "reason": "GJ functional equation applied to wrong object — requires complete replacement of the dual-side argument", "priority": "HIGH"},
+    {"problem": "P7 (Uniform Lattices)", "reason": "Rational vs equivariant class conflation at the key identification — needs a Z/2-equivariant normal cobordism construction", "priority": "HIGH"},
+    {"problem": "P5 (N∞ Operads)", "reason": "False suspension/discreteness claim in setup — easily fixed by weakening to an inclusion, but invalidates the current proof structure", "priority": "MEDIUM"},
+    {"problem": "P3 (Macdonald Markov chain)", "reason": "Theorem 2 unproved — cite branching/symmetrization argument from [1,2] or supply proof", "priority": "MEDIUM"}
+  ],
+  "best_proof": {
+    "problem": "Problem 4 — The Finite Free Stam Inequality",
+    "verdict": "Correct (minor issues) | Answer correct",
+    "why_best": "The proof has the correct architecture (Blachman strategy via heat flow, score vector, Jacobian contraction) and zero critical errors or gaps. All 5 flagged items were imprecisions (notation, attributions) that have been or were already addressed. The BGLS Step 2 exterior-power claim was fixed on 2026-06-21 to use the correct variational sup-representation argument."
+  },
+  "second_best_proof": {
+    "problem": "Problem 10 — Preconditioned CG for RKHS-CP Subproblem",
+    "verdict": "Correct (minor issues) | Answer correct",
+    "why_best": "Only 1 minor issue total; the proof is essentially complete with correct numerical linear algebra argument."
+  },
+  "system_health": {
+    "correct_or_minor": 2,
+    "has_gaps": 4,
+    "has_errors": 4,
+    "answer_correct": 10,
+    "total": 10,
+    "note": "100% answer accuracy, 20% proof correctness — the system finds the right answer but often cannot yet produce a rigorous proof"
+  },
+  "source": "External verification report Jun 21, processed 2026-06-21"
+}

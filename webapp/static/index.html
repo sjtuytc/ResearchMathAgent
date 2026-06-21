@@ -192,7 +192,6 @@ MathJax = {
   .meet-step-card.running{border-color:var(--amber)}
   .meet-persona-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:11px;cursor:default;transition:border-color .12s}
   .meet-persona-chip:hover{border-color:var(--accent)}
-  #meet-new-parts label:hover{border-color:var(--accent)!important}
   /* Dataset badge on qitem */
   .ds-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);margin-left:auto;flex-shrink:0}
   .qitem-top{display:flex;align-items:center;gap:4px}
@@ -281,11 +280,6 @@ MathJax = {
       <button class="btn-sec" id="daily-run-btn" style="width:100%;font-size:12px;margin-bottom:6px">Run daily cycle now</button>
       <div id="daily-status" style="font-size:11px;color:var(--muted)"></div>
     </div>
-    <h2 style="margin-top:14px">Issue evolution</h2>
-    <div style="padding:6px 10px">
-      <button class="btn-sec" id="evolve-issues-btn" style="width:100%;font-size:12px;margin-bottom:6px">Evolve issues now</button>
-      <div id="evolve-issues-status" style="font-size:11px;color:var(--muted)">Auto-runs every 6 h. Discovers + resolves open issues across all problems.</div>
-    </div>
   </aside>
   <main class="main">
     <!-- Global 3-level selector — applies to all tabs -->
@@ -311,8 +305,10 @@ MathJax = {
       <div class="tab" data-tab="literature">Literature</div>
       <div class="tab" data-tab="concepts">Concepts</div>
       <div class="tab" data-tab="meet">Meet</div>
+      <div class="tab" data-tab="runs">Runs</div>
       <div class="tab" data-tab="devlog">Dev Log</div>
       <div class="tab" data-tab="export">Export</div>
+      <div class="tab" data-tab="design">Design</div>
       <div class="tab" data-tab="author-solution">Author Solution</div>
     </div>
 
@@ -675,8 +671,7 @@ MathJax = {
                 <span id="iss-q-badge" style="font-size:12px;font-weight:700;color:var(--accent)">—</span>
               </div>
               <div style="display:flex;gap:4px">
-                <button class="btn-pri" id="i-new-btn" style="flex:1;font-size:12px;padding:6px 8px">+ New Issue</button>
-                <button class="btn-sec" id="i-discover-btn" title="Run critic agent to discover issues" style="font-size:11px;padding:6px 8px">Discover</button>
+                <button class="btn-pri" id="i-new-btn" style="width:100%;font-size:12px;padding:6px 8px">+ New Issue</button>
               </div>
               <!-- View toggle: Issues / Activity Log -->
               <div style="display:flex;gap:2px;background:var(--panel2);border-radius:6px;padding:2px">
@@ -702,11 +697,6 @@ MathJax = {
                   <option value="in_progress">in_progress</option>
                   <option value="resolved">resolved</option>
                 </select>
-                <button class="btn-sec" id="iss-resolve-btn" title="Run solver agent on this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Auto-Resolve</button>
-                <button class="btn-sec" id="iss-verify-btn" title="Run verifier agent on this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Verify</button>
-                <button class="btn-sec" id="iss-discuss-btn" title="Run a discussion round (critic→solver→verifier→strategist)" style="font-size:11px;padding:4px 9px;flex-shrink:0">Discuss</button>
-                <button class="btn-sec" id="iss-meet-btn" title="Start a meeting room linked to this issue" style="font-size:11px;padding:4px 9px;flex-shrink:0">Meet</button>
-                <button class="btn-sec" id="iss-gendoc-btn" title="Generate a summary document from this discussion" style="font-size:11px;padding:4px 9px;flex-shrink:0">Gen Doc</button>
                 <button class="btn-sec" id="iss-pdf-btn" title="Toggle between PDF and raw thread view" style="font-size:11px;padding:4px 9px;flex-shrink:0">Thread</button>
                 <span class="muted" id="iss-status-msg" style="font-size:11px;flex-shrink:0"></span>
               </div>
@@ -820,26 +810,32 @@ MathJax = {
       </div>
     </section>
 
-    <section class="pane" id="pane-documents" style="display:flex;flex-direction:column;height:100%">
-      <!-- Toolbar -->
-      <div class="bar" style="flex-shrink:0;gap:8px;flex-wrap:wrap">
-        <span style="font-size:13px;font-weight:600;color:var(--fg)">Context Bundle</span>
-        <span id="d-scope-badge" style="font-size:11px;padding:2px 8px;background:var(--panel2);border-radius:12px;color:var(--muted)">all docs</span>
-        <button class="btn-pri" id="d-bundle-btn" style="font-size:11px;padding:4px 12px">Regenerate PDF</button>
-        <a id="d-bundle-dl" href="#" download="context_bundle.pdf" style="font-size:11px;padding:4px 12px;border:1px solid var(--border);border-radius:5px;color:var(--accent);text-decoration:none;background:var(--panel2);display:none">&#x2B07; Download</a>
-        <button class="btn-sec" id="d-run" style="font-size:11px;padding:4px 10px" title="Run the daily report agent">Generate daily report</button>
-        <span class="muted" id="d-status" style="font-size:11px"></span>
+    <section class="pane" id="pane-documents" style="display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 98px);gap:0">
+      <!-- Left: document browser -->
+      <div id="doc-sidebar" style="border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;background:var(--panel2)">
+        <div style="padding:4px 12px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Documents</div>
+        <div id="doc-tree"></div>
+        <div style="padding:12px 12px 4px;border-top:1px solid var(--border);margin-top:8px">
+          <button class="btn-sec" id="d-run" style="font-size:10px;padding:3px 8px;width:100%" title="Run daily report agent">Daily Report</button>
+        </div>
       </div>
-
-      <!-- Included-files list (collapsible) -->
-      <details id="d-files-details" style="flex-shrink:0;margin:6px 0 4px;border:1px solid var(--border);border-radius:6px;background:var(--panel2)">
-        <summary style="padding:5px 10px;font-size:11px;cursor:pointer;color:var(--muted);user-select:none">Included files <span id="d-file-count"></span></summary>
-        <div id="d-files-list" style="padding:4px 12px 8px;font-size:11px;color:var(--muted);max-height:120px;overflow-y:auto"></div>
-      </details>
-
-      <!-- PDF viewer (fills remaining space) -->
-      <div id="d-pdf-wrap" style="flex:1;overflow-y:auto;background:#404040;border-radius:6px;display:flex;flex-direction:column;align-items:center;padding:12px;gap:8px;min-height:300px">
-        <div style="color:#aaa;font-size:13px;padding:32px">Click <strong>Regenerate PDF</strong> to build the context bundle.</div>
+      <!-- Right: viewer -->
+      <div style="display:flex;flex-direction:column;overflow:hidden">
+        <!-- Quality warnings bar -->
+        <div id="doc-warnings" style="display:none;background:#1a1200;border-bottom:1px solid #554400;padding:6px 14px;font-size:11px;color:#ffcc44;flex-shrink:0"></div>
+        <!-- Toolbar -->
+        <div class="bar" style="flex-shrink:0;gap:8px;padding:6px 12px">
+          <span id="doc-breadcrumb" style="font-size:12px;font-weight:600;color:var(--fg)">Select a document</span>
+          <span class="muted" id="d-status" style="font-size:11px"></span>
+          <button class="btn-sec" id="doc-view-toggle" style="font-size:11px;padding:3px 8px;display:none;margin-left:auto">View PDF</button>
+          <a id="d-bundle-dl" href="#" download="context_bundle.pdf" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;color:var(--accent);text-decoration:none;background:var(--panel2);display:none">⬇ PDF</a>
+        </div>
+        <!-- Markdown viewer -->
+        <div id="doc-md-view" style="flex:1;overflow-y:auto;padding:20px 28px;line-height:1.65;font-size:13px">
+          <div class="empty" style="padding:40px;text-align:center">Select a document from the left panel.</div>
+        </div>
+        <!-- PDF viewer (hidden by default) -->
+        <div id="d-pdf-wrap" style="flex:1;overflow-y:auto;background:#404040;display:none;flex-direction:column;align-items:center;padding:12px;gap:8px"></div>
       </div>
     </section>
 
@@ -1023,25 +1019,25 @@ MathJax = {
       </div>
     </section>
 
-    <section class="pane" id="pane-concepts" style="overflow-y:auto;padding:18px 22px">
-      <div id="con-empty" class="empty">Pick a question to see its concepts.</div>
-      <div id="con-body" style="display:none">
-        <div class="bar" style="margin-bottom:10px">
+    <section class="pane" id="pane-concepts" style="padding:0;overflow:hidden">
+      <div id="con-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Pick a question to see its concepts.</div>
+      <div id="con-body" style="display:none;height:calc(100vh - 98px);flex-direction:column;background:#404040">
+        <!-- toolbar (PDF viewer) -->
+        <div id="con-toolbar" style="display:none;background:var(--panel);border-bottom:1px solid var(--border);padding:5px 10px;align-items:center;gap:6px;font-size:13px;flex-shrink:0">
           <span style="font-size:13px;font-weight:700;color:var(--accent)" id="con-q-label"></span>
           <span id="con-status" style="font-size:12px;color:var(--muted)"></span>
-          <span id="con-count" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
-          <button class="btn-sec" onclick="conExportPdf()" style="font-size:11px;padding:4px 12px;margin-left:12px">📄 Export PDF</button>
+          <div style="width:1px;height:18px;background:var(--border);margin:0 6px"></div>
+          <button class="btn-sec" id="con-prev" title="Previous page (←)" style="padding:3px 9px;font-size:14px">‹</button>
+          <input id="con-pageinput" class="page-num-input" type="number" min="1" value="1" title="Jump to page" />
+          <span id="con-pagetotal" style="color:var(--muted);font-size:12px;white-space:nowrap">/ 1</span>
+          <button class="btn-sec" id="con-next" title="Next page (→)" style="padding:3px 9px;font-size:14px">›</button>
+          <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
+          <button class="btn-sec" id="con-fitw" title="Fit to width" style="padding:3px 8px;font-size:11px">Fit W</button>
+          <button class="btn-sec" id="con-zout" style="padding:3px 8px">−</button>
+          <span id="con-zoom" style="color:var(--muted);font-size:12px;min-width:38px;text-align:center">150%</span>
+          <button class="btn-sec" id="con-zin" style="padding:3px 8px">+</button>
         </div>
-        <!-- Category legend -->
-        <div style="display:flex;gap:12px;margin-bottom:14px;font-size:11px;align-items:center;flex-wrap:wrap">
-          <span style="color:var(--accent)">● Core</span>
-          <span style="color:var(--muted)">● Background</span>
-          <span style="color:var(--amber)">● Notation</span>
-          <span style="color:var(--green)">● Theorem</span>
-        </div>
-        <!-- Bulleted concept list -->
-        <div id="con-grid"></div>
-        <div id="con-none" class="empty" style="display:none">No concepts extracted yet. Extraction runs automatically at server startup.</div>
+        <div id="con-canvas-wrap" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
       </div>
     </section>
 
@@ -1057,23 +1053,13 @@ MathJax = {
 
     <!-- ── Virtual Meet pane ────────────────────────────── -->
     <section class="pane" id="pane-meet" style="padding:0;overflow:hidden">
-      <div id="meet-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Select a question to start a meeting.</div>
+      <div id="meet-empty" class="empty" style="height:100%;display:flex;align-items:center;justify-content:center">Select a question to view meeting discussions.</div>
       <div id="meet-body" style="display:none;height:100%;overflow:hidden;flex-direction:column">
-        <!-- agent run bar (reused pattern) -->
-        <div id="meet-agent-bar" style="display:none;background:var(--panel2);border-bottom:1px solid var(--border);padding:6px 12px;font-size:11px;color:var(--muted);align-items:center;gap:10px;flex-shrink:0">
-          <span id="meet-agent-label" style="font-weight:600;color:var(--accent)">Agent running…</span>
-          <button class="btn-sec" id="meet-agent-stop" style="padding:3px 10px;font-size:11px">Stop</button>
-          <button class="btn-sec" id="meet-agent-toggle-log" style="padding:3px 10px;font-size:11px">Show log</button>
-          <span id="meet-agent-status" style="margin-left:auto;color:var(--muted)"></span>
-        </div>
-        <div id="meet-agent-log-wrap" style="display:none;background:#0a0e14;border-bottom:1px solid var(--border);max-height:160px;overflow-y:auto;flex-shrink:0">
-          <pre id="meet-agent-log" style="margin:0;padding:10px 14px;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word"></pre>
-        </div>
         <div style="display:grid;grid-template-columns:280px 1fr;flex:1;overflow:hidden">
-          <!-- sidebar: room list + new room -->
+          <!-- sidebar: room list -->
           <div style="border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden">
-            <div style="padding:10px;flex-shrink:0;display:flex;flex-direction:column;gap:6px">
-              <button class="btn-pri" id="meet-new-btn" style="font-size:12px;padding:7px 10px">+ New Meeting</button>
+            <div style="padding:8px 10px;flex-shrink:0;border-bottom:1px solid var(--border)">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Discussion Rooms</span>
             </div>
             <div id="meet-room-list" style="overflow-y:auto;padding:0 10px 10px;flex:1;display:flex;flex-direction:column;gap:6px"></div>
           </div>
@@ -1089,44 +1075,31 @@ MathJax = {
                   <div id="meet-room-topic" style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
                   <div id="meet-room-goal" style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
                 </div>
+                <button class="btn-sec" id="meet-pdf-btn" title="Render this meeting (discussion + action plan) as a PDF" style="font-size:11px;padding:4px 10px;flex-shrink:0">PDF</button>
+                <span id="meet-pdf-status" class="muted" style="font-size:11px;flex-shrink:0"></span>
                 <span id="meet-room-status-badge" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--panel);flex-shrink:0"></span>
               </div>
+              <!-- PDF view (hidden until PDF button toggled) -->
+              <div id="meet-pdf-view" style="display:none;flex:1;overflow-y:auto;position:relative"></div>
               <!-- participants bar -->
               <div style="padding:6px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                 <span style="font-size:11px;color:var(--muted)">Participants:</span>
                 <div id="meet-participants" style="display:flex;gap:5px;flex-wrap:wrap"></div>
-                <div style="margin-left:auto;display:flex;gap:5px">
-                  <button class="btn-sec" id="meet-synth-btn" style="font-size:11px;padding:4px 9px">Synthesize Plan</button>
-                </div>
               </div>
               <!-- split: chat + plan -->
               <div id="meet-split" style="flex:1;overflow:hidden;display:grid;grid-template-columns:1fr 320px">
-                <!-- chat -->
+                <!-- chat (read-only) -->
                 <div style="display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)">
-                  <!-- turn buttons -->
-                  <div id="meet-turn-bar" style="padding:6px 10px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:5px;flex-wrap:wrap;align-items:center">
-                    <div id="meet-turn-btns" style="display:flex;gap:4px;flex-wrap:wrap"></div>
-                    <button class="btn-pri" id="meet-push-btn" style="font-size:11px;padding:4px 12px;margin-left:auto" title="Run one full discussion round offline (all participants in background)">⚡ Push Round</button>
-                    <span id="meet-push-status" style="font-size:11px;color:var(--muted)"></span>
-                  </div>
                   <!-- messages -->
                   <div id="meet-messages" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px"></div>
-                  <!-- human reply -->
-                  <div style="padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:6px">
-                    <textarea id="meet-reply" placeholder="Add your perspective…" spellcheck="false" style="width:100%;box-sizing:border-box;height:56px;resize:vertical"></textarea>
-                    <div style="display:flex;gap:6px">
-                      <button class="btn-pri" id="meet-post-btn" style="font-size:12px;padding:5px 12px">Post</button>
-                      <span id="meet-post-status" class="muted" style="font-size:11px;align-self:center"></span>
-                    </div>
-                  </div>
                 </div>
-                <!-- plan panel -->
+                <!-- plan panel (read-only) -->
                 <div id="meet-plan-panel" style="display:flex;flex-direction:column;overflow:hidden">
                   <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:6px">
                     Action Plan
                     <span id="meet-plan-status" style="font-size:10px;padding:1px 6px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-weight:400;text-transform:none"></span>
                   </div>
-                  <div id="meet-plan-empty" style="padding:20px;color:var(--muted);font-size:12px;text-align:center">No plan yet.<br>Click <b>Synthesize Plan</b> after discussion.</div>
+                  <div id="meet-plan-empty" style="padding:20px;color:var(--muted);font-size:12px;text-align:center">No action plan generated yet.</div>
                   <div id="meet-plan-steps" style="flex:1;overflow-y:auto;padding:8px"></div>
                 </div>
               </div>
@@ -1134,24 +1107,32 @@ MathJax = {
           </div>
         </div>
       </div>
-      <!-- New meeting modal -->
-      <div id="meet-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center">
-        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:22px;width:620px;max-width:96vw;max-height:90vh;overflow-y:auto">
-          <h3 style="margin:0 0 4px;font-size:15px">New Meeting Room</h3>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Convene famous mathematicians in the domain to discuss the problem</div>
-          <label style="font-size:12px;color:var(--muted)">Topic</label>
-          <input id="meet-new-topic" type="text" placeholder="e.g. Proof strategy for the ε-light subset conjecture" style="width:100%;box-sizing:border-box;margin-bottom:10px">
-          <label style="font-size:12px;color:var(--muted)">Goal (optional)</label>
-          <input id="meet-new-goal" type="text" placeholder="e.g. Agree on main approach and key lemmas" style="width:100%;box-sizing:border-box;margin-bottom:14px">
-          <label style="font-size:12px;color:var(--muted)">Invite mathematicians</label>
-          <div id="meet-new-parts" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;margin-bottom:14px"></div>
-          <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
-            <span id="meet-modal-status" style="font-size:12px;color:var(--muted);margin-right:auto"></span>
-            <button class="btn-sec" id="meet-modal-cancel">Cancel</button>
-            <button class="btn-pri" id="meet-modal-ok">Start Meeting</button>
-          </div>
+    </section>
+
+    <!-- ── Push-Forward Run History pane ────────────────── -->
+    <section class="pane" id="pane-runs" style="padding:18px 22px;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+        <h2 style="margin:0;font-size:16px">Push-Forward History</h2>
+        <span id="runs-subtitle" style="font-size:12px;color:var(--muted)">last runs shown</span>
+        <select id="runs-dataset-sel" style="margin-left:auto;font-size:12px;background:var(--panel);border:1px solid var(--border);color:var(--fg);padding:3px 8px;border-radius:5px">
+          <option value="">All datasets</option>
+          <option value="first_proof_1">first_proof_1 (q1–q10)</option>
+          <option value="first_proof_2">first_proof_2 (prob-01–10)</option>
+        </select>
+      </div>
+      <!-- Trend summary bar -->
+      <div id="runs-trend" class="card" style="display:none;margin-bottom:14px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">Cumulative Trend</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div style="text-align:center"><div id="runs-tr-doc" style="font-size:20px;font-weight:700;color:var(--accent)">—</div><div style="font-size:11px;color:var(--muted)">doc bytes (latest)</div></div>
+          <div style="text-align:center"><div id="runs-tr-issues" style="font-size:20px;font-weight:700;color:var(--accent)">—</div><div style="font-size:11px;color:var(--muted)">total issues</div></div>
+          <div style="text-align:center"><div id="runs-tr-resolved" style="font-size:20px;font-weight:700;color:var(--green)">—</div><div style="font-size:11px;color:var(--muted)">resolved</div></div>
+          <div style="text-align:center"><div id="runs-tr-rate" style="font-size:20px;font-weight:700;color:var(--muted)">—</div><div style="font-size:11px;color:var(--muted)">solve rate</div></div>
         </div>
       </div>
+      <!-- Per-run cards -->
+      <div id="runs-list" style="display:flex;flex-direction:column;gap:14px"></div>
+      <div id="runs-empty" class="empty" style="padding:48px;text-align:center">No push-forward runs recorded yet. Click <strong>Push Forward ▶</strong> in the Overview tab to start the first run.</div>
     </section>
 
     <section class="pane" id="pane-insights" style="padding:18px 22px;overflow-y:auto">
@@ -1234,6 +1215,30 @@ MathJax = {
           <span id="exp-char-count" style="font-size:11px;color:var(--muted)"></span>
         </div>
         <textarea id="exp-preview" readonly style="min-height:480px;font-size:12px;line-height:1.5;resize:vertical"></textarea>
+      </div>
+    </section>
+
+    <!-- Design tab -->
+    <!-- Design tab: ACL-format supplementary PDF (pdf.js canvas viewer) -->
+    <section class="pane" id="pane-design" style="padding:0;overflow:hidden">
+      <div id="dz-viewer" style="overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 98px);background:#404040">
+        <!-- toolbar -->
+        <div id="dz-toolbar" style="background:var(--panel);border-bottom:1px solid var(--border);padding:5px 10px;display:flex;align-items:center;gap:6px;font-size:13px;flex-shrink:0">
+          <span style="font-size:13px;font-weight:700;color:var(--text)">System Design Supplementary</span>
+          <span style="font-size:11px;color:var(--muted)">ACL format</span>
+          <div style="width:1px;height:18px;background:var(--border);margin:0 4px"></div>
+          <button class="btn-sec" id="dz-prev" title="Previous page (←)" style="padding:3px 9px;font-size:14px">‹</button>
+          <input id="dz-pageinput" class="page-num-input" type="number" min="1" value="1" title="Jump to page" />
+          <span id="dz-pagetotal" style="color:var(--muted);font-size:12px;white-space:nowrap">/ 1</span>
+          <button class="btn-sec" id="dz-next" title="Next page (→)" style="padding:3px 9px;font-size:14px">›</button>
+          <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
+          <button class="btn-sec" id="dz-fitw" title="Fit to width" style="padding:3px 8px;font-size:11px">Fit W</button>
+          <button class="btn-sec" id="dz-zout" style="padding:3px 8px">−</button>
+          <span id="dz-zoom" style="color:var(--muted);font-size:12px;min-width:38px;text-align:center">150%</span>
+          <button class="btn-sec" id="dz-zin" style="padding:3px 8px">+</button>
+          <a id="dz-dl" href="/api/design/pdf" download="rma_supplementary.pdf" style="margin-left:auto;font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none" target="_blank">⬇ Download</a>
+        </div>
+        <div id="dz-canvas-wrap" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
       </div>
     </section>
 
@@ -2448,9 +2453,10 @@ function setTab(name){
   });
   const q=_lvlQ();
   if(name==="overview"){ startOvRefresh(); if(ovData) renderOverview(ovData, q||null); } else stopOvRefresh();
-  if(name==="documents"){ if(q) loadQuestionDocs(q); else loadDocuments(); }
+  if(name==="documents"){ if(q){ loadQuestionDocs(q,{skipAutoFile:true}); loadDocBundle(); } else loadDocuments(); }
   if(name==="proofs"){ if(q) loadProofForQuestion(q); else if(!pfProbs.length) loadProofs(); }
   if(name==="literature"){ if(q) loadLiterature(q); }
+  if(name==="runs"){ loadRuns(); }
   if(name==="concepts"){ if(q) loadConcepts(q); }
   if(name==="devlog"){ loadDevLog(); }
   if(name==="meet"){ if(q||selected) loadMeetRooms(q||selected); }
@@ -2459,6 +2465,7 @@ function setTab(name){
   if(name==="issue"){ loadIssues(); }
   if(name==="hero"){ heroRefreshDiagram(); }
   if(name==="export"){ initExportTab(); }
+  if(name==="design"){ if(!dzLoaded) loadDesignPdf(); }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
@@ -2478,6 +2485,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab)
     {id:"devlog",   icon:"📝",  label:"Dev Log",     sub:"Website change history"},
     {id:"meet",      icon:"👥",  label:"Meet",        sub:"Multi-agent chat rooms"},
     {id:"export",    icon:"📤",  label:"Export",      sub:"Bundle context to send to a friend"},
+    {id:"design",    icon:"📐",  label:"Design",      sub:"System architecture and caching design"},
   ];
 
   // Slash aliases: /proof → proofs, /concept → concepts, etc.
@@ -2494,6 +2502,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab)
     overview:"overview",home:"overview",
     insights:"insights",insight:"insights",
     export:"export",bundle:"export",share:"export",send:"export",
+    design:"design",architecture:"design",arch:"design",caching:"design",
   };
 
   let selIdx = 0;
@@ -2871,7 +2880,7 @@ async function selectQuestion(qid, node, dataset){
   if(document.querySelector(".tab.active[data-tab='concepts']")) loadConcepts(qid);
   if(document.querySelector(".tab.active[data-tab='meet']")) loadMeetRooms(qid);
   if(document.querySelector(".tab.active[data-tab='export']")) initExportTab();
-  loadMeetPersonas(qid).catch(()=>{}); // pre-fetch so New Meeting modal is instant
+  loadMeetPersonas(qid).catch(()=>{}); // pre-fetch so persona chips display instantly
 }
 
 $("q-toggle").onclick=()=>{
@@ -3374,21 +3383,15 @@ function issAgentLogAppend(text){
 }
 
 function issAgentStart(label){
-  $("iss-agent-bar").style.display = "flex";
-  $("iss-agent-label").textContent = label + " running…";
-  $("iss-agent-status").textContent = "";
-  $("iss-agent-log").textContent = "";
-  $("iss-resolve-btn").disabled = true;
-  $("iss-verify-btn").disabled = true;
-  $("i-discover-btn").disabled = true;
+  const bar=$("iss-agent-bar"); if(bar) bar.style.display="flex";
+  const lbl=$("iss-agent-label"); if(lbl) lbl.textContent=label+" running…";
+  const st=$("iss-agent-status"); if(st) st.textContent="";
+  const lg=$("iss-agent-log"); if(lg) lg.textContent="";
 }
 
 function issAgentStop(reason){
-  $("iss-agent-label").textContent = "Agent done";
-  $("iss-agent-status").textContent = reason || "";
-  $("iss-resolve-btn").disabled = false;
-  $("iss-verify-btn").disabled = false;
-  $("i-discover-btn").disabled = false;
+  const lbl=$("iss-agent-label"); if(lbl) lbl.textContent="Agent done";
+  const st=$("iss-agent-status"); if(st) st.textContent=reason||"";
   if(issAgentEs){ issAgentEs.close(); issAgentEs = null; }
   // Refresh the issue list after agent finishes
   if(selected){
@@ -3441,29 +3444,6 @@ $("iss-agent-stop").onclick = ()=>{
   issAgentStop("stopped");
 };
 
-$("i-discover-btn").onclick = ()=>{
-  if(!selected) return;
-  $("iss-agent-log-wrap").style.display = "block";
-  $("iss-agent-toggle-log").textContent = "Hide log";
-  const ds = selectedDataset || "first_proof_1";
-  runIssueAgent(`/api/agent/discover/${selected}?dataset=${encodeURIComponent(ds)}`, `critic/${selected}`);
-};
-
-$("iss-resolve-btn").onclick = ()=>{
-  if(!selected || !issSelectedId) return;
-  $("iss-agent-log-wrap").style.display = "block";
-  $("iss-agent-toggle-log").textContent = "Hide log";
-  const ds = selectedDataset || "first_proof_1";
-  runIssueAgent(`/api/agent/resolve/${selected}/${issSelectedId}?dataset=${encodeURIComponent(ds)}`, `solver/${issSelectedId}`);
-};
-
-$("iss-verify-btn").onclick = ()=>{
-  if(!selected || !issSelectedId) return;
-  $("iss-agent-log-wrap").style.display = "block";
-  $("iss-agent-toggle-log").textContent = "Hide log";
-  const ds = selectedDataset || "first_proof_1";
-  runIssueAgent(`/api/agent/verify/${selected}/${issSelectedId}?dataset=${encodeURIComponent(ds)}`, `verifier/${issSelectedId}`);
-};
 
 // Auto-refresh issues every 12s when on the issue tab and an agent is running
 function startIssueAutoRefresh(){
@@ -3746,85 +3726,159 @@ async function compilePdf(content,name,card,btn){
   scroll();
 }
 
-// ---- Documents tab (context bundle PDF) ----
-let docPoll=null;
-let _bundleUrl=null; // current object URL for the PDF blob
+// ---- Documents tab -------------------------------------------------------
 
-function _docBundleUrl(){
-  const q=_lvlQ();
-  const ds=selectedDataset||"first_proof_1";
-  const params=new URLSearchParams();
-  params.set("dataset",ds);
-  if(q) params.set("question",q);
-  return "/api/documents/bundle.pdf?"+params.toString();
-}
+let _docFiles = [];
+let _docCurrentPath = null;
+let _docPdfMode = false;
+let _bundleUrl = null;
 
-function _docUpdateScopeBadge(){
-  const q=_lvlQ();
-  const badge=$("d-scope-badge");
-  if(!badge) return;
-  badge.textContent=q?`question: ${q}`:`dataset: ${selectedDataset||"all"}`;
-}
-
-async function loadDocBundle(){
-  _docUpdateScopeBadge();
-  const wrap=$("d-pdf-wrap");
-  const url=_docBundleUrl();
-  wrap.innerHTML='<div style="color:#aaa;padding:32px;font-size:13px">Building PDF…</div>';
-  // Update file list sidebar
-  try{
-    const r=await fetch("/api/documents"); const {documents}=await r.json();
-    const q=_lvlQ();
-    const ds=selectedDataset||"first_proof_1";
-    const shown=q
-      ? documents.filter(d=>d.path&&d.path.includes("/"+q+"/"))
-      : documents.filter(d=>!d.folder||d.folder.startsWith("questions/")||d.folder==="");
-    const fl=$("d-files-list");
-    if(fl) fl.innerHTML=shown.slice(0,30).map(d=>`<div>📄 ${esc(d.path||d.name)}</div>`).join("");
-    const fc=$("d-file-count"); if(fc) fc.textContent=`(${shown.length})`;
-  }catch(e){}
-  // Fetch and display PDF via PDF.js
-  try{
-    if(_bundleUrl){ URL.revokeObjectURL(_bundleUrl); _bundleUrl=null; }
-    const r=await fetchWithTimeout(url,30000);
-    if(!r.ok){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Failed to generate PDF (${r.status})</div>`; return; }
-    const blob=await r.blob();
-    _bundleUrl=URL.createObjectURL(blob);
-    // Update download link
-    const dl=$("d-bundle-dl");
-    if(dl){ dl.href=_bundleUrl; dl.style.display=""; }
-    await pdfLoad(_bundleUrl, wrap, ()=>{}, 1.5);
-  }catch(e){
-    wrap.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`;
+function _docBuildTree(docs){
+  const tree=$("doc-tree"); if(!tree) return;
+  tree.innerHTML="";
+  const groups={};
+  for(const d of docs){ const folder=d.folder||""; (groups[folder]=groups[folder]||[]).push(d); }
+  const qFolders=Object.keys(groups).filter(f=>f.startsWith("questions/")).sort();
+  const other=Object.keys(groups).filter(f=>!f.startsWith("questions/")).sort();
+  for(const folder of [...qFolders,...other]){
+    const label=folder.startsWith("questions/")?folder.replace("questions/",""):(folder||"root");
+    const section=el("div");
+    const hdr=el("div");
+    hdr.style.cssText="padding:4px 10px 2px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px";
+    hdr.innerHTML=`<span id="doc-folder-arrow-${esc(label)}" style="font-size:9px">▶</span> ${esc(label)}`;
+    const items=el("div"); items.id="doc-folder-items-"+label; items.style.display="none";
+    for(const d of groups[folder]){
+      const row=el("div");
+      row.style.cssText="padding:3px 10px 3px 22px;font-size:11px;cursor:pointer;border-radius:3px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+      const fname=(d.path||d.name||"").split("/").pop();
+      row.textContent=fname; row.title=d.path||d.name;
+      row.onclick=()=>loadDocFile(d);
+      row.onmouseenter=()=>{ if(_docCurrentPath!==(d.path||d.name)) row.style.background="var(--panel2)"; };
+      row.onmouseleave=()=>{ if(_docCurrentPath!==(d.path||d.name)) row.style.background=""; };
+      row.id="doc-row-"+(d.path||d.name).replace(/[^a-z0-9]/gi,"_");
+      items.appendChild(row);
+    }
+    hdr.onclick=()=>{
+      const open=items.style.display!=="none";
+      items.style.display=open?"none":"block";
+      const arrow=$("doc-folder-arrow-"+label); if(arrow) arrow.textContent=open?"▶":"▼";
+    };
+    section.appendChild(hdr); section.appendChild(items); tree.appendChild(section);
   }
 }
 
-// Called when switching to documents tab or when question/dataset changes
+function _docExpandQuestion(qid){
+  if(!qid) return;
+  const items=$("doc-folder-items-"+qid);
+  if(items){ items.style.display="block"; const arrow=$("doc-folder-arrow-"+qid); if(arrow) arrow.textContent="▼"; }
+}
+
+function _renderMd(md){
+  if(!md) return "<em class='muted'>Empty document.</em>";
+  let h=md
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/^### (.+)$/gm,'<h4 style="margin:.8em 0 .3em;font-size:13px;color:var(--accent)">$1</h4>')
+    .replace(/^## (.+)$/gm,'<h3 style="margin:1em 0 .3em;font-size:14px;border-bottom:1px solid var(--border);padding-bottom:4px">$1</h3>')
+    .replace(/^# (.+)$/gm,'<h2 style="margin:0 0 .5em;font-size:16px;font-weight:700">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/```[\w]*\n([\s\S]*?)```/g,'<pre style="background:var(--panel2);padding:10px 14px;border-radius:5px;overflow-x:auto;font-size:11px;border:1px solid var(--border)"><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g,'<code style="background:var(--panel2);padding:1px 5px;border-radius:3px;font-size:11px">$1</code>')
+    .replace(/^&gt; (.+)$/gm,'<blockquote style="border-left:3px solid var(--accent);margin:0;padding:4px 12px;color:var(--muted);background:var(--panel2)">$1</blockquote>')
+    .replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:14px 0">')
+    .replace(/^\d+\. (.+)$/gm,'<li style="margin:2px 0 2px 1em;list-style:decimal">$1</li>')
+    .replace(/^[-*] (.+)$/gm,'<li style="margin:2px 0 2px 1em;list-style:disc">$1</li>')
+    .replace(/\n\n/g,'</p><p style="margin:.5em 0">');
+  return '<p style="margin:.5em 0">'+h+'</p>';
+}
+
+async function loadDocFile(d){
+  const path=d.path||d.name; _docCurrentPath=path;
+  document.querySelectorAll('[id^="doc-row-"]').forEach(r=>r.style.background="");
+  const row=$("doc-row-"+path.replace(/[^a-z0-9]/gi,"_")); if(row) row.style.background="var(--accent)22";
+  const crumb=$("doc-breadcrumb"); if(crumb) crumb.textContent=path.split("/").slice(-2).join(" / ");
+  _docPdfMode=false;
+  $("doc-md-view").style.display=""; $("d-pdf-wrap").style.display="none";
+  const toggle=$("doc-view-toggle"); if(toggle){ toggle.style.display=""; toggle.textContent="View PDF"; }
+  $("doc-md-view").innerHTML='<div style="color:var(--muted);padding:20px">Loading…</div>';
+  try{
+    const r=await fetch("/api/document/"+encodeURIComponent(path));
+    if(!r.ok){ $("doc-md-view").innerHTML=`<div class="muted">Not found (${r.status})</div>`; return; }
+    const d2=await r.json(); const content=d2.content||d2.markdown||"";
+    _docShowWarnings(path,content);
+    $("doc-md-view").innerHTML=_renderMd(content);
+  }catch(e){ $("doc-md-view").innerHTML=`<div class="muted">Error: ${esc(String(e))}</div>`; }
+}
+
+function _docShowWarnings(path,content){
+  const warn=$("doc-warnings"); if(!warn) return;
+  const issues=[];
+  if(path.includes("timeline")&&(content.match(/rma-skeleton.*fail/g)||[]).length>5)
+    issues.push("⚠ "+(content.match(/rma-skeleton/g)||[]).length+" identical rma-skeleton entries");
+  if(path.includes("progress")&&content.includes("Best:** -1"))
+    issues.push("⚠ Scoring sentinel: -1 is an error code, not a near-complete result");
+  if(path.includes("overview")&&path.includes("q3")&&content.includes("fitting inside"))
+    issues.push("⚠ Definition error: S_n(λ) description may be outdated");
+  if(issues.length){ warn.innerHTML=issues.join(" &nbsp;·&nbsp; "); warn.style.display=""; }
+  else warn.style.display="none";
+}
+
+function _docBundleUrl(){
+  const q=_lvlQ(); const ds=selectedDataset||"first_proof_1";
+  const params=new URLSearchParams({dataset:ds}); if(q) params.set("question",q);
+  return "/api/documents/bundle.pdf?"+params.toString();
+}
+
+async function loadDocBundle(){
+  _docPdfMode=true;
+  $("doc-md-view").style.display="none"; $("d-pdf-wrap").style.display="flex";
+  const wrap=$("d-pdf-wrap");
+  const toggle=$("doc-view-toggle"); if(toggle){ toggle.style.display=""; toggle.textContent="View Docs"; }
+  wrap.innerHTML='<div style="color:#aaa;padding:32px;font-size:13px">Building PDF…</div>';
+  if(_bundleUrl){ URL.revokeObjectURL(_bundleUrl); _bundleUrl=null; }
+  try{
+    const r=await fetchWithTimeout(_docBundleUrl(),30000);
+    if(!r.ok){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Failed (${r.status})</div>`; return; }
+    const blob=await r.blob(); _bundleUrl=URL.createObjectURL(blob);
+    const dl=$("d-bundle-dl"); if(dl){ dl.href=_bundleUrl; dl.style.display=""; }
+    await pdfLoad(_bundleUrl,wrap,()=>{},1.5);
+  }catch(e){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`; }
+}
+
 async function loadDocuments(){
-  await loadDocBundle();
+  try{
+    const r=await fetch("/api/documents"); const {documents}=await r.json();
+    _docFiles=documents||[]; _docBuildTree(_docFiles);
+  }catch(e){}
 }
 
-// Alias for when a question is selected — load bundle scoped to that question
-async function loadQuestionDocs(qid, _file){
-  await loadDocBundle();
+async function loadQuestionDocs(qid, {skipAutoFile=false}={}){
+  await loadDocuments();
+  _docExpandQuestion(qid);
+  if(skipAutoFile) return;
+  // Auto-load the question's overview (or progress) when switching to this question
+  const folder = "questions/"+qid;
+  const overview = _docFiles.find(d=>d.folder===folder && d.name.startsWith("overview"));
+  const progress  = _docFiles.find(d=>d.folder===folder && d.name.startsWith("progress"));
+  if(overview) loadDocFile(overview);
+  else if(progress) loadDocFile(progress);
 }
 
-async function openQuestionDoc(qid){
-  setTab("documents");
-  await loadDocBundle();
-}
+async function openQuestionDoc(qid){ setTab("documents"); await loadQuestionDocs(qid); }
 
-$("d-bundle-btn").onclick=()=>loadDocBundle();
+$("doc-view-toggle").onclick=async()=>{
+  if(_docPdfMode){
+    _docPdfMode=false; $("doc-md-view").style.display=""; $("d-pdf-wrap").style.display="none";
+    $("doc-view-toggle").textContent="View PDF";
+  } else { loadDocBundle(); }
+};
+
 $("d-run").onclick=async()=>{
   $("d-run").disabled=true; $("d-status").textContent="starting…";
   const r=await (await fetch("/api/run-daily",{method:"POST"})).json();
   if(!r.started){ $("d-status").textContent=r.reason||"already running"; $("d-run").disabled=false; return; }
-  $("d-status").textContent="generating… (this can take a while)";
-  let n=0; clearInterval(docPoll);
-  docPoll=setInterval(async()=>{ n++;
-    if(n>=40){ clearInterval(docPoll); $("d-status").textContent="done — click Regenerate PDF to update"; $("d-run").disabled=false; }
-  },15000);
-  setTimeout(()=>{ $("d-run").disabled=false; },20000);
+  $("d-status").textContent="generating…";
+  setTimeout(()=>{ $("d-run").disabled=false; $("d-status").textContent="done — reload docs"; loadDocuments(); },20000);
 };
 
 // ---- Daily run button (sidebar) ----
@@ -3893,10 +3947,11 @@ async function triggerPushForward(force){
   if($("pf-all-btn")) $("pf-all-btn").disabled=true;
   if($("pf-all-force-btn")) $("pf-all-force-btn").disabled=true;
   _pfAllSetBadge("starting…","var(--amber)");
+  const ds=selectedDataset||"first_proof_1";
   try{
     const res=await(await fetch("/api/push-forward",{method:"POST",
       headers:{"content-type":"application/json"},
-      body:JSON.stringify({force:!!force})})).json();
+      body:JSON.stringify({force:!!force,dataset:ds})})).json();
     if(!res.started){
       _pfAllSetBadge(res.reason||"blocked","var(--amber)");
       $("pf-all-btn").disabled=false; $("pf-all-force-btn").disabled=false;
@@ -4060,36 +4115,6 @@ if($("pf-hist-toggle")) $("pf-hist-toggle").onclick=()=>{
 if($("pf-all-btn")) $("pf-all-btn").onclick=()=>triggerPushForward(false);
 if($("pf-all-force-btn")) $("pf-all-force-btn").onclick=()=>triggerPushForward(true);
 
-// ---- Evolve issues button ----
-$("evolve-issues-btn").onclick = async()=>{
-  $("evolve-issues-btn").disabled = true;
-  $("evolve-issues-status").textContent = "starting…";
-  try{
-    const r = await (await fetch("/api/evolve-issues", {method:"POST"})).json();
-    if(!r.started){
-      $("evolve-issues-status").textContent = r.reason || "already running";
-      $("evolve-issues-btn").disabled = false;
-      return;
-    }
-    $("evolve-issues-status").textContent = "running…";
-    let polls = 0;
-    const iv = setInterval(async()=>{
-      polls++;
-      try{
-        const ov = await (await fetch("/api/runs")).json();
-        const active = (ov.runs||[]).filter(r=>r.kind==="issue-loop");
-        if(!active.length || polls > 120){
-          clearInterval(iv);
-          $("evolve-issues-status").textContent = polls > 120 ? "timed out" : "done ✓";
-          $("evolve-issues-btn").disabled = false;
-        }
-      }catch(_){ /* ignore poll errors */ }
-    }, 5000);
-  }catch(e){
-    $("evolve-issues-status").textContent = "error: "+e.message;
-    $("evolve-issues-btn").disabled = false;
-  }
-};
 
 // ---- Re-evaluate solvability button ----
 document.addEventListener("click", async(e)=>{
@@ -4526,23 +4551,12 @@ async function fpfLoadPdf(url, filename){
 
 function fpfItem(file, container){
   const it=el("div","qitem");
-  const isPdf=file.name.endsWith(".pdf");
-  it.innerHTML=`<span style="font-size:12px">${isPdf?"📄":"📝"} ${esc(file.name)}</span>`;
+  // Author Solution tab is PDF-only (the API filters out .tex).
+  it.innerHTML=`<span style="font-size:12px">📄 ${esc(file.name)}</span>`;
   it.onclick=()=>{
     document.querySelectorAll("#fpf-list .qitem").forEach(e=>e.classList.remove("active"));
-    it.classList.add("active"); fpfViewerActive=isPdf;
-    if(isPdf){
-      fpfLoadPdf("/api/final-proof-file/"+encodeURIComponent(file.path), file.name);
-    } else {
-      fpfDoc=null;
-      $("fpf-empty").style.display="none"; $("fpf-toolbar").style.display="none";
-      const wrap=$("fpf-canvas-wrap"); wrap.style.display="flex";
-      wrap.innerHTML=`<div style="color:#ccc;white-space:pre-wrap;font-family:monospace;font-size:12px;padding:16px;max-width:900px">Loading…</div>`;
-      fetch("/api/final-proof-file/"+encodeURIComponent(file.path))
-        .then(r=>r.text()).then(t=>{
-          wrap.innerHTML=`<div style="color:#ccc;white-space:pre-wrap;font-family:monospace;font-size:12px;padding:16px;max-width:900px">${esc(t)}</div>`;
-        });
-    }
+    it.classList.add("active"); fpfViewerActive=true;
+    fpfLoadPdf("/api/final-proof-file/"+encodeURIComponent(file.path), file.name);
   };
   container.appendChild(it);
 }
@@ -4823,6 +4837,126 @@ document.querySelector('.tab[data-tab="literature"]').addEventListener("click",(
   else if(_litLevel==="question"&&litSelected) loadLiterature(litSelected);
 });
 
+// ─── Push-Forward Runs Tab ───────────────────────────────────────────────────
+
+function _fmtBytes(b){
+  if(!b||b<1024) return b?b+' B':'0';
+  if(b<1048576) return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(2)+' MB';
+}
+
+async function loadRuns(){
+  const filterDs=$("runs-dataset-sel").value;
+  let stateData={}, metricsData={};
+  try{
+    const [sr,mr]=await Promise.all([
+      fetch("/api/push-forward/status").then(r=>r.json()),
+      fetch("/api/push-forward/metrics").then(r=>r.json()),
+    ]);
+    stateData=sr; metricsData=mr;
+  }catch(e){ console.warn("loadRuns fetch error",e); }
+
+  const allRuns=(stateData.state||{}).runs||[];
+  const filtered=filterDs?allRuns.filter(r=>r.dataset===filterDs):allRuns;
+  const runs=[...filtered].reverse().slice(0,5); // last 5, newest first
+  const snaps=(metricsData.snapshots||[]);
+
+  $("runs-subtitle").textContent=`${filtered.length} run${filtered.length!==1?"s":""} total, showing last ${runs.length}`;
+
+  const list=$("runs-list"), empty=$("runs-empty"), trend=$("runs-trend");
+  list.innerHTML="";
+
+  if(!runs.length){
+    empty.style.display="block"; trend.style.display="none"; return;
+  }
+  empty.style.display="none"; trend.style.display="block";
+
+  // Trend from latest metrics snapshot matching this filter
+  const trendSnap=snaps.length?snaps[snaps.length-1]:null;
+  if(trendSnap){
+    $("runs-tr-doc").textContent=_fmtBytes(trendSnap.total_doc_bytes||0);
+    $("runs-tr-issues").textContent=trendSnap.total_issues||0;
+    $("runs-tr-resolved").textContent=trendSnap.resolved_issues||0;
+    const rate=trendSnap.solve_rate||0;
+    $("runs-tr-rate").textContent=(rate*100).toFixed(1)+"%";
+  }
+
+  // Metrics indexed by job_id (primary) then date (fallback)
+  const metByJobId={}, metByDate={};
+  snaps.forEach(s=>{ if(s.job_id) metByJobId[s.job_id]=s; metByDate[s.date]=s; });
+
+  runs.forEach((run,ri)=>{
+    const snap=metByJobId[run.job_id]||(run.dataset===(metByDate[run.date]||{}).dataset?metByDate[run.date]:null);
+    const results=run.results||[];
+    const totalDisc=results.reduce((s,r)=>s+(r.issues_discovered||0),0);
+    const totalRes=results.reduce((s,r)=>s+(r.issues_resolved||0),0);
+    const date=run.date||"—";
+    const ds=run.dataset||"first_proof_1";
+    const probs=(run.problems||[]).join(", ");
+
+    const card=document.createElement("div");
+    card.className="card";
+    card.style.cssText="padding:0;overflow:hidden";
+
+    // Header row
+    const hdr=document.createElement("div");
+    hdr.style.cssText="padding:10px 14px;background:var(--panel2);display:flex;align-items:center;gap:10px;cursor:pointer;border-bottom:1px solid var(--border)";
+    hdr.innerHTML=`
+      <span style="font-weight:700;font-size:13px">Run ${ri===0?'(latest)':'#'+(ri+1)}</span>
+      <span style="font-size:12px;color:var(--muted)">${date}</span>
+      <span class="tag-chip" style="font-size:10px">${ds}</span>
+      ${snap?`<span style="font-size:11px;color:var(--muted);margin-left:6px">docs: ${_fmtBytes(snap.total_doc_bytes)} · issues: ${snap.total_issues} (${snap.resolved_issues} resolved)</span>`:''}
+      <span style="margin-left:auto;font-size:11px;color:var(--green)">+${totalDisc} discovered</span>
+      <span style="font-size:11px;color:var(--accent)">✓ ${totalRes} resolved</span>
+      <span id="runs-toggle-${ri}" style="font-size:11px;color:var(--muted);margin-left:8px">▼</span>
+    `;
+
+    const body=document.createElement("div");
+    body.id=`runs-body-${ri}`;
+    body.style.cssText="display:none;padding:12px 14px";
+
+    // Summary stats row
+    body.innerHTML+=`<div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      <strong>Problems:</strong> ${probs} &nbsp;|&nbsp;
+      <strong>Meeting rounds:</strong> ${run.n_meeting_rounds||3} &nbsp;|&nbsp;
+      ${snap?`<strong>Docs:</strong> ${_fmtBytes(snap.total_doc_bytes)} · <strong>Solve rate:</strong> ${((snap.solve_rate||0)*100).toFixed(1)}% &nbsp;|&nbsp;`:''}
+      <strong>Completed:</strong> ${(run.completed_at||'').replace('T',' ').slice(0,16)} UTC
+    </div>`;
+
+    // Per-problem results
+    results.forEach(r=>{
+      const newT=(r.new_issue_titles||[]).map(t=>`<span style="font-size:11px;color:var(--amber)">+ ${t}</span>`).join('<br>');
+      const resT=(r.resolved_issue_titles||[]).map(t=>`<span style="font-size:11px;color:var(--green)">✓ ${t}</span>`).join('<br>');
+      const plan=r.action_plan_summary||'';
+      const err=r.error?`<div style="font-size:11px;color:var(--red)">${r.error}</div>`:'';
+      body.innerHTML+=`<div style="margin-bottom:10px;padding:8px 10px;background:var(--panel2);border-radius:5px;border:1px solid var(--border)">
+        <div style="font-weight:700;font-size:12px;margin-bottom:4px">${r.problem} <span style="font-weight:400;color:var(--muted)">before: ${r.issues_open_before||0} open · after: ${r.issues_open_after||0} open</span></div>
+        ${newT?`<div style="margin:2px 0">${newT}</div>`:''}
+        ${resT?`<div style="margin:2px 0">${resT}</div>`:''}
+        ${plan?`<div style="font-size:11px;color:var(--fg);margin-top:4px;font-style:italic">📋 ${plan}</div>`:''}
+        ${err}
+      </div>`;
+    });
+
+    // Toggle
+    hdr.onclick=()=>{
+      const open=body.style.display!=="none";
+      body.style.display=open?"none":"block";
+      const tog=$(`runs-toggle-${ri}`); if(tog) tog.textContent=open?"▼":"▲";
+    };
+
+    // Auto-expand first (latest) run
+    if(ri===0){ body.style.display="block"; const tog=$(`runs-toggle-${ri}`); if(tog) tog.textContent="▲"; }
+
+    card.appendChild(hdr);
+    card.appendChild(body);
+    list.appendChild(card);
+  });
+}
+
+document.querySelector('.tab[data-tab="runs"]').addEventListener("click", loadRuns);
+$("runs-dataset-sel").addEventListener("change", loadRuns);
+
 // ─── Concepts Tab ────────────────────────────────────────────────────────────
 
 let conSelected = null;
@@ -4839,164 +4973,78 @@ function _mathWrap(s){
   return "$"+t+"$";
 }
 
-function conRenderCards(concepts){
-  const grid=$("con-grid"), none=$("con-none");
-  grid.innerHTML="";
-  if(!concepts.length){
-    grid.style.display="none"; none.style.display="block";
-    $("con-count").textContent=""; return;
+// Concepts now render as an inline PDF (compiled server-side via tectonic),
+// reusing the same PDF.js viewer as the Author Solution / Design tabs.
+let conDoc=null, conScale=1.5;
+
+function conGetCurrentPage(){
+  const wrap=$("con-canvas-wrap");
+  const pages=[...wrap.querySelectorAll(".pdf-page-wrap")];
+  if(!pages.length)return 1;
+  const scrollTop=wrap.scrollTop;
+  for(const pg of pages){
+    if(pg.offsetTop+pg.offsetHeight>scrollTop+10) return parseInt(pg.dataset.page)||1;
   }
-  grid.style.display="block"; none.style.display="none";
-  $("con-count").textContent=`${concepts.length} concept${concepts.length!==1?"s":""}`;
+  return conDoc?conDoc.numPages:1;
+}
 
-  concepts.forEach((c, idx)=>{
-    const cc = _CAT_COLOR[c.category] || "var(--muted)";
-
-    const item = document.createElement("div");
-    item.style.cssText = "display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);align-items:flex-start";
-
-    // Bullet number
-    const bullet = document.createElement("div");
-    bullet.style.cssText = `width:26px;height:26px;border-radius:50%;background:${cc};color:#07101f;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px`;
-    bullet.textContent = idx+1;
-
-    const body = document.createElement("div");
-    body.style.cssText = "flex:1;min-width:0";
-
-    // Name + category tag
-    const hdr = document.createElement("div");
-    hdr.style.cssText = "display:flex;align-items:baseline;gap:8px;margin-bottom:5px";
-    const nameEl = document.createElement("span");
-    nameEl.style.cssText = `font-size:13px;font-weight:700;color:${cc}`;
-    nameEl.textContent = c.name;                     // name: safe plain text, no math expected
-    const catEl = document.createElement("span");
-    catEl.style.cssText = `font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:${cc};opacity:.7`;
-    catEl.textContent = c.category;
-    hdr.appendChild(nameEl); hdr.appendChild(catEl);
-
-    // Notation block (wrap bare LaTeX so MathJax picks it up)
-    let notEl = null;
-    if(c.notation){
-      notEl = document.createElement("div");
-      notEl.style.cssText = `font-size:14px;color:${cc};margin:4px 0 8px;padding:5px 10px;background:var(--panel2);border-radius:4px;display:inline-block;border:1px solid var(--border)`;
-      notEl.textContent = _mathWrap(c.notation);  // textContent → MathJax sees raw $...$
-    }
-
-    // Definition — contains inline $...$ math, do NOT escape
-    const defEl = document.createElement("div");
-    defEl.style.cssText = "font-size:12.5px;line-height:1.7;margin-bottom:6px;color:var(--text)";
-    defEl.textContent = c.definition || "";          // textContent: safe + MathJax sees $...$
-
-    // Example
-    let exEl = null;
-    if(c.example){
-      exEl = document.createElement("div");
-      exEl.style.cssText = "font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:6px;margin-top:6px;line-height:1.65";
-      const lbl = document.createElement("span");
-      lbl.style.cssText = "font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-right:4px";
-      lbl.textContent = "Example: ";
-      const exText = document.createElement("span");
-      exText.textContent = c.example;
-      exEl.appendChild(lbl); exEl.appendChild(exText);
-    }
-
-    // Related
-    let relEl = null;
-    if(c.related&&c.related.length){
-      relEl = document.createElement("div");
-      relEl.style.cssText = "margin-top:7px;font-size:11px;color:var(--muted)";
-      relEl.textContent = "Related: " + c.related.join(" · ");
-    }
-
-    body.appendChild(hdr);
-    if(notEl) body.appendChild(notEl);
-    body.appendChild(defEl);
-    if(exEl) body.appendChild(exEl);
-    if(relEl) body.appendChild(relEl);
-    item.appendChild(bullet); item.appendChild(body);
-    grid.appendChild(item);
-  });
-
-  typeset(grid);  // MathJax via existing helper — processes textContent $...$
+function conScrollToPage(n){
+  const wrap=$("con-canvas-wrap");
+  const pg=wrap.querySelector(`.pdf-page-wrap[data-page="${n}"]`);
+  if(pg) pg.scrollIntoView({behavior:"smooth",block:"start"});
+  $("con-pageinput").value=n;
 }
 
 async function loadConcepts(qid){
   conSelected=qid;
-  _conData=[];
   $("con-empty").style.display="none";
-  $("con-body").style.display="block";
+  $("con-body").style.display="flex";
   $("con-q-label").textContent=qid.toUpperCase();
-  $("con-status").textContent="Loading…";
+  $("con-status").textContent="Building…";
+  $("con-toolbar").style.display="flex";
+  const wrap=$("con-canvas-wrap");
+  wrap.onscroll=null; conDoc=null;
+  wrap.innerHTML=`<div style="color:#aaa;padding:32px;font-size:13px">Building concept PDF…</div>`;
   try{
-    const r=await fetch(`/api/concepts/${encodeURIComponent(qid)}`);
+    const r=await fetch(`/api/concepts/${encodeURIComponent(qid)}/pdf`);
     const data=await r.json();
     $("con-status").textContent="";
-    _conData = data.concepts||[];
-    conRenderCards(_conData);
-  } catch(e){ $("con-status").textContent="Error loading"; }
+    if(!data.ok || !data.pdf_url){
+      wrap.innerHTML=`<div style="color:#cbd5e1;padding:40px 24px;font-size:13px;max-width:620px;text-align:center;line-height:1.6">${esc(data.log||"No concepts extracted yet for this question.")}</div>`;
+      return;
+    }
+    await pdfLoad(data.pdf_url, wrap, d=>{
+      conDoc=d;
+      $("con-pagetotal").textContent=`/ ${d.numPages}`;
+      $("con-pageinput").max=d.numPages; $("con-pageinput").value=1;
+    }, conScale);
+    wrap.onscroll=()=>{ if(conDoc) $("con-pageinput").value=conGetCurrentPage(); };
+  } catch(e){
+    $("con-status").textContent="";
+    wrap.innerHTML=`<div style="color:#f88;padding:32px">Error loading concepts: ${esc(String(e))}</div>`;
+  }
 }
 
-function conExportPdf(){
-  if(!_conData.length){ alert("No concepts loaded."); return; }
-  const qid = conSelected||"concepts";
+$("con-zin").onclick=async()=>{conScale=Math.min(conScale+0.25,4);$("con-zoom").textContent=Math.round(conScale*100)+"%";if(conDoc)await pdfRenderAll(conDoc,conScale,$("con-canvas-wrap"));};
+$("con-zout").onclick=async()=>{conScale=Math.max(conScale-0.25,0.5);$("con-zoom").textContent=Math.round(conScale*100)+"%";if(conDoc)await pdfRenderAll(conDoc,conScale,$("con-canvas-wrap"));};
+$("con-prev").onclick=()=>{ const c=conGetCurrentPage(); if(c>1) conScrollToPage(c-1); };
+$("con-next").onclick=()=>{ const c=conGetCurrentPage(); if(conDoc&&c<conDoc.numPages) conScrollToPage(c+1); };
+$("con-pageinput").addEventListener("change",function(){
+  const n=Math.max(1,Math.min(parseInt(this.value)||1,conDoc?conDoc.numPages:1));
+  this.value=n; conScrollToPage(n);
+});
+$("con-fitw").onclick=async()=>{
+  if(!conDoc)return;
+  const wrap=$("con-canvas-wrap");
+  const page=await conDoc.getPage(1);
+  const nat=page.getViewport({scale:1});
+  conScale=Math.max(0.5,(wrap.clientWidth-32)/nat.width);
+  $("con-zoom").textContent=Math.round(conScale*100)+"%";
+  await pdfRenderAll(conDoc,conScale,wrap);
+};
 
-  const catHex = (cat) => _CAT_COLOR_HEX[cat]||"#8b949e";
-  const items = _conData.map((c,i)=>{
-    const cc = catHex(c.category);
-    const notation = c.notation ? `<div class="notation">${_mathWrap(c.notation)}</div>` : "";
-    const example = c.example ? `<div class="example"><span class="lbl">Example:</span> ${c.example}</div>` : "";
-    const related = (c.related&&c.related.length) ? `<div class="related">Related: ${c.related.join(" · ")}</div>` : "";
-    return `<div class="item">
-      <div class="bullet" style="background:${cc}">${i+1}</div>
-      <div class="body">
-        <div class="name" style="color:${cc}">${c.name} <span class="cat">${c.category}</span></div>
-        ${notation}
-        <div class="def">${c.definition||""}</div>
-        ${example}${related}
-      </div>
-    </div>`;
-  }).join("");
-
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>${qid.toUpperCase()} — Concepts</title>
-<script>MathJax={tex:{inlineMath:[["$","$"],["\\\\(","\\\\)"]],displayMath:[["$$","$$"],["\\\\[","\\\\]"]],processEscapes:true},svg:{fontCache:"global"},startup:{typeset:false}};<\/script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js"><\/script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font:13.5px/1.7 Georgia,serif;color:#111;background:#fff;max-width:780px;margin:0 auto;padding:40px 32px}
-h1{font-size:20px;margin-bottom:4px}
-.subtitle{font-size:12px;color:#666;margin-bottom:28px}
-.item{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid #e5e7eb}
-.bullet{width:26px;height:26px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:2px}
-.body{flex:1;min-width:0}
-.name{font-size:14px;font-weight:700;margin-bottom:4px}
-.cat{font-size:10px;text-transform:uppercase;letter-spacing:.05em;opacity:.7;font-weight:400;margin-left:6px}
-.notation{font-size:14px;margin:4px 0 8px;padding:5px 10px;background:#f3f4f6;border-radius:4px;display:inline-block;border:1px solid #e5e7eb}
-.def{font-size:13px;line-height:1.75;margin-bottom:5px}
-.example{font-size:12px;color:#555;border-top:1px solid #e5e7eb;padding-top:6px;margin-top:6px;line-height:1.65}
-.lbl{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-right:4px}
-.related{margin-top:6px;font-size:11px;color:#888}
-@media print{body{padding:0}@page{margin:2cm}}
-</style></head>
-<body>
-<h1>${qid.toUpperCase()} — Key Concepts</h1>
-<div class="subtitle">${_conData.length} concepts · Generated by ResearchMathAgent</div>
-${items}
-<script>
-if(window.MathJax){
-  MathJax.startup.promise.then(()=>MathJax.typesetPromise()).then(()=>setTimeout(()=>window.print(),400));
-}else{
-  document.getElementById("MathJax-script").addEventListener("load",()=>{
-    MathJax.startup.promise.then(()=>MathJax.typesetPromise()).then(()=>setTimeout(()=>window.print(),600));
-  });
-}
-<\/script>
-</body></html>`;
-
-  const w=window.open("","_blank");
-  w.document.write(html);
-  w.document.close();
-}
+// (Removed: conExportPdf / client-side print-to-PDF. Concepts now render as an
+//  inline, server-compiled PDF via loadConcepts → /api/concepts/{qid}/pdf.)
 
 // ─── Dev Log Tab ─────────────────────────────────────────────────────────────
 
@@ -5053,8 +5101,6 @@ const MEET_PERSONAS = {
 // Extended registry — filled from /api/meet-personas/{pid} on question select
 let MEET_MATHEMATICIAN_PERSONAS = {}; // id → {display,color,icon,field,institution,...}
 let meetSelectedRoom = null;
-let meetAgentEs = null;
-let _meetAutoQueue = [];
 
 function meetPersonaLookup(n){
   return MEET_MATHEMATICIAN_PERSONAS[n] || MEET_PERSONAS[n] || {};
@@ -5074,6 +5120,7 @@ async function loadMeetPersonas(qid){
   }catch(_){}
 }
 
+let _meetPollTimer = null;
 async function loadMeetRooms(qid){
   $("meet-empty").style.display="none";
   $("meet-body").style.display="flex";
@@ -5092,13 +5139,48 @@ async function loadMeetRooms(qid){
     it.onclick=()=>{ document.querySelectorAll("#meet-room-list .qitem").forEach(e=>e.classList.remove("active")); it.classList.add("active"); openMeetRoom(r); };
     list.appendChild(it);
   }
-  if(!rooms.length) list.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:12px 4px">No meetings yet. Click <b>+ New Meeting</b>.</div>`;
+  if(!rooms.length){
+    // Auto-trigger meeting for this question, then poll for results
+    list.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:12px 4px">Initializing meeting… <span style="opacity:.6">(discussing ${esc(qid)})</span></div>`;
+    _meetInitAndPoll(qid);
+  } else {
+    // Clear any stale poll timer now that we have rooms
+    if(_meetPollTimer){ clearInterval(_meetPollTimer); _meetPollTimer=null; }
+  }
+}
+
+async function _meetInitAndPoll(qid){
+  // Kick off push-forward for just this question (non-blocking background job)
+  try{
+    await fetch("/api/push-forward", {
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body: JSON.stringify({force:true, problems:[qid]})
+    });
+  }catch(e){}
+  // Poll every 45s until a substantive room appears
+  if(_meetPollTimer) clearInterval(_meetPollTimer);
+  _meetPollTimer = setInterval(async()=>{
+    let rooms=[];
+    try{ const d=await (await fetch(`/api/meets/${encodeURIComponent(qid)}`)).json(); rooms=d.rooms||[]; }catch(e){}
+    if(rooms.length){
+      clearInterval(_meetPollTimer); _meetPollTimer=null;
+      await loadMeetRooms(qid);
+      if(rooms[0]) openMeetRoom(rooms[0]);
+    }
+  }, 45000);
 }
 
 function openMeetRoom(room){
   meetSelectedRoom=room;
   $("meet-room-empty").style.display="none";
   $("meet-room-view").style.display="flex";
+  // Reset PDF view back to live split whenever a room is opened
+  _meetPdfMode=false;
+  $("meet-pdf-view").style.display="none";
+  $("meet-split").style.display="grid";
+  $("meet-pdf-btn").textContent="PDF";
+  $("meet-pdf-status").textContent="";
   $("meet-room-topic").textContent=room.topic;
   $("meet-room-goal").textContent=room.goal||"";
   const statusColor={open:"var(--accent)",planned:"var(--amber)",done:"var(--green)"}[room.status]||"var(--muted)";
@@ -5113,17 +5195,6 @@ function openMeetRoom(room){
     chip.title=lp.field?`${lp.display||p} · ${lp.field}${lp.institution?` · ${lp.institution}`:""}`:p;
     chip.innerHTML=`${meetPersonaIcon(p)} <b>${esc(meetPersonaDisplay(p))}</b>`;
     pp.appendChild(chip);
-  }
-  // Turn buttons
-  const tb=$("meet-turn-btns"); tb.innerHTML="";
-  for(const p of (room.participants||[]).filter(x=>x!=="human")){
-    const btn=el("button","btn-sec");
-    const color=meetPersonaColor(p);
-    btn.style.cssText=`font-size:11px;padding:3px 9px;border-color:${color};margin-bottom:2px`;
-    btn.innerHTML=`${meetPersonaIcon(p)} <span style="color:${color}">${esc(meetPersonaDisplay(p))}</span>`;
-    btn.title=`Run a turn for ${meetPersonaDisplay(p)}`;
-    btn.onclick=()=>runMeetTurn(p);
-    tb.appendChild(btn);
   }
   renderMeetMessages(room);
   renderMeetPlan(room);
@@ -5167,18 +5238,13 @@ function renderMeetPlan(room){
     const done=executed.includes(step.idx);
     const card=el("div","meet-step-card"+(done?" done":""));
     const agentColor=meetPersonaColor(step.agent||"solver-agent");
-    const runBtn=el("button","btn-sec");
-    runBtn.style.cssText="font-size:10px;padding:2px 7px;float:right;margin-left:6px";
-    runBtn.textContent=done?"✅ Done":"▶ Run";
-    runBtn.disabled=done;
-    if(!done) runBtn.onclick=()=>runMeetStep(step.idx);
     card.innerHTML=`<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
       <span style="font-size:10px;font-weight:700;color:var(--muted)">Step ${(step.idx||0)+1}</span>
       <span style="font-size:11px;color:${agentColor}">${meetPersonaIcon(step.agent||"solver-agent")} ${esc(step.agent||"solver-agent")}</span>
+      ${done?`<span style="margin-left:auto;font-size:10px;color:var(--green)">✅ done</span>`:""}
     </div>
     <div style="font-size:12px;font-weight:600;margin-bottom:3px">${esc(step.title||"")}</div>
     <div style="font-size:11px;color:var(--muted);line-height:1.4">${esc((step.body||"").slice(0,140))}${(step.body||"").length>140?"…":""}</div>`;
-    card.prepend(runBtn);
     wrap.appendChild(card);
   }
   if(plan.summary){
@@ -5200,100 +5266,36 @@ async function refreshMeetRoom(){
   }catch(e){}
 }
 
-// ---- SSE runner for meet agents ----
-function meetRunSse(endpoint, label){
-  if(meetAgentEs){ meetAgentEs.close(); meetAgentEs=null; }
-  const bar=$("meet-agent-bar"), logEl=$("meet-agent-log");
-  bar.style.display="flex"; $("meet-agent-label").textContent=label;
-  $("meet-agent-status").textContent=""; logEl.textContent="";
-  const es=new EventSource(endpoint); meetAgentEs=es;
-  es.onmessage=async(ev)=>{
-    try{
-      const d=JSON.parse(ev.data);
-      if(d.type==="text_delta"||d.type==="thinking_delta") logEl.textContent+=d.data.text||"";
-      if(d.type==="status") $("meet-agent-status").textContent=d.data.label||"";
-      if(d.type==="error") logEl.textContent+="\n[ERROR] "+(d.data.message||"");
-      if(d.type==="done"){
-        es.close(); meetAgentEs=null; bar.style.display="none";
-        await refreshMeetRoom();
-        await loadMeetRooms(selected);
-        if(_meetAutoQueue.length){ const next=_meetAutoQueue.shift(); setTimeout(()=>next(),400); }
-      }
-    }catch(e){}
-  };
-  es.onerror=()=>{ es.close(); meetAgentEs=null; bar.style.display="none"; };
-}
 
-function runMeetTurn(p){
+// ─── Meeting PDF rendering ───────────────────────────────────────────────────
+let _meetPdfMode=false;
+$("meet-pdf-btn").onclick=async()=>{
   if(!meetSelectedRoom||!selected) return;
-  const rid=Math.random().toString(36).slice(2);
-  meetRunSse(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/turn/${encodeURIComponent(p)}?run_id=${rid}`,`${meetPersonaIcon(p)} ${p} speaking…`);
-}
-
-function runMeetSynthesize(){
-  if(!meetSelectedRoom||!selected) return;
-  const rid=Math.random().toString(36).slice(2);
-  meetRunSse(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/synthesize?run_id=${rid}`,"📋 Synthesizing plan…");
-}
-
-function runMeetStep(idx){
-  if(!meetSelectedRoom||!selected) return;
-  const rid=Math.random().toString(36).slice(2);
-  meetRunSse(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/execute/${idx}?run_id=${rid}`,`▶ Executing step ${idx+1}…`);
-}
-
-// Push-round: fire-and-forget offline round, poll for completion
-let _meetPushJobId = null;
-let _meetPushPoller = null;
-
-async function meetPushRound(){
-  if(!meetSelectedRoom||!selected) return;
-  const btn=$("meet-push-btn"), status=$("meet-push-status");
-  btn.disabled=true; status.textContent="Starting…";
+  const pdfView=$("meet-pdf-view"), split=$("meet-split"), btn=$("meet-pdf-btn");
+  if(_meetPdfMode){
+    // Toggle back to live discussion view
+    pdfView.style.display="none"; split.style.display="grid";
+    btn.textContent="PDF"; _meetPdfMode=false; $("meet-pdf-status").textContent=""; return;
+  }
+  btn.disabled=true; $("meet-pdf-status").textContent="rendering…";
   try{
-    const r=await fetch(
-      `/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/push-round`,
-      {method:"POST",headers:{"content-type":"application/json"},body:"{}"}
-    );
+    const r=await fetch(`/api/meet-pdf/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}`);
     const d=await r.json();
-    _meetPushJobId=d.job_id;
-    status.textContent="Running round…";
-    _meetStartPushPoller();
-  }catch(e){ btn.disabled=false; status.textContent="Error: "+String(e); }
-}
+    if(d.ok&&d.pdf_url){
+      pdfView.innerHTML=`<iframe src="${d.pdf_url}" style="width:100%;height:100%;border:0;background:#fff"></iframe>`;
+      split.style.display="none"; pdfView.style.display="block";
+      btn.textContent="Discussion"; _meetPdfMode=true; $("meet-pdf-status").textContent="";
+    }else{
+      $("meet-pdf-status").textContent=(d.log||"render failed").slice(0,60);
+      setTimeout(()=>$("meet-pdf-status").textContent="",5000);
+    }
+  }catch(e){
+    $("meet-pdf-status").textContent="error";
+    setTimeout(()=>$("meet-pdf-status").textContent="",4000);
+  }finally{ btn.disabled=false; }
+};
 
-function _meetStartPushPoller(){
-  if(_meetPushPoller) clearInterval(_meetPushPoller);
-  _meetPushPoller=setInterval(async()=>{
-    if(!_meetPushJobId||!meetSelectedRoom||!selected){ clearInterval(_meetPushPoller); return; }
-    try{
-      const d=await(await fetch(
-        `/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/push-status/${_meetPushJobId}`
-      )).json();
-      if(d.status==="done"){
-        clearInterval(_meetPushPoller); _meetPushPoller=null; _meetPushJobId=null;
-        $("meet-push-btn").disabled=false;
-        $("meet-push-status").textContent=`Round done (${d.turns||0} turns)`;
-        setTimeout(()=>{ $("meet-push-status").textContent=""; },4000);
-        await refreshMeetRoom();
-        await loadMeetRooms(selected);
-      } else if(d.status==="error"){
-        clearInterval(_meetPushPoller); _meetPushPoller=null; _meetPushJobId=null;
-        $("meet-push-btn").disabled=false;
-        $("meet-push-status").textContent="Error: "+(d.error||"unknown");
-      } else {
-        // still running — also refresh to show any messages posted so far
-        await refreshMeetRoom();
-      }
-    }catch(_){}
-  }, 4000);
-}
-
-$("meet-push-btn").onclick=meetPushRound;
-
-$("meet-synth-btn").onclick=runMeetSynthesize;
-
-// Helper: open meet room by id (used by Issue → Meet button)
+// Navigate to a specific meeting room (used from push-forward overview links)
 async function loadMeetRoom(qid, roomId){
   await loadMeetRooms(qid);
   try{
@@ -5303,21 +5305,6 @@ async function loadMeetRoom(qid, roomId){
     const m=items.find(i=>(i.textContent||"").includes(room.topic||roomId));
     if(m){ document.querySelectorAll("#meet-room-list .qitem").forEach(e=>e.classList.remove("active")); m.classList.add("active"); }
   }catch(_){}
-}
-
-// Save meeting notes back to issue
-async function meetSaveToIssue(issueId, ds){
-  if(!meetSelectedRoom||!selected) return;
-  const targetIssue=issueId||(issSelectedId||null);
-  if(!targetIssue){ $("meet-agent-status").textContent="No issue to link"; return; }
-  $("meet-agent-status").textContent="saving…";
-  try{
-    const r=await fetch(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/save-to-issue?dataset=${encodeURIComponent(ds||"first_proof_1")}`,{
-      method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({issue_id:targetIssue})
-    });
-    $("meet-agent-status").textContent=r.ok?"Notes saved ✓":"error";
-    setTimeout(()=>{ $("meet-agent-status").textContent=""; },3000);
-  }catch(_){ $("meet-agent-status").textContent="error"; }
 }
 
 // ─── Issue action button handlers (Discuss, Gen Doc, Meet, Note, Link) ──────
@@ -5368,44 +5355,6 @@ $("iss-link-ok").onclick=async()=>{
   };
 })();
 
-// Discuss button: multi-agent discussion round via SSE
-let issDiscussEs=null;
-$("iss-discuss-btn").onclick=async()=>{
-  if(!selected||!issSelectedId) return;
-  if(issDiscussEs){ issDiscussEs.close(); issDiscussEs=null; }
-  $("iss-discuss-btn").disabled=true; $("iss-status-msg").textContent="discussing…";
-  const ds=selectedDataset||"first_proof_1";
-  issDiscussEs=new EventSource(`/api/issues/${selected}/${issSelectedId}/discuss?dataset=${encodeURIComponent(ds)}&n_turns=3`);
-  issDiscussEs.onmessage=async(e)=>{
-    try{
-      const ev=JSON.parse(e.data);
-      if(ev.type==="done"||ev.type==="error"){
-        issDiscussEs.close(); issDiscussEs=null;
-        $("iss-discuss-btn").disabled=false;
-        $("iss-status-msg").textContent=ev.type==="done"?"done ✓":"error";
-        setTimeout(()=>$("iss-status-msg").textContent="",3000);
-        const r=await fetch(`/api/issues/${selected}/${issSelectedId}?dataset=${encodeURIComponent(ds)}`);
-        if(r.ok) renderIssueThread(await r.json());
-      }
-    }catch(_){}
-  };
-  issDiscussEs.onerror=()=>{ if(issDiscussEs){issDiscussEs.close();issDiscussEs=null;} $("iss-discuss-btn").disabled=false; $("iss-status-msg").textContent=""; };
-};
-
-// Gen Doc button: synthesize issue discussion into a document
-$("iss-gendoc-btn").onclick=async()=>{
-  if(!selected||!issSelectedId) return;
-  $("iss-gendoc-btn").disabled=true; $("iss-status-msg").textContent="generating…";
-  const ds=selectedDataset||"first_proof_1";
-  try{
-    const r=await fetch(`/api/issues/${selected}/${issSelectedId}/generate-doc?dataset=${encodeURIComponent(ds)}`,{method:"POST"});
-    const d=await r.json();
-    $("iss-status-msg").textContent=d.ok?"doc ready ✓":"error";
-    setTimeout(()=>$("iss-status-msg").textContent="",3000);
-    if(d.issue) renderIssueThread(d.issue);
-  }catch(_){ $("iss-status-msg").textContent="error"; }
-  finally{ $("iss-gendoc-btn").disabled=false; }
-};
 
 // PDF button: compile and display issue thread as PDF
 let _issPdfMode = false;
@@ -5421,41 +5370,6 @@ $("iss-pdf-btn").onclick=async()=>{
   await _autoLoadIssuePdf(issSelectedId);
 };
 
-// Meet button: create meeting room linked to this issue
-$("iss-meet-btn").onclick=async()=>{
-  if(!selected||!issSelectedId) return;
-  $("iss-meet-btn").disabled=true;
-  const ds=selectedDataset||"first_proof_1";
-  try{
-    const r=await fetch(`/api/meets/${selected}/from-issue/${issSelectedId}?dataset=${encodeURIComponent(ds)}`,{
-      method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({})
-    });
-    const d=await r.json();
-    if(d.issue) renderIssueThread(d.issue);
-    setTab("meet");
-    if(d.room) setTimeout(()=>loadMeetRoom(selected, d.room.id), 300);
-  }catch(_){ $("iss-status-msg").textContent="error"; }
-  finally{ $("iss-meet-btn").disabled=false; }
-};
-
-// Post human message
-$("meet-post-btn").onclick=async()=>{
-  if(!meetSelectedRoom||!selected) return;
-  const body=$("meet-reply").value.trim(); if(!body) return;
-  $("meet-post-btn").disabled=true; $("meet-post-status").textContent="posting…";
-  await fetch(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}/message`,{
-    method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({author:"human",body}),
-  });
-  $("meet-reply").value=""; $("meet-post-btn").disabled=false; $("meet-post-status").textContent="";
-  await refreshMeetRoom();
-};
-
-$("meet-agent-stop").onclick=()=>{ if(meetAgentEs){meetAgentEs.close();meetAgentEs=null;} $("meet-agent-bar").style.display="none"; _meetAutoQueue=[]; };
-$("meet-agent-toggle-log").onclick=()=>{
-  const w=$("meet-agent-log-wrap"), show=w.style.display!=="block";
-  w.style.display=show?"block":"none";
-  $("meet-agent-toggle-log").textContent=show?"Hide log":"Show log";
-};
 
 // ---- Insights tab ----
 function _insShowPanel(level){
@@ -5595,57 +5509,54 @@ async function regenInsightQuestion(){
   }
 }
 
-// New meeting modal
-function meetRenderParticipantCards(){
-  const grid=$("meet-new-parts"); grid.innerHTML="";
-  const mathematicians=Object.entries(MEET_MATHEMATICIAN_PERSONAS);
-  if(mathematicians.length){
-    for(const [id,p] of mathematicians){
-      const card=el("label");
-      card.style.cssText="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .12s";
-      const cb=el("input"); cb.type="checkbox"; cb.value=id; cb.checked=true;
-      cb.style.cssText="margin-top:3px;flex-shrink:0";
-      cb.onchange=()=>{ card.style.borderColor=cb.checked?p.color:"var(--border)"; };
-      card.style.borderColor=p.color;
-      card.innerHTML="";
-      const avatar=el("span"); avatar.style.cssText=`width:28px;height:28px;border-radius:50%;background:${p.color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0`;
-      avatar.textContent=p.icon||"👤";
-      const info=el("div"); info.style.cssText="min-width:0;flex:1";
-      info.innerHTML=`<div style="font-size:12px;font-weight:700;color:${p.color}">${esc(p.display)}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:1px">${esc(p.field||"")}</div>
-        <div style="font-size:10px;color:var(--muted);opacity:.7">${esc(p.institution||"")}</div>`;
-      card.appendChild(cb); card.appendChild(avatar); card.appendChild(info);
-      grid.appendChild(card);
-    }
-  } else {
-    // Fallback: generic agents
-    const defaults=[
-      {id:"coordinator",icon:"🎯",display:"Coordinator",color:"#f78166",field:"Facilitator"},
-      {id:"solver-agent",icon:"🔧",display:"Solver",color:"#3fb950",field:"Proof strategist"},
-      {id:"critic-agent",icon:"🔍",display:"Critic",color:"#ffa657",field:"Devil's advocate"},
-      {id:"verifier-agent",icon:"✓",display:"Verifier",color:"#d2a8ff",field:"Correctness checker"},
-    ];
-    for(const p of defaults){
-      const card=el("label");
-      card.style.cssText=`display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel2);border:1px solid ${p.color};border-radius:8px;cursor:pointer`;
-      const cb=el("input"); cb.type="checkbox"; cb.value=p.id; cb.checked=true;
-      const avatar=el("span"); avatar.style.cssText=`width:22px;height:22px;border-radius:50%;background:${p.color};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0`;
-      avatar.textContent=p.icon;
-      const info=el("div");
-      info.innerHTML=`<div style="font-size:12px;font-weight:700;color:${p.color}">${esc(p.display)}</div><div style="font-size:10px;color:var(--muted)">${esc(p.field)}</div>`;
-      card.appendChild(cb); card.appendChild(avatar); card.appendChild(info);
-      grid.appendChild(card);
-    }
+// ── Design tab (pdf.js canvas viewer, same as Author Solution) ─────────────────
+let dzLoaded=false, dzDoc=null, dzScale=1.5;
+function dzGetCurrentPage(){
+  const wrap=$("dz-canvas-wrap"); if(!wrap) return 1;
+  const pages=wrap.querySelectorAll(".pdf-page-wrap");
+  const top=wrap.scrollTop;
+  for(let i=0;i<pages.length;i++){
+    if(pages[i].offsetTop+pages[i].offsetHeight > top+60) return i+1;
   }
+  return pages.length||1;
 }
-
-$("meet-new-btn").onclick=async()=>{
-  $("meet-modal").style.display="flex";
-  $("meet-new-topic").value=""; $("meet-new-goal").value="";
-  $("meet-modal-status").textContent="";
-  await loadMeetPersonas(selected);
-  meetRenderParticipantCards();
+function dzScrollToPage(n){
+  const wrap=$("dz-canvas-wrap"); if(!wrap) return;
+  const page=wrap.querySelector(`.pdf-page-wrap[data-page="${n}"]`);
+  if(page) wrap.scrollTo({top:page.offsetTop-12,behavior:"smooth"});
+  $("dz-pageinput").value=n;
+}
+async function loadDesignPdf(){
+  const wrap=$("dz-canvas-wrap");
+  if(!wrap) return;
+  wrap.onscroll=null;
+  await pdfLoad("/api/design/pdf?"+Date.now(), wrap, d=>{
+    dzDoc=d;
+    $("dz-pagetotal").textContent=`/ ${d.numPages}`;
+    $("dz-pageinput").max=d.numPages; $("dz-pageinput").value=1;
+  }, dzScale);
+  wrap.onscroll=()=>{ if(dzDoc) $("dz-pageinput").value=dzGetCurrentPage(); };
+  dzLoaded=true;
+}
+$("dz-zin").onclick=async()=>{dzScale=Math.min(dzScale+0.25,4);$("dz-zoom").textContent=Math.round(dzScale*100)+"%";if(dzDoc)await pdfRenderAll(dzDoc,dzScale,$("dz-canvas-wrap"));};
+$("dz-zout").onclick=async()=>{dzScale=Math.max(dzScale-0.25,0.5);$("dz-zoom").textContent=Math.round(dzScale*100)+"%";if(dzDoc)await pdfRenderAll(dzDoc,dzScale,$("dz-canvas-wrap"));};
+$("dz-zoom").textContent=Math.round(dzScale*100)+"%";
+$("dz-prev").onclick=()=>{ const c=dzGetCurrentPage(); if(c>1) dzScrollToPage(c-1); };
+$("dz-next").onclick=()=>{ const c=dzGetCurrentPage(); if(dzDoc&&c<dzDoc.numPages) dzScrollToPage(c+1); };
+$("dz-pageinput").addEventListener("change",function(){
+  const n=Math.max(1,Math.min(parseInt(this.value)||1,dzDoc?dzDoc.numPages:1));
+  this.value=n; dzScrollToPage(n);
+});
+$("dz-fitw").onclick=async()=>{
+  if(!dzDoc)return;
+  const wrap=$("dz-canvas-wrap");
+  const page=await dzDoc.getPage(1);
+  const nat=page.getViewport({scale:1});
+  dzScale=Math.max(0.5,(wrap.clientWidth-48)/nat.width);
+  $("dz-zoom").textContent=Math.round(dzScale*100)+"%";
+  await pdfRenderAll(dzDoc,dzScale,wrap);
 };
+
 // ── Export tab ────────────────────────────────────────────────────────────────
 let _expBundle = "";
 
@@ -5712,38 +5623,6 @@ $("exp-dl-btn").onclick = () => {
   URL.revokeObjectURL(a.href);
 };
 
-$("meet-modal-cancel").onclick=()=>$("meet-modal").style.display="none";
-$("meet-modal-ok").onclick=async()=>{
-  if(!selected) return;
-  const topic=$("meet-new-topic").value.trim(); if(!topic) return;
-  const goal=$("meet-new-goal").value.trim();
-  const parts=[...$("meet-new-parts").querySelectorAll("input[type=checkbox]:checked")].map(c=>c.value);
-  if(!parts.length){ $("meet-modal-status").textContent="Select at least one participant."; return; }
-  $("meet-modal-ok").disabled=true; $("meet-modal-status").textContent="Creating…";
-  try{
-    const room=await (await fetch(`/api/meets/${encodeURIComponent(selected)}`,{
-      method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({topic,goal,participants:parts}),
-    })).json();
-    $("meet-modal").style.display="none";
-    await loadMeetRooms(selected);
-    openMeetRoom(room);
-    // Auto-post opening move for each mathematician
-    for(const pid of parts){
-      const mp=MEET_MATHEMATICIAN_PERSONAS[pid];
-      if(mp?.opening_move){
-        await fetch(`/api/meets/${encodeURIComponent(selected)}/${encodeURIComponent(room.id)}/message`,{
-          method:"POST",headers:{"content-type":"application/json"},
-          body:JSON.stringify({author:pid, body:`*(Joining the meeting)* — ${mp.opening_move}`})
-        }).catch(()=>{});
-      }
-    }
-    await refreshMeetRoom();
-    const items=[...$("meet-room-list").querySelectorAll(".qitem")];
-    const last=items[items.length-1]; if(last)last.classList.add("active");
-  }catch(e){ $("meet-modal-status").textContent=String(e); }
-  finally{ $("meet-modal-ok").disabled=false; }
-};
 </script>
 </body>
 </html>

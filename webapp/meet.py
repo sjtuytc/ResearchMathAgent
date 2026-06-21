@@ -515,6 +515,18 @@ def _save(repo_root: Path, problem_id: str, room: dict) -> None:
     path.write_text(json.dumps(room, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def delete_room(repo_root: Path, problem_id: str, room_id: str) -> bool:
+    """Delete a meeting room JSON. Returns True if a file was removed."""
+    path = _meets_dir(repo_root, problem_id) / f"{room_id}.json"
+    if path.is_file():
+        try:
+            path.unlink()
+            return True
+        except OSError:
+            return False
+    return False
+
+
 def _short_id(problem_id: str, existing: list[dict]) -> str:
     nums = []
     for r in existing:

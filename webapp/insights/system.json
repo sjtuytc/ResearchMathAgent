@@ -1,5 +1,5 @@
 {
-  "summary": "RMAC uses a four-stage pipeline (issue discovery → resolution → collaborative discussion → solvability evaluation) with a single model (claude-opus-4-8) and a daily push-forward automation. The system has strong issue-tracking discipline and meeting infrastructure, but lacks model diversity, agent observability, and adaptive scheduling. Several systemic design gaps limit throughput and make failure modes invisible to engineers.",
+  "summary": "External verification (Jun 21) confirmed 100% answer accuracy across all 10 benchmark problems. 2 proofs are fully correct (P4 Finite Free Stam, P10 CG/RKHS), 4 have proof gaps, and 4 have critical errors (theorems invoked outside valid hypotheses; variable confusion; equivariant vs rational class conflation). The best proof (P4) was further improved: BGLS Step 2 corrected from incorrect exterior-power claim to the correct variational sup-representation argument (Ky Fan generalization).",
   "problems": [
     "Single-model dependency: all agents (critic, solver, meeting personas, evaluator) use claude-opus-4-8 exclusively — one quota exhaustion event halts the entire pipeline",
     "No fallback or graceful degradation when Vertex AI quota is exhausted; agents silently return empty results rather than queuing or alerting",
@@ -16,6 +16,26 @@
     "The SSE streaming frontend gives real-time visibility into agent output, reducing the black-box feeling of long-running AI tasks"
   ],
   "suggested_todos": [
+    {
+      "title": "Require one sentence per cited theorem explaining why hypotheses are satisfied",
+      "priority": "medium"
+    },
+    {
+      "title": "Re-solve P1,P2,P7 focusing on correct theorem applicability",
+      "priority": "high"
+    },
+    {
+      "title": "Add variable-tracking pass to catch renaming errors across multi-step computations",
+      "priority": "high"
+    },
+    {
+      "title": "Flag sketch/idea steps as open issues requiring explicit proof",
+      "priority": "high"
+    },
+    {
+      "title": "Add theorem-hypothesis audit: check cited theorems apply to exact objects in proof",
+      "priority": "high"
+    },
     {
       "title": "Add a secondary model fallback (e.g. claude-sonnet or haiku) for insight and solvability eval when Opus quota is exhausted",
       "priority": "high"
@@ -52,8 +72,21 @@
     "The daily automation writes state to push_forward_state.json but does not write a per-run transcript, making it impossible to audit what the agent actually did on a given day",
     "Meeting rooms are created unconditionally every push-forward run even if the previous round's discussion was not read or acted upon — accumulating rooms without feedback loop"
   ],
-  "generated_by": "document-manager",
-  "generated_at": "2026-06-19T07:15:00.000000+00:00",
+  "generated_by": "verifier-agent (external verification report jun-21)",
+  "generated_at": "2026-06-21T18:18:38.020405+00:00",
   "level": "system",
-  "id": "system"
+  "id": "system",
+  "verification_report": {
+    "date": "2026-06-21",
+    "verdict_summary": "2 correct, 4 gaps, 4 errors; 10/10 answers correct",
+    "best_proof": "Problem 4 — The Finite Free Stam Inequality (0 critical, 0 gaps, 5 minor)",
+    "fix_applied": "BGLS Step 2: exterior-power claim replaced with variational sup-representation",
+    "critical_patterns": [
+      "Theorem misapplication (scope errors)",
+      "Variable and indexing confusion",
+      "Proof given at 'Idea' level — load-bearing step unproved",
+      "Incorrect attribution to proof method",
+      "Missing normalizations destroying algebraic properties"
+    ]
+  }
 }

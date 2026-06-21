@@ -1,0 +1,693 @@
+\documentclass[11pt]{article}
+
+\usepackage[preprint]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{url}
+
+% Reduce overfull boxes in the narrow two-column ACL layout.
+\emergencystretch=3em
+\setlength{\tabcolsep}{4pt}
+
+% Breakable inline monospace path/URL: raw text (no escaping), breaks at
+% separators with no inserted hyphen. Usage: \pa{webapp/issues/<id>.json}
+\urlstyle{tt}
+\def\UrlBreaks{\do\/\do\.\do\_\do\-\do\?\do\=\do\&\do\:\do\<\do\>\do\;\do\,\do\{\do\}}
+\newcommand{\pa}[1]{\path{#1}}
+
+\definecolor{codebg}{HTML}{f8f8f8}
+\definecolor{codeframe}{HTML}{cccccc}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{codeframe}{$\hookrightarrow$}\space},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  xleftmargin=4pt,
+  xrightmargin=4pt,
+  aboveskip=6pt,
+  belowskip=4pt,
+}
+
+\title{Supplementary Material: ResearchMathAgent\\
+A Self-Evolving Multi-Agent System for Mathematical Proof Research}
+
+\author{Anonymous}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We describe the full system architecture of \textbf{ResearchMathAgent (RMA)}, a
+self-evolving multi-agent platform for automated mathematical proof research.
+RMA orchestrates a daily \emph{push-forward} cycle in which a \emph{critic agent}
+discovers proof gaps, \emph{solver agents} attempt repairs, \emph{verifier agents}
+check correctness, and a structured expert-persona meeting synthesises an action plan.
+All state, issue history, and research documents are persisted across cycles,
+enabling compounding improvement over time.
+This supplementary provides implementation details omitted from the main paper for space reasons.
+\end{abstract}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Design Overview}
+\label{sec:overview}
+
+RMA is organised as a stack of seven design levels, each governed by a single
+guiding insight. The central principle across all levels is
+\emph{compounding state}: every cycle leaves behind durable, append-only
+artifacts (issues, JSONL attempt logs, living documents) that become the input
+context for the next cycle, so the system improves monotonically rather than
+restarting from scratch. Table~\ref{tab:overview} summarises the levels and
+their key insights; the appendices that follow expand each one in detail.
+
+\begin{table}[h]
+\centering
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{Level} & \textbf{Key design insight} \\
+\midrule
+System (App.~\ref{app:arch})
+  & One FastAPI orchestrator; datasets fully isolated so issues, documents,
+    and proofs never cross-contaminate. \\
+Pipeline (App.~\ref{app:pipeline})
+  & A daily \emph{push-forward} discovers gaps, repairs them, then convenes an
+    expert meeting --- idempotent per UTC day. \\
+Agents (App.~\ref{app:agents})
+  & Four narrow roles (critic, solver, verifier, discussant); the verifier is
+    biased toward rejection to avoid approving wrong proofs. \\
+Issues (App.~\ref{app:issues})
+  & Agents see \emph{only} open / in-progress issues; resolved issues are hidden
+    to bound context growth. \\
+Meetings (App.~\ref{app:meet})
+  & Field-matched personas debate over $n$ rounds, then a coordinator
+    synthesises one concrete action plan. \\
+Memory (App.~\ref{app:docs})
+  & A single append-only JSONL is the source of truth; all living documents are
+    regenerable views over it. \\
+Context (App.~\ref{app:cache})
+  & A three-block prompt puts stable content first so the prompt cache absorbs
+    60--70\% of input token cost. \\
+\bottomrule
+\end{tabularx}
+\caption{The seven design levels of RMA and their guiding insights.}
+\label{tab:overview}
+\end{table}
+
+\noindent
+Three cross-cutting invariants hold at every level:
+\begin{enumerate}[nosep,leftmargin=1.4em]
+  \item \textbf{Append-only truth.} Raw history
+    (\texttt{strategy\_memory.jsonl}, issue threads) is never mutated; all
+    human- and agent-facing documents are derived, regenerable views.
+  \item \textbf{Stable-prefix-first context.} Everything fed to the model is
+    ordered most-stable to least-stable so caching is maximised and
+    re-computation minimised.
+  \item \textbf{Bounded growth.} Deduplication, open-only issue filtering, and
+    fixed retention windows keep context size sub-linear in cycle count.
+\end{enumerate}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\appendix
+
+\section{System Architecture}
+\label{app:arch}
+
+\subsection{High-Level Overview}
+
+RMA is a client--server web application. The \textbf{backend} is a FastAPI server
+(\texttt{webapp/server.py}) that exposes a REST/SSE API and coordinates all agent activity.
+The \textbf{frontend} is a single-page application (\texttt{webapp/static/index.html})
+providing tabs for Issues, Documents, Push-Forward, Expert Meetings, Export, and System Overview.
+Agent execution occurs on Google Cloud Vertex AI via AnthropicVertex, with the main process
+acting as an async orchestrator.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{Component} & \textbf{Location} \\
+\midrule
+API server              & \pa{webapp/server.py} \\
+Push-forward engine     & \pa{webapp/push_forward.py} \\
+Issue agents            & \pa{webapp/issue_agents.py} \\
+Issue tracker           & \pa{webapp/issues.py} \\
+Document system         & \pa{webapp/rich_documents.py} \\
+Meeting system          & \pa{webapp/meet.py} \\
+Dataset store           & \pa{webapp/dataset_store.py} \\
+Agent runner            & \pa{webapp/agent.py} \\
+\bottomrule
+\end{tabularx}
+\caption{RMA source module layout.}
+\end{table}
+
+\subsection{Dataset Support}
+
+RMA is dataset-agnostic at runtime. Two benchmark datasets are currently configured:
+\begin{itemize}[nosep]
+  \item \textbf{first\_proof\_1} --- 10 problems (q1--q10) spanning stochastic analysis,
+    representation theory, algebraic combinatorics, spectral graph theory,
+    symplectic geometry, and numerical linear algebra.
+  \item \textbf{first\_proof\_2} --- 10 additional problems (\texttt{prob-01}
+    through \texttt{prob-10}) from a second batch of the First Proof benchmark.
+\end{itemize}
+Each dataset is fully isolated: issues, documents, and working proofs are stored
+under separate directory trees and never cross-contaminate.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Push-Forward Pipeline}
+\label{app:pipeline}
+
+The push-forward is the core self-improvement loop, executed once per day
+(or on demand with \texttt{force=True}). The procedure is shown in
+Listing~\ref{lst:pf}.
+
+\begin{lstlisting}[caption={Push-forward pseudocode.},label={lst:pf}]
+OPEN = "open,in_progress"
+
+for pid in active_problems:
+    # 1. Snapshot open issues
+    before = list_issues(pid, status=OPEN)
+
+    # 2. Critic discovers new gaps
+    run_discovery_agent(pid)
+
+    # 3. Solver repairs up to N issues
+    for iss in list_issues(pid, status=OPEN)[:N]:
+        run_resolver_agent(pid, iss.id)
+
+    # 4. Measure delta
+    found    = len(after_all) - len(before_all)
+    resolved = len(before) - len(after_open)
+
+    # 5. Expert meeting + synthesis
+    room = create_room(pid,
+                personas=get_personas(pid))
+    run_round_offline(room, n_rounds=3)
+    run_synthesis(room)   # -> action plan
+    save_meeting_notes(pid, room.id)
+\end{lstlisting}
+
+\subsection{Tab-Only Issue Policy}
+
+A key design invariant is that \emph{agents only ever see open or in-progress issues}.
+Resolved issues are never included in any agent's context.
+This is enforced at two levels:
+\begin{enumerate}[nosep]
+  \item \textbf{API filter}: \texttt{GET} \pa{/api/issues/{pid}?status=open,in_progress}
+    filters at the storage layer via \texttt{list\_issues(..., status=\ldots)}
+    in \texttt{issues.py}.
+  \item \textbf{Agent system prompts}: All three agent roles (critic, solver, verifier)
+    carry an explicit instruction to query only with \pa{?status=open,in_progress}
+    and to never act on resolved issues.
+\end{enumerate}
+This prevents agents from reopening closed issues or wasting context tokens on
+already-solved problems.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Agent Roles}
+\label{app:agents}
+
+\subsection{Critic Agent (Discovery)}
+
+The critic agent reads \texttt{problem.tex} and the current working proof
+(\texttt{working\_solution.tex}), then:
+(1)~writes a structured mathematical analysis to \texttt{analysis.md} covering
+background, proof structure, gap analysis, difficulty assessment, and suggested approaches;
+(2)~creates one issue per genuine mathematical gap via \texttt{POST /api/issues/\{pid\}};
+(3)~posts its full analysis as a comment on the primary issue thread;
+(4)~links the analysis document to the issue tracker for UI display.
+The agent receives up to 50 tool-use turns and 1,200\,s of wall-clock time.
+Prior strategy documents (\texttt{strategies.md}, \texttt{prefix.md}) and
+question-level background files are seeded into its workspace
+to avoid rediscovering known gaps.
+
+\subsection{Solver Agent (Resolution)}
+
+Each solver agent is assigned a single open issue and works to repair the
+corresponding gap in \texttt{solution.tex}.
+It reads the full issue thread for prior attempts, proposes and implements a
+mathematical fix, posts a detailed comment with its reasoning, and transitions
+the issue to \texttt{in\_progress} or \texttt{resolved} depending on success.
+On success, the improved proof is saved as the new working proof and a
+history record is written by \texttt{proof\_history.py} for audit purposes.
+
+\subsection{Verifier Agent (Checking)}
+
+The verifier reads an issue thread and the current working proof, then produces a
+\textbf{VERDICT: APPROVED} or \textbf{VERDICT: REJECTED} comment.
+Its system prompt instructs it to err on the side of rejection --- a false positive
+(approving a wrong proof) is considered worse than a false negative.
+
+\subsection{Discussion Agent (Peer Review)}
+
+A lightweight discussion agent runs round-robin debate on a specific issue thread:
+critic, solver, verifier, and strategist personas each contribute one response per
+round, building on the previous participants' comments.
+This is distinct from the full expert meeting and can be triggered manually
+from the Issues tab UI.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Issue Tracking System}
+\label{app:issues}
+
+\subsection{Storage Layout}
+
+Issues are stored as JSON files under
+\pa{webapp/issues/<dataset>/<problem_id>/<issue_id>.json}.
+Each issue carries: a unique ID, problem ID, title, status
+(\texttt{open} $|$ \texttt{in\_progress} $|$ \texttt{resolved}),
+type and priority labels, creator identity, and a threaded comment list.
+
+\subsection{Issue Taxonomy}
+
+\textbf{Type labels} (mutually exclusive):
+\texttt{proof-gap}, \texttt{logical-error}, \texttt{hallucination},
+\texttt{unclear-def}, \texttt{missing-case}, \texttt{wrong-bound},
+\texttt{scope-issue}, \texttt{strategy}, \texttt{external-ref}, \texttt{notation}.
+
+\textbf{Priority labels}: P0 (Critical) through P3 (Low).
+
+\subsection{Caching}
+
+A 5-second in-process TTL cache in \texttt{list\_issues()} avoids repeated
+filesystem reads during high-frequency API polling (the UI polls every 30\,s).
+The cache is invalidated on any write operation so agents always see fresh state.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Expert Meeting System}
+\label{app:meet}
+
+\subsection{Persona Assignment}
+
+Each mathematical problem is pre-assigned field-appropriate mathematician personas
+via \texttt{get\_personas\_for\_problem()}. For example, problem q4
+(finite free probability) receives personas representing a free probabilist,
+a random matrix theorist, and a combinatorialist.
+
+\subsection{Meeting Flow}
+
+Each meeting proceeds in four phases:
+\begin{enumerate}[nosep]
+  \item \textbf{Room creation}: a coordinator opens a room with a topic
+    and a goal (``agree on highest-priority remaining gaps and produce a concrete
+    action plan'').
+  \item \textbf{Multi-round discussion} ($n{=}3$ by default): each persona
+    generates one response per round, reading the full transcript to date.
+  \item \textbf{Synthesis}: the coordinator reads the full transcript and
+    produces a structured action plan with a summary and numbered steps.
+  \item \textbf{Documentation}: the transcript and action plan are written to
+    \pa{documents/questions/{pid}/meets/{room_id}-notes.md}.
+\end{enumerate}
+The action plan summary is persisted in the push-forward run record and surfaced
+in the System Overview \emph{Meeting Insights} panel.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Document and Strategy Memory}
+\label{app:docs}
+
+\subsection{Per-Problem Documents}
+
+Each problem maintains four living documents under
+\texttt{documents/questions/\{pid\}/}:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{File} & \textbf{Content} \\
+\midrule
+\texttt{overview.md}  & Static reference: problem statement, background,
+                         key theorems, why it is hard. \\
+\texttt{timeline.md}  & Append-only chronological log of every proof attempt. \\
+\texttt{progress.md}  & Live status: established facts, open gaps, next steps. \\
+\texttt{strategies.md}& Strategy space: tried/untried approaches, agent insights. \\
+\texttt{prefix.md}    & Curated background: theorems, key papers (optional). \\
+\bottomrule
+\end{tabularx}
+\caption{Per-problem living documents.}
+\end{table}
+
+Critic agent analyses are automatically appended to \texttt{strategies.md}
+and briefly noted in \texttt{progress.md} after each discovery run.
+Meeting notes are stored in the \texttt{meets/} subdirectory.
+
+\subsection{System-Level Documents}
+
+Design documents not tied to a specific problem reside in
+\texttt{documents/design/}.
+A companion paper survey (\texttt{self-evolving-agents-survey.md})
+cataloguing related works lives at the repository root.
+This supplementary is the primary system design reference
+and is rendered in the web UI's Design tab.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Scheduling and Automation}
+
+\subsection{Daily Push-Forward}
+
+The push-forward is gated by a date stamp in
+\texttt{webapp/push\_forward\_state.json}: if \texttt{last\_run\_date}
+matches today's UTC date the run is skipped (unless \texttt{force=True}),
+ensuring idempotency even if the trigger fires multiple times.
+Automated daily execution uses a systemd user timer
+(crontab is unavailable for the target user):
+
+\begin{lstlisting}[caption={Systemd timer unit for daily 09:00 push-forward.}]
+# ~/.config/systemd/user/rma-push-forward.timer
+[Timer]
+OnCalendar=*-*-* 09:00:00
+Persistent=true   # fires on next boot if machine was off
+\end{lstlisting}
+
+\subsection{Run Record Retention}
+
+The last 30 push-forward run records are retained in
+\texttt{push\_forward\_state.json}.
+Each record stores: date, job ID, problems list, newly-discovered issue titles,
+resolved issue titles, meeting room ID, action plan summary, and error flags.
+Older records are pruned automatically to bound file growth.
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Prompt Caching and Context Management}
+\label{app:cache}
+
+\subsection{Token Budgets}
+
+Each solver agent call is bounded by fixed token limits:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}lrX@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Purpose} \\
+\midrule
+\texttt{MAX\_TOKENS}      & 32{,}000 & Maximum output tokens per call \\
+\texttt{THINKING\_BUDGET} & 16{,}000 & Extended thinking token budget \\
+\texttt{MAX\_ITERATIONS}  & 50       & Tool-call iterations per run \\
+Context window            & 200{,}000 & Claude Opus 4 input limit \\
+\bottomrule
+\end{tabularx}
+\caption{Token budgets for the RMA solver agent.}
+\end{table}
+
+\subsection{Three-Block Prompt Structure}
+
+Each agent run begins with a single user message partitioned into three ordered
+content blocks, chosen to maximise prompt-cache hit rate:
+
+\begin{lstlisting}[caption={Three-block first user message (agent.py).}]
+Block 0  [cache_control: ephemeral]
+  <problem id="q3"> ... problem statement ... </problem>
+
+Block 1  [cache_control: ephemeral]
+  <research_context problem="q3">
+    ## Research Overview      (overview.tex)
+    ## Known Strategies       (strategies.tex)
+    ## Proof Progress         (progress.tex)
+    ## Work Timeline          (timeline.tex)
+    ## Open Issues            (issues/*.json)
+  </research_context>
+
+Block 2  [no cache_control]
+  "Solve benchmark problem `q3` ..."
+\end{lstlisting}
+
+\noindent
+Block~0 holds the problem statement, which is fixed for the lifetime of the
+problem and serves as the \emph{primary cache anchor}: after the first call,
+this block is always a cache hit.
+Block~1 holds accumulated research context assembled by
+\texttt{build\_prefix\_context()}: it changes slowly and acts as the
+\emph{secondary cache anchor}, typically hitting on re-runs within the same day.
+Block~2 is the solve instruction; it is always placed \textbf{last} and never
+marked cacheable, since Anthropic's prompt caching requires the cached prefix
+to be a stable prefix of the full input and the trailing instruction may vary.
+
+The system prompt is also marked \texttt{cache\_control: ephemeral}:
+\begin{lstlisting}
+system = [{"type": "text",
+           "text": SYSTEM_PROMPT,
+           "cache_control": {"type": "ephemeral"}}]
+\end{lstlisting}
+This yields four potential cache read tokens per call (system + block 0 + block 1
++ inter-call message history), reducing input token cost by approximately
+60--70\% relative to passing the full context uncached on every iteration.
+
+\subsection{Research Context Assembly}
+
+\texttt{build\_prefix\_context(repo\_root, problem\_id)} assembles Block~1
+from the per-problem document tree:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+\textbf{Source file} & \textbf{Section heading in Block 1} \\
+\midrule
+\texttt{overview.tex}   & \texttt{\#\# Research Overview} \\
+\texttt{strategies.tex} & \texttt{\#\# Known Strategies and Attempts} \\
+\texttt{progress.tex}   & \texttt{\#\# Proof Progress Log} \\
+\texttt{timeline.tex}   & \texttt{\#\# Work Timeline} \\
+\texttt{issues/*.json}  & \texttt{\#\# Open Issues} \\
+\bottomrule
+\end{tabularx}
+\caption{Inputs assembled into the research context block.}
+\end{table}
+
+Only open issues (\texttt{status $\in$ \{open, in\_progress\}}) are included.
+Resolved issues are excluded to bound token growth as the problem matures.
+Each file prefers the \texttt{.tex} version over the legacy \texttt{.md} version.
+
+\subsection{Document Lifecycle}
+
+The document tree feeds forward into future agent calls and backward from
+completed agent runs:
+\begin{enumerate}[nosep]
+  \item Agent run completes $\Rightarrow$ outcome appended to
+    \texttt{strategy\_memory.jsonl} (append-only JSONL, never modified).
+  \item \texttt{update\_question\_document()} reads the full JSONL and rewrites
+    \texttt{timeline.tex}, \texttt{progress.tex}, and \texttt{strategies.tex}.
+  \item Next agent call reads these files via \texttt{build\_prefix\_context()}.
+\end{enumerate}
+Because \texttt{strategy\_memory.jsonl} is the single source of truth,
+all derived \texttt{.tex} files can be fully regenerated at any time by
+calling \texttt{seed\_all\_question\_documents()} (exposed as
+\texttt{POST} \pa{/api/docs/regenerate-all}).
+
+\subsection{Timeline Deduplication}
+
+The timeline \texttt{timeline.tex} is derived from
+\texttt{strategy\_memory.jsonl} by \texttt{\_dedup\_attempts()},
+which collapses \emph{consecutive} identical runs:
+two attempts are identical if they share the same
+strategy prefix (first 80 characters), model, outcome, and
+\texttt{issue\_count}.
+Collapsed runs emit a single row annotated with a repetition count
+$[\,N{\times}\,]$ and the date range
+$[\text{date\_start}\mathinner{..}\text{date\_end}]$.
+This prevents the timeline from growing quadratically during stuck phases
+(e.g.\ Q3 had 33 consecutive Metropolis--Hastings attempts that collapsed
+to one row).
+
+A sentinel score \texttt{issue\_count} $= -1$ indicates the run was
+aborted (agent stopped or errored) and is mapped to 99 by \texttt{\_valid\_ic()}
+so it is never mistaken for a near-complete proof (which would be
+\texttt{issue\_count} $= 0$ or $1$).
+
+\subsection{Caching Layer Summary}
+
+Five caching layers are active or planned in RMA, ordered by implementation
+priority:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Anthropic prompt cache} (implemented) --- stable prefix
+    ordered first with \texttt{cache\_control: ephemeral}; saves
+    ${\approx}60$--70\% of input token cost per call.
+  \item \textbf{In-process issue list TTL} (implemented) --- 5\,s LRU dict;
+    invalidated on any write; eliminates redundant filesystem reads during
+    high-frequency UI polling.
+  \item \textbf{Document bundle PDF cache} (implemented) --- full bundle PDF
+    pre-built at server startup and cached in \texttt{documents/pdf/bundle.pdf};
+    filtered per-question bundles compiled on demand.
+  \item \textbf{Agent result cache} (planned) --- SHA-256 keyed JSON files
+    in \texttt{webapp/agent\_cache/}, 24\,h TTL; invalidated on issue or
+    proof changes; saves the full Vertex AI agent cost on unchanged inputs.
+  \item \textbf{HTTP response cache} (planned) --- \texttt{max-age=30} on
+    document endpoints; \texttt{max-age=86400} on static assets.
+\end{enumerate}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Implementation Statistics}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}Xr@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Backend (\texttt{server.py})              & ${\approx}2{,}300$ lines \\
+Frontend (\texttt{index.html})            & ${\approx}5{,}400$ lines \\
+Issue agents (\texttt{issue\_agents.py})  & ${\approx}600$ lines \\
+Push-forward (\texttt{push\_forward.py})  & ${\approx}400$ lines \\
+REST API endpoints                        & 40+ \\
+Supported datasets                        & 2 (extendable) \\
+Problems per dataset                      & 10 \\
+Max agent turns per call                  & 50 \\
+Max wall time per agent                   & 1,200\,s \\
+Push-forward run retention                & 30 records \\
+Meeting rounds (default)                  & 3 \\
+Daily schedule                            & 09:00 UTC via systemd \\
+\bottomrule
+\end{tabularx}
+\caption{RMA implementation statistics.}
+\end{table}
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+\section{Claude Code vs.\ Claude API vs.\ Vertex AI}
+
+This section clarifies the three distinct execution channels used in RMA
+and their relationship to each other.
+
+\subsection{Billing and Authentication Separation}
+
+Although the same model name (e.g.\ \texttt{claude-opus-4-8}) appears in both
+Claude Code and the webapp's Vertex AI calls, they are \emph{completely separate
+billing channels}:
+
+\begin{itemize}[nosep]
+  \item \textbf{Claude Code subscription} --- billed to Anthropic via your
+    Max/Pro plan; traffic goes to \texttt{api.anthropic.com};
+    authenticated with your Anthropic account.
+  \item \textbf{Vertex AI Claude} --- billed to your Google Cloud account;
+    traffic goes through \pa{us-east5-aiplatform.googleapis.com};
+    authenticated via Google ADC (\texttt{gcloud auth application-default});
+    subject to Google Cloud quotas and per-token GCP pricing.
+\end{itemize}
+
+A 429 quota error on Vertex AI has zero effect on Claude Code continuing to
+function. The two channels are invoice-separated, quota-separated, and
+auth-separated even when the underlying model weights are identical.
+
+\subsection{Agentic Capability by Execution Mode}
+
+The webapp uses \emph{two different modes} of model invocation, summarised in
+Table~\ref{tab:modes}.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}l*{3}{>{\centering\arraybackslash}X}@{}}
+\toprule
+& \textbf{Claude} & \textbf{Solver} & \textbf{Push-} \\
+& \textbf{Code} & \textbf{(\texttt{agent})} & \textbf{forward} \\
+\midrule
+API            & Direct & Vertex & Vertex \\
+Tools          & Yes & Yes & \textbf{No} \\
+Multi-turn     & Yes & Yes & \textbf{No} \\
+Ext.\ thinking & Yes & Yes & \textbf{No} \\
+Streaming      & Yes & Yes & \textbf{No} \\
+\bottomrule
+\end{tabularx}
+\caption{Capability comparison across RMA execution modes.
+``Direct'' = Anthropic API; ``Vertex'' = AnthropicVertex.}
+\label{tab:modes}
+\end{table}
+
+The push-forward pipeline uses \emph{pure single-shot text completion} with no
+tools, no self-correction, and no ability to read files or verify its own output.
+It calls the most capable model in the least capable mode.
+
+\subsection{How Agentic Tool Use Actually Works}
+
+Claude Code's tools (\texttt{Read}, \texttt{Bash}, \texttt{Edit}, \texttt{Write},
+etc.) are \textbf{not part of the API itself} --- they are client-side code.
+The API is stateless by design:
+
+\begin{lstlisting}[caption={Stateless API request-response cycle.}]
+You -> [prompt + tool definitions] -> API
+                                       -> [text or tool_call]
+You execute tool locally
+You -> [result] -> API -> [next response]
+\end{lstlisting}
+
+The multi-turn loop, tool execution, and state management all live in the
+application code (\texttt{webapp/agent.py}), not in the API.
+
+\subsection{Options for Agentic Behavior}
+
+Three approaches are available for adding agentic capability to RMA components:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Build the loop in application code} --- define tools,
+    call the API, execute tool calls, feed results back, repeat.
+    This is what \texttt{agent.py} already does for the proof solver agents.
+
+  \item \textbf{Claude Code SDK} --- Anthropic's SDK for building Claude
+    Code-style agents; handles loop boilerplate while allowing custom tool
+    definitions.
+
+  \item \textbf{Extended thinking only} --- add
+    \texttt{thinking=\{"type": "enabled", "budget\_tokens": N\}} to existing
+    \texttt{vertex\_llm.complete()} calls for deeper reasoning without
+    multi-turn overhead:
+\end{enumerate}
+
+\begin{lstlisting}[caption={Enabling extended thinking on Vertex AI.}]
+msg = client.messages.create(
+    model="claude-opus-4-8",
+    max_tokens=16000,
+    thinking={"type": "enabled", "budget_tokens": 10000},
+    messages=[{"role": "user", "content": prompt}],
+)
+for block in msg.content:
+    if block.type == "thinking":
+        log("REASONING:", block.thinking)
+    elif block.type == "text":
+        log("ANSWER:", block.text)
+\end{lstlisting}
+
+\subsection{Implication for RMA Push-Forward Quality}
+
+The current push-forward cycle runs \texttt{claude-opus-4-8} with no thinking,
+no tools, and no self-correction --- analogous to hiring a world-class
+mathematician and allowing them to respond only via postcard with no scratch paper.
+Enabling extended thinking on the issue discovery and resolution agents would
+provide both higher-quality outputs and an inspectable reasoning trace to
+diagnose systematic failure modes (e.g.\ the pipeline consistently reporting
+9 issues per run regardless of proof state).
+
+\end{document}

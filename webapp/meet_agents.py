@@ -1,17 +1,17 @@
 """Agent runners for virtual meeting rooms.
 
-Each agent contributes one "turn" to the discussion.
-The coordinator has a special "synthesize" mode that produces the plan.
-Plan execution runs each step as a targeted issue agent.
+Discussion turns use direct Vertex AI completions (no tool loop) and post
+messages to the room JSON via Python. Synthesis produces a plan JSON and
+persists it the same way. This avoids the curl-in-agent-workspace problem.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import re
 import shutil
 import tempfile
-import logging
 import textwrap
 from pathlib import Path
 from typing import Iterator
@@ -23,58 +23,19 @@ from .issue_agents import _run_agent, _seed_workspace
 from .runs import RunHandle
 from .meet import PERSONAS, MATHEMATICIAN_PERSONAS, get_room, post_message, set_plan, mark_step_done, transcript_text
 
-_API_BASE = "http://localhost:8000"
-_MAX_DISCUSSION_TURNS = 4
-_MAX_SYNTH_TURNS = 8
 _MAX_EXEC_TURNS = 30
 
+# ── Knowledge file helper ─────────────────────────────────────────────────────
 
-# ── Persona system prompts ────────────────────────────────────────────────────
-
-def _persona_system(participant: str, problem_id: str) -> str:
-    # Mathematician persona takes priority
-    if participant in MATHEMATICIAN_PERSONAS:
-        mp = MATHEMATICIAN_PERSONAS[participant]
-        return (
-            f"{mp['character']}\n\n"
-            f"You are in a virtual research meeting about problem {problem_id}. "
-            f"Stay completely in character as {mp['display']}. "
-            "Speak in first person. Use your characteristic mathematical style, "
-            "reference your own past work naturally, and engage with what others said. "
-            "Be concise but substantive: 4–10 sentences or a focused list of mathematical points. "
-            "Use LaTeX notation where helpful. "
-            "You will post your response via curl at the end."
-        )
-    p = PERSONAS.get(participant, PERSONAS["coordinator"])
-    return (
-        f"You are {participant} in a virtual research meeting about math problem {problem_id}. "
-        f"Role: {p['role']} {p['style']}\n"
-        "You have NO tools (no Bash, no file access). Only write text. "
-        "Be concise and mathematical. Use LaTeX notation where helpful. "
-        "You will post your response via curl at the end."
-    )
+def _knowledge_text(repo_root: Path, participant: str) -> str:
+    """Return the content of the mathematician's knowledge file, or ''."""
+    kpath = repo_root / "webapp" / "mathematician_knowledge" / f"{participant}.md"
+    if kpath.is_file():
+        return kpath.read_text(encoding="utf-8")
+    return ""
 
 
-def _coordinator_synth_system(problem_id: str) -> str:
-    return (
-        f"You are the coordinator synthesizing an action plan for math problem {problem_id}. "
-        "You have Bash available (to call the API via curl). No other tools. "
-        "Read the discussion transcript, then produce a concrete numbered plan and post it via the API."
-    )
-
-
-def _executor_system(problem_id: str) -> str:
-    return (
-        f"You are a math solver agent executing one step of a proof plan for {problem_id}. "
-        "You have Read, Write, Edit, Bash, and Glob tools. "
-        "Your workspace has problem.tex, preamble.tex, solution.tex (current best proof), "
-        "and step.json (the step you must execute). "
-        "Use Bash(curl) to post progress to the meet room and issue tracker. "
-        "Write improvements to solution.tex. Be rigorous."
-    )
-
-
-# ── Discussion turn ───────────────────────────────────────────────────────────
+# ── Discussion turn (direct LLM, no tool loop) ───────────────────────────────
 
 def run_discussion_turn(
     repo_root: Path,
@@ -83,7 +44,12 @@ def run_discussion_turn(
     participant: str,
     handle: RunHandle | None = None,
 ) -> Iterator[AgentEvent]:
-    """Run one discussion turn for `participant` in the meeting room."""
+    """Generate one discussion contribution and post it to the room."""
+    from .vertex_llm import complete
+
+    yield AgentEvent("status", {"state": "running", "label": f"{participant} thinking…"})
+    _DISCUSS_MODEL = None  # use DEFAULT_MODEL (claude-opus-4-8), only model available on this project
+
     room = get_room(repo_root, problem_id, room_id)
     if room is None:
         yield AgentEvent("error", {"message": f"Room {room_id} not found"})
@@ -91,68 +57,93 @@ def run_discussion_turn(
         return
 
     transcript = transcript_text(room)
-    is_mathematician = participant in MATHEMATICIAN_PERSONAS
-    if is_mathematician:
-        mp = MATHEMATICIAN_PERSONAS[participant]
-        persona_desc = f"{mp['display']} — {mp['field']}, {mp['institution']}"
-        opening_hint = f"\nYour characteristic opening move: \"{mp['opening_move']}\""
+    knowledge = _knowledge_text(repo_root, participant)
+
+    # Read problem statement
+    prob_text = ""
+    prob_path = repo_root / "problems" / f"{problem_id}.tex"
+    if prob_path.is_file():
+        prob_text = prob_path.read_text(encoding="utf-8", errors="replace")[:4000]
     else:
-        persona = PERSONAS.get(participant, PERSONAS["coordinator"])
-        persona_desc = f"{participant} ({persona['role']})"
-        opening_hint = ""
+        # Try dataset store
+        try:
+            from .dataset_store import get_problem as ds_get
+            for ds in ("first_proof_2", "first_proof_1"):
+                full = ds_get(ds, problem_id)
+                if full:
+                    prob_text = (full.get("statement") or full.get("tex") or "")[:4000]
+                    break
+        except Exception:
+            pass
 
-    # Build workspace (no proof needed for discussion turns, just context)
-    base = Path(tempfile.gettempdir()) / "rma_meet_agents"
-    base.mkdir(parents=True, exist_ok=True)
-    ws = Path(tempfile.mkdtemp(prefix=f"meet_{problem_id}_", dir=base))
+    # Build system prompt
+    if participant in MATHEMATICIAN_PERSONAS:
+        mp = MATHEMATICIAN_PERSONAS[participant]
+        system = (
+            f"{mp['character']}\n\n"
+            f"You are in a virtual research meeting (room: {room_id}) about problem {problem_id}. "
+            f"Stay completely in character as {mp['display']}. "
+            "Speak in first person, reference your own past work specifically "
+            "(theorem names, paper titles, techniques), and engage critically with what others said. "
+            "Be concise but substantive: 5–12 sentences or a structured list of mathematical points. "
+            "Use LaTeX where it helps clarity. "
+            "Reply with ONLY your spoken contribution — no meta-commentary, no 'as a mathematician' framing."
+        )
+    else:
+        p = PERSONAS.get(participant, PERSONAS.get("coordinator", {}))
+        system = (
+            f"You are {participant} ({p.get('role', 'researcher')}) in a research meeting about {problem_id}. "
+            "Be concise and mathematical. Use LaTeX where helpful. "
+            "Reply with ONLY your spoken contribution."
+        )
 
-    # Write context files
-    (ws / "transcript.md").write_text(transcript, encoding="utf-8")
-    prob = repo_root / "problems" / f"{problem_id}.tex"
-    if prob.is_file():
-        shutil.copyfile(prob, ws / "problem.tex")
-    # Also look in dataset directories for non-first_proof_1 problems
-    if not prob.is_file():
-        for ds_dir in (repo_root / "data").iterdir() if (repo_root / "data").is_dir() else []:
-            candidate = ds_dir / "problems" / f"{problem_id}.md"
-            if candidate.is_file():
-                shutil.copyfile(candidate, ws / "problem.md")
-                break
-
-    prompt = textwrap.dedent(f"""
-        You are **{persona_desc}**.{opening_hint}
-
-        The meeting transcript is in transcript.md. Read it carefully.
-        Also read problem.tex (or problem.md) for the problem statement.
-
-        Add your contribution to the discussion. Be direct and mathematical.
-        Your response should:
-        - Engage with what was already said (agree, challenge, or extend)
-        - Contribute a clear mathematical point using your characteristic style and tools
-        - Be focused: 4–10 sentences or a structured list of mathematical points
-        - Reference your own relevant past work naturally where appropriate
-        - Use LaTeX where it helps clarity
-
-        After formulating your contribution, post it to the meeting room:
-
-        curl -s -X POST {_API_BASE}/api/meets/{problem_id}/{room_id}/message \\
-          -H 'Content-Type: application/json' \\
-          -d '{{"author": "{participant}", "body": "YOUR CONTRIBUTION HERE"}}'
-
-        Replace YOUR CONTRIBUTION HERE with your actual message. Escape any double quotes inside the body.
-        Then confirm the post succeeded.
-    """).strip()
-
-    yield from _run_agent(
-        repo_root, ws, prompt,
-        _persona_system(participant, problem_id),
-        handle,
-        f"meet/{room_id}/{participant}",
-        max_turns=_MAX_DISCUSSION_TURNS,
+    # Build user prompt
+    knowledge_section = (
+        f"\n\n## Your Key Works and Tools\n{knowledge}\n"
+        if knowledge else ""
+    )
+    problem_section = (
+        f"\n\n## Problem Statement\n```latex\n{prob_text}\n```"
+        if prob_text else ""
+    )
+    transcript_section = (
+        f"\n\n## Meeting Transcript So Far\n{transcript}"
+        if transcript.strip() else "\n\n*(You are the first to speak. Set the mathematical direction.)*"
     )
 
+    prompt = textwrap.dedent(f"""
+        You are attending a research meeting on problem **{problem_id}** (room: {room_id}).
+        {knowledge_section}{problem_section}{transcript_section}
 
-# ── Plan synthesis ────────────────────────────────────────────────────────────
+        Now contribute your perspective. Engage specifically with what was said, or if you are first,
+        open with your characteristic approach. Be mathematically precise and reference your own work.
+        Write ONLY your spoken contribution (no meta-commentary).
+    """).strip()
+
+    text = complete(prompt, system=system, max_tokens=1200, model=_DISCUSS_MODEL)
+
+    if not text or not text.strip():
+        yield AgentEvent("error", {"message": f"{participant}: empty response from LLM"})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    text = text.strip()
+    yield AgentEvent("text_delta", {"text": text})
+
+    # Post directly to room JSON via Python (no curl)
+    try:
+        post_message(repo_root, problem_id, room_id, author=participant, body=text)
+        log.info("meet/%s/%s: posted turn for %s (%d chars)", problem_id, room_id, participant, len(text))
+    except Exception as exc:
+        log.warning("meet/%s/%s: failed to post for %s: %s", problem_id, room_id, participant, exc)
+        yield AgentEvent("error", {"message": str(exc)})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    yield AgentEvent("done", {"reason": "end_turn"})
+
+
+# ── Plan synthesis (direct LLM) ───────────────────────────────────────────────
 
 def run_synthesis(
     repo_root: Path,
@@ -161,6 +152,11 @@ def run_synthesis(
     handle: RunHandle | None = None,
 ) -> Iterator[AgentEvent]:
     """Coordinator synthesizes a numbered action plan from the discussion."""
+    from .vertex_llm import complete
+    _SYNTH_MODEL = None  # use DEFAULT_MODEL (claude-opus-4-8), only model available on this project
+
+    yield AgentEvent("status", {"state": "running", "label": "synthesizing plan…"})
+
     room = get_room(repo_root, problem_id, room_id)
     if room is None:
         yield AgentEvent("error", {"message": f"Room {room_id} not found"})
@@ -168,64 +164,169 @@ def run_synthesis(
         return
 
     transcript = transcript_text(room)
+    if not transcript.strip():
+        yield AgentEvent("done", {"reason": "no_transcript"})
+        return
 
-    base = Path(tempfile.gettempdir()) / "rma_meet_agents"
-    base.mkdir(parents=True, exist_ok=True)
-    ws = Path(tempfile.mkdtemp(prefix=f"synth_{problem_id}_", dir=base))
-    (ws / "transcript.md").write_text(transcript, encoding="utf-8")
+    system = (
+        "You are a research coordinator synthesizing an action plan from a mathematical discussion. "
+        "Output ONLY valid JSON — no markdown fences, no explanation, just the JSON object."
+    )
 
     prompt = textwrap.dedent(f"""
-        You are the **coordinator** for a research meeting on problem {problem_id}.
+        You are synthesizing an action plan for problem {problem_id} based on this discussion:
 
-        The full discussion is in transcript.md. Read it carefully.
+        {transcript}
 
-        Your task: synthesize a concrete, executable action plan.
-
-        The plan MUST be valid JSON in this exact format — write it to plan.json:
+        Produce a JSON action plan with this exact structure:
         {{
-          "summary": "one-sentence description of overall approach",
+          "summary": "one-sentence description of the overall mathematical approach agreed upon",
           "steps": [
             {{
               "idx": 0,
               "title": "short title",
-              "body": "detailed description of what must be done",
-              "agent": "solver-agent | verifier-agent | critic-agent",
+              "body": "detailed description of what must be done mathematically",
+              "agent": "solver-agent",
               "depends_on": []
-            }},
-            ...
+            }}
           ]
         }}
 
-        Rules for steps:
-        - Each step must be concrete and independently executable
-        - 4–10 steps total
-        - Assign "agent" based on the nature of the work
-        - "depends_on" lists idx values of prerequisite steps
-
-        After writing plan.json, read it back to verify it parses correctly:
-        cat plan.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'OK: {{len(d[\"steps\"])}} steps')"
-
-        Then post the plan to the meet room:
-        curl -s -X POST {_API_BASE}/api/meets/{problem_id}/{room_id}/plan \\
-          -H 'Content-Type: application/json' \\
-          -d @plan.json
-
-        Finally post a summary message to the room:
-        curl -s -X POST {_API_BASE}/api/meets/{problem_id}/{room_id}/message \\
-          -H 'Content-Type: application/json' \\
-          -d '{{"author": "coordinator", "body": "Plan synthesized. Ready to execute."}}'
+        Rules:
+        - 4–8 steps, each concrete and independently executable
+        - "agent" must be one of: solver-agent, verifier-agent, critic-agent, strategist-agent
+        - steps must follow logically from the discussion
+        - Output ONLY the JSON object, nothing else
     """).strip()
 
-    yield from _run_agent(
-        repo_root, ws, prompt,
-        _coordinator_synth_system(problem_id),
-        handle,
-        f"meet/{room_id}/synthesize",
-        max_turns=_MAX_SYNTH_TURNS,
-    )
+    raw = complete(prompt, system=system, max_tokens=10000, model=_SYNTH_MODEL, thinking_budget=8000)
+
+    if not raw:
+        yield AgentEvent("error", {"message": "empty response from LLM for synthesis"})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    # Strip markdown fences if present
+    raw = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.MULTILINE)
+    raw = re.sub(r"\s*```$", "", raw.strip(), flags=re.MULTILINE)
+    raw = raw.strip()
+
+    try:
+        plan_data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        log.warning("meet synthesis JSON parse error: %s\nraw: %s", exc, raw[:300])
+        # Try to extract JSON from the response
+        m = re.search(r'\{.*\}', raw, re.DOTALL)
+        if m:
+            try:
+                plan_data = json.loads(m.group())
+            except Exception:
+                yield AgentEvent("error", {"message": f"JSON parse error: {exc}"})
+                yield AgentEvent("done", {"reason": "error"})
+                return
+        else:
+            yield AgentEvent("error", {"message": f"JSON parse error: {exc}"})
+            yield AgentEvent("done", {"reason": "error"})
+            return
+
+    summary = plan_data.get("summary", "")
+    steps = plan_data.get("steps", [])
+
+    # Ensure idx fields are present
+    for i, step in enumerate(steps):
+        if "idx" not in step:
+            step["idx"] = i
+
+    try:
+        set_plan(repo_root, problem_id, room_id, steps=steps, summary=summary)
+        log.info("meet/%s/%s: plan synthesized (%d steps)", problem_id, room_id, len(steps))
+    except Exception as exc:
+        log.warning("meet/%s/%s: failed to set plan: %s", problem_id, room_id, exc)
+        yield AgentEvent("error", {"message": str(exc)})
+        yield AgentEvent("done", {"reason": "error"})
+        return
+
+    # Post summary message
+    try:
+        post_message(
+            repo_root, problem_id, room_id,
+            author="coordinator",
+            body=f"**Action plan synthesized** ({len(steps)} steps):\n\n{summary}",
+        )
+    except Exception:
+        pass
+
+    yield AgentEvent("text_delta", {"text": summary})
+    yield AgentEvent("done", {"reason": "end_turn"})
 
 
-# ── Step execution ────────────────────────────────────────────────────────────
+# ── Offline full discussion round ─────────────────────────────────────────────
+
+# job_id → {"status": "running"|"done"|"error", ...}
+_PUSH_JOBS: dict[str, dict] = {}
+
+
+def push_job_status(job_id: str) -> dict | None:
+    return _PUSH_JOBS.get(job_id)
+
+
+def run_round_offline(
+    repo_root: Path,
+    problem_id: str,
+    room_id: str,
+    job_id: str,
+    n_rounds: int = 3,
+) -> None:
+    """Run n_rounds of discussion for all non-human participants (blocking).
+
+    Each participant speaks once per round in order. Uses direct Vertex AI
+    completions — no tool loop, no curl. Messages post to room JSON immediately.
+    """
+    from datetime import datetime, timezone
+    import time
+
+    _PUSH_JOBS[job_id] = {"status": "running", "started_at": datetime.now(timezone.utc).isoformat()}
+
+    try:
+        room = get_room(repo_root, problem_id, room_id)
+        if room is None:
+            _PUSH_JOBS[job_id] = {"status": "error", "error": "room not found"}
+            return
+
+        participants = [p for p in room.get("participants", []) if p != "human" and p != "coordinator"]
+        if not participants:
+            _PUSH_JOBS[job_id] = {"status": "done", "turns": 0}
+            return
+
+        turns_done = 0
+        for round_num in range(n_rounds):
+            log.info("meet/%s/%s: round %d/%d", problem_id, room_id, round_num + 1, n_rounds)
+            for participant in participants:
+                try:
+                    for ev in run_discussion_turn(repo_root, problem_id, room_id, participant):
+                        if ev.type == "error":
+                            log.warning("meet turn error (%s): %s", participant, ev.data)
+                    turns_done += 1
+                except Exception as exc:
+                    log.warning("meet turn exception (%s): %s", participant, exc)
+                # Pause between turns — shared NAIRR quota, so space out calls.
+                time.sleep(30)
+            # Longer pause between rounds to let the per-minute quota window slide
+            if round_num < n_rounds - 1:
+                log.info("meet/%s/%s: round %d done, pausing 90s before next round", problem_id, room_id, round_num + 1)
+                time.sleep(90)
+
+        _PUSH_JOBS[job_id] = {
+            "status": "done",
+            "turns": turns_done,
+            "done_at": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as exc:
+        log.exception("push-round job %s failed", job_id)
+        _PUSH_JOBS[job_id] = {"status": "error", "error": str(exc)}
+
+
+# ── Step execution (tool loop, unchanged) ────────────────────────────────────
 
 def run_step_execution(
     repo_root: Path,
@@ -259,6 +360,14 @@ def run_step_execution(
         "meet_context.md": transcript_text(room),
     })
 
+    executor_system = (
+        f"You are a math solver agent executing one step of a proof plan for {problem_id}. "
+        "You have read_file, write_file, and run_python tools. "
+        "Your workspace has problem.tex, solution.tex (current best proof), "
+        "step.json (the step you must execute), and meet_context.md (meeting context). "
+        "Be rigorous."
+    )
+
     prompt = textwrap.dedent(f"""
         You are executing Step {step_idx + 1} of the proof plan for {problem_id}.
 
@@ -276,22 +385,12 @@ def run_step_execution(
         1. Read problem.tex and step.json carefully
         2. Read solution.tex if it exists
         3. Perform the mathematical work described in the step
-        4. Write your result/improvement to solution.tex (or a new file if appropriate)
-        5. Post a progress update:
-           curl -s -X POST {_API_BASE}/api/meets/{problem_id}/{room_id}/message \\
-             -H 'Content-Type: application/json' \\
-             -d '{{"author": "{step.get("agent", "solver-agent")}", "body": "Step {step_idx+1} progress: DESCRIPTION"}}'
-        6. When done, mark the step complete:
-           curl -s -X POST {_API_BASE}/api/meets/{problem_id}/{room_id}/steps/{step_idx}/done \\
-             -H 'Content-Type: application/json' \\
-             -d '{{"outcome": "success", "notes": "brief summary of what was accomplished"}}'
+        4. Write your result/improvement to solution.tex
 
-        Be rigorous. If you cannot complete the step, post an explanation and mark it
-        with outcome "partial" instead of "success".
+        Be rigorous. Produce a complete mathematical argument.
     """).strip()
 
     def on_done():
-        # If agent didn't mark done itself, mark it with 'partial'
         updated = get_room(repo_root, problem_id, room_id)
         if updated and updated.get("plan"):
             executed = [e["step"] for e in updated["plan"].get("executed_steps", [])]
@@ -300,69 +399,9 @@ def run_step_execution(
 
     yield from _run_agent(
         repo_root, ws, prompt,
-        _executor_system(problem_id),
+        executor_system,
         handle,
         f"meet/{room_id}/step/{step_idx}",
         max_turns=_MAX_EXEC_TURNS,
         on_done=on_done,
     )
-
-
-# ── Offline (background) full round ──────────────────────────────────────────
-
-# job_id → {"status": "running"|"done"|"error", "done_at": ISO, "error": str}
-_PUSH_JOBS: dict[str, dict] = {}
-
-
-def push_job_status(job_id: str) -> dict | None:
-    return _PUSH_JOBS.get(job_id)
-
-
-def run_round_offline(
-    repo_root: Path,
-    problem_id: str,
-    room_id: str,
-    job_id: str,
-    n_rounds: int = 1,
-) -> None:
-    """Run n_rounds of discussion for all non-human participants, blocking the caller thread.
-
-    Each participant gets one turn per round, in order. Messages are posted directly to
-    the room JSON via the meet API. No SSE streaming — results accumulate silently.
-    Called from a daemon thread so the HTTP response is already returned.
-    """
-    from datetime import datetime, timezone
-
-    _PUSH_JOBS[job_id] = {"status": "running", "started_at": datetime.now(timezone.utc).isoformat()}
-
-    try:
-        room = get_room(repo_root, problem_id, room_id)
-        if room is None:
-            _PUSH_JOBS[job_id] = {"status": "error", "error": "room not found"}
-            return
-
-        participants = [p for p in room.get("participants", []) if p != "human"]
-        if not participants:
-            _PUSH_JOBS[job_id] = {"status": "done", "turns": 0}
-            return
-
-        turns_done = 0
-        for _round in range(n_rounds):
-            for participant in participants:
-                try:
-                    # Drain the generator — side-effects (posting to room JSON) happen inside
-                    for _ in run_discussion_turn(repo_root, problem_id, room_id, participant):
-                        pass
-                    turns_done += 1
-                    log.info("push-round: %s/%s turn done for %s", problem_id, room_id, participant)
-                except Exception as exc:
-                    log.warning("push-round: turn failed for %s: %s", participant, exc)
-
-        _PUSH_JOBS[job_id] = {
-            "status": "done",
-            "turns": turns_done,
-            "done_at": datetime.now(timezone.utc).isoformat(),
-        }
-    except Exception as exc:
-        log.exception("push-round job %s failed", job_id)
-        _PUSH_JOBS[job_id] = {"status": "error", "error": str(exc)}
