@@ -2166,6 +2166,26 @@ def _smoke_job_path(job_id: str) -> Path:
     return _SMOKE_JOB_DIR / f"{re.sub(r'[^a-zA-Z0-9]', '', job_id)}.json"
 
 
+def _load_env_local() -> None:
+    """Load <repo>/.env.local (KEY=VALUE lines) into the environment if present, so
+    secrets like ANTHROPIC_API_KEY can be dropped in without restarting the server.
+    Never overrides a value already set in the real environment."""
+    p = REPO_ROOT / ".env.local"
+    if not p.is_file():
+        return
+    try:
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip().strip('"').strip("'")
+            if k and k not in os.environ:
+                os.environ[k] = v
+    except Exception:
+        pass
+
+
 @app.post("/api/solve")
 def smoke_solve(payload: dict = Body(...), x_api_key: str = Header(None)) -> JSONResponse:
     """End-to-end solve + evaluation for external use (smoke test).
@@ -2192,6 +2212,7 @@ def smoke_solve(payload: dict = Body(...), x_api_key: str = Header(None)) -> JSO
     """
     from .smoke_pipeline import solve_and_evaluate
 
+    _load_env_local()   # pick up ANTHROPIC_API_KEY from .env.local without a restart
     if not _smoke_auth_ok(x_api_key):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
 
