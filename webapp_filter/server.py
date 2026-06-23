@@ -63,6 +63,47 @@ def _load_metadata(slug: str) -> dict:
     return meta
 
 
+# ── Solvability (AI-solvability scores ingested from model evaluations) ─────────
+#
+# Scores live in  data/datasets/<slug>/solvability_cache.json  ({pid: 0-1}) and
+# full evals (tier, confidence, reasoning) in  solvability_eval.json. They are
+# merged onto each problem at request time so the filter can rank/show them.
+
+def _load_solvability_cache(slug: str) -> dict:
+    p = DATASETS_DIR / slug / "solvability_cache.json"
+    if not p.is_file():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _load_eval_store(slug: str) -> dict:
+    p = DATASETS_DIR / slug / "solvability_eval.json"
+    if not p.is_file():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+# Solvability tiers (categories), highest threshold first.
+SOLVABILITY_TIERS = [
+    ("likely", 0.70), ("plausible", 0.40), ("hard", 0.20), ("open", 0.0),
+]
+
+
+def solvability_tier(score):
+    if score is None:
+        return None
+    for slug, lo in SOLVABILITY_TIERS:
+        if score >= lo:
+            return slug
+    return "open"
+
+
 # ── dataset endpoints ─────────────────────────────────────────────────────────
 
 @app.get("/api/datasets")
@@ -94,21 +135,35 @@ def dataset_meta(slug: str) -> JSONResponse:
 
 @app.get("/api/problems")
 def list_problems(
-    dataset: str = Query("researchmath_14k"),
+    dataset: str = Query(""),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     search: str = Query(""),
     tags: str = Query(""),
     domain: str = Query(""),
     status: str = Query(""),
-    sort: str = Query("id"),
+    tier: str = Query(""),                       # solvability category filter
+    sort: str = Query("solvability_desc"),       # default: rank by AI-solvability
 ) -> JSONResponse:
+    if not dataset:
+        # researchmath_14k (the old default) was removed in favour of the
+        # curated *_rm14k subdomains; fall back to the first available dataset.
+        _avail = [d.name for d in sorted(DATASETS_DIR.iterdir()) if d.is_dir()] if DATASETS_DIR.is_dir() else []
+        dataset = next((s for s in _avail if s not in ("first_proof_1", "first_proof_2")), _avail[0] if _avail else "")
     if not _ok_slug(dataset):
         return JSONResponse({"error": "invalid dataset"}, status_code=400)
 
     index = _load_index(dataset)
     if index is None:
         return JSONResponse({"error": "dataset not found or index missing"}, status_code=404)
+
+    # Merge ingested AI-solvability scores + tier onto each problem.
+    scores = _load_solvability_cache(dataset)
+    for p in index:
+        sc = scores.get(p.get("id", ""))
+        if sc is not None:
+            p["solvability_score"] = sc
+        p["solvability_tier"] = solvability_tier(p.get("solvability_score"))
 
     items: list[dict] = index
 
@@ -146,6 +201,10 @@ def list_problems(
     if status:
         items = [p for p in items if p.get("open_status", "") == status]
 
+    if tier:
+        tier_set = {t.strip().lower() for t in tier.split(",") if t.strip()}
+        items = [p for p in items if p.get("solvability_tier") in tier_set]
+
     # ── sort ──
     if sort == "title":
         items = sorted(items, key=lambda p: p.get("title", ""))
@@ -153,6 +212,11 @@ def list_problems(
         items = sorted(items, key=lambda p: p.get("difficulty") or 0.5)
     elif sort == "difficulty_desc":
         items = sorted(items, key=lambda p: p.get("difficulty") or 0.5, reverse=True)
+    elif sort == "solvability_desc":
+        # highest solvability first; unscored problems sort last
+        items = sorted(items, key=lambda p: p.get("solvability_score") if p.get("solvability_score") is not None else -1.0, reverse=True)
+    elif sort == "solvability_asc":
+        items = sorted(items, key=lambda p: p.get("solvability_score") if p.get("solvability_score") is not None else 2.0)
     # default: keep original order (id order from index)
 
     total = len(items)
@@ -188,6 +252,14 @@ def get_problem(dataset: str, problem_id: str) -> JSONResponse:
         data = json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return JSONResponse({"error": "parse error"}, status_code=500)
+    # Merge AI-solvability score, tier, and the model's reasoning comment.
+    sc = _load_solvability_cache(dataset).get(problem_id)
+    if sc is not None:
+        data["solvability_score"] = sc
+    data["solvability_tier"] = solvability_tier(data.get("solvability_score"))
+    ev = _load_eval_store(dataset).get(problem_id)
+    if ev:
+        data["solv_eval"] = ev
     return JSONResponse(data)
 
 

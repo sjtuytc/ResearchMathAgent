@@ -1,0 +1,46 @@
+{
+  "id": "q4-meet-1",
+  "problem_id": "q4",
+  "topic": "Push-forward 2026-06-21 — q4 proof review",
+  "goal": "Review today's issue discovery and resolution results for q4. Agree on the highest-priority remaining gaps and produce a concrete action plan.",
+  "participants": [
+    "coordinator",
+    "nikhil-srivastava",
+    "dan-spielman",
+    "laszlo-lovasz"
+  ],
+  "status": "open",
+  "created_at": "2026-06-21T22:00:38Z",
+  "messages": [
+    {
+      "id": "m6f3bc4e9",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Push-forward 2026-06-21 — q4 proof review**",
+      "created_at": "2026-06-21T22:00:38Z"
+    },
+    {
+      "id": "mda36e2f5",
+      "author": "nikhil-srivastava",
+      "role": "agent",
+      "body": "Let me open by framing this correctly, because the problem is the finite free analogue of the Stam inequality from classical information theory: $\\frac{1}{\\Phi(X+Y)} \\ge \\frac{1}{\\Phi(X)} + \\frac{1}{\\Phi(Y)}$ for the Fisher information of independent random variables. The $\\Phi_n$ defined here, $\\sum_i (\\sum_{j\\neq i} \\frac{1}{\\lambda_i - \\lambda_j})^2$, is exactly the finite free Fisher information that Marcus and I encountered when studying $\\boxplus_n$ as the finite analogue of free additive convolution.\n\nA few structural observations to anchor the discussion:\n\n1. **The score is a gradient of log-discriminant.** Note $\\score(\\alpha)_i = \\sum_{j\\neq i}\\frac{1}{\\alpha_i-\\alpha_j} = \\frac{1}{2}\\partial_{\\alpha_i} \\log \\prod_{k\\neq l}(\\alpha_k-\\alpha_l)^2$. So $\\Phi_n(p) = \\|\\nabla \\log |\\mathrm{disc}(p)|\\|^2 / \\text{(const)}$ — this is genuinely a Fisher-information-type quantity and the heat-flow/log-Sobolev machinery should apply.\n\n2. **The role of $T_\\epsilon = (1-\\epsilon\\, d/dx)^n$.** This is the key. The operator $T_\\epsilon$ acts as a finite free convolution with a specific polynomial: $T_\\epsilon p$ corresponds to $p \\boxplus_n (x-\\epsilon\\cdot\\text{shift})^n$-type translation, and crucially $\\frac{d}{d\\epsilon}$ of it generates the finite free heat semigroup. The classical Stam inequality is proven by differentiating Fisher information along the heat flow — I strongly suspect the intended proof differentiates $\\Phi_n(p \\boxplus_n q)$ along $T_\\epsilon$ applied to each factor.\n\n3. **The de Bruijn identity analogue is the crux.** We need: along the flow $p_\\epsilon = T_\\epsilon p$, the derivative $\\frac{d}{d\\epsilon}\\Phi_n(p_\\epsilon)$ is controlled, and convexity of $1/\\Phi_n$ along the flow gives superadditivity.\n\nSo my question to the room: **has anyone verified that $T_\\epsilon$ acts as the finite free heat semigroup on roots, i.e. that $\\frac{d}{d\\epsilon}\\score$ has the right diffusion form?** That identity is where I'd put the highest priority — without it the analogy to Stam is just heuristic. What were the issues discovered today?",
+      "created_at": "2026-06-21T22:00:51Z"
+    },
+    {
+      "id": "m045b9a9d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Nikhil, I want to push on point 2 before we lean on the whole heat-flow scaffolding, because if $T_\\epsilon$ is going to be our semigroup we need its action on roots written down *explicitly*, not just asserted.\n\nLet me set up the computation the way I'd actually want to verify it. Write $p_\\epsilon = (1-\\epsilon\\, d/dx)^n p$. For small $\\epsilon$, $(1-\\epsilon\\,\\partial)^n = \\exp(n\\log(1-\\epsilon\\partial)) = \\exp(-n\\epsilon\\partial - \\tfrac{n}{2}\\epsilon^2\\partial^2 - \\cdots)$. The leading term $\\exp(-n\\epsilon\\partial)$ is pure translation $x\\mapsto x - n\\epsilon$, which does nothing to $\\Phi_n$ (it's translation invariant). The *interesting* generator is the $\\partial^2$ term — that's your diffusion. So to first nontrivial order the flow is\n\n$$\\frac{d}{d\\epsilon}p_\\epsilon \\big|_{\\text{centered}} \\sim -\\tfrac{n}{2}\\,p'' \\cdot \\epsilon + \\dots$$\n\nand $p \\mapsto p - c\\,p''$ is precisely the finite free heat flow whose root dynamics is the well-studied repulsive flow $\\dot\\alpha_i = c\\sum_{j\\neq i}\\frac{1}{\\alpha_i-\\alpha_j} = c\\cdot\\score(\\alpha)_i$. **So the score is literally the velocity field of the flow.** That's the clean statement we need, and it makes the de Bruijn identity computable.\n\nNow here's my concern, and it's the same one I raised in the spectral sparsification work: **superadditivity is an inequality, and inequalities under a flow need a monotonicity certificate, not just a derivative identity.** The Stam proof works because along the heat flow $\\frac{d}{d\\epsilon}\\frac{1}{\\Phi}$ has a definite sign coming from a Cauchy–Schwarz step (the \"Fisher information is convex along heat flow\" fact). So the two things I'd insist we nail down, in order:\n\n1. **The de Bruijn identity, exactly:** compute $\\frac{d}{d\\epsilon}\\Phi_n(p_\\epsilon)$ where $\\dot\\alpha_i = \\score(\\alpha)_i$. This is a finite sum — it's just calculus on $\\sum_i \\score_i^2$ with $\\dot\\alpha$ given. We should be able to write it in closed form today, no analogy needed.\n2. **The sign/Cauchy–Schwarz step:** identify the analogue of the variance-of-score inequality that makes $1/\\Phi_n$ subadditive-killing along the flow.\n\nMy instinct is that step 1 produces something like $\\frac{d}{d\\epsilon}\\Phi_n = -2\\sum_i \\score_i \\cdot (\\text{Jacobian of score})\\,\\score$, and the question is whether that Jacobian (the Hessian of $\\log|\\mathrm{disc}|$) is *negative semidefinite on the right subspace*. That's a spectral question — what is the spectrum of the Hessian of $\\log|\\mathrm{disc}(p)|$ restricted to mean-zero perturbations? If it has a sign, we win; if it's indefinite, the whole flow argument is in trouble. **What's the spectral gap of that Hessian?** I'd rather compute that one $n\\times n$ matrix on a small example, $n=3$, and see the sign before we",
+      "created_at": "2026-06-21T22:01:38Z"
+    },
+    {
+      "id": "m8c2e21ca",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your reduction to the velocity field $\\dot\\alpha_i = \\score(\\alpha)_i$ is exactly right, and I want to second your insistence on computing that Hessian explicitly — but let me suggest the structure is more rigid than \"compute and hope for a sign.\"\n\nThe Hessian of $\\log|\\mathrm{disc}(p)| = \\sum_{k<l}\\log(\\alpha_k-\\alpha_l)^2$ has a beautiful form. Writing $H_{ij} = \\partial_{\\alpha_i}\\partial_{\\alpha_j}\\sum_{k\\neq l}\\log(\\alpha_k-\\alpha_l)$, we get for $i\\neq j$, $H_{ij} = +\\frac{1}{(\\alpha_i-\\alpha_j)^2}$, and $H_{ii} = -\\sum_{j\\neq i}\\frac{1}{(\\alpha_i-\\alpha_j)^2}$. So $H = -L$ where $L$ is precisely a **weighted graph Laplacian** on the complete graph $K_n$ with edge weights $w_{ij} = \\frac{1}{(\\alpha_i-\\alpha_j)^2} > 0$. This is not an indefinite matrix at all — it is negative semidefinite, with kernel exactly the all-ones vector (translations), which is your mean-zero subspace statement. So Dan, the answer to \"what is the spectrum?\" is: $H$ restricted to $\\mathbf{1}^\\perp$ is strictly negative definite, with spectral gap equal to the algebraic connectivity (Fiedler value) of the weighted graph $K_n$ with weights $w_{ij}$.\n\nThis is enormously clarifying, because now the de Bruijn step is a statement about a Laplacian quadratic form:\n$$\\frac{d}{d\\epsilon}\\Phi_n = 2\\,\\score^\\top H\\,\\score = -2\\,\\score^\\top L\\,\\score = -2\\sum_{i<j}\\frac{(\\score_i-\\score_j)^2}{(\\alpha_i-\\alpha_j)^2} \\le 0.$$\nSo $\\Phi_n$ is monotone decreasing along the flow, as it must be — that is your sign, and it comes for free from the Laplacian being a sum of squares. There is no Cauchy–Schwarz miracle needed at this level; the positivity is structural.\n\nThe real content — Nikhil's Stam inequality — is not monotonicity but **convexity of $1/\\Phi_n$ jointly across the two flows** when $p$ and $q$ are convolved. That is where the dependency structure matters: superadditivity requires that the $\\boxplus_n$ map distributes the diffusion correctly between the two factors, which classically is the statement that $\\score(X+Y) = \\mathbb{E}[\\score(X)\\mid X+Y]$ — a conditional-expectation projection. The finite analogue should say $\\score(\\roots(\\alpha,\\beta))$ is an orthogonal projection of $(\\score(\\alpha),\\score(\\beta))$, and Stam then follows from $\\|P v\\|^2 \\le \\|v\\|^2$-type contraction. I would compute $n=2$ in closed form first — there $\\Phi_2(p) = 2/(\\alpha_1-\\alpha_2)^2$ and $\\boxplus_2$ adds variances, so the inequality should become exactly classical Stam for two Gaussians-degenerate-to-points and we can see the projection explicitly. Shall we put the conditional-expectation/projection identity at top priority, since both monotonicity and the Laplacian sign",
+      "created_at": "2026-06-21T22:02:25Z"
+    }
+  ],
+  "plan": null,
+  "execution_log": []
+}

@@ -1,0 +1,159 @@
+{
+  "id": "rm-01378-meet-1",
+  "problem_id": "rm-01378",
+  "topic": "Init rm-01378 — proof review",
+  "goal": "Review the proof and issues for rm-01378; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T04:20:03Z",
+  "messages": [
+    {
+      "id": "m674f559f",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-01378 — proof review**",
+      "created_at": "2026-06-23T04:20:03Z"
+    },
+    {
+      "id": "m7f748dfc",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about what this problem actually is, because it's not my $\\varepsilon$-light subset problem at all — it's a paraparticle Jaynes–Cummings model. But the right instinct is still mine: **find the invariant subspaces and reduce to finite-dimensional linear algebra.** That's what \"exactly diagonalizable in closed form\" means operationally.\n\nHere's the structure I'd push on:\n\n1. **Conserved excitation number.** Define $N = \\frac{1}{2}\\{b^+,b^-\\} + \\sum_j j\\,E_{jj}$ (or the appropriate paraboson number operator). The coupling terms $b^+E_{j,j+1}$ lower atomic index by one and raise the field by one, so they preserve a total excitation count. Check $[H,N]=0$. If so, $H$ block-diagonalizes into finite blocks indexed by total excitation $n$.\n\n2. **What's the block size?** Just as ordinary JC gives $2\\times 2$ doublets, here each block should be at most $(p+1)\\times(p+1)$, since the atom has $p+1$ levels and the chain $j \\to j+1$ has length $p$. So within a fixed excitation sector the Hamiltonian is a **tridiagonal $(p+1)\\times(p+1)$ matrix** — a Jacobi matrix.\n\n3. **The parabosonic matrix elements are the only subtlety.** I need the action $b^+|n\\rangle, b^-|n\\rangle$ on the order-$p$ Fock module. For parabosons the norms aren't $\\sqrt{n}$; they depend on $p$ and on the parity of $n$: roughly $b^-b^+ \\to$ eigenvalues like $2\\lfloor n/2\\rfloor + p\\,[n\\text{ even}]$. **Someone needs to write these down explicitly** — they set the off-diagonal Jacobi entries $g_j\\sqrt{\\beta_{n,j}}$.\n\nSo my answer to (a): **yes, it is exactly diagonalizable in the JC sense**, provided $[H,N]=0$, because each invariant block is a finite tridiagonal matrix. Whether the eigenvalues are *closed-form* then reduces to a concrete question: **does this Jacobi matrix have a solvable spectrum?** A general $(p+1)\\times(p+1)$ tridiagonal matrix does not — you get a degree-$(p+1)$ characteristic polynomial. So closed form holds in general only for $p\\le 3$, unless the parameters $\\{\\varepsilon_j,g_j,\\beta_{n,j}\\}$ have special structure (e.g. a Krawtchouk/dual-Hahn pattern) making the Jacobi matrix exactly solvable.\n\nTwo concrete questions for the room:\n- **What exactly are the parabosonic norms $\\langle n|b^-b^+|n\\rangle$ as functions of $n$ and $p$?** That determines everything.\n- **Is there a hidden algebra** — an $\\mathfrak{osp}(1|2)$ or deformed structure — that makes the tridiagonal blocks orthogonal-polynomial Jacobi matrices? If the $\\beta_{n,j}$ follow a known three-term recurrence, the eigenvectors are classical orthogonal polynomials evaluated at the eigenvalues, and (b) — the transition rates — become Christoffel–Darboux sums in closed form.\n\nThat's the whole game: reduce to a Jacobi matrix, then ask whether it's exactly solvable.",
+      "created_at": "2026-06-23T04:20:21Z"
+    },
+    {
+      "id": "mb1866907",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has framed this correctly — reduce to invariant blocks and ask whether the resulting Jacobi matrix is exactly solvable. Let me sharpen the structural picture, because the right organizing object here is the hidden algebra, exactly the way the $\\theta$-function only became transparent once I saw it as a semidefinite program rather than a combinatorial quantity.\n\n1. **The algebra is $\\mathfrak{osp}(1|2)$.** Parabosons of order $p$ are precisely the realization where $b^\\pm$ generate $\\mathfrak{osp}(1|2)$: set $K_0 = \\tfrac14\\{b^+,b^-\\}$, $K_\\pm = \\tfrac14 (b^\\pm)^2$. The relations you wrote, $[\\{b^-,b^-\\},b^+] = 4b^-$ etc., are exactly the $\\mathfrak{osp}(1|2)$ brackets. So the Fock module $V(p)$ is the lowest-weight $\\mathfrak{osp}(1|2)$ irrep with lowest weight set by $p$.\n\n2. **The parabosonic norms.** On $V(p)$ one has $b^-b^+|n\\rangle = \\beta_{n}|n\\rangle$ with\n$$\\beta_n = \\langle n|b^-b^+|n\\rangle = n + p\\,[n\\ \\text{even}] = \\begin{cases} n+p & n\\ \\text{even},\\\\ n+1 & n\\ \\text{odd}.\\end{cases}$$\nThis is exactly the even/odd alternation Dan anticipated. These set the off-diagonal Jacobi entries $g_j\\sqrt{\\beta_n}$.\n\n3. **Conserved number and block size.** With $N = \\tfrac12\\{b^+,b^-\\} + \\sum_j j E_{jj}$ one checks $[H,N]=0$, so $H$ is block tridiagonal with blocks of size at most $p+1$ — Dan is right.\n\n4. **The decisive point — these are *not* generic Jacobi matrices.** Because the off-diagonals come from a single $\\mathfrak{osp}(1|2)$ irrep, the recurrence $\\beta_n$ is affine in $n$ (up to parity). An affine three-term recurrence is the signature of **Meixner–Pollaczek / dual Hahn** polynomials. So I disagree mildly with Dan's pessimism: closed form does *not* stop at $p\\le 3$ when $g_j,\\varepsilon_j$ are uniform — the whole chain is governed by one $q=1$ orthogonal-polynomial family, and the dressed eigenstates are those polynomials evaluated at the spectrum.\n\n5. **For (b)**, the transition rates then become **Christoffel–Darboux kernels** of that family, exactly the closed-form structure Dan named. The dipole $V$ shifts $n\\to n\\pm1$, so the matrix elements are overlaps of consecutive-block orthogonal polynomials — these telescope.\n\nSo my proposed action plan: (i) fix $\\beta_n$ as above; (ii) classify the parameter regimes — *uniform* $(g_j\\equiv g,\\ \\varepsilon_j\\ \\text{arithmetic})$ gives full closed-form via $\\mathfrak{osp}(1|2)$ representation theory for all $p$; *generic* parameters give closed form only for $p\\le 3$. The honest answer to (a) is therefore conditional, and the dividing line is precisely whether the chain respects the $\\mathfrak{osp}(1|2)$ structure or brea",
+      "created_at": "2026-06-23T04:21:09Z"
+    },
+    {
+      "id": "mdab17ccb",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have the architecture right, but let me push on the *real* theorem here, because I think there's a subtlety in László's claim that the uniform case is closed-form \"for all $p$.\"\n\nFirst, let me do what I always do: **compute the first few cases by hand.** Take $p=1$, uniform $g_j=g$, $\\varepsilon_j = j\\varepsilon$. Then $\\beta_n = n+1$ for $n$ even, $n+1$ for $n$ odd — wait, at $p=1$ the parity collapses since $n+p = n+1$. So $V(1)$ is just the ordinary boson, $\\beta_n = n+1$, and we recover the genuine Jaynes–Cummings doublet. Good, the formalism passes its sanity check. The $2\\times 2$ block gives the Rabi splitting $\\sqrt{(\\Delta/2)^2 + g^2(n+1)}$. That's the JC at $p=1$.\n\nNow the **key issue** with László's point 4. He says the affine recurrence $\\beta_n$ signals Meixner–Pollaczek/dual Hahn. But careful — the parity alternation $\\beta_n = n+p\\,[n\\text{ even}]$ is *not* a single affine recurrence; it's two interlaced ones. That's exactly the structure of $\\mathfrak{osp}(1|2)$, but the relevant orthogonal polynomials are then the **$-1$ orthogonal polynomials** of Vinet–Zhedanov (the dual $-1$ Hahn / Bannai–Ito family), not classical dual Hahn. The parity is the $\\mathbb{Z}_2$ grading of the superalgebra. So the eigenvectors are Bannai–Ito polynomials, and *those* do have closed three-term recurrences — so László's optimism survives, but the family is the parastatistical one, not the bosonic one.\n\nHere's my **provocation**: is closed-form for the *eigenvalues* really the right question? The block is at most $(p+1)\\times(p+1)$, so it's a finite Jacobi matrix and its spectrum is roots of a degree-$(p+1)$ polynomial regardless of how pretty the recurrence is. The Bannai–Ito structure gives you the *eigenvectors as orthogonal-polynomial values evaluated at the eigenvalues*, but it does **not** by itself give the eigenvalues in radicals for $p\\ge 4$. This is exactly the Ramanujan-vs-trivial tension I always flag: the deep content is the eigen*vector* structure (Christoffel–Darboux), not the eigen*value* solvability. So I'd amend the answer to (a):\n\n- **Eigenvectors:** always closed-form, as Bannai–Ito polynomials evaluated on the spectrum, for *all* $p$ in the uniform case (this is the genuine $\\mathfrak{osp}(1|2)$ content).\n- **Eigenvalues in radicals:** only $p\\le 3$ generically; for higher $p$ they're zeros of a Bannai–Ito polynomial, which is closed-form in the orthogonal-polynomial sense but not algebraic radicals.\n\nFor (b), I fully agree the transition rates telescope via Christoffel–Darboux:\n$$\\sum_{k} \\frac{P_k(x)P_k(y)}{h_k} = \\frac{a_n}{h_n}\\frac{P_{n+1}(x)P_n(y) - P_n(x)P_{n+1}(y)}{x-y}.$$\nThe dipole $V$ connecting $n\\to n\\pm",
+      "created_at": "2026-06-23T04:21:55Z"
+    },
+    {
+      "id": "m0ba19d8d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter has put his finger on exactly the distinction I should have drawn more sharply, and I want to endorse it in algorithmic language: **there are two different \"closed forms\" and we should never conflate them.**\n\n1. **Eigenvector closed form** = the Jacobi matrix is a known orthogonal-polynomial recurrence, so the eigenvector in block $n$ is $(P_0(\\lambda), P_1(\\lambda),\\dots,P_p(\\lambda))$ for the eigenvalue $\\lambda$. Peter is right that this is Bannai–Ito, not classical dual Hahn — the parity alternation $\\beta_n = n + p[n\\text{ even}]$ is precisely the $\\mathbb{Z}_2$-graded recurrence. This part costs nothing; it holds for all $p$ in the uniform case.\n\n2. **Eigenvalue closed form** = the *roots* of the degree-$(p+1)$ characteristic polynomial are expressible in radicals. This is a genuinely different and harder question, and it's Galois-theoretic, not representation-theoretic. Generically you lose it at $p\\ge 4$.\n\nNow let me add the thing I actually care about, because everyone has been doing existence/structure and nobody has stated the **algorithm**:\n\n- For *any* parameters, uniform or not, the block is a $(p+1)\\times(p+1)$ tridiagonal real symmetric Jacobi matrix $J_n$. Symmetrize it first: the raw off-diagonals are $g_j\\sqrt{\\beta_{n,j}}$ on one side and $g_j\\sqrt{\\beta_{n,j}}$ on the other after the standard similarity, so $J_n$ is already self-adjoint in the right basis. Then **diagonalizing a Jacobi matrix is an $O(p^2)$ operation** (QL/QR with implicit shifts, or divide-and-conquer). So \"exactly diagonalizable\" in the operational sense — a numerically exact, stable, finite procedure per excitation sector — is unconditionally **yes** for every $p$. That's the honest, constructive answer to (a): the abstract obstruction is only about *symbolic radicals*, never about computability.\n\n- The orthogonal-polynomial structure is what makes (b) fall out without diagonalizing at all. The dipole $V$ has matrix elements between block $n$ and block $n\\pm1$. In the Bannai–Ito basis these are overlaps $\\langle P^{(n+1)}_k \\mid V \\mid P^{(n)}_l\\rangle$, and because $V$ is a low-rank tridiagonal-coupling operator, the Christoffel–Darboux identity Peter wrote collapses the double sum to a **single boundary term** $\\sim \\dfrac{P_{p+1}(\\lambda)P_p(\\mu)-P_p(\\lambda)P_{p+1}(\\mu)}{\\lambda-\\mu}$. That's the transition rate in closed form — no eigenvalue radicals required, only the polynomial values at the (numerically obtained) dressed energies.\n\nSo my proposed wording for the theorem:\n\n> **(a)** $[H,N]=0$ gives finite tridiagonal blocks $J_n$ of size $\\le p+1$; hence $H$ is exactly diagonalizable by a finite algorithm for all $p$ (Jacobi-matrix diagonalization). In the uniform regime the eigenvectors are Bannai–Ito polynomials evaluated on $\\mathrm{spec}(J_n)$, for all $p$; the *eigenvalues* are in radicals",
+      "created_at": "2026-06-23T04:24:12Z"
+    },
+    {
+      "id": "mb29b7796",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Peter's correction is exactly right and I accept it without reservation — the family is Bannai–Ito, not classical dual Hahn, and I should have respected the $\\mathbb{Z}_2$ grading from the start. The parity alternation $\\beta_n = n + p[n\\text{ even}]$ is the superalgebra grading made manifest, and Bannai–Ito polynomials are precisely the $q\\to -1$ limit that encodes it. So the representation-theoretic content is intact, just attached to the right orthogonal-polynomial family.\n\nBut let me make one structural objection to the emerging consensus, because I think we are being too quick to declare the uniform case \"fully closed form for all $p$.\"\n\n1. **The block size is $\\le p+1$, but it is not always $p+1$.** The chain $j\\to j+1$ has length $p$, yet the parabosonic norms $\\beta_n$ truncate the coupling at the boundaries of the excitation sector. For small total excitation $n$ the invariant block is *strictly smaller* than $p+1$, and the relevant truncated Bannai–Ito polynomials are the ones obtained by stopping the recurrence early. This is exactly the phenomenon I encountered with **graph homomorphism densities $t(H,G)$ near the boundary of the graphon** — the limiting object is clean, but the finite-$n$ truncations carry boundary corrections that you must track. So the eigenvector formula $(P_0(\\lambda),\\dots,P_p(\\lambda))$ holds only in the bulk sectors $n \\ge p$; below that you get the lower Bannai–Ito truncations.\n\n2. **On Dan's \"unconditionally yes\" for (a):** I want to draw the same distinction I always insist on between the *existence* statement and the *exact structural* statement, just as $\\alpha(G)\\le\\theta(G)\\le\\chi(\\bar G)$ is a structural sandwich, not merely a computability claim. Numerical Jacobi diagonalization in $O(p^2)$ is not what the problem means by \"closed form analogous to the JC doublets.\" The doublet answer at $p=1$ is a *formula* — $\\sqrt{(\\Delta/2)^2+g^2(n+1)}$ — not an algorithm. So the honest tripartite answer to (a) is:\n   - **Symbolic radicals:** $p\\le 3$ generically (Galois, as Dan says);\n   - **Orthogonal-polynomial closed form** (eigenvalues as zeros of a single Bannai–Ito polynomial, eigenvectors as its values): all $p$, uniform regime, with boundary truncation for $n<p$;\n   - **Finite algorithm:** all $p$, all parameters.\n\n3. **For (b), one caution on the Christoffel–Darboux collapse.** The boundary term is clean only when $V$ couples *consecutive blocks of full size*. Because $V=\\mu(b^++b^-)\\sum_j(E_{j,j+1}+E_{j+1,j})$ both shifts the field and the atomic index, the overlap is between Bannai–Ito systems with *different* parity sectors — even-$n$ and odd-$n$ blocks have different $\\beta$. So the telescoping kernel is a *dual* Christoffel–Darboux, mixing the two interlaced families. It still collapses to a boundary term, but the term is the Bannai–Ito analogue\n$$\\frac{B_{p+1}(\\lambda)\\,B_p(\\mu) - B_p(\\lambda)\\,B_{p+1}(\\mu)}{\\lambda-\\mu},$$\nwith $\\lamb",
+      "created_at": "2026-06-23T04:25:00Z"
+    },
+    {
+      "id": "m2d01e47c",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's boundary-truncation point is the right one, and it's exactly where I want to plant a flag — because it changes the answer to (b) in a way nobody has stated cleanly. Let me compute the small sectors by hand, the way I always insist on. Take $p=2$. The vacuum sector $n=0$: only $|0\\rangle\\otimes|0\\rangle$ survives — a $1\\times1$ block, eigenvalue is just the bare $\\omega_F\\cdot\\tfrac{p}{2}+\\varepsilon_0$, no Rabi splitting at all. Sector $n=1$: now $|1\\rangle\\otimes|0\\rangle$ couples to $|0\\rangle\\otimes|1\\rangle$ with off-diagonal $g_0\\sqrt{\\beta_0}=g_0\\sqrt{p}$ — a genuine $2\\times2$ doublet, but note the $\\sqrt{p}$ enhancement of the vacuum Rabi frequency. **That $\\sqrt{p}$ is the real signature of parastatistics** — it's a Bose-enhancement of the coupling that has no analog at $p=1$, and it's exactly the kind of thing one should be able to measure.\n\nNow here is my provocation, and it's a Ramanujan-flavored one. László is right that the even/odd sectors are governed by *interlaced* Bannai–Ito families. But ask the real question: **what is the spectral statistics of the dressed energies as $p\\to\\infty$?** The zeros of Bannai–Ito polynomials, like all classical orthogonal polynomials, have a *clock* distribution — locally rigid spacing, like a picket fence, the opposite of GUE. This is the same dichotomy I always flag: integrable systems give Poisson or clock statistics, chaotic ones give GUE (the Berry–Tabor vs. Bohigas–Giannoni–Schmit story from arithmetic quantum chaos). So the fact that this Hamiltonian is *exactly solvable in the Bannai–Ito sense* is precisely equivalent to the statement that its level spacings are **non-GUE, clock-rigid**. That's the real content of \"exactly diagonalizable\": integrability $\\Leftrightarrow$ rigid spectrum.\n\nTwo concrete amendments:\n\n1. **The boundary doesn't break closed form — it's a smaller exact family.** László is right the bulk formula holds for $n\\ge p$, but the truncated blocks are *associated* Bannai–Ito polynomials with shifted parameters. These are still classical; the Christoffel–Darboux kernel for them is the *associated* CD kernel. So (b) is closed-form in *every* sector, just with a sector-dependent parameter shift. No genuine loss.\n\n2. **On the dual/interlaced CD kernel:** the even–odd mixing László flagged is real, but it's controlled — it's the standard $\\mathfrak{osp}(1|2)$ Casimir relating the two parity ladders. Concretely, the transition rate carries the $\\sqrt{\\beta_n}$ enhancement, so the rate from sector $n$ to $n+1$ scales like $\\mu^2 g^2 (n+p\\,[n\\text{ even}])$ in the bulk — explicitly **parity-modulated**, oscillating with the $\\mathbb{Z}_2$ grading.\n\nSo my bottom line: the deep theorem isn't \"closed form for all $p$.\" It's that **paraparticle integrability manifests as (i) a $\\sqrt{p}$-enhanced vacuum Rabi frequency, (ii) parity-modulated transition",
+      "created_at": "2026-06-23T04:25:48Z"
+    },
+    {
+      "id": "m4a0e22fd",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T04:26:42Z"
+    },
+    {
+      "id": "mfe333a9f",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve the paraparticle Jaynes–Cummings Hamiltonian is exactly diagonalizable by showing it conserves an excitation number, block-diagonalizes into finite tridiagonal (≤ p+1) Jacobi matrices governed by osp(1|2)/Bannai–Ito structure, and compute the dressed spectrum and transition rates in closed form.",
+      "created_at": "2026-06-23T04:26:42Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove the paraparticle Jaynes–Cummings Hamiltonian is exactly diagonalizable by showing it conserves an excitation number, block-diagonalizes into finite tridiagonal (≤ p+1) Jacobi matrices governed by osp(1|2)/Bannai–Ito structure, and compute the dressed spectrum and transition rates in closed form.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish conserved excitation number and block structure",
+        "body": "Define the excitation operator N = (1/2){b^+,b^-} + sum_j j E_{jj} and verify [H,N]=0 explicitly, checking that each coupling term b^+ E_{j,j+1} lowers atomic index by one and raises the field by one. Conclude that H block-diagonalizes into invariant sectors of fixed total excitation n, each a tridiagonal (Jacobi) matrix of size at most p+1.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Compute parabosonic norms on the order-p Fock module",
+        "body": "Using the osp(1|2) realization (K_0 = (1/4){b^+,b^-}, K_± = (1/4)(b^±)^2), derive b^- b^+ |n> = beta_n |n> with beta_n = n + p[n even] = (n+p for n even, n+1 for n odd). Confirm the even/odd parity alternation reflects the Z_2 grading of the superalgebra, and identify these as the off-diagonal Jacobi entries g_j sqrt(beta_n).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Identify the orthogonal-polynomial family and eigenvectors",
+        "body": "Show that the interlaced even/odd affine recurrence beta_n = n + p[n even] corresponds to the q -> -1 Bannai–Ito (dual -1 Hahn) polynomials, NOT classical dual Hahn. In the uniform regime (g_j = g, epsilon_j arithmetic), establish that bulk-sector eigenvectors are (P_0(lambda),...,P_p(lambda)) with P_k the Bannai–Ito polynomials evaluated at eigenvalue lambda, for all p.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Resolve boundary/truncated sectors explicitly",
+        "body": "Treat the small-excitation sectors n < p where the invariant block is strictly smaller than p+1. Compute by hand the p=1 (recovering JC doublet with Rabi splitting sqrt((Delta/2)^2 + g^2(n+1))) and p=2 cases (n=0 trivial 1x1 block; n=1 doublet with vacuum Rabi enhancement g_0 sqrt(p)). Express the truncated-sector eigenvectors as associated Bannai–Ito polynomials with shifted parameters.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Classify the three senses of 'closed form' for eigenvalues",
+        "body": "State precisely the tripartite answer to (a): (i) symbolic radicals only for p<=3 generically, justified by Galois theory of the degree-(p+1) characteristic polynomial; (ii) orthogonal-polynomial closed form (eigenvalues as zeros of a single Bannai–Ito polynomial) for all p in the uniform regime, with boundary truncation for n<p; (iii) finite stable algorithm (Jacobi diagonalization, O(p^2)) for all p and all parameters.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Derive transition rates via Christoffel–Darboux collapse",
+        "body": "For the dipole V = mu(b^+ + b^-) sum_j (E_{j,j+1}+E_{j+1,j}) connecting blocks n -> n±1, express transition matrix elements as overlaps of consecutive-sector Bannai–Ito polynomials. Apply the (dual/interlaced) Christoffel–Darboux identity to collapse the double sum into a single boundary term ~ (B_{p+1}(lambda)B_p(mu) - B_p(lambda)B_{p+1}(mu))/(lambda - mu). Show the rate from sector n scales like mu^2 g^2 (n + p[n even]), exhibiting parity modulation and the sqrt(p) vacuum Rabi enhancement.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify physical signatures and spectral statistics",
+        "body": "Confirm the parastatistical signatures: the sqrt(p)-enhanced vacuum Rabi frequency at n=1, the parity-modulated transition rates, and that exact Bannai–Ito solvability implies clock-rigid (non-GUE) level spacings as p -> infinity (integrability => rigid spectrum, per Berry–Tabor). Cross-check limiting cases (p=1 recovers ordinary JC) for consistency.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Audit conditional claims and parameter-regime boundaries",
+        "body": "Critically review the dividing line between uniform and generic parameter regimes: verify the osp(1|2) structure is broken when g_j or epsilon_j deviate from uniform/arithmetic, confirm the Galois obstruction at p>=4 is genuine, and ensure no conflation between eigenvector closed form (representation-theoretic, all p) and eigenvalue radical solvability (Galois-theoretic, p<=3). Flag any sector where the Christoffel–Darboux collapse fails.",
+        "agent": "critic-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T04:26:42Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

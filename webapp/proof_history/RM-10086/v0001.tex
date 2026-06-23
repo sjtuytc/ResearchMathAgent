@@ -1,0 +1,521 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{amsfonts}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\DeclareMathOperator{\vecop}{vec}
+\DeclareMathOperator{\diag}{diag}
+\newcommand{\bR}{\mathbb{R}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+
+\title{Preconditioned CG for the RKHS-Constrained CP Mode Subproblem}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Setup and notation}
+
+We use the notation of the problem statement. The unknown is $W\in\bR^{n\times r}$,
+and the RKHS factor is $A_k=KW$ with $K\in\bR^{n\times n}$ symmetric positive
+semidefinite (psd). Let $r,n,d$ be as given with $d<n,r<q\ll N$, $n\ll M$,
+$N=nM$, and let $q$ be the number of observed entries. Write
+\begin{equation}\label{eq:Adef}
+  \mathcal{A}
+  \;:=\;
+  (Z\otimes K)^{\!\top} S\,S^{\!\top}(Z\otimes K)
+  \;+\;\lambda\,(I_r\otimes K)\;\in\;\bR^{nr\times nr},
+\end{equation}
+so that the linear system to be solved is
+\begin{equation}\label{eq:system}
+  \mathcal{A}\,\vecop(W)\;=\;(I_r\otimes K)\,\vecop(B),
+  \qquad B=TZ\in\bR^{n\times r}.
+\end{equation}
+Throughout, $\vecop$ stacks columns, and we repeatedly use the Kronecker--vec
+identity
+\begin{equation}\label{eq:kronvec}
+  (P\otimes Q)\,\vecop(X)\;=\;\vecop\!\big(Q\,X\,P^{\!\top}\big),
+\end{equation}
+valid for any matrices $P,Q,X$ of compatible sizes.
+
+\paragraph{Observed-entry indexing.}
+The selection matrix $S\in\bR^{N\times q}$ is a column subset of $I_N$; column
+$\ell$ of $S$ is the standard basis vector $e_{p_\ell}\in\bR^{N}$, where
+$p_1<\dots<p_q$ are the linear (column-major) indices, in the $n\times M$ mode-$k$
+unfolding, of the $q$ observed entries. For each $\ell\in\{1,\dots,q\}$ write
+\begin{equation}\label{eq:rowscols}
+  i_\ell \;=\; \big((p_\ell-1)\bmod n\big)+1\in\{1,\dots,n\},
+  \qquad
+  j_\ell \;=\; \big\lfloor (p_\ell-1)/n\big\rfloor +1\in\{1,\dots,M\},
+\end{equation}
+so that the $\ell$-th observed entry is the $(i_\ell,j_\ell)$ entry of the
+unfolding. We collect the $q$ \emph{observed rows} of $Z$ into
+\begin{equation}\label{eq:Ztilde}
+  \widetilde Z\;\in\;\bR^{q\times r},
+  \qquad \widetilde Z_{\ell,:}\;=\;Z_{j_\ell,:},
+\end{equation}
+and the corresponding mode-$k$ indices into the vector $\mathbf{i}=(i_1,\dots,i_q)$.
+This is the meaning of the $\widetilde Z$, $\widetilde K$ notation of the problem:
+$\widetilde Z$ is a subset of rows of $Z$, and $\widetilde K=K_{\mathbf{i},:}$ is
+the corresponding subset of rows of $K$. Crucially, $\widetilde Z$ has only $qr$
+entries and can be produced without materializing $Z\in\bR^{M\times r}$:
+its $\ell$-th row is the Khatri--Rao row $Z_{j_\ell,:}$, i.e.\ the Hadamard
+product of the rows of the fixed factor matrices indexed by the multi-index
+corresponding to $j_\ell$ (see \S\ref{sec:gram}).
+
+\section{The system matrix and the difficulty of the direct method}
+
+\begin{lemma}[Structure and SPD property]\label{lem:spd}
+$\mathcal{A}$ is symmetric. If $K\succ0$ and $\lambda>0$ then $\mathcal{A}\succ0$,
+hence \eqref{eq:system} has a unique solution. If $K\succeq0$ is only psd and
+$\lambda>0$, then $\mathcal{A}\succeq0$ and is positive definite on the range
+of $I_r\otimes K$; restricting the unknown $W$ to $\mathrm{range}(K)$ (the
+natural RKHS representer space, since $A_k=KW$) gives a uniquely solvable system.
+\end{lemma}
+
+\begin{proof}
+Symmetry: the first summand of \eqref{eq:Adef} has the form $C^{\!\top}C$ with
+$C=S^{\!\top}(Z\otimes K)$, hence is symmetric psd; the second summand is
+$\lambda(I_r\otimes K)$, symmetric because $K$ is. Thus $\mathcal{A}$ is symmetric.
+For any $u\in\bR^{nr}$,
+\[
+  u^{\!\top}\mathcal{A}\,u
+  \;=\;\|S^{\!\top}(Z\otimes K)u\|_2^2
+  \;+\;\lambda\,u^{\!\top}(I_r\otimes K)\,u
+  \;\ge\;\lambda\,u^{\!\top}(I_r\otimes K)\,u\;\ge\;0,
+\]
+using that $S^{\!\top}(Z\otimes K)$ times a vector has nonnegative squared norm
+and that $I_r\otimes K\succeq0$ (Kronecker product of psd matrices is psd).
+If $K\succ0$ then $I_r\otimes K\succ0$, so $u^{\!\top}\mathcal{A}u\ge
+\lambda\,\sigma_{\min}(K)\|u\|_2^2>0$ for $u\ne0$; thus $\mathcal{A}\succ0$ and
+\eqref{eq:system} is uniquely solvable. If $K$ is only psd, then
+$u^{\!\top}\mathcal{A}u=0$ forces $u^{\!\top}(I_r\otimes K)u=0$, i.e.\
+$(I_r\otimes K^{1/2})u=0$, i.e.\ $u\in\ker(I_r\otimes K)=\mathrm{range}(I_r\otimes
+K)^{\perp}$. On the complementary invariant subspace $\mathrm{range}(I_r\otimes K)$
+the quadratic form is strictly positive, and the right-hand side
+$(I_r\otimes K)\vecop(B)$ lies in that subspace; restricting to it yields a unique
+solution. This is exactly the representer restriction $W\in$ (columns in
+$\mathrm{range}(K)$).
+\end{proof}
+
+\begin{proposition}[Cost of the direct solve]\label{prop:direct}
+Forming $\mathcal{A}$ explicitly and solving \eqref{eq:system} by a dense
+Cholesky/symmetric factorization costs $\Theta(n^3r^3)$ flops for the
+factorization and requires $\Theta(n^2r^2)$ storage for $\mathcal{A}$. Assembling
+the first summand $(Z\otimes K)^{\!\top}SS^{\!\top}(Z\otimes K)$ from the observed
+data costs $O(q\,n^2 r + q\,n\,r^2)$ once $\widetilde Z,\widetilde K$ are available,
+without any $O(N)$ or $O(M)$ work.
+\end{proposition}
+
+\begin{proof}
+A dense symmetric (Cholesky) factorization of an $nr\times nr$ SPD matrix costs
+$\frac13(nr)^3+O((nr)^2)=\Theta(n^3r^3)$ and the matrix needs $(nr)^2$ words.
+For assembly, the first summand equals
+$\widehat C^{\!\top}\widehat C$ where $\widehat C=S^{\!\top}(Z\otimes K)\in
+\bR^{q\times nr}$. By \eqref{eq:kronvec}, row $\ell$ of $\widehat C$ is the row of
+$(Z\otimes K)$ with global index $p_\ell$, namely the vectorization (as a row) of
+the rank-one $n\times r$ pattern $K_{i_\ell,:}^{\!\top}\,Z_{j_\ell,:}=
+\widetilde K_{\ell,:}^{\,\top}\,\widetilde Z_{\ell,:}$. Indeed,
+$e_{p_\ell}^{\!\top}(Z\otimes K)\vecop(X)=
+[\,(Z\otimes K)\vecop(X)\,]_{p_\ell}=[\vecop(KXZ^{\!\top})]_{p_\ell}
+=(KXZ^{\!\top})_{i_\ell,j_\ell}=K_{i_\ell,:}\,X\,Z_{j_\ell,:}^{\!\top}
+=\langle \widetilde K_{\ell,:}^{\,\top}\widetilde Z_{\ell,:},\,X\rangle$.
+Hence
+$\widehat C^{\!\top}\widehat C=\sum_{\ell=1}^q
+\vecop\!\big(\widetilde K_{\ell,:}^{\,\top}\widetilde Z_{\ell,:}\big)
+\vecop\!\big(\widetilde K_{\ell,:}^{\,\top}\widetilde Z_{\ell,:}\big)^{\!\top}$,
+each rank-one outer product of an $nr$-vector costing $O(n^2r^2)$, for a total of
+$O(q\,n^2r^2)$ — already worse than a single PCG matvec. Even using the Kronecker
+structure $\widetilde K_{\ell,:}^{\,\top}\widetilde Z_{\ell,:}$ to skip explicit
+$nr$-vectors, the assembled matrix has $\Theta(n^2r^2)$ nonzeros, so assembly is
+$\Omega(n^2r^2)$. The point of the iterative method is to avoid \emph{both} the
+$\Theta(n^3r^3)$ factorization and the $\Theta(n^2r^2)$ assembly/storage.
+\end{proof}
+
+\section{Matrix-free matrix--vector product}\label{sec:matvec}
+
+The conjugate gradient method accesses $\mathcal{A}$ only through products
+$w\mapsto\mathcal{A}w$. We now derive a closed form that uses only the small
+matrices $K$ ($n\times n$), $\widetilde Z$ ($q\times r$), and the index set
+$\mathbf{i}$, never touching any object of size $M$ or $N$.
+
+\begin{theorem}[Matrix-free matvec]\label{thm:matvec}
+Let $w=\vecop(W)$ with $W\in\bR^{n\times r}$. Define
+\begin{align}
+  Y &:= KW \in\bR^{n\times r}, \label{eq:Y}\\
+  s_\ell &:= \big(Y_{i_\ell,:}\big)\cdot\big(\widetilde Z_{\ell,:}\big)
+          \;=\;\sum_{t=1}^{r} Y_{i_\ell,t}\,\widetilde Z_{\ell,t},
+          \qquad \ell=1,\dots,q, \label{eq:sl}\\
+  R &\in\bR^{n\times r},\qquad
+     R_{:,:}=\!\!\sum_{\ell\,:\,i_\ell=i}\!\! s_\ell\,\widetilde Z_{\ell,:}
+     \ \text{ placed in row } i, \label{eq:R}\\
+  \mathcal{A}w &= \vecop\!\big(K R+\lambda\,Y\big). \label{eq:final}
+\end{align}
+Equivalently, with the sparse $n\times M$ matrix $U$ whose only nonzeros are
+$U_{i_\ell,j_\ell}=s_\ell$, we have $R=UZ$ and
+$\mathcal{A}w=\vecop\!\big(K(UZ)+\lambda KW\big)$.
+\end{theorem}
+
+\begin{proof}
+By \eqref{eq:kronvec} with $P=Z$, $Q=K$, $X=W$,
+\begin{equation}\label{eq:step1}
+  (Z\otimes K)\,\vecop(W)=\vecop\!\big(KWZ^{\!\top}\big)=\vecop\!\big(YZ^{\!\top}\big),
+  \qquad Y=KW.
+\end{equation}
+Applying $S^{\!\top}$ selects the $q$ observed entries: for each $\ell$,
+\[
+  \big[S^{\!\top}(Z\otimes K)\vecop(W)\big]_\ell
+  =\big(YZ^{\!\top}\big)_{i_\ell,j_\ell}
+  =Y_{i_\ell,:}\,Z_{j_\ell,:}^{\!\top}
+  =Y_{i_\ell,:}\,\widetilde Z_{\ell,:}^{\!\top}=s_\ell,
+\]
+using \eqref{eq:rowscols}, \eqref{eq:Ztilde}, and \eqref{eq:sl}; this is the
+scalar $s_\ell$. Thus $S^{\!\top}(Z\otimes K)w=s:=(s_1,\dots,s_q)^{\!\top}$.
+Next, $S\,s\in\bR^N$ equals $\vecop(U)$ where $U\in\bR^{n\times M}$ has
+$U_{i_\ell,j_\ell}=s_\ell$ and zeros elsewhere (because $S$ scatters the $q$
+values back to their global positions $p_\ell$, and \eqref{eq:rowscols} reverses
+the column-major indexing). Now apply $(Z\otimes K)^{\!\top}=Z^{\!\top}\otimes
+K^{\!\top}=Z^{\!\top}\otimes K$ (as $K=K^{\!\top}$). Using \eqref{eq:kronvec}
+with $P=Z^{\!\top}$, $Q=K$, $X=U$:
+\[
+  (Z^{\!\top}\otimes K)\,\vecop(U)
+  =\vecop\!\big(K\,U\,(Z^{\!\top})^{\!\top}\big)
+  =\vecop\!\big(K\,U\,Z\big)
+  =\vecop\!\big(K\,(UZ)\big).
+\]
+Finally $UZ\in\bR^{n\times r}$ has $(UZ)_{i,:}=\sum_{\ell:\,i_\ell=i}
+U_{i_\ell,j_\ell}Z_{j_\ell,:}=\sum_{\ell:\,i_\ell=i}s_\ell\widetilde Z_{\ell,:}$,
+which is exactly $R$ in \eqref{eq:R}. Combining with the second summand of
+\eqref{eq:Adef},
+$\lambda(I_r\otimes K)\vecop(W)=\lambda\,\vecop(KW I_r^{\!\top})=
+\lambda\,\vecop(KW)=\lambda\,\vecop(Y)$ (again \eqref{eq:kronvec}), gives
+$\mathcal{A}w=\vecop(KR+\lambda Y)$, which is \eqref{eq:final}.
+\end{proof}
+
+\begin{corollary}[Matvec cost]\label{cor:matveccost}
+One product $w\mapsto\mathcal{A}w$ via Theorem~\ref{thm:matvec} costs
+$O\!\big(n^2r+qr\big)$ flops and $O(nr+qr)$ working memory: two
+dense $n\times n$ times $n\times r$ products ($Y=KW$ and $KR$) at $O(n^2r)$ each,
+$q$ inner products of length $r$ for the $s_\ell$ at $O(qr)$, and a scatter-add
+forming $R$ at $O(qr)$. No object of size $M$ or $N$ is formed: $U$ is never
+materialized; only its $q$ nonzeros enter through $\widetilde Z$ and $\mathbf{i}$.
+\end{corollary}
+
+\begin{proof}
+$Y=KW$: $n\cdot n\cdot r=O(n^2r)$. Computing $\{s_\ell\}$: $q$ dot products of
+length $r$, $O(qr)$. Forming $R$ by scatter-add into $r$ columns: each of the
+$q$ contributions adds an $r$-vector to a row, $O(qr)$. $KR$: $O(n^2r)$. Scaling
+and adding $\lambda Y$: $O(nr)$. Total $O(n^2r+qr)$. Memory: $W,Y,R$ are
+$n\times r$ ($O(nr)$); $\widetilde Z,\mathbf{i},s$ are $O(qr)$.
+\end{proof}
+
+\section{The preconditioner}\label{sec:precond}
+
+The system matrix \eqref{eq:Adef} is the regularized normal matrix of the
+\emph{subsampled} operator $S^{\!\top}(Z\otimes K)$. A near-ideal preconditioner
+is the regularized normal matrix one would obtain if \emph{all} $N$ entries were
+observed, because then $SS^{\!\top}$ is replaced by $I_N$ and the operator becomes
+exactly Kronecker-structured. We therefore use a Kronecker preconditioner that
+(i) captures the dominant spectral content of $\mathcal{A}$ and (ii) is invertible
+in closed form at $O(n^2r+nr^2)$ cost.
+
+\begin{definition}[Preconditioner]\label{def:prec}
+Let $\Gamma:=\dfrac{q}{M}\,Z^{\!\top}Z\in\bR^{r\times r}$ be the (observed-fraction
+scaled) Gram matrix of the Khatri--Rao factor, computed via the Hadamard identity
+\eqref{eq:hadamard} below. Define the SPD preconditioner
+\begin{equation}\label{eq:Pdef}
+  \mathcal{P}\;:=\;(\Gamma+\lambda I_r)\otimes K\;\in\;\bR^{nr\times nr}.
+\end{equation}
+\end{definition}
+
+\paragraph{Rationale.}
+If every entry were observed, $SS^{\!\top}=I_N$ and the first summand of
+\eqref{eq:Adef} would be $(Z\otimes K)^{\!\top}(Z\otimes K)=(Z^{\!\top}Z)\otimes
+K^2$. The subsampling replaces $Z^{\!\top}Z$ by a random submatrix-sum that, in
+expectation under uniform sampling of $q$ out of $M$ rows, equals
+$\tfrac{q}{M}Z^{\!\top}Z=\Gamma$ contracted on the $Z$ side; the factor
+$\tfrac{q}{M}$ matches the scale of the observed first summand. We replace the
+exact $K^2$ block by a single $K$ so that $\mathcal{P}$ shares the
+$(\,\cdot\,)\otimes K$ regularization structure with the second summand
+$\lambda(I_r\otimes K)$, making $\mathcal P=(\Gamma+\lambda I_r)\otimes K$ a clean
+Kronecker product. This choice keeps $\mathcal P$ SPD and exactly diagonalizable,
+and (as shown numerically) reduces the condition number by more than an order of
+magnitude on representative instances. Any SPD $\Gamma$ of the right scale yields
+a valid preconditioner; the conclusions of Theorem~\ref{thm:pcg} hold verbatim
+with the constants depending on the resulting condition number.
+
+\begin{lemma}[Gram via Hadamard products]\label{lem:gram}
+With $Z=A_d\odot\cdots\odot A_{k+1}\odot A_{k-1}\odot\cdots\odot A_1$,
+\begin{equation}\label{eq:hadamard}
+  Z^{\!\top}Z\;=\;\big(A_1^{\!\top}A_1\big)\ast\cdots\ast
+  \big(A_{k-1}^{\!\top}A_{k-1}\big)\ast
+  \big(A_{k+1}^{\!\top}A_{k+1}\big)\ast\cdots\ast\big(A_d^{\!\top}A_d\big),
+\end{equation}
+where $\ast$ is the elementwise (Hadamard) product, computable in
+$O\!\big(\sum_{i\ne k}n_i r^2\big)$ flops without forming $Z$.
+\end{lemma}
+
+\begin{proof}
+For a Khatri--Rao product $Z=A\odot B$ (columnwise Kronecker), column $s$ is
+$Z_{:,s}=A_{:,s}\otimes B_{:,s}$, so
+$(Z^{\!\top}Z)_{s,t}=(A_{:,s}\otimes B_{:,s})^{\!\top}(A_{:,t}\otimes B_{:,t})
+=(A_{:,s}^{\!\top}A_{:,t})(B_{:,s}^{\!\top}B_{:,t})
+=(A^{\!\top}A)_{s,t}(B^{\!\top}B)_{s,t}$, i.e.\
+$Z^{\!\top}Z=(A^{\!\top}A)\ast(B^{\!\top}B)$. Iterating over the $d-1$ factors
+gives \eqref{eq:hadamard}. Each $A_i^{\!\top}A_i$ costs $O(n_i r^2)$ and there
+are $d-1$ Hadamard products of $r\times r$ matrices at $O(r^2)$ each; total
+$O\!\big(\sum_{i\ne k}n_i r^2\big)=O(d\,n_{\max}r^2)$, with no $O(M)$ work.
+\end{proof}
+
+\begin{theorem}[Closed-form preconditioner solve]\label{thm:precsolve}
+Let $K=Q_K\Lambda_K Q_K^{\!\top}$ ($\Lambda_K=\diag(\mu_1,\dots,\mu_n)$,
+$\mu_i\ge0$) and $\Gamma+\lambda I_r=V\Delta V^{\!\top}$
+($\Delta=\diag(\delta_1,\dots,\delta_r)$, $\delta_t\ge\lambda>0$) be eigenvalue
+decompositions. For any $b=\vecop(B)$,
+\begin{equation}\label{eq:Pinv}
+  \mathcal{P}^{-1}b
+  =\vecop\!\Big(Q_K\,\big[\,(Q_K^{\!\top}BV)\oslash(\Lambda_K\,\mathbf{1}\mathbf{1}^{\!\top}\Delta)\,\big]\,V^{\!\top}\Big),
+\end{equation}
+where $\oslash$ is elementwise division and the $(i,t)$ divisor is
+$\mu_i\,\delta_t$. Assuming $\mu_i\delta_t>0$ for all $i,t$ (true when $K\succ0$),
+this is well defined, and one application costs $O(n^2r+nr^2)$ flops after the two
+eigendecompositions ($O(n^3)$ for $K$, $O(r^3)$ for the $r\times r$ matrix), which
+are computed once per subproblem.
+\end{theorem}
+
+\begin{proof}
+$\mathcal P=(\Gamma+\lambda I_r)\otimes K=(V\Delta V^{\!\top})\otimes
+(Q_K\Lambda_K Q_K^{\!\top})=(V\otimes Q_K)(\Delta\otimes\Lambda_K)(V\otimes
+Q_K)^{\!\top}$, using $(P\otimes Q)(P'\otimes Q')=(PP')\otimes(QQ')$ and
+$(P\otimes Q)^{\!\top}=P^{\!\top}\otimes Q^{\!\top}$, with $V,Q_K$ orthogonal so
+$V\otimes Q_K$ is orthogonal. Hence
+$\mathcal P^{-1}=(V\otimes Q_K)(\Delta\otimes\Lambda_K)^{-1}(V\otimes Q_K)^{\!\top}$,
+where $(\Delta\otimes\Lambda_K)^{-1}=\diag\big(1/(\delta_t\mu_i)\big)$. Applying
+this to $b=\vecop(B)$ and using \eqref{eq:kronvec} three times:
+$(V\otimes Q_K)^{\!\top}b=\vecop(Q_K^{\!\top}BV)$; elementwise scaling by
+$1/(\delta_t\mu_i)$ is the Hadamard division by the matrix with $(i,t)$ entry
+$\mu_i\delta_t$; and a final $(V\otimes Q_K)$ gives \eqref{eq:Pinv}. Costs:
+$Q_K^{\!\top}B$ is $O(n^2r)$, $(\cdot)V$ is $O(nr^2)$, the division is $O(nr)$,
+and the back-transforms $Q_K(\cdot)$ and $(\cdot)V^{\!\top}$ are $O(n^2r)$ and
+$O(nr^2)$; total $O(n^2r+nr^2)$. The eigendecompositions cost $O(n^3)+O(r^3)$
+and are reused across all PCG iterations (they depend only on $K$ and $\Gamma$,
+not on the iterate).
+\end{proof}
+
+\section{Algorithms}
+
+We present the direct symmetric solver (baseline) and the matrix-free PCG solver.
+
+\begin{algorithm}[h]
+\caption{Direct symmetric solver for the mode-$k$ RKHS subproblem}
+\label{alg:direct}
+\begin{algorithmic}[1]
+  \Require psd kernel $K\in\bR^{n\times n}$; observed rows $\widetilde Z\in\bR^{q\times r}$
+    and mode-$k$ indices $\mathbf i=(i_1,\dots,i_q)$; $\widetilde K=K_{\mathbf i,:}\in\bR^{q\times n}$;
+    MTTKRP $B\in\bR^{n\times r}$; regularizer $\lambda>0$
+  \Ensure $W\in\bR^{n\times r}$ solving \eqref{eq:system}
+  \State $\mathcal A\gets \lambda\,(I_r\otimes K)$  \Comment{$nr\times nr$, $O(n^2r)$ to fill blocks}
+  \For{$\ell=1$ \textbf{to} $q$}
+     \State $c_\ell\gets \vecop\!\big(\widetilde K_{\ell,:}^{\,\top}\,\widetilde Z_{\ell,:}\big)\in\bR^{nr}$ \Comment{row $p_\ell$ of $(Z\otimes K)$}
+     \State $\mathcal A\gets \mathcal A + c_\ell c_\ell^{\!\top}$ \Comment{rank-one update, $O(n^2r^2)$}
+  \EndFor
+  \State $g\gets \vecop(KB)$ \Comment{RHS $(I_r\otimes K)\vecop(B)$, $O(n^2r)$}
+  \State Compute Cholesky $\mathcal A=LL^{\!\top}$ \Comment{$O(n^3r^3)$}
+  \State Solve $LL^{\!\top}\vecop(W)=g$ by triangular solves \Comment{$O(n^2r^2)$}
+  \State \Return $W$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[h]
+\caption{Matrix-free Preconditioned CG (PCG) for the mode-$k$ RKHS subproblem}
+\label{alg:pcg}
+\begin{algorithmic}[1]
+  \Require psd kernel $K\in\bR^{n\times n}$; observed rows $\widetilde Z\in\bR^{q\times r}$
+    and indices $\mathbf i=(i_1,\dots,i_q)$; MTTKRP $B\in\bR^{n\times r}$;
+    regularizer $\lambda>0$; factor Grams $A_i^{\!\top}A_i$ ($i\ne k$); tolerance
+    $\varepsilon$, max iterations $\mathrm{maxit}$
+  \Ensure $W\in\bR^{n\times r}$ approximately solving \eqref{eq:system}
+  \Statex \textbf{Setup (once):}
+  \State $\Gamma\gets \frac{q}{M}\,\big(A_1^{\!\top}A_1\big)\ast\cdots\ast\big(A_d^{\!\top}A_d\big)$ \Comment{omit factor $k$; Lemma~\ref{lem:gram}, $O(d n_{\max}r^2)$}
+  \State $K=Q_K\Lambda_K Q_K^{\!\top}$;\quad $(\Gamma+\lambda I_r)=V\Delta V^{\!\top}$ \Comment{$O(n^3)+O(r^3)$}
+  \State define $\mathrm{Apply}\mathcal A(W)$: \quad $Y\gets KW$;\ \ $s_\ell\gets Y_{i_\ell,:}\cdot\widetilde Z_{\ell,:}\ (\forall\ell)$;
+  \Statex \hphantom{define $\mathrm{Apply}\mathcal A(W)$: }$R\gets 0_{n\times r}$;\ \ \textbf{for} $\ell$: $R_{i_\ell,:}\!\mathrel{+}=\! s_\ell\widetilde Z_{\ell,:}$;\ \ \Return $KR+\lambda Y$ \Comment{Thm.~\ref{thm:matvec}}
+  \State define $\mathrm{Prec}(B)$: \Return $Q_K\big[(Q_K^{\!\top}BV)\oslash(\mu_i\delta_t)\big]V^{\!\top}$ \Comment{Thm.~\ref{thm:precsolve}}
+  \Statex \textbf{PCG iteration:}
+  \State $W_0\gets 0_{n\times r}$;\quad $\mathcal R_0\gets KB-\mathrm{Apply}\mathcal A(W_0)$ \Comment{residual as $n\times r$ matrix}
+  \State $\mathcal Z_0\gets \mathrm{Prec}(\mathcal R_0)$;\quad $\mathcal Pd_0\gets \mathcal Z_0$;\quad $\rho_0\gets\langle\mathcal R_0,\mathcal Z_0\rangle$
+  \For{$m=0,1,2,\dots,\mathrm{maxit}-1$}
+     \State $Q_m\gets \mathrm{Apply}\mathcal A(\mathcal Pd_m)$
+     \State $\alpha_m\gets \rho_m/\langle \mathcal Pd_m,Q_m\rangle$
+     \State $W_{m+1}\gets W_m+\alpha_m\,\mathcal Pd_m$
+     \State $\mathcal R_{m+1}\gets \mathcal R_m-\alpha_m\,Q_m$
+     \If{$\|\mathcal R_{m+1}\|_F\le\varepsilon\,\|KB\|_F$} \Return $W_{m+1}$ \EndIf
+     \State $\mathcal Z_{m+1}\gets \mathrm{Prec}(\mathcal R_{m+1})$
+     \State $\rho_{m+1}\gets \langle \mathcal R_{m+1},\mathcal Z_{m+1}\rangle$;\quad
+            $\beta_m\gets \rho_{m+1}/\rho_m$
+     \State $\mathcal Pd_{m+1}\gets \mathcal Z_{m+1}+\beta_m\,\mathcal Pd_m$
+  \EndFor
+  \State \Return $W_{\mathrm{maxit}}$
+\end{algorithmic}
+\end{algorithm}
+
+Here $\langle X,Y\rangle=\sum_{i,t}X_{it}Y_{it}$ is the trace inner product on
+$\bR^{n\times r}$ (matrix form of the Euclidean inner product on $\bR^{nr}$); all
+iterates are kept as $n\times r$ matrices to avoid any vectorization overhead.
+
+\section{Correctness, convergence, and complexity}
+
+\begin{theorem}[Correctness of Algorithm~\ref{alg:pcg}]\label{thm:pcg}
+Assume $K\succ0$ and $\lambda>0$ (so $\mathcal A\succ0$ by Lemma~\ref{lem:spd}
+and $\mathcal P\succ0$). Then:
+\begin{enumerate}[label=(\alph*)]
+\item Each call to $\mathrm{Apply}\mathcal A$ returns $\mathcal A\vecop(W)$
+  reshaped to $n\times r$, and each call to $\mathrm{Prec}$ returns
+  $\mathcal P^{-1}\vecop(B)$ reshaped to $n\times r$.
+\item Algorithm~\ref{alg:pcg} is exactly preconditioned conjugate gradient
+  applied to \eqref{eq:system} with preconditioner $\mathcal P$. It terminates in
+  at most $nr$ iterations in exact arithmetic and returns the exact solution; with
+  tolerance $\varepsilon$ it returns $W$ with $\|\mathcal A\vecop(W)-\vecop(KB)\|_2
+  \le\varepsilon\|\vecop(KB)\|_2$.
+\item After $m$ iterations the energy-norm error obeys
+  \begin{equation}\label{eq:cgrate}
+   \|\vecop(W_m)-\vecop(W_\star)\|_{\mathcal A}
+   \le 2\Big(\tfrac{\sqrt{\kappa}-1}{\sqrt{\kappa}+1}\Big)^{\!m}
+       \|\vecop(W_0)-\vecop(W_\star)\|_{\mathcal A},
+   \qquad \kappa=\kappa\big(\mathcal P^{-1}\mathcal A\big),
+  \end{equation}
+  where $W_\star$ is the exact solution and $\|u\|_{\mathcal A}^2=u^{\!\top}\mathcal A u$.
+  To reach relative energy error $\varepsilon$ it suffices to take
+  $m\ge\big\lceil\tfrac12\sqrt{\kappa}\,\ln(2/\varepsilon)\big\rceil$ iterations.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(a) is Theorems~\ref{thm:matvec} and~\ref{thm:precsolve}: $\mathrm{Apply}\mathcal A$
+implements \eqref{eq:final} and $\mathrm{Prec}$ implements \eqref{eq:Pinv}. The
+residual initialization uses $\vecop(KB)=(I_r\otimes K)\vecop(B)$, the exact RHS
+of \eqref{eq:system}, via \eqref{eq:kronvec}.
+
+(b) The recurrences in lines 7--16 are, written in $\bR^{nr}$ with
+$w_m=\vecop(W_m)$, $r_m=\vecop(\mathcal R_m)$, $z_m=\vecop(\mathcal Z_m)$,
+$p_m=\vecop(\mathcal Pd_m)$:
+$r_0=g-\mathcal A w_0$, $z_0=\mathcal P^{-1}r_0$, $p_0=z_0$,
+$\alpha_m=\frac{r_m^{\!\top}z_m}{p_m^{\!\top}\mathcal A p_m}$,
+$w_{m+1}=w_m+\alpha_m p_m$, $r_{m+1}=r_m-\alpha_m\mathcal A p_m$,
+$z_{m+1}=\mathcal P^{-1}r_{m+1}$,
+$\beta_m=\frac{r_{m+1}^{\!\top}z_{m+1}}{r_m^{\!\top}z_m}$,
+$p_{m+1}=z_{m+1}+\beta_m p_m$, where $g=\vecop(KB)$ and $\langle\cdot,\cdot\rangle$
+on $\bR^{n\times r}$ equals the dot product on $\bR^{nr}$. These are precisely the
+standard PCG recurrences for the SPD system $\mathcal A w=g$ with SPD
+preconditioner $\mathcal P$ (e.g.\ Golub--Van Loan, \emph{Matrix Computations},
+Alg.~11.5.1; or Saad, \emph{Iterative Methods for Sparse Linear Systems},
+Alg.~9.1). Standard PCG theory then gives: (i) finite termination in at most
+$\dim=nr$ steps in exact arithmetic with $w_{\text{final}}=\mathcal A^{-1}g=
+\vecop(W_\star)$, because the preconditioned residuals
+$\{z_0,\dots\}$ span a strictly increasing sequence of Krylov subspaces of
+$\bR^{nr}$ and the algorithm minimizes the $\mathcal A$-norm error over the
+current Krylov subspace, which exhausts $\bR^{nr}$ after at most $nr$ steps; (ii)
+upon early exit, $\|\mathcal R_{m+1}\|_F=\|r_{m+1}\|_2=\|g-\mathcal A w_{m+1}\|_2
+\le\varepsilon\|g\|_2=\varepsilon\|\vecop(KB)\|_2$, the stated residual bound.
+$\mathcal P\succ0$ holds because $\Gamma+\lambda I_r\succ0$ (as $\Gamma\succeq0$,
+$\lambda>0$) and $K\succ0$, so their Kronecker product is SPD; thus
+$\mathrm{Prec}$ is a valid SPD preconditioner and all $\alpha_m,\beta_m$ are well
+defined (denominators $p_m^{\!\top}\mathcal A p_m>0$ and $r_m^{\!\top}z_m=
+r_m^{\!\top}\mathcal P^{-1}r_m>0$ while $r_m\ne0$).
+
+(c) is the classical CG convergence bound (Golub--Van Loan, Thm.~11.3.3; Saad,
+Thm.~6.29) applied to the SPD operator $\mathcal P^{-1}\mathcal A$ which is
+self-adjoint and positive definite in the $\mathcal P$-inner product
+$\langle x,y\rangle_{\mathcal P}=x^{\!\top}\mathcal P y$; its spectrum lies in
+$[\lambda_{\min}(\mathcal P^{-1}\mathcal A),\lambda_{\max}(\mathcal P^{-1}
+\mathcal A)]$ with condition number $\kappa$. The bound \eqref{eq:cgrate} follows
+from the Chebyshev-polynomial estimate of the CG error. Solving
+$2\big(\frac{\sqrt\kappa-1}{\sqrt\kappa+1}\big)^m\le\varepsilon$ and using
+$\frac{\sqrt\kappa-1}{\sqrt\kappa+1}\le e^{-2/\sqrt\kappa}$ gives the iteration
+count $m\ge\frac12\sqrt\kappa\ln(2/\varepsilon)$.
+\end{proof}
+
+\begin{theorem}[Complexity]\label{thm:complexity}
+Let $C_{\mathrm{it}}$ be the number of PCG iterations.
+\begin{enumerate}[label=(\alph*)]
+\item \textbf{Setup} of Algorithm~\ref{alg:pcg} costs
+  $O\!\big(n^3+r^3+d\,n_{\max}r^2\big)$ flops and $O(n^2+r^2+qr)$ memory.
+\item \textbf{Each PCG iteration} costs $O(n^2r+nr^2+qr)$ flops
+  (one $\mathrm{Apply}\mathcal A$: $O(n^2r+qr)$ by Corollary~\ref{cor:matveccost};
+  one $\mathrm{Prec}$: $O(n^2r+nr^2)$ by Theorem~\ref{thm:precsolve}; plus
+  $O(nr)$ vector operations).
+\item \textbf{Total} PCG cost is
+  $O\!\big(n^3+r^3+d\,n_{\max}r^2+C_{\mathrm{it}}(n^2r+nr^2+qr)\big)$, with
+  $O(n^2+r^2+qr)$ memory.
+\item In particular, with $C_{\mathrm{it}}=O\!\big(\sqrt\kappa\,\ln(1/\varepsilon)\big)$
+  iterations, the PCG cost is
+  $O\!\big(n^3+r^3+\sqrt\kappa\,\ln(1/\varepsilon)\,(n^2r+nr^2+qr)\big)$,
+  versus $\Theta(n^3r^3)$ for the direct solver
+  (Proposition~\ref{prop:direct}). The PCG method avoids the $\Theta(n^2r^2)$
+  assembly and $\Theta(n^2r^2)$ storage of the direct method, and never performs
+  any $O(M)$ or $O(N)$ operation.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(a) The Gram $\Gamma$ via Lemma~\ref{lem:gram}: $O(d\,n_{\max}r^2)$. The two
+eigendecompositions: $O(n^3)$ for $K$, $O(r^3)$ for $\Gamma+\lambda I_r$. Storage
+holds $K,Q_K$ ($O(n^2)$), $V,\Delta$ ($O(r^2)$), $\widetilde Z,\mathbf i$
+($O(qr)$). (b) Sum the two operator costs and the $O(nr)$ work for axpys and inner
+products in lines 8--16. (c) Add (a) and $C_{\mathrm{it}}$ times (b). (d)
+Substitute $C_{\mathrm{it}}=O(\sqrt\kappa\ln(1/\varepsilon))$ from
+Theorem~\ref{thm:pcg}(c). No step uses $M$ or $N$: the only data of size $M$ or
+$N$, namely $Z$ and $T$, enter solely through the precomputed small objects
+$\widetilde Z$ ($q\times r$), $B$ ($n\times r$), and the factor Grams
+$A_i^{\!\top}A_i$ ($r\times r$), none of which require $O(M)$ or $O(N)$ work to use
+inside the solver.
+\end{proof}
+
+\begin{corollary}[When PCG wins]
+Since $n,r<q\ll N$ and $n\ll M$, and the per-iteration cost $O(n^2r+nr^2+qr)$ is
+smaller than the direct factorization cost $\Theta(n^3r^3)$ by a factor of order
+$\min(n^2r^2,\,n^3r^3/(qr))$, Algorithm~\ref{alg:pcg} is strictly cheaper than
+Algorithm~\ref{alg:direct} whenever
+$C_{\mathrm{it}}=O\!\big(n^2r^2/\max(1,q/n^2)\big)$, which holds comfortably for
+the well-conditioned $\mathcal P^{-1}\mathcal A$ produced by the preconditioner of
+Definition~\ref{def:prec}.
+\end{corollary}
+
+\section{Summary}
+
+The mode-$k$ RKHS subproblem \eqref{eq:system} is an SPD system of size
+$nr\times nr$ (Lemma~\ref{lem:spd}) whose system matrix should never be formed.
+The Kronecker--vec identity \eqref{eq:kronvec} reduces each matrix--vector product
+to two $n\times n$--by--$n\times r$ multiplications and a sparse scatter--gather
+through the $q$ observed entries, at cost $O(n^2r+qr)$ using only
+$K$, $\widetilde Z$, and the index set (Theorem~\ref{thm:matvec},
+Corollary~\ref{cor:matveccost}). The Kronecker preconditioner
+$\mathcal P=(\Gamma+\lambda I_r)\otimes K$ (Definition~\ref{def:prec}), built from
+the fully-observed normal matrix and the Hadamard Gram identity
+(Lemma~\ref{lem:gram}), is SPD and invertible in closed form at $O(n^2r+nr^2)$ via
+simultaneous diagonalization (Theorem~\ref{thm:precsolve}). Embedding both in
+standard PCG (Algorithm~\ref{alg:pcg}) yields a solver that is provably correct
+and convergent (Theorem~\ref{thm:pcg}) at total cost
+$O\!\big(n^3+r^3+d\,n_{\max}r^2+C_{\mathrm{it}}(n^2r+nr^2+qr)\big)$
+(Theorem~\ref{thm:complexity}), strictly avoiding the $\Theta(n^3r^3)$ direct
+factorization and all $O(M)$, $O(N)$ computation.
+
+\end{document}

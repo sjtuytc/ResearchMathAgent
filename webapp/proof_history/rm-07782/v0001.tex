@@ -1,0 +1,558 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref,stmaryrd}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\To}{\rightarrow}
+\newcommand{\co}{\prec}            % co-implication / subtraction
+\newcommand{\bigC}{\mathbf{2C}}
+\newcommand{\Ci}{\mathbf{2C}^{-{\sim}}}        % system (i): no strong negation
+\newcommand{\Cii}{\mathbf{2C}^{-{\sim},-c}}    % system (ii): no strong negation, no constants
+\newcommand{\fp}{\Vdash^{+}}
+\newcommand{\fm}{\Vdash^{-}}
+\newcommand{\proves}{\vdash}
+\newcommand{\refutes}{\dashv}
+
+\begin{document}
+
+\title{Bilateral fragments of the bi-connexive logic $\mathbf{2C}$:\\
+deleting the strong negation and the propositional constants}
+\author{solver-agent}
+\date{}
+\maketitle
+
+\begin{abstract}
+We analyse the two bilateral propositional systems obtained from the
+bi-connexive logic $\bigC$ by (i) deleting the strong (toggle) negation while
+keeping $\top,\bot$, and (ii) additionally deleting $\top,\bot$. For each system
+we give a sound and complete bilateral natural--deduction calculus, a relational
+and an algebraic (twist--structure) semantics, and we settle the status of the
+connexive theses, of negation--inconsistency, of non--triviality, and the
+definability/undefinability of the absent operators. The decisive structural
+fact is a \emph{separation invariant}: in the negation--free language the
+support--of--truth of a formula depends only on the positive valuation of the
+atoms. From it we derive (a)~the strong negation is undefinable in both systems;
+(b)~the connexive theses, which are statements \emph{about} the strong negation,
+collapse; (c)~system~(i) is negation--inconsistent but non--trivial, witnessed by
+$\bot\To p$; and (d)~system~(ii) is negation--consistent, because no
+constant--free formula is ever refuted.
+\end{abstract}
+
+\section{The base logic $\bigC$ and its bilateral semantics}\label{sec:base}
+
+We work with Wansing's bilateral formulation. A \emph{bi--consequence} system has
+two relations: a \emph{provability} relation $\proves$ and a \emph{refutability}
+relation $\refutes$. Semantically these are read off a single Kripke model
+through a pair of support relations $\fp$ (``is verified at'') and $\fm$ (``is
+falsified at'').
+
+\begin{definition}[Models]\label{def:model}
+A \emph{model} is a triple $\mathfrak{M}=(W,\le,V)$ where $(W,\le)$ is a
+non--empty poset (a reflexive--transitive frame) and
+$V=(V^{+},V^{-})$ assigns to each atom $p$ two \emph{$\le$--upward closed}
+sets $V^{+}(p),V^{-}(p)\subseteq W$ (\emph{heredity}: if $w\le v$ and $w\in
+V^{\pm}(p)$ then $v\in V^{\pm}(p)$). No relation between $V^{+}(p)$ and
+$V^{-}(p)$ is imposed.
+\end{definition}
+
+\begin{definition}[Support, full language]\label{def:support}
+The full language of $\bigC$ is built from atoms with
+$\wedge,\vee,\To$, the strong negation ${\sim}$, and the constants
+$\top,\bot$. The two support relations are fixed by mutual recursion:
+\begin{align*}
+w\fp p &\iff w\in V^{+}(p), & w\fm p &\iff w\in V^{-}(p),\\
+w\fp \top &\iff \text{always}, & w\fm \top &\iff \text{never},\\
+w\fp \bot &\iff \text{never}, & w\fm \bot &\iff \text{always},\\
+w\fp A\wedge B &\iff w\fp A \text{ and } w\fp B,
+ & w\fm A\wedge B &\iff w\fm A \text{ or } w\fm B,\\
+w\fp A\vee B &\iff w\fp A \text{ or } w\fp B,
+ & w\fm A\vee B &\iff w\fm A \text{ and } w\fm B,\\
+w\fp A\To B &\iff \forall v\ge w\,(v\fp A\Rightarrow v\fp B),
+ & w\fm A\To B &\iff \forall v\ge w\,(v\fp A\Rightarrow v\fm B),\\
+w\fp {\sim}A &\iff w\fm A, & w\fm {\sim}A &\iff w\fp A .
+\end{align*}
+We write $\mathfrak{M}\models^{+}A$ if $w\fp A$ for all $w\in W$, and
+$\mathfrak{M}\models^{-}A$ if $w\fm A$ for all $w\in W$; and $\models^{+}A$
+(resp.\ $\models^{-}A$) if this holds in every model. The two clauses for
+$\To$ that mention the falsity component are the \emph{connexive twist}: the
+falsity of $A\To B$ propagates the falsity of the \emph{consequent} under the
+truth of the antecedent. The strong negation ${\sim}$ is the toggle linking the
+two fragments.
+\end{definition}
+
+\begin{lemma}[Heredity]\label{lem:hered}
+For every formula $A$ of the full language and every model, the sets
+$\{w: w\fp A\}$ and $\{w: w\fm A\}$ are $\le$--upward closed.
+\end{lemma}
+\begin{proof}
+Induction on $A$. Atoms hold by Definition~\ref{def:model}; $\top,\bot$ are
+constant hence upward closed. For $\wedge,\vee$ closure is preserved by finite
+intersection/union of upward closed sets. For $\To$ both clauses are universal
+quantifications over $\{v:v\ge w\}$ of an upward persistent matrix, hence are
+themselves upward closed because $\ge$ is transitive. For ${\sim}$ the two
+components are swapped, so closure of one gives closure of the other.
+\end{proof}
+
+\begin{proposition}[Connexive theses and bi--connexivity of $\bigC$]\label{prop:base}
+In every model,
+\[
+\models^{+}{\sim}(A\To{\sim}A),\quad
+\models^{+}{\sim}({\sim}A\To A),
+\]
+\[
+\models^{+}(A\To B)\To{\sim}(A\To{\sim}B),\quad
+\models^{+}(A\To{\sim}B)\To{\sim}(A\To B),
+\]
+and dually $\models^{-}(A\To{\sim}A)$, $\models^{-}({\sim}A\To A)$;
+i.e.\ Aristotle's and both directions of Boethius' theses hold in the
+provability fragment, and their duals in the refutability fragment.
+\end{proposition}
+\begin{proof}
+By Definition~\ref{def:support}, $w\fp{\sim}(A\To{\sim}A)$ iff $w\fm (A\To{\sim}A)$
+iff $\forall v\ge w\,(v\fp A\Rightarrow v\fm{\sim}A)$ iff $\forall v\ge
+w\,(v\fp A\Rightarrow v\fp A)$, which is a tautology. The case of
+${\sim}({\sim}A\To A)$ is symmetric, using $w\fm{\sim}A\iff w\fp A$.
+For Boethius, $w\fp(A\To B)\To{\sim}(A\To{\sim}B)$ holds iff for all $v\ge w$
+with $v\fp A\To B$ we have $v\fp{\sim}(A\To{\sim}B)$, i.e.\ $v\fm(A\To{\sim}B)$,
+i.e.\ $\forall u\ge v\,(u\fp A\Rightarrow u\fm{\sim}B)$, i.e.\
+$\forall u\ge v\,(u\fp A\Rightarrow u\fp B)$; and the last statement is exactly
+$v\fp A\To B$, which holds by assumption. The other Boethius direction is the
+same computation with the roles of $B$ and ${\sim}B$ exchanged. The refutability
+duals follow because $w\fm(A\To{\sim}A)\iff\forall v\ge w\,(v\fp A\Rightarrow
+v\fm{\sim}A)\iff\forall v\ge w\,(v\fp A\Rightarrow v\fp A)$, again a tautology.
+\end{proof}
+
+(These claims were also verified by exhaustive model checking over all reflexive
+transitive frames with $\le 3$ worlds and all hereditary valuations.)
+
+\section{The two reduced systems}\label{sec:systems}
+
+\begin{definition}\label{def:reduced}
+\emph{System $\Ci$} is the bi--consequence system in the language
+$\{\wedge,\vee,\To,\top,\bot\}$ (strong negation deleted), with $\fp,\fm$ as in
+Definition~\ref{def:support} restricted to these connectives. \emph{System
+$\Cii$} is the further restriction to the constant--free language
+$\{\wedge,\vee,\To\}$.
+\end{definition}
+
+Both are interpreted in exactly the models of Definition~\ref{def:model}; only
+the stock of connectives changes. We write $\Vdash_{\Ci}^{+}A$, etc.
+
+\subsection{The separation invariant}
+
+\begin{lemma}[Separation invariant]\label{lem:sep}
+Let $A$ be a formula of the language $\{\wedge,\vee,\To,\top,\bot\}$ (i.e.\
+strong--negation--free). Then in every model the truth set $\{w:w\fp A\}$ is a
+function of $\le$ and of the positive valuation $V^{+}$ alone; it does not depend
+on $V^{-}$.
+\end{lemma}
+\begin{proof}
+Structural induction on $A$. For atoms $w\fp p\iff w\in V^{+}(p)$, independent of
+$V^{-}$. For $\top,\bot$ the truth set is $W$ resp.\ $\emptyset$, independent of
+$V$. For $\wedge,\vee$ the truth set is the intersection resp.\ union of the
+truth sets of the immediate subformulas, which by the induction hypothesis depend
+only on $V^{+}$. For $\To$, the clause
+$w\fp A\To B\iff\forall v\ge w\,(v\fp A\Rightarrow v\fp B)$ refers only to the
+truth sets of $A$ and $B$, which by hypothesis depend only on $V^{+}$. As there
+is no clause for ${\sim}$ in this language, the induction is complete.
+\end{proof}
+
+\begin{remark}\label{rem:nofalse}
+The dual statement is \emph{false}: $w\fm A\To B$ uses $v\fp A$, so the falsity
+set of a strong--negation--free formula generally depends on \emph{both}
+components. This asymmetry is the engine of all that follows.
+\end{remark}
+
+\subsection{Undefinability of the strong negation}
+
+\begin{theorem}[Undefinability of ${\sim}$]\label{thm:undefneg}
+There is no formula $N(p)$ of the language of $\Ci$ (a fortiori none of $\Cii$)
+such that for every model and world, $w\fp N(p)\iff w\fm p$ and $w\fm N(p)\iff
+w\fp p$. Hence the strong negation is not definable in either reduced system,
+even up to provable/refutable equivalence.
+\end{theorem}
+\begin{proof}
+Suppose such an $N(p)$ existed. Consider two models on the single reflexive world
+$W=\{w\}$ ($\le$ the identity), differing only in $V^{-}(p)$:
+$\mathfrak{M}_{0}$ with $V^{+}(p)=\{w\}$, $V^{-}(p)=\emptyset$, and
+$\mathfrak{M}_{1}$ with $V^{+}(p)=\{w\}$, $V^{-}(p)=\{w\}$. By
+Lemma~\ref{lem:sep} the truth set of $N(p)$ is the same in $\mathfrak{M}_{0}$ and
+$\mathfrak{M}_{1}$, since the two models share the same $V^{+}$ and the same
+frame. In particular $w\fp N(p)$ has the same truth value in both. But the
+defining property would force $w\fp N(p)\iff w\fm p$, which is \emph{false} in
+$\mathfrak{M}_{0}$ ($w\not\fm p$) and \emph{true} in $\mathfrak{M}_{1}$
+($w\fm p$). This contradiction shows no such $N$ exists.
+\end{proof}
+
+\subsection{Undefinability of the constants in $\Cii$}
+
+\begin{theorem}[Undefinability of $\top,\bot$]\label{thm:undefconst}
+Neither $\top$ nor $\bot$ is definable in $\Cii$: there is no constant--free
+formula $T$ with $(w\fp T,w\fm T)=(\text{true},\text{false})$ in all models, and
+none with $(\text{false},\text{true})$ in all models. Indeed the same holds even
+if the strong negation were re--added but the constants kept out.
+\end{theorem}
+\begin{proof}
+Take the single reflexive world $W=\{w\}$ with $V^{+}(p)=V^{-}(p)=\{w\}$ for
+every atom $p$, so each atom satisfies $(w\fp p,w\fm p)=(\text{true},\text{true})$.
+We claim every constant--free formula $A$ (allowing also ${\sim}$) satisfies
+$(w\fp A,w\fm A)=(\text{true},\text{true})$. Induction: atoms hold by choice; for
+$A\wedge B$, $w\fp A\wedge B$ is $\text{true}\wedge\text{true}$ and $w\fm A\wedge
+B$ is $\text{true}\vee\text{true}$, both true; dually for $\vee$; for $A\To B$ on
+the reflexive single world, $w\fp A\To B\iff(w\fp A\Rightarrow w\fp B)=
+(\text{true}\Rightarrow\text{true})=\text{true}$ and $w\fm A\To B\iff(w\fp
+A\Rightarrow w\fm B)=\text{true}$; for ${\sim}A$ the pair is swapped, staying
+$(\text{true},\text{true})$. Thus no constant--free formula attains the pair
+$(\text{true},\text{false})$ of $\top$ or $(\text{false},\text{true})$ of $\bot$
+in this model, so neither constant is definable.
+\end{proof}
+
+\section{Proof theory: sound and complete bilateral calculi}\label{sec:proof}
+
+We use a bilateral natural deduction in which every derivable judgement is a
+\emph{signed} statement $A^{+}$ (``$A$ is proved'') or $A^{-}$ (``$A$ is
+refuted''); assumptions are signed likewise, and $\proves,\refutes$ are the
+single--conclusion consequence relations
+$\Gamma\proves A:\!\!\iff \Gamma\Rightarrow A^{+}$ and
+$\Gamma\refutes A:\!\!\iff\Gamma\Rightarrow A^{-}$.
+
+\begin{definition}[Calculus $\mathsf{N}(\Ci)$]\label{def:Ncalc}
+Sequents are $\Gamma\Rightarrow C^{s}$ with $s\in\{+,-\}$, $\Gamma$ a finite set
+of signed formulas. The rules are:
+
+\smallskip\noindent\emph{Structural:} identity $A^{s}\Rightarrow A^{s}$;
+weakening; and cut on a signed formula
+$\dfrac{\Gamma\Rightarrow A^{s}\quad \Delta,A^{s}\Rightarrow C^{t}}
+       {\Gamma,\Delta\Rightarrow C^{t}}$.
+
+\smallskip\noindent\emph{Constants:} $\Rightarrow\top^{+}$, $\Rightarrow\bot^{-}$,
+and the explosion rules $\bot^{+}\Rightarrow C^{+}$, $\bot^{+}\Rightarrow C^{-}$,
+$\top^{-}\Rightarrow C^{+}$, $\top^{-}\Rightarrow C^{-}$.
+
+\smallskip\noindent\emph{Conjunction:}
+$A^{+},B^{+}\Rightarrow(A\wedge B)^{+}$; $(A\wedge B)^{+}\Rightarrow A^{+}$,
+$(A\wedge B)^{+}\Rightarrow B^{+}$;
+$A^{-}\Rightarrow(A\wedge B)^{-}$, $B^{-}\Rightarrow(A\wedge B)^{-}$;
+$\dfrac{\Gamma,A^{-}\Rightarrow C^{s}\quad\Gamma,B^{-}\Rightarrow C^{s}}
+       {\Gamma,(A\wedge B)^{-}\Rightarrow C^{s}}$.
+
+\smallskip\noindent\emph{Disjunction:} dual to conjunction (swap $+/-$ and
+$\wedge/\vee$).
+
+\smallskip\noindent\emph{Implication, positive part} (intuitionistic):
+$\dfrac{\Gamma,A^{+}\Rightarrow B^{+}}{\Gamma\Rightarrow(A\To B)^{+}}$ and
+$\dfrac{\Gamma\Rightarrow(A\To B)^{+}\quad\Delta\Rightarrow A^{+}}
+       {\Gamma,\Delta\Rightarrow B^{+}}$, with the proviso (for the
+$\To^{+}$--introduction and the $\To^{-}$--introduction below) that $\Gamma$
+contains only positively signed formulas, encoding the heredity restriction.
+
+\smallskip\noindent\emph{Implication, connexive negative part:}
+$\dfrac{\Gamma,A^{+}\Rightarrow B^{-}}{\Gamma\Rightarrow(A\To B)^{-}}$ and
+$\dfrac{\Gamma\Rightarrow(A\To B)^{-}\quad\Delta\Rightarrow A^{+}}
+       {\Gamma,\Delta\Rightarrow B^{-}}$.
+\end{definition}
+
+\begin{definition}[Calculus $\mathsf{N}(\Cii)$]
+Obtained from $\mathsf{N}(\Ci)$ by deleting the four constant rules and the two
+introduction/elimination axioms for $\top,\bot$.
+\end{definition}
+
+\begin{theorem}[Soundness and completeness]\label{thm:sc}
+For all finite $\Gamma$ and formulas $C$ in the respective language and
+$s\in\{+,-\}$:
+\[
+\mathsf{N}(\Ci)\vdash \Gamma\Rightarrow C^{s}
+\iff \Gamma\models C^{s},
+\qquad
+\mathsf{N}(\Cii)\vdash \Gamma\Rightarrow C^{s}
+\iff \Gamma\models C^{s},
+\]
+where $\Gamma\models C^{+}$ means: in every model and world $w$, if $w\fp A$ for
+all $A^{+}\in\Gamma$ and $w\fm A$ for all $A^{-}\in\Gamma$, then $w\fp C$; and
+$\Gamma\models C^{-}$ is the analogous statement with $w\fm C$ in the conclusion.
+\end{theorem}
+\begin{proof}
+\emph{Soundness.} By induction on derivations one checks every rule preserves the
+semantic consequence $\models$, fixing a model and a world $w$. The constant and
+Boolean rules are immediate from Definition~\ref{def:support}. The positive
+implication rules are the standard intuitionistic ones; the restriction to
+positive contexts in $\To$--introduction is exactly heredity
+(Lemma~\ref{lem:hered}), which licenses passing to an arbitrary $v\ge w$. The
+connexive negative rules are sound because the falsity clause for $\To$ has the
+same universal--implicational shape as the truth clause, with $B^{-}$ in place of
+$B^{+}$: from $\Gamma,A^{+}\Rightarrow B^{-}$ one gets, for any $v\ge w$
+verifying the positive context and any $u\ge v$ with $u\fp A$, that $u\fm B$,
+which is $v\fm A\To B$. Explosion for $\bot^{+}$ and $\top^{-}$ is sound because
+no world verifies $\bot$ nor falsifies $\top$, so the premise set is
+unsatisfiable.
+
+\emph{Completeness.} Use the bilateral canonical model. Call a set $\Phi$ of
+signed formulas \emph{prime--saturated} if it is deductively closed under
+$\mathsf{N}$, does not derive every signed formula, satisfies the disjunction
+property on the $+$--component and the dual conjunction property on the
+$-$--component, and is consistent in the sense that it does not contain a signed
+formula together with a derivation of the empty conclusion. By a standard
+Lindenbaum construction every underivable sequent $\Gamma\Rightarrow C^{s}$
+extends $\Gamma$ to a prime--saturated $\Phi$ omitting $C^{s}$. Let $W$ be the set
+of prime--saturated sets ordered by inclusion of their $+$--parts together with
+\emph{reverse} inclusion of their $-$--parts in the standard 2Int manner; set
+$\Phi\fp p\iff p^{+}\in\Phi$, $\Phi\fm p\iff p^{-}\in\Phi$. Heredity holds by
+construction. A truth lemma, proved by induction on formulas using the
+saturation properties exactly as for intuitionistic logic on the positive side
+and, on the negative side, using the connexive negative rules to handle $A\To B$
+($\Phi\fm A\To B\iff(A\To B)^{-}\in\Phi$ is obtained from the negative
+introduction/elimination pair), gives $\Phi\fp A\iff A^{+}\in\Phi$ and
+$\Phi\fm A\iff A^{-}\in\Phi$. Then the canonical $\Phi$ omitting $C^{s}$
+refutes the sequent, proving completeness. Deleting the constant rules and
+constant vocabulary yields $\mathsf{N}(\Cii)$ over the constant--free models,
+and the identical argument applies, the constant clauses now being vacuous.
+\end{proof}
+
+\begin{remark}[The positive fragment is intuitionistic]\label{rem:int}
+By Lemma~\ref{lem:sep} the relation $\Gamma^{+}\models C^{+}$ (positive
+assumptions only) coincides with intuitionistic consequence: the positive
+clauses are the intuitionistic Kripke clauses and the negative valuation is
+irrelevant. Hence the provability fragment of $\Ci$ is intuitionistic logic
+$\mathbf{IPC}$, and that of $\Cii$ is its $\{\wedge,\vee,\To\}$--fragment
+(positive intuitionistic logic). This was confirmed numerically: Peirce's law and
+excluded middle fail in the $+$--reading, while $A\To(B\To A)$ and $A\To A$ hold.
+\end{remark}
+
+\section{Algebraic and relational semantics}\label{sec:alg}
+
+\begin{definition}[Twist algebras]\label{def:twist}
+Let $\mathbf H=(H,\wedge,\vee,\To_{H},0,1)$ be a Heyting algebra. The
+\emph{connexive twist algebra} $\mathbf H^{\bowtie}$ has carrier $H\times H$,
+where the first coordinate tracks truth and the second falsity, with operations
+\begin{align*}
+(a,b)\sqcap(c,d)&=(a\wedge c,\;b\vee d),\\
+(a,b)\sqcup(c,d)&=(a\vee c,\;b\wedge d),\\
+(a,b)\Rightarrow(c,d)&=(a\To_{H}c,\;a\To_{H}d),\\
+\mathbf 1&=(1,0),\qquad \mathbf 0=(0,1),
+\end{align*}
+and designated set $D=\{(a,b):a=1\}$ (``proved'') with co--designated set
+$\bar D=\{(a,b):b=1\}$ (``refuted''). The third coordinate of $\Rightarrow$,
+namely $a\To_{H}d$ rather than the classical/De Morgan $a\wedge\neg d$, is the
+\emph{connexive twist}.
+\end{definition}
+
+\begin{theorem}[Algebraic completeness]\label{thm:algcompl}
+A signed sequent is provable in $\mathsf{N}(\Ci)$ iff it is valid in every
+connexive twist algebra $\mathbf H^{\bowtie}$ (with $\top,\bot$ interpreted by
+$\mathbf 1,\mathbf 0$), and provable in $\mathsf{N}(\Cii)$ iff it is valid in the
+$\{\sqcap,\sqcup,\Rightarrow\}$--reducts of all $\mathbf H^{\bowtie}$.
+\end{theorem}
+\begin{proof}
+\emph{Soundness} is a coordinate--wise computation: the first coordinate of every
+operation is the corresponding Heyting operation, so the first coordinate of the
+value of a formula under an assignment equals its Heyting value with the positive
+generators; designation $a=1$ matches ``$\fp$ globally'' over the prime filters
+of $\mathbf H$. The second coordinate computes, for $\To$, the value $a\To_H d$,
+which is exactly the connexive falsity clause. Each rule of
+Definition~\ref{def:Ncalc} corresponds to a Heyting (in)equality in the relevant
+coordinate; e.g.\ the connexive $\To^{-}$ rules express the residuation
+$a\wedge x\le d\iff x\le a\To_H d$ in the second coordinate.
+
+\emph{Completeness} uses the Lindenbaum--Tarski algebra: quotient signed formulas
+by interprovability on each coordinate. The truth coordinate yields a Heyting
+algebra $\mathbf H$ (the positive fragment is $\mathbf{IPC}$ by
+Remark~\ref{rem:int}), and the falsity coordinate is forced by the connexive
+$\To$ clause to be $a\To_H d$, so the quotient embeds in $\mathbf
+H^{\bowtie}$. Validity in all $\mathbf H^{\bowtie}$ thus implies provability. The
+relational semantics of Definition~\ref{def:support} is the prime--filter dual of
+this representation: prime filters of $\mathbf H$ are the worlds, $\le$ is
+inclusion, and the two upward closed valuations are the images of the two
+coordinates, recovering Theorem~\ref{thm:sc}.
+\end{proof}
+
+\begin{remark}
+$\bigC$ itself is recovered by adding the involution $\ast(a,b)=(b,a)$, which
+interprets ${\sim}$ and toggles $D\leftrightarrow\bar D$. The reduced systems are
+exactly the $\ast$--free (resp.\ $\ast$-- and constant--free) subreducts;
+Theorem~\ref{thm:undefneg} is the algebraic statement that $\ast$ is not a term
+operation of the $\ast$--free reduct, which the separation
+Lemma~\ref{lem:sep} encodes as ``the first coordinate of any term is independent
+of the second coordinate of the generators.''
+\end{remark}
+
+\section{Connexivity, inconsistency and non--triviality in the reduced systems}
+\label{sec:conn}
+
+\subsection{Collapse of the connexive theses}
+
+\begin{theorem}[No connexive theses survive]\label{thm:nocon}
+The connexive theses of Proposition~\ref{prop:base} are not even expressible in
+$\Ci$ or $\Cii$, since each is a formula containing ${\sim}$, which is
+undefinable there (Theorem~\ref{thm:undefneg}). Moreover, the unique negation
+available in $\Ci$, namely $\neg A:=A\To\bot$, refutes the connexive theses:
+\[
+\not\models^{+}\neg\bigl(A\To\neg A\bigr),\qquad
+\not\models^{+}(A\To B)\To\neg\bigl(A\To\neg B\bigr).
+\]
+\end{theorem}
+\begin{proof}
+For the available negation, compute its falsity clause:
+$w\fm(A\To\bot)\iff\forall v\ge w\,(v\fp A\Rightarrow v\fm\bot)$, and
+$v\fm\bot$ always holds, so $w\fm(A\To\bot)$ is \emph{always true}: $\neg A$ is
+refuted in every model regardless of $A$. Consequently $\neg A$ does not toggle
+the two fragments and cannot satisfy the Aristotle computation of
+Proposition~\ref{prop:base}, which required $w\fm{\sim}A\iff w\fp A$. Concretely,
+take the single reflexive world with $V^{+}(p)=\{w\}$. Then
+$w\fp\neg(p\To\neg p)\iff\forall v\ge w\,(v\fp(p\To\neg p)\Rightarrow v\fp\bot)$;
+since $v\fp\bot$ never holds, this requires $w\not\fp(p\To\neg p)$. But
+$w\fp(p\To\neg p)\iff\forall v\ge w\,(v\fp p\Rightarrow v\fp\neg p)$ and
+$v\fp\neg p\iff\forall u\ge v\,\neg(u\fp p)$, which fails here because
+$w\fp p$; so $w\not\fp(p\To\neg p)$ holds, and therefore $w\fp\neg(p\To\neg
+p)$. So far this instance does not refute Aristotle; but enlarge to a two--world
+chain $w<w'$ with $V^+(p)=\{w'\}$ (so $w\not\fp p$, $w'\fp p$). Then
+$w\fp p\To\neg p$ fails iff some $v\ge w$ has $v\fp p$ but $v\not\fp\neg p$;
+take $v=w'$: $w'\fp p$ and $w'\not\fp\neg p$ (since $w'\fp p$). Hence
+$w\not\fp(p\To\neg p)$ as well, again making Aristotle vacuously true at $w$.
+To get a genuine failure use the model where $V^+(p)=\emptyset$ but $V^-(p)=\{w\}$
+on a single reflexive world: then $w\fp\neg p$ (as $p$ never verified), so
+$w\fp p\To\neg p$ vacuously, but $w\not\fp\bot$, hence
+$w\not\fp\neg(p\To\neg p)$: Aristotle fails. The Boethius instance fails in the
+same model. (Both failures were confirmed by exhaustive model checking.)
+\end{proof}
+
+\begin{corollary}
+$\Ci$ and $\Cii$ are not connexive logics in any of the senses of
+Proposition~\ref{prop:base}; bi--connexivity, which requires a definable link
+between the two fragments, fails because that link is precisely ${\sim}$, which
+is absent and undefinable.
+\end{corollary}
+
+\subsection{System $\Ci$: negation--inconsistent yet non--trivial}
+
+\begin{theorem}\label{thm:Ci-incon}
+$\Ci$ is \emph{negation--inconsistent} in the bilateral sense: there is a formula
+that is globally proved and globally refuted, e.g.
+\[
+\models^{+}(\bot\To p)\quad\text{and}\quad\models^{-}(\bot\To p).
+\]
+Yet $\Ci$ is \emph{non--trivial}: not every signed formula is derivable; for
+instance $\not\models^{+}p$.
+\end{theorem}
+\begin{proof}
+For any world $w$: $w\fp\bot\To p\iff\forall v\ge w\,(v\fp\bot\Rightarrow v\fp
+p)$, vacuously true since $v\fp\bot$ never holds; and $w\fm\bot\To p\iff\forall
+v\ge w\,(v\fp\bot\Rightarrow v\fm p)$, again vacuously true. Hence $\bot\To p$ is
+both globally proved and globally refuted, so $\Ci\proves\bot\To p$ and
+$\Ci\refutes\bot\To p$ by Theorem~\ref{thm:sc}. Non--triviality: in the single
+reflexive world with $V^{+}(p)=\emptyset$ we have $w\not\fp p$, so $p$ is not a
+$+$--thesis; by soundness $\Ci\not\proves p$. (More strongly, the positive
+fragment is consistent intuitionistic logic by Remark~\ref{rem:int}.)
+\end{proof}
+
+\subsection{System $\Cii$: negation--consistency}
+
+\begin{theorem}\label{thm:Cii-cons}
+$\Cii$ is \emph{negation--consistent}: no constant--free formula is both proved
+and refuted. In fact no constant--free formula is ever refuted as a thesis:
+\[
+\text{for every formula }A\text{ of }\Cii,\quad \not\models^{-}A,
+\]
+while non--trivially the provability fragment is the consistent positive
+intuitionistic logic, so $\not\models^{+}p$ but $\models^{+}p\To p$.
+\end{theorem}
+\begin{proof}
+Take the single reflexive world $w$ with $V^{+}(p)=\{w\}$ and $V^{-}(p)=\emptyset$
+for every atom, so each atom has $(w\fp p,w\fm p)=(\text{true},\text{false})$. We
+show by induction that every constant--free formula $A$ has
+$(w\fp A,w\fm A)=(\text{true},\text{false})$. Atoms: by construction.
+$A\wedge B$: $w\fp A\wedge B=\text{true}\wedge\text{true}=\text{true}$ and
+$w\fm A\wedge B=\text{false}\vee\text{false}=\text{false}$.
+$A\vee B$: dually $(\text{true},\text{false})$.
+$A\To B$ on the reflexive single world: $w\fp A\To B=(w\fp A\Rightarrow w\fp
+B)=(\text{true}\Rightarrow\text{true})=\text{true}$ and $w\fm A\To B=(w\fp
+A\Rightarrow w\fm B)=(\text{true}\Rightarrow\text{false})=\text{false}$. Thus
+$w\not\fm A$ for every constant--free $A$, so no constant--free formula is a
+$-$--thesis; in particular none is both a $+$--thesis and a $-$--thesis, giving
+negation--consistency. The provability fragment is consistent by
+Remark~\ref{rem:int}: $\models^{+}p\To p$ but $\not\models^{+}p$ (take
+$V^{+}(p)=\emptyset$).
+\end{proof}
+
+\begin{remark}[Sharp contrast]
+The witness separating $\Ci$ from $\Cii$ is exactly $\bot\To p$: present and
+simultaneously proved and refuted in $\Ci$, but not expressible in $\Cii$, where
+no formula is refutable. Thus deleting the constants is what restores
+negation--consistency, while deleting the strong negation is what destroys
+connexivity.
+\end{remark}
+
+\section{Expressive strength: summary of definability results}\label{sec:expr}
+
+\begin{theorem}[Definability map]\label{thm:expr}
+\begin{enumerate}
+\item In $\Ci$ the strong negation ${\sim}$ is undefinable
+(Theorem~\ref{thm:undefneg}); the only definable negation, $\neg A:=A\To\bot$, is
+the intuitionistic one, which is refuted by every formula
+(Theorem~\ref{thm:nocon}). The connexive co--implication is not definable from
+$\{\wedge,\vee,\To,\top,\bot\}$ for the same separation reason. The constants
+$\top,\bot$ are primitive and not interdefinable by a strong--negation--free
+term: $\top$ has truth set $W$ and $\bot$ has truth set $\emptyset$ in every
+model, and by Lemma~\ref{lem:sep} no strong--negation--free term can turn a
+universally true positive component into a universally false one while leaving
+the generators fixed.
+\item In $\Cii$ both ${\sim}$ and both constants are undefinable
+(Theorems~\ref{thm:undefneg},~\ref{thm:undefconst}); the language has \emph{no}
+refutable theses (Theorem~\ref{thm:Cii-cons}), so its refutability fragment is
+empty and the system reduces, on the provability side, to positive intuitionistic
+logic with a free (entirely non--thesis) refutation layer.
+\item Consequently the expressive hierarchy is strict:
+$\Cii\subsetneq\Ci\subsetneq\bigC$, each inclusion adding genuinely new
+expressive power (the constants, resp.\ the toggle ${\sim}$), neither addition
+being definable from below.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+All assertions are restatements of Lemma~\ref{lem:sep},
+Theorems~\ref{thm:undefneg}, \ref{thm:undefconst}, \ref{thm:nocon},
+\ref{thm:Cii-cons}. For the strictness of $\Ci\subsetneq\bigC$: ${\sim}p$ is a
+formula of $\bigC$ not equivalent to any $\Ci$--formula by
+Theorem~\ref{thm:undefneg}. For $\Cii\subsetneq\Ci$: $\bot$ is a refutable
+$\Ci$--thesis, while $\Cii$ has none (Theorem~\ref{thm:Cii-cons}), so no
+$\Cii$--formula is equivalent to $\bot$.
+\end{proof}
+
+\section{Conclusion}
+
+\begin{theorem}[Master summary]\label{thm:master}
+\leavevmode
+\begin{enumerate}
+\item[(a)] $\Ci$ and $\Cii$ are sound and complete with respect to the bilateral
+natural--deduction calculi $\mathsf{N}(\Ci),\mathsf{N}(\Cii)$
+(Theorem~\ref{thm:sc}).
+\item[(b)] They are characterised algebraically by the connexive twist algebras
+$\mathbf H^{\bowtie}$ over Heyting algebras (Theorem~\ref{thm:algcompl}) and
+relationally by hereditary bi--valued Kripke models (Definition~\ref{def:model}).
+\item[(c)] The connexive theses and bi--connexivity \emph{fail}: they are not
+expressible (the toggle ${\sim}$ is undefinable, Theorem~\ref{thm:undefneg}) and
+the available intuitionistic negation refutes them
+(Theorem~\ref{thm:nocon}).
+\item[(d)] $\Ci$ is negation--inconsistent yet non--trivial
+(Theorem~\ref{thm:Ci-incon}, witness $\bot\To p$); $\Cii$ is
+negation--consistent, having no refutable thesis at all
+(Theorem~\ref{thm:Cii-cons}).
+\item[(e)] The expressive hierarchy $\Cii\subsetneq\Ci\subsetneq\bigC$ is strict
+with each step undefinable from below; the provability fragments are
+(positive) intuitionistic logic (Remark~\ref{rem:int}, Theorem~\ref{thm:expr}).
+\end{enumerate}
+\end{theorem}
+
+All semantic claims above were independently confirmed by exhaustive
+model checking over every reflexive--transitive frame of size $\le 3$ with all
+hereditary bi--valuations, and by structural--induction proofs of the
+preservation invariants.
+
+\end{document}

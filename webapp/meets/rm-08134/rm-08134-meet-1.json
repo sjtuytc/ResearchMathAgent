@@ -1,0 +1,164 @@
+{
+  "id": "rm-08134-meet-1",
+  "problem_id": "rm-08134",
+  "topic": "Init rm-08134 — proof review",
+  "goal": "Review the proof and issues for rm-08134; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T01:31:13Z",
+  "messages": [
+    {
+      "id": "m6752dbfb",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-08134 — proof review**",
+      "created_at": "2026-06-23T01:31:13Z"
+    },
+    {
+      "id": "mf98dcc15",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about what this problem actually is before we get lost. Despite my instincts, this is *not* an $\\varepsilon$-light subset problem or a spectral graph theory question — it's a combinatorial counting problem about Boolean functions with optimal algebraic immunity. I want to make sure we're solving the right problem, because the framing in my notes about effective resistances and Laplacians is a red herring here.\n\nSo let me reframe it the way I'd attack it algebraically. Fix $n$ and let $d = \\lceil n/2 \\rceil$. A function $f$ has $\\mathrm{AI}(f) < d$ iff $f$ or $f\\oplus 1$ has a nonzero annihilator of degree $< d$. Annihilators of $f$ of degree $\\le d-1$ are exactly the kernel of the evaluation map sending a degree-$\\le d-1$ polynomial $g$ to its restriction $g|_{\\mathrm{supp}(f)}$. So $f$ has a low-degree annihilator iff the $|\\mathrm{supp}(f)| \\times \\binom{n}{\\le d-1}$ evaluation matrix is *rank-deficient*.\n\nThat's the key structural reduction, and it's linear-algebraic in spirit, which I like. For balanced $f$ and odd $n$, $|\\mathrm{supp}(f)| = 2^{n-1} = \\binom{n}{\\le d-1}$ when $d=(n+1)/2$, so the matrix is square — optimal AI means *both* this matrix and its complement-version are nonsingular.\n\nHere are the questions I want answered:\n1. **What does the claimed proof actually assert about $\\rho(n)$?** Is the claim $\\rho(n) \\to 1$, $\\rho(n)\\to 0$, or a constant? I suspect the answer is $\\rho(n)\\to 1$ — almost all balanced functions are optimal — but I want the transcript to state it.\n2. **What's the spectral gap, so to speak, of that evaluation matrix?** I.e., can we bound the probability that a random $2^{n-1}$-subset gives a singular evaluation matrix over $\\mathbb{F}_2$?\n3. Can we phrase the count via a union bound over candidate annihilators $g$ of degree $\\le d-1$? There are $2^{\\binom{n}{\\le d-1}}$ such $g$; for each, $\\Pr_f[fg=0]$ is controllable.\n\nI'll commit to the union-bound estimate as the constructive route. Who can state the precise claim the existing proof is trying to establish, so I know whether we're proving $\\rho\\to1$ or computing it exactly?",
+      "created_at": "2026-06-23T01:31:26Z"
+    },
+    {
+      "id": "mf2a956a8",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right to clear away the spectral red herring — but let me sharpen the union-bound route, because I think the naive version drowns. There are $2^{\\binom{n}{\\le d-1}} = 2^{\\Theta(2^{n-1})}$ candidate annihilators, and the number of balanced functions is $\\binom{2^n}{2^{n-1}} \\approx 2^{2^n}/\\sqrt{\\cdot}$. So a union bound over *all* low-degree $g$ can only work if $\\Pr_f[fg = 0]$ decays fast enough to beat $2^{2^{n-1}}$. Let me compute it honestly.\n\nFix a nonzero $g$ of degree $\\le d-1$, and let $Z = |\\{x : g(x)=0\\}| = 2^n - w$ where $w = \\mathrm{wt}(g)$. The condition $fg=0$ means $\\mathrm{supp}(f) \\subseteq \\{g=0\\}$. For a uniformly random *balanced* $f$,\n$$\\Pr_f[fg=0] = \\frac{\\binom{Z}{2^{n-1}}}{\\binom{2^n}{2^{n-1}}}.$$\nThis is only nonzero when $Z \\ge 2^{n-1}$, i.e. $w \\le 2^{n-1}$. The crucial input is the **weight distribution of low-degree Reed–Muller codewords**: a degree-$\\le d-1$ function has weight either $0$ or $\\ge 2^{n-(d-1)}$ (the minimum-distance bound for $RM(d-1,n)$). So every nonzero candidate $g$ kills at least a $2^{-(d-1)} \\approx 2^{-n/2}$ fraction of points — annihilators cannot be too lopsided, and that is exactly what saves the union bound.\n\nSo the structure here is: the answer is governed by the **weight enumerator of Reed–Muller codes**, not by any geometric extremal example. My instinct, contra a constant answer, is $\\rho(n)\\to 1$ for odd $n$ — almost all balanced functions are optimal — and the proof is a second-moment / union-bound estimate weighted by $RM$ weight distributions, with the dangerous range being the *light* codewords near minimum distance. I would also note the graph-limits analogy is genuine here: the evaluation matrix is a fixed deterministic $RM$ incidence structure, and we are asking about generic ranks of random row-subsets — a question about the *singularity probability of structured Boolean matrices*, where the heavy machinery (à la Kahn–Komlós–Szemerédi) lives. Can someone confirm whether the existing proof handles the near-minimum-weight $g$ separately, since that is where any union bound is tight?",
+      "created_at": "2026-06-23T01:32:09Z"
+    },
+    {
+      "id": "mb7c9e3ab",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have correctly identified that this is a singularity-probability question for structured matrices, and that the Reed–Muller weight enumerator is the governing arithmetic input. But let me push on whether we're even computing the right quantity, because I think the answer is *not* simply $\\rho(n)\\to 1$.\n\nLet me compute the first case by hand. Take $n=2$, $d=1$. Balanced functions: there are $\\binom{4}{2}=6$. A nonzero annihilator of degree $\\le 0$ is a constant, so $fg=0$ forces $g=0$ unless $f\\equiv 0$ — every balanced $f$ has $\\mathrm{AI}=1=\\lceil 2/2\\rceil$, so $\\rho(2)=1$. Fine, trivial. Now $n=3$, $d=2$: here optimal means no annihilator of degree $\\le 1$ for $f$ or $f\\oplus 1$. The space of degree-$\\le 1$ functions has dimension $4$, and $\\mathrm{supp}(f)$ has size $4$. So we need the $4\\times 4$ evaluation matrix nonsingular for *both* $f$ and its complement. This is exactly the square-matrix situation Dan flagged, and one should actually count the failures rather than assert genericity.\n\nHere is my real concern, and it is a Ramanujan-type concern. László's union bound is controlled by the *light* codewords near minimum distance $2^{n-(d-1)}\\approx 2^{n/2}$. The number of minimum-weight codewords in $RM(d-1,n)$ grows like a Gaussian binomial — it is *exponentially large in $n$* — and each kills a fraction $2^{-(d-1)}$ of points. The question is whether this multiplicity beats the per-$g$ decay $\\binom{Z}{2^{n-1}}/\\binom{2^n}{2^{n-1}}$. This is precisely the tension I always insist on: the *spectral* (genericity) side says $\\rho\\to 1$, but the *arithmetic* side — the weight enumerator — may produce an anomalously large contribution from the thin set of light annihilators, exactly as a Ramanujan violation would inflate an L-function value. So I do **not** accept $\\rho\\to 1$ until someone bounds\n$$\\sum_{w \\text{ near } 2^{n-(d-1)}} A_w \\cdot \\frac{\\binom{2^n-w}{2^{n-1}}}{\\binom{2^n}{2^{n-1}}},$$\nwhere $A_w$ is the $RM$ weight enumerator coefficient. If the minimum-weight stratum already gives a constant, then $\\rho(n)$ tends to a constant *strictly less than 1*, and that would be the real theorem here. Can someone produce the asymptotics of $A_{2^{n-(d-1)}}$ for $RM(d-1,n)$ — that one number decides this problem.",
+      "created_at": "2026-06-23T01:32:53Z"
+    },
+    {
+      "id": "mbf9f4460",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's concern is the right one, and I want to actually do the computation he's demanding rather than wave at it, because I think it *kills* the union bound at the minimum-weight stratum — but in a way that may not kill the theorem.\n\nLet me set $n$ odd, $d-1 = (n-1)/2$, so minimum weight is $w_{\\min} = 2^{n-(n-1)/2} = 2^{(n+1)/2}$. The minimum-weight codewords of $RM(n-1)/2, n)$ are exactly indicators of affine flats of dimension $(n+1)/2$, and their count is\n$$A_{w_{\\min}} = \\binom{n}{(n-1)/2}_2 \\cdot 2^{(n-1)/2} \\approx 2^{n^2/4}$$\nup to lower-order factors — superpolynomial, exactly as Peter warns. Now the per-$g$ probability with $w = 2^{(n+1)/2}$ and $Z = 2^n - w$:\n$$\\frac{\\binom{Z}{2^{n-1}}}{\\binom{2^n}{2^{n-1}}} \\approx \\prod_{i=0}^{2^{n-1}-1}\\frac{Z-i}{2^n - i} \\approx 2^{-w} = 2^{-2^{(n+1)/2}}.$$\nThat last step: each of the $\\approx 2^{n-1}$ factors is roughly $1/2$ but the *deficit* concentrates — more carefully $\\Pr[\\mathrm{supp}(f)\\subseteq\\{g=0\\}]$ for balanced $f$ is $\\approx 2^{-w_{\\min}} = 2^{-2^{(n+1)/2}}$.\n\nSo the minimum-weight contribution is\n$$2^{n^2/4} \\cdot 2^{-2^{(n+1)/2}} = 2^{\\,n^2/4 \\;-\\; 2^{(n+1)/2}}.$$\nThe exponent is $\\Theta(2^{n/2})$ negative versus $\\Theta(n^2)$ positive — **the doubly-exponential decay crushes the merely-quasipolynomial multiplicity**. The minimum-weight stratum contributes $\\to 0$. Peter, your Ramanujan-violation worry doesn't materialize here precisely because $w_{\\min}$ is *exponentially large in $n$*, not polynomial; the per-codeword penalty is $2^{-\\exp}$, not $2^{-\\mathrm{poly}}$.\n\nTwo caveats before I sign off on $\\rho(n)\\to 1$:\n1. We must sum over *all* weight strata, not just the minimum. The general term is $A_w \\cdot 2^{-w}$ schematically; since $A_w \\le 2^{\\binom{n}{\\le d-1}} = 2^{2^{n-1}}$ and the smallest $w$ is $2^{(n+1)/2}$, the binding constraint is exactly the light end Peter flagged, and we just saw it loses. The heavy end ($w$ near $2^{n-1}$) has $\\binom{Z}{2^{n-1}}/\\binom{2^n}{2^{n-1}}$ collapsing even faster.\n2. The factor-of-2 from $f$ *and* $f\\oplus 1$, and the square-matrix coincidence at odd $n$, only cost a union-bound factor of $2$ — irrelevant.\n\nSo my verdict: $\\rho(n) \\to 1$ for odd $n$, and the proof *is* the weighted union bound, with the entire fight at the minimum-weight strat",
+      "created_at": "2026-06-23T01:35:09Z"
+    },
+    {
+      "id": "me762999d",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's computation is essentially correct, but let me insist on rigor at the one place where the heuristic $2^{-w}$ glosses over a genuine subtlety — and where I think a clean proof actually lives.\n\nThe per-$g$ probability for *balanced* $f$ is exactly the hypergeometric tail\n$$\\Pr_f[\\mathrm{supp}(f)\\subseteq\\{g=0\\}] = \\frac{\\binom{2^n-w}{2^{n-1}}}{\\binom{2^n}{2^{n-1}}} = \\prod_{i=0}^{w-1}\\frac{2^{n-1}-i}{2^n - i},$$\nreading the ratio the other way: we are choosing which of the $w$ \"forbidden\" points (where $g=1$) must land in the $0$-set of $f$. Each factor is $\\le 2^{n-1}/(2^n - w) \\le \\tfrac12 (1 + o(1))$, so the bound is $\\le 2^{-w(1-o(1))}$. This is genuine, not heuristic, as long as $w = o(2^n)$ — which holds across the *entire* relevant range since the heavy codewords contribute their own collapse. Good.\n\nNow the structural point I want on the record. The total union-bound mass is\n$$\\sum_{w \\ge w_{\\min}} A_w \\, 2^{-w(1-o(1))}, \\qquad A_w \\le 2^{\\binom{n}{\\le d-1}} = 2^{2^{n-1}}.$$\nCrude bounding by $A_w \\le 2^{2^{n-1}}$ is *too lossy* — it gives $2^{2^{n-1} - 2^{(n+1)/2}}$, which is huge and positive. So Dan's verdict is right only because the minimum-weight stratum is genuinely small *and* the weight enumerator $A_w$ is not flat: for $RM(d-1,n)$ the mass concentrates near $w = 2^{n-1}$, where the McEliece/Kasami–Tokura results give the true $A_w$. The honest statement is:\n\n1. **Light end** ($w_{\\min} \\le w \\le c\\,2^{n/2}\\log n$): here Dan's count $A_{w_{\\min}} \\approx 2^{n^2/4}$ versus $2^{-2^{(n+1)/2}}$ wins decisively. This is where Kasami–Tokura's classification of low-weight $RM$ codewords as indicators of affine flats is essential — one needs the *exact* small-weight enumerator, not the trivial bound.\n2. **Bulk** ($w$ near $2^{n-1}$): here $A_w$ is enormous but $2^{-w} = 2^{-\\Theta(2^n)}$ is doubly-exponentially small, and one needs a second-moment / concentration argument to confirm the product still tends to $0$.\n\nThis is exactly the dichotomy I encountered in the Shannon-capacity work on $C_5$: the answer is decided not by genericity but by the *fine arithmetic of the structured object*, here the Reed–Muller weight enumerator. So I concur with $\\rho(n)\\to 1$ for odd $n$, but the proof is **not** a single union bound — it is two regimes glued, and only the Kasami–Tokura small-weight classification makes the light end rigorous. Peter's instinct was correct in spirit; it simply fails quantitatively because $w_{\\min}$ is exponential. Can someone confirm the existing draft cites the exact low-weight $RM$ enumerator rather than the trivial $2^{\\binom{n}{\\le",
+      "created_at": "2026-06-23T01:35:59Z"
+    },
+    {
+      "id": "m30436c52",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have together resolved my Ramanujan worry, and I concede the point cleanly: the per-codeword penalty is $2^{-\\exp(n)}$, not $2^{-\\mathrm{poly}(n)}$, so the thin set of light annihilators *cannot* inflate the count. That is the opposite of an L-function situation, where the dangerous set sits at polynomial scale. Here the minimum distance grows exponentially and crushes everything. Fine. But I want to register three sharpenings, because I think the *real theorem* is more delicate than \"$\\rho(n)\\to1$.\"\n\n1. **The square-matrix coincidence at odd $n$ is the whole game, and it is genuinely a singularity-probability question over $\\mathbb{F}_2$, not over $\\mathbb{R}$.** For odd $n$, $\\mathrm{supp}(f)$ has size $2^{n-1}=\\binom{n}{\\le d-1}$ and we need the evaluation matrix nonsingular *over $\\mathbb{F}_2$*. The union bound bounds the *existence* of a kernel vector, which is exactly $\\mathbb{F}_2$-singularity — so László is right that the natural framework is Kahn–Komlós–Szemerédi in characteristic 2, and there the constant in front is *not* automatically 1. I want the second-moment estimate in the bulk to actually be carried out, not asserted, because $\\mathbb{F}_2$-singularity has a long history of surprising constants.\n\n2. **What is the rate?** Saying $\\rho(n)\\to1$ is the corollary; the real theorem is $1-\\rho(n)=?$. From the light end, $1-\\rho(n)$ is dominated by the minimum-weight stratum: $\\sim A_{w_{\\min}}\\cdot 2^{-w_{\\min}} = 2^{\\,n^2/4 - 2^{(n+1)/2}}$, i.e. doubly-exponentially small. That is the content. I would state the theorem as\n$$1-\\rho(n)\\;=\\;2^{-\\,2^{(n+1)/2}\\,(1+o(1))},$$\ngoverned *entirely* by affine-flat indicators à la Kasami–Tokura. That clean exponent is what makes this worth writing down.\n\n3. **Even $n$ is a separate phenomenon and must not be folded in.** For even $n$, $d=n/2$, the matrix is rectangular ($2^{n-1}$ rows, $\\binom{n}{\\le n/2-1}<2^{n-1}$ columns), and the symmetry between $f$ and $f\\oplus1$ is broken differently. The minimum weight is $2^{n-(n/2-1)}=2^{n/2+1}$, still exponential, so genericity should again win — but the explicit constant and even *whether $B_n^*$ is nonempty for small even $n$* deserves a hand computation. Has anyone checked $n=4$ explicitly?\n\nSo: I withdraw the constant-less-than-1 prediction, but I insist the deliverable is the *rate* $2^{-2^{(n+1)/2}}$ with the Kasami–Tokura light-end input made rigorous and the $\\mathbb{F}_2$-bulk second moment actually executed. Anything short of that is just genericity folklore.",
+      "created_at": "2026-06-23T01:36:47Z"
+    },
+    {
+      "id": "m6bd132c3",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T01:37:44Z"
+    },
+    {
+      "id": "m3345722f",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve that the fraction ρ(n) of balanced Boolean functions with optimal algebraic immunity tends to 1 for odd n via a Reed–Muller weight-enumerator-weighted union bound, establishing the precise rate 1-ρ(n) = 2^{-2^{(n+1)/2}(1+o(1))} governed by minimum-weight (affine-flat) annihilators.",
+      "created_at": "2026-06-23T01:37:44Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that the fraction ρ(n) of balanced Boolean functions with optimal algebraic immunity tends to 1 for odd n via a Reed–Muller weight-enumerator-weighted union bound, establishing the precise rate 1-ρ(n) = 2^{-2^{(n+1)/2}(1+o(1))} governed by minimum-weight (affine-flat) annihilators.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the structural reduction and precise claim",
+        "body": "State precisely that AI(f) < d iff f or f⊕1 has a nonzero annihilator of degree ≤ d-1, equivalently the |supp(f)| × C(n,≤d-1) Reed–Muller evaluation matrix is rank-deficient over F_2. For odd n with d=(n+1)/2, document the square-matrix coincidence |supp(f)| = 2^{n-1} = C(n,≤d-1) and that optimal AI requires nonsingularity for both f and f⊕1. Record the target claim: ρ(n)→1 for odd n with rate 1-ρ(n)=2^{-2^{(n+1)/2}(1+o(1))}.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Establish the exact per-annihilator probability bound",
+        "body": "For a fixed nonzero g of degree ≤ d-1 with weight w, prove rigorously that for uniformly random balanced f, Pr[supp(f)⊆{g=0}] = C(2^n-w, 2^{n-1})/C(2^n, 2^{n-1}) = prod_{i=0}^{w-1}(2^{n-1}-i)/(2^n-i) ≤ 2^{-w(1-o(1))}, valid whenever w = o(2^n). Make the o(1) explicit as a function of w/2^n so it can be applied across all weight strata.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Make the light-end estimate rigorous via Kasami–Tokura",
+        "body": "Use the Kasami–Tokura classification of low-weight RM(d-1,n) codewords as indicators of affine flats to obtain the exact small-weight enumerator. Compute w_min = 2^{(n+1)/2} for odd n and A_{w_min} = Gaussian-binomial × 2^{(n-1)/2} ≈ 2^{n^2/4}. Show the light-end union-bound mass A_{w_min}·2^{-w_min} = 2^{n^2/4 - 2^{(n+1)/2}} → 0, and bound the full light stratum w_min ≤ w ≤ c·2^{n/2}log n. Emphasize the trivial bound A_w ≤ 2^{2^{n-1}} is too lossy and must be replaced by exact enumeration here.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Control the bulk regime with a second-moment argument",
+        "body": "For weights w near 2^{n-1} where A_w is enormous (up to 2^{2^{n-1}}) but 2^{-w} = 2^{-Θ(2^n)} is doubly-exponentially small, carry out (not merely assert) a second-moment / concentration argument confirming the summed contribution sum_{w near 2^{n-1}} A_w 2^{-w(1-o(1))} → 0. Frame this explicitly as an F_2-singularity-probability estimate (Kahn–Komlós–Szemerédi in characteristic 2) for random row-subsets of the deterministic RM incidence matrix.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Assemble the two-regime union bound and derive the rate",
+        "body": "Glue the light-end (step 2) and bulk (step 3) estimates over all weight strata w ≥ w_min, including the factor-2 from f and f⊕1, to conclude ρ(n)→1 for odd n. Derive the sharp rate 1-ρ(n) = 2^{-2^{(n+1)/2}(1+o(1))}, showing the minimum-weight stratum dominates 1-ρ(n) and the heavier strata are negligible.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Hand-verify small cases n=2,3 and even n=4",
+        "body": "Explicitly verify ρ(2)=1 and compute ρ(3) by counting nonsingular 4×4 F_2 evaluation matrices for both f and f⊕1 over all 6 (or relevant) balanced functions. For even n=4 (d=2, rectangular matrix 2^{n-1} rows by C(4,≤1)<2^{n-1} columns, w_min = 2^{n/2+1}), determine whether the optimal-AI set is nonempty and compute its fraction, documenting how the broken f/f⊕1 symmetry differs from the odd case.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Audit citations and the F_2 vs R distinction",
+        "body": "Critically check that the draft cites the exact low-weight RM weight enumerator (Kasami–Tokura / McEliece) rather than the trivial 2^{C(n,≤d-1)} bound, that all singularity claims are over F_2 (not R) since constants in F_2-singularity problems are historically surprising, and that the bulk second-moment step is genuinely executed rather than asserted. Flag any gap where the heuristic 2^{-w} is used without the proven bound from step 1.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Scope the even-n case as a separate theorem",
+        "body": "Decide and document whether even n is in scope. If so, develop the analogous rectangular-matrix analysis (d=n/2, w_min = 2^{n/2+1}, broken f/f⊕1 symmetry), confirming genericity again wins and computing the explicit constant/rate; if out of scope, state clearly that the main theorem concerns odd n and even n requires separate treatment, with n=4 evidence from step 5.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T01:37:44Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

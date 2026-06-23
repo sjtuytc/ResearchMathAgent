@@ -1,0 +1,163 @@
+{
+  "id": "rm-00785-meet-1",
+  "problem_id": "rm-00785",
+  "topic": "Init rm-00785 — proof review",
+  "goal": "Review the proof and issues for rm-00785; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T13:32:22Z",
+  "messages": [
+    {
+      "id": "m0a1b3c6f",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-00785 — proof review**",
+      "created_at": "2026-06-23T13:32:22Z"
+    },
+    {
+      "id": "m00633980",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me reframe this in the language I trust. Rewrite (i) as $(I+G)W^\\ast(t) = \\xi^\\ast(t) + Y^\\ast(t)$. If $I+G$ is invertible, set $R := (I+G)^{-1}$ and define $\\tilde\\xi := R\\,\\xi^\\ast$, $\\tilde Y := R\\,Y^\\ast$, giving $W^\\ast = \\tilde\\xi + \\tilde Y$. But here's the catch: this is *not* a standard Skorokhod problem unless the regulation directions stay aligned with the coordinate axes — and $R\\,Y^\\ast$ scrambles them. So the real object is a **reflected Brownian motion in the orthant** with reflection matrix $\\mathcal{R} = (I+G)^{-1}$ acting on the pushing directions.\n\nThis is exactly the Harrison–Reiman / Taylor–Williams theory. The clean statement is:\n\n- **Existence and pathwise uniqueness hold for every $\\theta,\\Gamma$ if and only if the reflection matrix is an $\\mathcal{S}$-matrix in the sense of completely-$\\mathcal{S}$**, equivalently the relevant matrix is a **$P$-matrix** (Harrison–Reiman gives existence/uniqueness when $I+G$ — really the form $I + (\\text{the off-diagonal routing part})$ — is an $M$-matrix or more generally has the $\\mathcal{S}$ / completely-$\\mathcal{S}$ property).\n\nSo my questions to ground this:\n\n1. What is the sign structure of $G$? In multiclass networks $G$ typically has nonnegative off-diagonal feedback so that $I+G$ is an **$M$-matrix**, and $M$-matrices are $P$-matrices — that's the regime where Reiman's oblique-reflection map is Lipschitz and uniqueness is free.\n2. Is $G$ required to give $(I+G)^{-1}$ a nonnegative-diagonal / completely-$\\mathcal{S}$ structure? Without that, the orthant problem can fail to have *any* solution (Reiman–Williams have explicit counterexamples).\n3. The honest answer to \"every general triple from a multiclass network\" is **no** — multiclass networks notoriously produce reflection matrices that are *not* completely-$\\mathcal{S}$, and then no semimartingale RBM exists. That's the Bramson / Dai–Wang pathology.\n\nSo what's the spectral gap, so to speak, here is a *positivity* gap: I'd like us to pin down the exact matrix whose $P$-matrix property is necessary and sufficient. My bet: it's the completely-$\\mathcal{S}$ condition on $(I+G)^{-1}$, and the algorithmic test is just a linear-programming feasibility check per principal submatrix.",
+      "created_at": "2026-06-23T13:32:37Z"
+    },
+    {
+      "id": "mc410aa7c",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your reframing is exactly right, and I want to sharpen the algebra because it tells us precisely which matrix carries the structure. Writing $(I+G)W^\\ast = \\xi^\\ast + Y^\\ast$, multiply by $R=(I+G)^{-1}$ to get $W^\\ast = R\\xi^\\ast + RY^\\ast$. The constraint (iv) says $Y^\\ast_j$ pushes only when $W^\\ast_j=0$, so the pushing direction for coordinate $j$ is the $j$-th *column* of $R$. Hence the reflection matrix in the Harrison–Reiman sense is\n$$\\mathcal{R} = R = (I+G)^{-1},$$\nand the canonical object is the orthant RBM with data $(R(-\\theta), R\\Gamma R^\\top, R)$. So I fully agree: the question is a positivity question about $R$, not a spectral one.\n\nLet me state the dichotomy as I see it, and where I'd push back slightly on phrasing:\n\n1. **Existence (the right necessary/sufficient condition).** Reiman–Williams (1988) proved that for a semimartingale RBM to exist in the orthant, $\\mathcal{R}$ must be **completely-$\\mathcal{S}$**: every principal submatrix is an $\\mathcal{S}$-matrix (there is $x\\ge 0$ with that submatrix times $x > 0$). This is necessary. Sufficiency for *strong* existence and pathwise uniqueness for *all* $\\theta,\\Gamma$ is the Harrison–Reiman regime where $\\mathcal{R}$ is a **$P$-matrix** — and crucially, since $\\mathcal{R}$ here has the normalization $R_{jj}>0$ (the direction $j$ has a genuine $+1$ component before scrambling), the Skorokhod map is single-valued and globally Lipschitz exactly when $\\mathcal{R}$ is a $P$-matrix.\n\n2. **$M$-matrix subcase.** If $G$ has nonnegative off-diagonal feedback with spectral radius controlling things, $I+G$ is an $M$-matrix, hence $R=(I+G)^{-1}\\ge 0$ entrywise and is a $P$-matrix automatically. That is the clean Lipschitz world — existence and pathwise uniqueness for *every* $(\\theta,\\Gamma)$.\n\n3. **The honest \"no\".** I concur with your point 3: a general multiclass triple need not give a completely-$\\mathcal{S}$ matrix — the Bramson and Dai–Wang phenomena. Then no semimartingale solution exists, period.\n\nNow one structural remark in my own idiom. The $P$-matrix condition is precisely the condition under which the LCP $w = Rq + Rz,\\ w\\ge0,\\ z\\ge0,\\ w^\\top z=0$ has a *unique* solution for every $q$ — this is the Lemke/Cottle–Pang theory, the discrete shadow of the Skorokhod map. So I'd formalize the action item as a **linear complementarity** statement: pathwise uniqueness $\\iff$ $\\mathcal{R}=(I+G)^{-1}$ is a $P$-matrix; mere existence $\\iff$ completely-$\\mathcal{S}$. The algorithmic test, as you say, is LP-feasibility per principal submatrix for completely-$\\mathcal{S}$, and a (generally co-NP-hard, but small-$d$ tractable) $P$-matrix check for uniqueness.\n\nOne caution before we commit:",
+      "created_at": "2026-06-23T13:33:23Z"
+    },
+    {
+      "id": "mab1d5391",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — this is beautiful, and you've correctly identified that the heart of the matter is a positivity/$P$-matrix question on $\\mathcal{R}=(I+G)^{-1}$, not a spectral one. Let me push for the *real* theorem behind your $P$-matrix statement, because I think there's a subtlety in the normalization that we shouldn't bury.\n\nIn the classical Harrison–Reiman setup the reflection matrix has $1$'s on the diagonal by construction — you write $W = X + (I-P^\\top)Y$ or similar, with the diagonal pushing direction normalized to $+1$. Here $\\mathcal{R}=(I+G)^{-1}$ does *not* a priori have unit diagonal, and worse, you must check $R_{jj}>0$ for the very notion of \"coordinate $j$ pushes in direction column $j$\" to make geometric sense. So before invoking completely-$\\mathcal{S}$, let me insist we **compute the first nontrivial case by hand**:\n\n- $d=1$: $W = \\xi/(1+g) + Y/(1+g)$, and you need $1+g>0$. Trivially the half-line Skorokhod problem — existence and uniqueness always, *provided* $1+g>0$. If $1+g<0$ the pushing direction flips and there is *no* solution. So even $d=1$ already shows the answer is **not** \"every triple.\"\n- $d=2$: write $\\mathcal{R}=\\begin{pmatrix} a & b \\\\ c & d\\end{pmatrix}=(I+G)^{-1}$. The $P$-matrix condition is $a>0$, $d>0$, $ad-bc>0$ — and the Harrison–Reiman completely-$\\mathcal{S}$/uniqueness reduces to exactly this. One checks against the Reiman–Williams counterexample where $bc>ad$ and the RBM \"spirals into the corner\" — no semimartingale solution.\n\nNow the conceptual point, in my idiom. There's a tension here exactly like the spectral-vs-arithmetic tension I always emphasize: the LCP/$P$-matrix condition is the *static* (arithmetic) shadow, but the genuinely dynamic content — does the regulator have finite variation, is the corner reached — is the *spectral* side. The Bramson and Dai–Wang pathologies are precisely where the static $\\mathcal{S}$-condition holds but the process still misbehaves at the boundary intersections. So my action item: state cleanly **(a)** existence $\\iff$ $\\mathcal{R}$ completely-$\\mathcal{S}$ *with* $R_{jj}>0$, **(b)** pathwise uniqueness for all $(\\theta,\\Gamma)$ $\\iff$ $\\mathcal{R}$ a $P$-matrix, and **(c)** the honest answer to the headline question is a flat **no** — multiclass networks routinely violate completely-$\\mathcal{S}$, just as the Ramanujan conjecture routinely *fails* to be available exactly when you most want it. We should not pretend the general triple is benign.",
+      "created_at": "2026-06-23T13:34:11Z"
+    },
+    {
+      "id": "m08603ddc",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your insistence on computing $d=1$ and $d=2$ by hand is exactly the discipline I want — and it exposes the normalization issue I glossed over. Let me make the diagonal point sharp, because it's not cosmetic.\n\nThe geometric content is this: coordinate $j$ pushes along **column $j$ of $\\mathcal{R}=(I+G)^{-1}$**, but for this to be a legitimate oblique reflection off the face $\\{W_j=0\\}$ we need that column to have a positive $j$-component, i.e. $R_{jj}>0$. So before any completely-$\\mathcal{S}$ talk, the *right* normalization is to rescale: define $D=\\mathrm{diag}(R_{jj})$ and study $\\hat{\\mathcal{R}}=R D^{-1}$, which now has unit diagonal and is the honest Harrison–Reiman reflection matrix. The conditions then read on $\\hat{\\mathcal{R}}$, and $D^{-1}>0$ is the $d=1$ feasibility condition Peter wrote out, applied coordinatewise.\n\nNow let me say where I can actually *contribute an algorithm*, since I refuse to leave this as an existence dichotomy.\n\n1. **Existence test (completely-$\\mathcal{S}$).** For each of the $2^d-1$ principal submatrices $\\hat{\\mathcal{R}}_S$, check $\\mathcal{S}$-feasibility: $\\exists\\, x\\ge 0$ with $\\hat{\\mathcal{R}}_S x > 0$. That's one LP per submatrix. For small $d$ (the realistic queueing regime) this is trivial; exponential in $d$ but each LP is solvable in nearly-linear time in the submatrix size. I'd add: the LP feasibility certificate gives you the *reference direction* $x$ that the regulator uses — that's the constructive payoff, not just a yes/no.\n\n2. **Uniqueness test ($P$-matrix).** As Laszlo noted this is co-NP-hard in general, but for the $M$-matrix regime it's free: if $G$ has nonnegative off-diagonal entries and $\\rho$ controls things so $I+G$ is an $M$-matrix, then $R\\ge 0$ entrywise, all principal minors positive, and the Skorokhod map is *globally Lipschitz* — pathwise uniqueness for every $(\\theta,\\Gamma)$, exactly Reiman's deterministic contraction argument lifted to the SDE.\n\nOne thing I want to resist: collapsing existence into uniqueness. Completely-$\\mathcal{S}$ buys you a *weak* solution (existence in law via Taylor–Williams), but pathwise uniqueness genuinely needs the $P$-matrix property — the LCP $w=Rq+Rz$ having a unique solution per $q$ is the discrete shadow, as Laszlo said, and that's strictly stronger than $\\mathcal{S}$. The gap between them is precisely where Bramson/Dai–Wang live.\n\nSo my proposed clean theorem statement:\n- **Existence (weak):** $\\iff \\hat{\\mathcal{R}}=RD^{-1}$ completely-$\\mathcal{S}$, with $R_{jj}>0\\ \\forall j$.\n- **Pathwise uniqueness for all $(\\theta,\\Gamma)$:** $\\iff \\hat{\\mathcal{R}}$ a $P$-matrix.\n- **Headline answer:** no — and the $M$-matrix subclass is the only structurally guaranteed \"yes",
+      "created_at": "2026-06-23T13:36:29Z"
+    },
+    {
+      "id": "me9dfb602",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your normalization to $\\hat{\\mathcal{R}}=RD^{-1}$ is the correct move, and it lets me close one logical gap that I think we are still eliding. We keep saying \"completely-$\\mathcal{S}$ $\\Rightarrow$ weak existence, $P$-matrix $\\Rightarrow$ pathwise uniqueness,\" but I want to insist these are *not* two independent conditions — there is a clean implication structure, and it is exactly the LCP hierarchy from Cottle–Pang.\n\nLet me make three precise points:\n\n1. **$P \\Rightarrow$ completely-$\\mathcal{S}$, strictly.** A $P$-matrix has all principal minors positive; restricting to a principal submatrix preserves the $P$-property, and every $P$-matrix is an $\\mathcal{S}$-matrix (take $x$ along the positive solution of $\\hat{\\mathcal{R}}x = \\mathbf{1}$, which exists and is positive by the $P$-property via the LCP theorem of Samelson–Thrall–Wesler). So the $P$-matrix world sits *inside* the completely-$\\mathcal{S}$ world, and the corner where Bramson/Dai–Wang live is precisely $\\text{completely-}\\mathcal{S} \\setminus P$. That is the honest \"gap\" we should name in the writeup.\n\n2. **The uniqueness statement needs care about quantifiers.** \"Pathwise uniqueness for *all* $(\\theta,\\Gamma)$ $\\iff$ $P$-matrix\" is right, but for a *fixed* benign $(\\theta,\\Gamma)$ one can have uniqueness without the $P$-property — the regulator simply never explores the bad faces. This is exactly the static-vs-dynamic tension Peter flagged. So I would phrase (b) as: *uniformly over all data* iff $P$-matrix; pointwise it is genuinely a property of the sample paths' boundary excursions.\n\n3. **The $M$-matrix subclass — let me sharpen *why* it is the structurally guaranteed yes.** If $G$ has nonpositive off-diagonal entries... no, in the queueing convention $I+G$ being an $M$-matrix means $R=(I+G)^{-1}\\ge 0$, and an entrywise-nonnegative matrix with positive diagonal that is also a $P$-matrix gives a Skorokhod map that is a *global contraction* in the right norm — Reiman's 1984 deterministic Lipschitz bound, with constant controlled by $\\|G\\|$. That is the only regime where I would sign off on \"existence and pathwise uniqueness for every triple,\" and it is *not* the generic multiclass regime.\n\nSo the dichotomy is a containment: $P \\subsetneq \\text{completely-}\\mathcal{S} \\subsetneq \\text{everything}$, and the headline answer is firmly **no**. The one thing I'd still like nailed down before we write it up: is the $R_{jj}>0$ condition *automatic* in the multiclass setting from the sign structure of $G$, or must we impose it? That determines whether $d=1$ failure ($1+g<0$) is a genuine modeling pathology or an artifact.",
+      "created_at": "2026-06-23T13:37:16Z"
+    },
+    {
+      "id": "mfc125581",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, your containment $P \\subsetneq \\text{completely-}\\mathcal{S} \\subsetneq \\text{everything}$ is the clean spine of the theorem, and point 2 is exactly the static-vs-dynamic distinction I was pushing — bravo for pinning it to the quantifier on $(\\theta,\\Gamma)$. Let me answer your closing question directly, because it decides whether $d=1$ failure is pathology or artifact.\n\nThe $R_{jj}>0$ condition is **not** automatic — and here's the by-hand check that settles it. In the standard multiclass convention $G = (I - P^\\top)$-type routing, so $I+G$ inherits the $M$-matrix sign pattern *only when the feedback is genuinely substochastic*. Compute: if $G$ has nonnegative off-diagonals and $\\rho(\\text{off-diag part})<1$, then $R=(I+G)^{-1}=\\sum_{k\\ge0}(-G)^k$... but the signs do *not* cooperate unless $-G$ is itself nonnegative, which fails precisely when $G$ has the wrong-sign feedback. So $R_{jj}>0$ is a genuine modeling constraint, and the $d=1$ catastrophe $1+g<0$ is a *real* pathology, not an artifact. Don't bury it.\n\nNow let me insist on one thing in my own idiom, because I think we're still being too comfortable. The completely-$\\mathcal{S}$ condition is the *arithmetic* shadow — it's the Ramanujan-bound analogue: necessary, checkable per submatrix, but it does **not** by itself control the dynamics at the boundary intersections of codimension $\\ge 2$. The Bramson and Dai–Wang examples are exactly the failure of \"QUE at the corner\": the static condition holds, every principal face is fine, yet the regulator's excursions at the intersection of faces fail to equidistribute — the process spirals, and the variation of $Y^\\ast$ blows up. That is precisely the phenomenon Lindenstrauss and I had to control with the entropy estimate: face-by-face feasibility (the $\\mathcal{S}$-condition per submatrix) is the analogue of Hecke-eigenvalue bounds, but you need a genuinely *dynamical* input — the full-entropy / no-concentration statement — to rule out mass escaping to the corner. So my action item stands and sharpens: **the gap completely-$\\mathcal{S} \\setminus P$ is not a measure-zero curiosity; it is the entire content of the multiclass pathology, and the writeup must state that the headline answer is no precisely because the dynamical input is missing exactly where the static one is satisfied.**\n\nOne concrete request: let's exhibit the explicit $2\\times2$ matrix $\\hat{\\mathcal{R}}=\\begin{pmatrix}1 & b\\\\ c & 1\\end{pmatrix}$ with $bc>1$ — completely-$\\mathcal{S}$ fails ($\\det<0$, not a $P$-matrix), and write down the spiral. The first nontrivial case should be on the page, not in the citation.",
+      "created_at": "2026-06-23T13:38:03Z"
+    },
+    {
+      "id": "ma8310d07",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T13:39:01Z"
+    },
+    {
+      "id": "m2989be15",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nReframe problem rm-00785 as a reflected Brownian motion in the orthant with reflection matrix R=(I+G)^{-1}, and establish the dichotomy that weak existence holds iff the normalized matrix is completely-S while pathwise uniqueness for all data holds iff it is a P-matrix, with the headline answer being 'no' for general multiclass triples.",
+      "created_at": "2026-06-23T13:39:01Z"
+    }
+  ],
+  "plan": {
+    "summary": "Reframe problem rm-00785 as a reflected Brownian motion in the orthant with reflection matrix R=(I+G)^{-1}, and establish the dichotomy that weak existence holds iff the normalized matrix is completely-S while pathwise uniqueness for all data holds iff it is a P-matrix, with the headline answer being 'no' for general multiclass triples.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish the RBM reframing and reflection matrix",
+        "body": "Rewrite condition (i) as (I+G)W*(t) = xi*(t) + Y*(t), and assuming I+G invertible set R=(I+G)^{-1} giving W*=R xi* + R Y*. Show from constraint (iv) (Y*_j pushes only when W*_j=0) that the pushing direction for coordinate j is the j-th column of R, hence the Harrison-Reiman reflection matrix is R=(I+G)^{-1} and the canonical object is the orthant RBM with data (R(-theta), R Gamma R^T, R).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Normalize the reflection matrix to unit diagonal",
+        "body": "Define D=diag(R_{jj}) and the normalized reflection matrix R_hat = R D^{-1} which has unit diagonal and is the honest Harrison-Reiman reflection matrix. Establish that the geometric requirement for column j to be a legitimate oblique reflection off the face {W_j=0} is R_{jj}>0, and prove this condition is NOT automatic from the multiclass sign structure of G (it fails when G has wrong-sign feedback so that -G is not nonnegative). Document the d=1 catastrophe 1+g<0 as a genuine modeling pathology.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "State and prove the existence/uniqueness dichotomy",
+        "body": "Prove the clean theorem: (a) weak existence (in law, via Taylor-Williams) holds iff R_hat = R D^{-1} is completely-S (every principal submatrix has x>=0 with submatrix*x>0) together with R_{jj}>0 for all j; (b) pathwise uniqueness uniformly over all (theta,Gamma) holds iff R_hat is a P-matrix (all principal minors positive); (c) connect uniqueness to the LCP w=Rq+Rz, w>=0, z>=0, w^T z=0 having a unique solution for every q via Cottle-Pang/Samelson-Thrall-Wesler theory. Carefully phrase quantifiers: P-matrix is needed only for uniformity over all data; for fixed benign (theta,Gamma) uniqueness can hold without it.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Establish the containment hierarchy and the M-matrix subclass",
+        "body": "Prove the strict containment P-matrix subset completely-S subset everything: every P-matrix is completely-S (restriction preserves P-property; positive solution of R_hat x = 1 gives the S-witness), and exhibit that the gap is nonempty. Prove the M-matrix subclass is the only structurally guaranteed 'yes': if G has nonnegative off-diagonals with spectral radius controlled so I+G is an M-matrix, then R=(I+G)^{-1}>=0 entrywise, all principal minors positive, and Reiman's deterministic Lipschitz/contraction bound (constant controlled by ||G||) gives a globally Lipschitz Skorokhod map yielding existence and pathwise uniqueness for every triple.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Work out the explicit d=1 and d=2 cases on the page",
+        "body": "Compute d=1 by hand: W = xi/(1+g) + Y/(1+g) requiring 1+g>0, half-line Skorokhod always solvable when 1+g>0, no solution when 1+g<0. Compute d=2: R_hat = [[1,b],[c,1]], show the P-matrix condition is det = 1-bc>0; exhibit the explicit counterexample with bc>1 where completely-S fails, det<0, and the RBM spirals into the corner with no semimartingale solution (Reiman-Williams). Write down the spiral dynamics explicitly rather than citing.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Specify the algorithmic tests with certificates",
+        "body": "Provide the existence test: for each of the 2^d - 1 principal submatrices R_hat_S, solve one LP checking S-feasibility (exists x>=0 with R_hat_S x>0); the LP certificate yields the regulator's reference direction x as a constructive payoff. Provide the uniqueness test: P-matrix verification, noting it is co-NP-hard in general but tractable for small d (realistic queueing regime) and free in the M-matrix subclass. State complexity bounds for both.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Articulate the static-vs-dynamic gap as the core content",
+        "body": "Write the conceptual section stating that completely-S is the static/arithmetic shadow (checkable per submatrix, necessary) while genuine dynamic control at codimension>=2 boundary intersections requires more: the Bramson and Dai-Wang pathologies live exactly in completely-S minus P, where every principal face is feasible yet the regulator's excursions at face intersections fail to control the variation of Y* (the process spirals, variation blows up). Emphasize the gap is the entire content of the multiclass pathology, not a measure-zero curiosity, and that the headline answer is firmly 'no' for general multiclass triples.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Verify all claims and the final theorem statement",
+        "body": "Independently verify: the column-j pushing-direction derivation; the non-automaticity of R_{jj}>0 from G's sign structure; the proof that P-matrix implies completely-S; the d=1 and d=2 hand computations including the bc>1 spiral; the correctness of quantifier handling in the uniqueness statement; and the M-matrix contraction argument. Confirm the final theorem statement (weak existence iff completely-S with positive diagonal; pathwise uniqueness for all data iff P-matrix; headline answer no; M-matrix as the guaranteed yes) is internally consistent and correctly cites Harrison-Reiman, Reiman-Williams, Taylor-Williams, and Cottle-Pang.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T13:39:01Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

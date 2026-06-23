@@ -1,0 +1,46 @@
+{
+  "id": "q9-4",
+  "problem_id": "q9",
+  "dataset": "first_proof_1",
+  "title": "G3: Necessity direction — vanishing of F forces lambda to be rank-one (no spurious solutions)",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "issue_type": null,
+  "priority": "P2",
+  "created_at": "2026-06-22T22:19:06Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "evb4213715",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-22T22:19:06Z"
+    },
+    {
+      "id": "c30750880",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "**Sub-lemma (necessity / rigidity).** If $\\mathbf{F}(S)=0$ then $\\lambda$ restricted to the off-diagonal is a product $u_\\alpha v_\\beta w_\\gamma x_\\delta$.\n\nThis is the hard converse. Two obstacles: (a) the off-diagonal support is the full $n^4$ grid **minus the all-equal tuples**, so the standard toric/Segre $2\\times2$-minor characterization of rank-one arrays must be reproved on a **punctured** support; (b) the relations are expressed through the $A$-dependent determinantal coordinates, so one must rule out parasitic solutions created for generic $A$ by the extraction of G1. Prove that vanishing of finitely many bounded-degree (constant-arity) box relations forces global rank-one structure (corresponds to P3).",
+      "created_at": "2026-06-22T22:19:06Z"
+    },
+    {
+      "id": "cb5dada44",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Necessity / rigidity direction resolved (rigorously, $n$-uniformly).**\n\nThe previous draft proved the *necessity* lower bound (rank$(\\mathbf S_{(m)})\\le4 \\Rightarrow r_m^{\\rm off}\\le1$) only via **numerical witnesses** for $n\\in\\{5,6,7\\}$ (old Step 4 of Thm `extract`), and handled the punctured-support reconstruction $(a)\\Rightarrow(b)$ with an informal \"route through an intermediate index\" argument. Both gaps flagged in this issue are now closed.\n\n**1. Obstacle (b) — ruling out parasitic/spurious solutions for generic $A$ (new Theorem `thm:lower`).** I replaced the witness-based Step 4 with a fully rigorous, $n$-uniform lower bound: for each $n\\ge5$ there is a nonempty Zariski-open $\\mathcal U_n$ on which, for *all* $\\lambda$, $r_m^{\\rm off}\\ge2 \\Rightarrow \\mathrm{rank}(\\mathbf S_{(m)})\\ge5$. Proof outline (mode $m=1$):\n- *Step A.* Deleting the $n$ degenerate (all-equal) column-triples from the mode-1 flattening yields a **fully observed** $n\\times(n^3-n)$ matrix $\\Lambda'$ with all entries off-diagonal (hence nonzero). I show $r_1^{\\rm off}\\le1 \\iff \\mathrm{rank}(\\Lambda')\\le1$ (eq. `roffeqLam`). So $r_1^{\\rm off}\\ge2$ gives a nonzero $2\\times2$ minor $M\\neq0$ with both column-triples $c,c'$ **ordinary**.\n- *Step B.* Genericity (G1): rank$(R^{(c)})=4$ for every ordinary triple (and $=1$ for degenerate ones — exactly why ordinary triples are needed). Then the columns of $\\mathbf S_{(1)}$ from triple $c$, read on row-blocks $a_1,a_2$, span exactly $V_c=D_cW$ with $W=\\{(A^{(a_1)}w,A^{(a_2)}w)\\}$.\n- *Step C.* Reduce $\\dim(V_c+V_{c'})=\\dim(W+EW)$, $E=\\mathrm{diag}(pI_3,qI_3)$, and $M\\neq0 \\iff p\\neq q$. An **invariant-subspace dimension count**: if $\\dim(W+EW)\\le4$ then $W$ is $E$-invariant, forcing $W=(W\\cap p\\text{-eig})\\oplus(W\\cap q\\text{-eig})$, each summand $\\le\\dim\\ker A^{(a)}=1$ (G2), so $\\dim W\\le2$ — contradicting $\\dim W=4$. Hence rank $\\ge5$.\n\nThis reduces the lower bound to **exact** linear algebra (no genericity beyond finitely many open conditions (G1),(G2) intersected over all index choices), and crucially shows no parasitic non-rank-one $\\lambda$ can satisfy the rank-$\\le4$ conditions.\n\n**2. Obstacle (a) — punctured-support rank-one reconstruction $(a)\\Rightarrow(b)$ (rewritten Lemma `offrank1`).** Using the same $\\Lambda'^{(m)}$ device, criterion (a) becomes rank$(\\Lambda'^{(m)})\\le1$ on a **fully observed** matrix, where the classical \"all $2\\times2$ minors vanish + no zero row $\\Rightarrow$ rank 1\" applies verbatim — no completion subtleties. Factors are built from a distinct reference triple $(1,2,3)$ (ordinary), and the value at an arbitrary off-diagonal tuple is obtained by a telescoping chain through ordinary triples in each mode, giving the closed form\n$\\lambda_{\\alpha\\beta\\gamma\\delta}=\\dfrac{\\lambda_{\\alpha123}\\lambda_{1\\beta23}\\lambda_{12\\gamma3}\\lambda_{123\\delta}}{\\lambda_{1123}\\lambda_{1223}\\lambda_{1233}}=u_\\alpha v_\\beta w_\\gamma x_\\delta$, all factors nonzero. I verified this identity numerically to machine precision.\n\n**Necessity chain:** $\\mathbf F=0 \\Rightarrow$ all $5\\times5$ minors vanish $\\Rightarrow \\mathrm{rank}(\\mathbf S_{(m)})\\le4 \\,\\forall m \\Rightarrow$ (Thm `thm:lower`) $r_m^{\\rm off}\\le1 \\,\\forall m \\Rightarrow$ (Lemma `offrank1` $(a)\\Rightarrow(b)$) $\\lambda$ rank-one off-diagonal.\n\n**Numerics (confirmatory only now):** over many random $A$ and $\\lambda$ ($n=5,6$), every non-rank-one $\\lambda$ gave min-mode-rank $\\ge5$ (0 failures / 80 tested); rank-one $\\lambda$ gave all mode ranks $=4$; rank$(R^{(c)})=4$ for ordinary triples, $=1$ for degenerate; the telescoping recovery formula matched $\\lambda$ to $\\sim10^{-15}$.\n\nAll cross-references resolve and environments balance (LaTeX toolchain unavailable in sandbox, so compilation not run). The necessity direction is now established without spurious solutions and without numerical load-bearing steps.",
+      "created_at": "2026-06-22T22:44:00Z"
+    },
+    {
+      "id": "ev461dad0d",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-22T22:44:07Z"
+    }
+  ]
+}

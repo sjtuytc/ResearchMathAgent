@@ -46,6 +46,21 @@ _EMOJI_MAP = {
     "\U0001f3af": r"",               # 🎯
     "\U0001f4c8": r"",               # 📈
     "\U0001f4ca": r"",               # 📊
+    # Typography — these are <0xFF but render wrong under T1 font encoding.
+    "·": r"\textperiodcentered{}",  # · middle dot
+    "–": "--",                  # – en dash
+    "—": "---",                 # — em dash
+    "‘": "`",                   # ' left single quote
+    "’": "'",                   # ' right single quote
+    "“": "``",                  # " left double quote
+    "”": "''",                  # " right double quote
+    "…": r"\ldots{}",           # … ellipsis
+    "→": r"$\rightarrow$",      # → arrow
+    "←": r"$\leftarrow$",       # ← arrow
+    "×": r"$\times$",           # × times
+    "≤": r"$\leq$",             # ≤
+    "≥": r"$\geq$",             # ≥
+    "≠": r"$\neq$",             # ≠
 }
 
 
@@ -65,10 +80,10 @@ def _inline(s: str) -> str:
         math_store.append(m.group(0))
         return f"\x00M{len(math_store)-1}\x00"
 
-    # Protect display math \[...\] and $$ ... $$
+    # Protect display math \[...\], $$...$$, \(...\) and inline $...$
     s = re.sub(r"\\\[.*?\\\]", _save, s, flags=re.DOTALL)
     s = re.sub(r"\$\$.*?\$\$", _save, s, flags=re.DOTALL)
-    # Protect inline $...$
+    s = re.sub(r"\\\(.*?\\\)", _save, s, flags=re.DOTALL)
     s = re.sub(r"\$[^$\n]+?\$", _save, s)
 
     # 2. Strip emojis
@@ -88,11 +103,28 @@ def _inline(s: str) -> str:
     # 6. Inline code `text`
     s = re.sub(r"`([^`]+)`", r"\\texttt{\1}", s)
 
-    # 7. Restore math placeholders
+    # 7. Escape stray LaTeX specials left in prose (math is protected above).
+    #    Applied everywhere incl. inside generated \textbf/\textit/\texttt — all
+    #    correct, since those commands contain none of these characters.
+    s = _escape_specials(s)
+
+    # 8. Restore math placeholders
     for idx, math in enumerate(math_store):
         s = s.replace(f"\x00M{idx}\x00", math)
 
     return s
+
+
+def _escape_specials(s: str) -> str:
+    """Escape LaTeX special characters that appear as literal text (not in math).
+    Deliberately does NOT touch backslashes or braces, so generated commands
+    like \\textbf{...} survive."""
+    return (s.replace("&", r"\&")
+             .replace("#", r"\#")
+             .replace("%", r"\%")
+             .replace("_", r"\_")
+             .replace("~", r"\textasciitilde{}")
+             .replace("^", r"\textasciicircum{}"))
 
 
 def _md_to_tex(text: str) -> str:

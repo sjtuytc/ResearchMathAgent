@@ -1,0 +1,549 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\DeclareMathOperator{\proj}{P}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\inner}[2]{\langle #1,\, #2\rangle}
+
+\begin{document}
+
+\title{A Low--Memory Projected Nonlinear Conjugate Gradient Method\\
+for Bound--Constrained Minimization, with Global Convergence}
+\author{}
+\date{}
+\maketitle
+
+\begin{abstract}
+We extend nonlinear conjugate gradient (CG) methods to the bound--constrained
+problem $\min\{f(x):l\le x\le u\}$ while preserving the $O(n)$ storage that
+characterizes CG. The method searches along the projection arc
+$\alpha\mapsto\proj(x_k+\alpha d_k)$ with an Armijo backtracking line search,
+uses a nonlinear CG search direction $d_{k+1}=-\nabla f(x_{k+1})+\beta_{k+1}d_k$
+with \emph{any} standard scalar $\beta_{k+1}$ (Fletcher--Reeves,
+Polak--Ribi\`ere, Hestenes--Stiefel, Dai--Yuan, Hager--Zhang), and a
+projected--gradient safeguard. Under the standard assumptions (bounded level
+set and Lipschitz gradient) we prove that the projected gradient converges to
+zero and every limit point of the iterates is a first--order stationary point
+of the bound--constrained problem.
+\end{abstract}
+
+\section{Problem, assumptions, and stationarity}
+
+Let $f:\R^n\to\R$ be continuously differentiable and let $l,u\in\R^n$ with
+$l\le u$ componentwise (we allow $l_i=-\infty$ and $u_i=+\infty$). Put
+\[
+\Omega:=\{x\in\R^n: l\le x\le u\},
+\]
+a nonempty closed convex set, and consider
+\begin{equation}\label{eq:prob}
+\min_{x\in\Omega} f(x).
+\end{equation}
+Write $g(x):=\nabla f(x)$, $g_k:=g(x_k)$, and let $\inner{\cdot}{\cdot}$,
+$\norm{\cdot}$ be the Euclidean inner product and norm.
+
+\begin{definition}[Projection onto the box]\label{def:proj}
+For $z\in\R^n$, $\proj(z)$ is the Euclidean projection of $z$ onto $\Omega$.
+Since $\Omega$ is a box, projection is the coordinatewise clipping
+\begin{equation}\label{eq:projformula}
+\proj(z)_i=\min\{u_i,\max\{l_i,z_i\}\},\qquad i=1,\dots,n,
+\end{equation}
+computable in $O(n)$ time and storage.
+\end{definition}
+
+\paragraph{Standing assumptions.} Let $x_0\in\Omega$ be the initial iterate of
+Algorithm~\ref{alg:pcg} and $\mathcal L_0:=\{x\in\Omega: f(x)\le f(x_0)\}$.
+\begin{itemize}
+\item[(A1)] $\mathcal L_0$ is bounded.
+\item[(A2)] $g=\nabla f$ is Lipschitz with constant $L>0$ on the open convex set
+\begin{equation}\label{eq:Ddef}
+\mathcal D:=\big\{x\in\R^n:\operatorname{dist}(x,\operatorname{conv}\mathcal L_0)<G+1\big\},
+\qquad G:=\sup_{x\in\mathcal L_0}\norm{g(x)},
+\end{equation}
+i.e.\ $\norm{g(x)-g(y)}\le L\norm{x-y}$ for all $x,y\in\mathcal D$.
+\end{itemize}
+Here $\operatorname{conv}\mathcal L_0$ is the (bounded, by (A1)) convex hull of
+$\mathcal L_0$, so $\mathcal D$ is a bounded, open, convex set; $G<\infty$
+because $g$ is continuous on the bounded set $\mathcal L_0$ (more precisely on
+its compact closure, on which the continuous map $\norm{g(\cdot)}$ is bounded).
+These are the assumptions used in the classical global convergence theory of
+unconstrained nonlinear CG, adapted to the constrained setting: the enlargement
+of $\mathcal D$ by the radius $G+1$ guarantees that every trial point produced
+by the line searches below lies in $\mathcal D$ (Lemma~\ref{lem:Dtrial}).
+If $\Omega$ is compact (all $l_i,u_i$ finite), (A1) is automatic and (A2) holds
+whenever $g$ is locally Lipschitz, since the bounded set $\mathcal D$ then has
+compact closure on which a locally Lipschitz map is Lipschitz.
+
+\begin{definition}[Projected gradient and stationarity]\label{def:stat}
+For $x\in\Omega$, the \emph{projected gradient} and its size are
+\begin{equation}\label{eq:pgrad}
+P^{\mathrm g}(x):=x-\proj\!\big(x-g(x)\big),\qquad \rho(x):=\norm{P^{\mathrm g}(x)}.
+\end{equation}
+A point $x^*\in\Omega$ is \emph{stationary} for \eqref{eq:prob} if
+\begin{equation}\label{eq:firstorder}
+\inner{g(x^*)}{y-x^*}\ge0\qquad\text{for all }y\in\Omega.
+\end{equation}
+\end{definition}
+
+Condition \eqref{eq:firstorder} is the standard first--order (KKT) condition for
+the convex feasible set $\Omega$; componentwise it reads $g_i(x^*)\ge0$ if
+$x^*_i=l_i$, $g_i(x^*)\le0$ if $x^*_i=u_i$, and $g_i(x^*)=0$ if
+$l_i<x^*_i<u_i$. Lemma~\ref{lem:proj}(iii) shows $\rho(x^*)=0$ is equivalent to
+\eqref{eq:firstorder}.
+
+\section{The method}\label{sec:alg}
+
+The iterates remain feasible by searching along the \emph{projection arc}
+\begin{equation}\label{eq:arc}
+x_k(\alpha):=\proj(x_k+\alpha d_k),\qquad\alpha\ge0,
+\end{equation}
+with the Armijo backtracking condition
+\begin{equation}\label{eq:armijo}
+f\big(x_k(\alpha)\big)\le f(x_k)+\eta\,\inner{g_k}{x_k(\alpha)-x_k}.
+\end{equation}
+Fix parameters
+\begin{equation}\label{eq:params}
+\eta\in(0,\tfrac12),\quad\gamma\in(0,1),\quad
+0<\alpha_{\min}\le\alpha_{\max}<\infty,\quad c_1\in(0,1],\ c_2\ge1,\quad
+M\in\mathbb{N}.
+\end{equation}
+
+We use two arc line searches, both of which only \emph{evaluate} $f$ at
+projected points and reuse $g_k$, so both cost $O(n)$ storage.
+
+\paragraph{Reference (projected--gradient) search
+$\mathrm{LS}^{\mathrm{pg}}(x,g,\bar\alpha)$.}
+Set $\alpha\leftarrow\bar\alpha$; while the Armijo test \eqref{eq:armijo} with
+direction $d=-g$ fails, set $\alpha\leftarrow\gamma\alpha$; return
+$\big(\proj(x-\alpha g),\,f(\proj(x-\alpha g)),\,\alpha\big)$.
+Lemma~\ref{lem:pg} proves this loop always terminates and that the returned
+step is bounded below by a positive constant.
+
+\paragraph{Capped CG search $\mathrm{LS}^{\mathrm{cg}}(x,d,\bar\alpha)$.}
+Set $\alpha\leftarrow\bar\alpha$; for at most $M$ iterations, if the Armijo test
+\eqref{eq:armijo} with direction $d$ holds, \textbf{stop} and return
+$\big(\proj(x+\alpha d),\,f(\proj(x+\alpha d)),\,\alpha,\ \texttt{success}\big)$;
+otherwise set $\alpha\leftarrow\gamma\alpha$. If no acceptable $\alpha$ is found
+within $M$ backtracks, return the flag \texttt{fail}.
+This search terminates trivially after at most $M$ iterations
+(Remark~\ref{rem:cgterm}); it is a heuristic accelerator whose output is used
+only when it strictly improves on the reference point, so a \texttt{fail} return
+costs nothing.
+
+\begin{algorithm}[ht]
+\caption{Projected Nonlinear Conjugate Gradient (P--NCG)}\label{alg:pcg}
+\begin{algorithmic}[1]
+\Require $f\in C^1$, bounds $l\le u$, $x_0\in\Omega$, parameters
+\eqref{eq:params}.
+\Ensure Iterates $(x_k)\subset\Omega$ whose limit points are stationary for
+\eqref{eq:prob}.
+\State $g_0\gets g(x_0)$; $d_0\gets -g_0$; $\bar\alpha_0\in[\alpha_{\min},\alpha_{\max}]$;
+$k\gets0$.
+\Loop
+  \If{$\rho(x_k)=0$} \State \Return $x_k$ \Comment{stationary, Lemma~\ref{lem:proj}(iii)}
+  \EndIf
+  \State \textbf{Projected--gradient (reference) search:}
+         $(x^{\mathrm{pg}},f^{\mathrm{pg}},\alpha^{\mathrm{pg}})\gets
+          \mathrm{LS}^{\mathrm{pg}}\big(x_k,\,g_k,\,\min\{\bar\alpha_k,1\}\big)$.\label{line:pg}
+  \State $x_{k+1}\gets x^{\mathrm{pg}}$;\ $f_{k+1}\gets f^{\mathrm{pg}}$.
+         \Comment{default acceptance}
+  \If{$k\ge1$ \textbf{and} the angle test
+      \begin{equation}\label{eq:angle}
+        \inner{g_k}{d_k}\le-c_1\norm{g_k}^2\quad\text{and}\quad
+        \norm{d_k}\le c_2\norm{g_k}
+      \end{equation}
+      holds}\label{line:angle}
+     \State \textbf{Capped CG search:}
+            $\big(x^{\mathrm{cg}},f^{\mathrm{cg}},\alpha^{\mathrm{cg}},\texttt{flag}\big)\gets
+             \mathrm{LS}^{\mathrm{cg}}(x_k,\,d_k,\,\bar\alpha_k)$.\label{line:cg}
+     \If{$\texttt{flag}=\texttt{success}$ \textbf{and} $f^{\mathrm{cg}}<f_{k+1}$}
+        \State $x_{k+1}\gets x^{\mathrm{cg}}$;\ $f_{k+1}\gets f^{\mathrm{cg}}$.
+        \Comment{accept CG point only if it strictly improves}
+     \EndIf
+  \EndIf
+  \State $g_{k+1}\gets g(x_{k+1})$;\ $s_k\gets x_{k+1}-x_k$;\ $y_k\gets g_{k+1}-g_k$.
+  \State \textbf{CG scalar} $\beta_{k+1}$ by any standard formula (see below).
+  \State $d_{k+1}\gets -g_{k+1}+\beta_{k+1}d_k$.
+  \State $\bar\alpha_{k+1}\gets
+         \begin{cases}
+          \min\{\alpha_{\max},\max\{\alpha_{\min},\,\inner{s_k}{s_k}/\inner{s_k}{y_k}\}\},
+           & \inner{s_k}{y_k}>0,\\
+          \alpha_{\max}, & \text{otherwise}
+         \end{cases}$ \Comment{safeguarded Barzilai--Borwein}
+  \State $k\gets k+1$.
+\EndLoop
+\end{algorithmic}
+\end{algorithm}
+
+Admissible CG scalars $\beta_{k+1}$ include
+\[
+\beta^{\mathrm{FR}}=\frac{\norm{g_{k+1}}^2}{\norm{g_k}^2},\quad
+\beta^{\mathrm{PRP}}=\frac{\inner{g_{k+1}}{y_k}}{\norm{g_k}^2},\quad
+\beta^{\mathrm{HS}}=\frac{\inner{g_{k+1}}{y_k}}{\inner{d_k}{y_k}},\quad
+\beta^{\mathrm{DY}}=\frac{\norm{g_{k+1}}^2}{\inner{d_k}{y_k}},
+\]
+and the Hager--Zhang formula. The convergence theorem below holds for
+\emph{every} such choice, because the guaranteed decrease is provided by the
+projected--gradient reference search (line~\ref{line:pg}); the CG arc is used
+only when it terminates with \texttt{success} and strictly improves on that
+decrease (lines \ref{line:angle}--\ref{line:cg}).
+
+\begin{remark}[Why the CG search must be capped]\label{rem:cgterm}
+Along the \emph{projection arc}, a direction $d_k$ with $\inner{g_k}{d_k}<0$
+need \emph{not} be a descent direction: at a point $x_k$ on the boundary of
+$\Omega$ the active bounds clip the components of $d_k$ that point outside the
+box, and the surviving (tangential) part $w$ of $d_k$ can satisfy
+$\inner{g_k}{w}>0$. In that case the arc Armijo test \eqref{eq:armijo} fails for
+\emph{all} $\alpha>0$, and an uncapped backtracking loop would never terminate.
+A concrete two--dimensional $C^1$ example: $x_k=(0,0)$ with
+$\Omega=[0,\infty)\times\R$, $g_k=(2,5)$, $d_k=(-3,1)$ (so
+$\inner{g_k}{d_k}=-1<0$, passing \eqref{eq:angle} for, e.g., $c_1=10^{-2}$,
+$c_2=5$), and $f(y)=2y_1+5y_2+5y_2^2$. Here
+$\proj(x_k+\alpha d_k)=(0,\alpha)$ for $\alpha\ge0$, so
+$\inner{g_k}{x_k(\alpha)-x_k}=5\alpha>0$ and
+$f(x_k(\alpha))-f(x_k)=5\alpha+5\alpha^2$, which never satisfies
+$5\alpha+5\alpha^2\le\eta\,5\alpha$ for $\alpha>0$. Capping the CG search at $M$
+backtracks removes this failure mode at no cost, because global convergence
+rests entirely on the reference search.
+\end{remark}
+
+\begin{remark}[$O(n)$ memory]\label{rem:mem}
+Algorithm~\ref{alg:pcg} stores only the $n$--vectors
+$x_k,g_k,g_{k+1},d_k,s_k,y_k$ and a few scalars; no matrix is formed or stored.
+The two line searches reuse $g_k$ and only evaluate $f$ at projected points.
+Hence the storage is $O(n)$, the defining feature of CG--type methods.
+\end{remark}
+
+\section{Auxiliary projection inequalities}
+
+\begin{lemma}[Projection inequalities]\label{lem:proj}
+Let $x\in\Omega$.
+\begin{enumerate}
+\item[(i)] For every $z\in\R^n$ and $y\in\Omega$,
+$\inner{z-\proj(z)}{y-\proj(z)}\le0.$
+\item[(ii)] For every $\alpha>0$,
+\begin{equation}\label{eq:keydescent}
+\inner{g(x)}{\,\proj(x-\alpha g(x))-x\,}\le
+-\tfrac{1}{\alpha}\,\norm{\proj(x-\alpha g(x))-x}^2 .
+\end{equation}
+\item[(iii)] $\rho(x)=0\iff x$ satisfies \eqref{eq:firstorder}.
+\item[(iv)] For $0<\alpha\le1$,
+$\norm{\proj(x-\alpha g(x))-x}\ge\alpha\,\rho(x).$
+\item[(v)] The map $\rho:\Omega\to[0,\infty)$ is continuous.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(i) $\proj(z)$ is the unique minimizer of $\tfrac12\norm{y-z}^2$ over the
+closed convex set $\Omega$; its first--order optimality condition is
+$\inner{\proj(z)-z}{y-\proj(z)}\ge0$ for all $y\in\Omega$, which is (i).
+
+(ii) Put $z=x-\alpha g(x)$, $w=\proj(z)$, and apply (i) with $y=x\in\Omega$:
+$\inner{x-\alpha g(x)-w}{x-w}\le0$. Expanding,
+$\norm{x-w}^2\le\alpha\inner{g(x)}{x-w}=-\alpha\inner{g(x)}{w-x}$. Divide by
+$\alpha>0$.
+
+(iii) Let $w=\proj(x-g(x))$, so $\rho(x)=\norm{w-x}$. If $\rho(x)=0$ then
+$w=x$, and (i) with $z=x-g(x)$, $\proj(z)=x$ gives
+$\inner{x-g(x)-x}{y-x}\le0$, i.e.\ $\inner{g(x)}{y-x}\ge0$ for all
+$y\in\Omega$. Conversely, if \eqref{eq:firstorder} holds, then $x$ satisfies
+the optimality condition of $\min_{y\in\Omega}\tfrac12\norm{y-(x-g(x))}^2$
+(whose gradient at $x$ is $g(x)$), so $\proj(x-g(x))=x$ and $\rho(x)=0$.
+
+(iv) Work coordinatewise via \eqref{eq:projformula}. Fix $i$ and set
+$\phi_i(\alpha):=\proj_{[l_i,u_i]}(x_i-\alpha g_i)-x_i$, where
+$\proj_{[l_i,u_i]}(t)=\min\{u_i,\max\{l_i,t\}\}$. If $g_i=0$, $\phi_i\equiv0$.
+If $g_i\neq0$, then on the maximal interval $[0,\alpha_i^\dagger]$ where
+$x_i-\alpha g_i\in[l_i,u_i]$ we have $\phi_i(\alpha)=-\alpha g_i$, so
+$|\phi_i(\alpha)|=\alpha|g_i|$ is increasing and $|\phi_i(\alpha)|/\alpha=|g_i|$
+is constant; for $\alpha>\alpha_i^\dagger$, $\phi_i(\alpha)$ is constant equal to
+its boundary value $-\alpha_i^\dagger g_i$, so $|\phi_i(\alpha)|$ is constant and
+$|\phi_i(\alpha)|/\alpha=\alpha_i^\dagger|g_i|/\alpha<|g_i|$ is decreasing. In
+all cases $|\phi_i(\alpha)|/\alpha$ is nonincreasing on $(0,\infty)$. Hence so is
+$\norm{\phi(\alpha)}/\alpha=\big(\sum_i(|\phi_i(\alpha)|/\alpha)^2\big)^{1/2}$.
+Applying this with $\alpha\le1$ versus $\alpha=1$:
+$\norm{\phi(\alpha)}/\alpha\ge\norm{\phi(1)}=\rho(x)$, i.e.\
+$\norm{\phi(\alpha)}\ge\alpha\rho(x)$.
+
+(v) $g$ is continuous, and $\proj$ is $1$--Lipschitz (firmly nonexpansive).
+Hence $x\mapsto x-\proj(x-g(x))$ is continuous, and so is its norm $\rho$.
+\end{proof}
+
+\begin{lemma}[Reference trial points lie in $\mathcal D$]\label{lem:Dtrial}
+Let $x\in\mathcal L_0$. Then for every $\alpha\in[0,1]$ the point
+$\proj(x-\alpha g(x))$ and the entire segment
+$\big[x,\,\proj(x-\alpha g(x))\big]$ lie in $\mathcal D$.
+\end{lemma}
+
+\begin{proof}
+Since $x\in\mathcal L_0\subseteq\operatorname{conv}\mathcal L_0$ and $\proj$ is
+$1$--Lipschitz with $\proj(x)=x$, we have, for $\alpha\in[0,1]$,
+\[
+\norm{\proj(x-\alpha g(x))-x}=\norm{\proj(x-\alpha g(x))-\proj(x)}
+\le\alpha\norm{g(x)}\le\alpha G\le G<G+1 .
+\]
+Hence $\operatorname{dist}\!\big(\proj(x-\alpha g(x)),
+\operatorname{conv}\mathcal L_0\big)\le\norm{\proj(x-\alpha g(x))-x}\le G<G+1$,
+so $\proj(x-\alpha g(x))\in\mathcal D$ by \eqref{eq:Ddef}. Also
+$\operatorname{dist}(x,\operatorname{conv}\mathcal L_0)=0<G+1$, so
+$x\in\mathcal D$. Since $\mathcal D$ is convex and contains both endpoints, the
+whole segment lies in $\mathcal D$. (Only the reference search invokes
+Lemma~\ref{lem:taylor}; the capped CG search terminates by its iteration cap and
+needs no Lipschitz estimate, so no $\mathcal D$--membership claim about CG trial
+points is required.)
+\end{proof}
+
+\begin{lemma}[Descent inequality from Lipschitz gradient]\label{lem:taylor}
+Assume (A2). For $x,x+r\in\mathcal D$ with $[x,x+r]\subseteq\mathcal D$,
+\begin{equation}\label{eq:desclemma}
+f(x+r)-f(x)\le\inner{g(x)}{r}+\tfrac{L}{2}\norm{r}^2 .
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+By the fundamental theorem of calculus along the segment (which lies in the
+convex set $\mathcal D$),
+$f(x+r)-f(x)=\inner{g(x)}{r}+\int_0^1\inner{g(x+tr)-g(x)}{r}\,dt$. By
+Cauchy--Schwarz and (A2),
+$\inner{g(x+tr)-g(x)}{r}\le\norm{g(x+tr)-g(x)}\norm{r}\le tL\norm{r}^2$, and
+$\int_0^1 tL\norm{r}^2dt=\tfrac{L}{2}\norm{r}^2$.
+\end{proof}
+
+\section{Decrease guaranteed by the projected--gradient search}
+
+\begin{lemma}[Projected--gradient Armijo search: termination and decrease]
+\label{lem:pg}
+Assume (A1)--(A2). Let $x_k\in\mathcal L_0$ be non--stationary. The reference
+search of line~\ref{line:pg}, i.e.\
+$\mathrm{LS}^{\mathrm{pg}}\big(x_k,g_k,\bar a_k\big)$ with
+$\bar a_k:=\min\{\bar\alpha_k,1\}\in(0,1]$, terminates after finitely many
+backtracks and returns a step
+\begin{equation}\label{eq:steplb}
+\alpha^{\mathrm{pg}}\in(0,1],\qquad
+\alpha^{\mathrm{pg}}\ \ge\ \underline\alpha:=
+\min\Big\{\alpha_{\min},\ \tfrac{2\gamma(1-\eta)}{L},\ 1\Big\}>0,
+\end{equation}
+and a point $x^{\mathrm{pg}}=\proj(x_k-\alpha^{\mathrm{pg}}g_k)\in\mathcal L_0$
+with
+\begin{equation}\label{eq:pg-dec}
+f(x_k)-f(x^{\mathrm{pg}})\ \ge\ \eta\,\underline\alpha\,\rho(x_k)^2\ >\ 0 .
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Write $\widetilde r(\alpha):=\proj(x_k-\alpha g_k)-x_k$, so
+$\rho(x_k)=\norm{\widetilde r(1)}>0$ by non--stationarity and
+Lemma~\ref{lem:proj}(iii).
+
+\emph{All trial points lie in $\mathcal D$.} The reference search evaluates $f$
+only at $\proj(x_k-\alpha g_k)$ with $\alpha\le\bar a_k\le1$. By
+Lemma~\ref{lem:Dtrial}, every such point lies in $\mathcal D$ and the segment
+$[x_k,\proj(x_k-\alpha g_k)]\subseteq\mathcal D$. Hence \eqref{eq:desclemma}
+applies to $r=\widetilde r(\alpha)$ for \emph{every} $\alpha\in(0,1]$, with no
+restriction depending on $x_k$.
+
+\emph{A sufficient condition for Armijo acceptance.} For $\alpha\in(0,1]$
+combining \eqref{eq:desclemma} (with $r=\widetilde r(\alpha)$) and
+\eqref{eq:keydescent},
+\begin{equation}\label{eq:pg-upper}
+f\big(\proj(x_k-\alpha g_k)\big)-f(x_k)
+\le\inner{g_k}{\widetilde r(\alpha)}+\tfrac{L}{2}\norm{\widetilde r(\alpha)}^2
+\le-\Big(\tfrac1\alpha-\tfrac L2\Big)\norm{\widetilde r(\alpha)}^2 .
+\end{equation}
+The Armijo test \eqref{eq:armijo} (with $d=-g_k$) is
+$f(\proj(x_k-\alpha g_k))-f(x_k)\le\eta\inner{g_k}{\widetilde r(\alpha)}$, and by
+\eqref{eq:keydescent}, $\eta\inner{g_k}{\widetilde r(\alpha)}\le
+-\tfrac{\eta}{\alpha}\norm{\widetilde r(\alpha)}^2$. Hence, by
+\eqref{eq:pg-upper}, the Armijo test is \emph{implied} by
+\[
+-\Big(\tfrac1\alpha-\tfrac L2\Big)\norm{\widetilde r(\alpha)}^2
+\le-\tfrac{\eta}{\alpha}\norm{\widetilde r(\alpha)}^2
+\ \Longleftrightarrow\
+\tfrac{1-\eta}{\alpha}\ge\tfrac L2
+\ \Longleftrightarrow\
+\alpha\le\tfrac{2(1-\eta)}{L},
+\]
+where the first equivalence uses $\widetilde r(\alpha)\neq0$: indeed if
+$\widetilde r(\alpha)=0$ then by Lemma~\ref{lem:proj}(iv) $\rho(x_k)=0$,
+contradicting non--stationarity. Thus \emph{every}
+$\alpha\in(0,\min\{1,2(1-\eta)/L\}]$ is accepted (and when
+$\widetilde r(\alpha)=0$ cannot occur, the implication above is the genuine
+chain of inequalities).
+
+\emph{Termination and step lower bound.} Backtracking starts at
+$\bar a_k\le1$ and multiplies by $\gamma\in(0,1)$. Since every
+$\alpha\le\min\{1,2(1-\eta)/L\}$ is accepted, the loop stops after finitely many
+backtracks. The first accepted value is either $\bar a_k$ itself (if
+$\bar a_k\le 2(1-\eta)/L$) or the first backtracked iterate to enter
+$(0,2(1-\eta)/L]$; in the latter case the immediately preceding (rejected)
+iterate exceeded $2(1-\eta)/L$, so the accepted one is
+$\ge\gamma\cdot2(1-\eta)/L$. Combining, and using
+$\bar a_k=\min\{\bar\alpha_k,1\}\ge\min\{\alpha_{\min},1\}$ (since
+$\bar\alpha_k\ge\alpha_{\min}$),
+\[
+\alpha^{\mathrm{pg}}\ \ge\ \min\Big\{\bar a_k,\ \tfrac{2\gamma(1-\eta)}{L}\Big\}
+\ \ge\ \min\Big\{\alpha_{\min},\,1,\,\tfrac{2\gamma(1-\eta)}{L}\Big\}
+=\underline\alpha>0,
+\]
+proving \eqref{eq:steplb}; also $\alpha^{\mathrm{pg}}\le\bar a_k\le1$.
+
+\emph{Decrease.} The accepted point satisfies the Armijo inequality, so with
+$\alpha^{\mathrm{pg}}\le1$,
+\[
+f(x_k)-f(x^{\mathrm{pg}})\ \ge\
+-\eta\inner{g_k}{\widetilde r(\alpha^{\mathrm{pg}})}
+\ \overset{\eqref{eq:keydescent}}{\ge}\
+\frac{\eta}{\alpha^{\mathrm{pg}}}\norm{\widetilde r(\alpha^{\mathrm{pg}})}^2 .
+\]
+By Lemma~\ref{lem:proj}(iv) with $\alpha=\alpha^{\mathrm{pg}}\le1$,
+$\norm{\widetilde r(\alpha^{\mathrm{pg}})}\ge\alpha^{\mathrm{pg}}\rho(x_k)$, hence
+\[
+f(x_k)-f(x^{\mathrm{pg}})\ \ge\
+\frac{\eta}{\alpha^{\mathrm{pg}}}\,(\alpha^{\mathrm{pg}})^2\rho(x_k)^2
+=\eta\,\alpha^{\mathrm{pg}}\rho(x_k)^2\ \ge\ \eta\,\underline\alpha\,\rho(x_k)^2>0,
+\]
+which is \eqref{eq:pg-dec}. Thus $f(x^{\mathrm{pg}})<f(x_k)\le f(x_0)$ and
+$x^{\mathrm{pg}}\in\Omega$, so $x^{\mathrm{pg}}\in\mathcal L_0$.
+\end{proof}
+
+\begin{lemma}[The capped CG search is harmless]\label{lem:cg}
+For every $x_k\in\mathcal L_0$ and every direction $d_k$, the capped CG search
+$\mathrm{LS}^{\mathrm{cg}}(x_k,d_k,\bar\alpha_k)$ terminates after at most $M$
+iterations. If it returns \texttt{success} with step $\alpha^{\mathrm{cg}}$ and
+point $x^{\mathrm{cg}}=\proj(x_k+\alpha^{\mathrm{cg}}d_k)$, then
+$x^{\mathrm{cg}}\in\Omega$ and the Armijo inequality
+\eqref{eq:armijo} holds for it; in particular if additionally
+$f^{\mathrm{cg}}<f^{\mathrm{pg}}$ then accepting $x_{k+1}=x^{\mathrm{cg}}$ keeps
+$x_{k+1}\in\Omega$ and $f(x_{k+1})<f(x^{\mathrm{pg}})$. If it returns
+\texttt{fail}, the algorithm keeps $x_{k+1}=x^{\mathrm{pg}}$.
+\end{lemma}
+
+\begin{proof}
+Termination after at most $M$ iterations is immediate from the definition of the
+capped search. Any returned $x^{\mathrm{cg}}=\proj(x_k+\alpha^{\mathrm{cg}}d_k)$
+lies in $\Omega$ because it is a projection onto $\Omega$. The remaining claims
+are restatements of the acceptance rule in lines~\ref{line:cg}.
+\end{proof}
+
+\section{Global convergence}
+
+\begin{theorem}[Global convergence to a stationary point]\label{thm:main}
+Assume (A1)--(A2), and run Algorithm~\ref{alg:pcg} with
+parameters \eqref{eq:params}. Each iteration terminates (both line searches
+terminate, by Lemmas~\ref{lem:pg} and~\ref{lem:cg}). Then either the algorithm
+stops at line~3 with a stationary $x_k$, or it produces an infinite feasible
+sequence $(x_k)\subset\mathcal L_0$ with $f(x_{k+1})<f(x_k)$ for all $k$ and
+\begin{equation}\label{eq:rho0}
+\lim_{k\to\infty}\rho(x_k)=0 .
+\end{equation}
+In the latter case $(x_k)$ has at least one limit point, and \emph{every} limit
+point $x^*$ is feasible and stationary, i.e.\ satisfies
+$\inner{g(x^*)}{y-x^*}\ge0$ for all $y\in\Omega$.
+\end{theorem}
+
+\begin{proof}
+If the algorithm stops at line~3, then $\rho(x_k)=0$, so by
+Lemma~\ref{lem:proj}(iii) $x_k$ satisfies \eqref{eq:firstorder} and is
+stationary.
+
+Otherwise $\rho(x_k)>0$ for all $k$. By Lemmas~\ref{lem:pg} and~\ref{lem:cg}
+each iteration's two line searches terminate, so the algorithm is well defined.
+By construction (lines \ref{line:pg}--\ref{line:cg}) the accepted point
+$x_{k+1}$ is either the projected--gradient point $x^{\mathrm{pg}}$ or, only when
+the capped CG search returns \texttt{success} with a strictly smaller value, the
+CG point; in both cases
+\begin{equation}\label{eq:atleast}
+f(x_k)-f(x_{k+1})\ \ge\ f(x_k)-f(x^{\mathrm{pg}}).
+\end{equation}
+We claim every accepted iterate is feasible and stays in $\mathcal L_0$:
+$x_{k+1}\in\Omega$ since it is a projection (Lemmas~\ref{lem:pg},
+\ref{lem:cg}), and $f(x_{k+1})\le f(x^{\mathrm{pg}})<f(x_k)$ by
+\eqref{eq:atleast} and Lemma~\ref{lem:pg}. Inductively, with
+$x_0\in\mathcal L_0$, all $x_k\in\mathcal L_0$. Hence Lemma~\ref{lem:pg} applies
+at every $k$, giving via \eqref{eq:atleast} and \eqref{eq:pg-dec}
+\begin{equation}\label{eq:perstep}
+f(x_k)-f(x_{k+1})\ \ge\ \eta\,\underline\alpha\,\rho(x_k)^2\ >\ 0,\qquad
+\underline\alpha=\min\Big\{\alpha_{\min},\,1,\,\tfrac{2\gamma(1-\eta)}{L}\Big\}.
+\end{equation}
+Thus $(f(x_k))$ is strictly decreasing. By (A1) $\mathcal L_0$ is bounded and
+$f$ is continuous, hence $f$ attains a minimum on the compact closure of
+$\mathcal L_0$; as all $x_k\in\mathcal L_0$, the values $f(x_k)$ are bounded
+below, so $f^\star:=\lim_k f(x_k)=\inf_k f(x_k)>-\infty$. Summing
+\eqref{eq:perstep} over $k=0,\dots,N-1$ telescopes:
+\[
+\eta\,\underline\alpha\sum_{k=0}^{N-1}\rho(x_k)^2\le f(x_0)-f(x_N)\le f(x_0)-f^\star<\infty .
+\]
+Letting $N\to\infty$ gives
+$\sum_{k=0}^\infty\rho(x_k)^2\le(f(x_0)-f^\star)/(\eta\underline\alpha)<\infty$,
+a convergent series; therefore $\rho(x_k)^2\to0$, i.e.\ \eqref{eq:rho0}.
+
+\emph{Limit points are stationary.} The sequence $(x_k)\subset\mathcal L_0$ is
+bounded (A1), so by Bolzano--Weierstrass it has a convergent subsequence; thus
+at least one limit point exists. Let $x^*$ be \emph{any} limit point,
+$x_{k_j}\to x^*$. Then $x^*\in\Omega$ ($\Omega$ closed). By
+Lemma~\ref{lem:proj}(v) $\rho$ is continuous, so
+$\rho(x^*)=\lim_j\rho(x_{k_j})=0$ by \eqref{eq:rho0}. By
+Lemma~\ref{lem:proj}(iii), $x^*$ satisfies \eqref{eq:firstorder} and is
+stationary.
+\end{proof}
+
+\begin{corollary}[Behavior under the various CG scalars]
+Theorem~\ref{thm:main} holds verbatim for the Fletcher--Reeves,
+Polak--Ribi\`ere, Hestenes--Stiefel, Dai--Yuan, and Hager--Zhang choices of
+$\beta_{k+1}$, and indeed for any rule producing
+$d_{k+1}=-g_{k+1}+\beta_{k+1}d_k$.
+\end{corollary}
+
+\begin{proof}
+The proof of Theorem~\ref{thm:main} uses only the per--step decrease
+\eqref{eq:perstep}, which follows from \eqref{eq:atleast} and
+Lemma~\ref{lem:pg}; neither depends on $\beta_{k+1}$. The CG direction enters
+only through the optional, capped, strictly--improving acceptance on
+lines~\ref{line:angle}--\ref{line:cg}, which (by Lemma~\ref{lem:cg}) always
+terminates and can only increase the per--step decrease.
+\end{proof}
+
+\begin{remark}[Preserved CG behavior and safeguard role]
+On any iteration where the nonlinear CG direction $d_k$ passes the angle test
+\eqref{eq:angle} and its capped arc line search returns \texttt{success} with a
+strictly lower $f$--value than the projected--gradient step, the method advances
+along the CG arc and thus behaves as a genuine projected nonlinear CG method,
+inheriting its fast practical convergence. The projected--gradient search is a
+cheap $O(n)$ safeguard that (i) supplies the guaranteed decrease
+\eqref{eq:pg-dec} driving global convergence and (ii) is the accepted step
+whenever the CG arc either fails Armijo within $M$ backtracks or is not better.
+This is precisely the active--set/projection mechanism requested: the projection
+arc activates and releases bound constraints automatically, while the
+unconstrained CG recurrence drives the search inside the current face.
+\end{remark}
+
+\section{Conclusion}
+
+Algorithm~\ref{alg:pcg} is a low--memory ($O(n)$, Remark~\ref{rem:mem})
+extension of nonlinear conjugate gradient methods to the bound--constrained
+problem \eqref{eq:prob}, combining projection--arc Armijo line searches with a
+standard nonlinear CG direction and a projected--gradient safeguard. The capped
+CG search (Remark~\ref{rem:cgterm}, Lemma~\ref{lem:cg}) removes the only
+nontermination hazard introduced by the projection arc, and the enlarged
+Lipschitz domain \eqref{eq:Ddef} (Lemma~\ref{lem:Dtrial}) makes the descent
+estimate \eqref{eq:desclemma} valid at every trial point. Under the standard
+assumptions (A1)--(A2) and an Armijo backtracking line search,
+Theorem~\ref{thm:main} establishes global convergence: $\rho(x_k)\to0$ and every
+limit point of the iterates is a first--order stationary point of the
+bound--constrained problem.
+\end{document}

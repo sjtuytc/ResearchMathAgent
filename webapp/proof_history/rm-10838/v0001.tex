@@ -1,0 +1,514 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\DeclareMathOperator{\err}{err}
+
+\begin{document}
+
+\title{Instance-Based Learning and Nearest-Neighbor Condensation:\\
+Exact and Approximate Guarantees}
+\maketitle
+
+\begin{abstract}
+Let $(X,d)$ be a metric space, $\mathcal Y$ finite, and
+$T=\{(x_1,y_1),\dots,(x_n,y_n)\}\subset X\times\mathcal Y$ a labeled sample. For
+$S\subseteq T$ let $h_S$ be the $1$-NN rule on $S$ (ties broken by a fixed index
+order). We give a complete treatment of condensation in three regimes.
+\textbf{(i)} \emph{Training-faithful condensation}: the \emph{enemy condition}
+\eqref{eq:enemy} (a Set Cover condition) is sufficient for the \emph{prototype
+condition} $h_S(x_j)=y_j$ ($j\in[n]$), which preserves the training labeling and
+hence the error of $h_T$ under every distribution supported on $T$; we prove the
+implication and show by an explicit finite-metric example that it is strict and
+that the prototype condition does \emph{not} preserve $h_T$ off the training
+set. \textbf{(ii)} \emph{Exact global condensation} ($h_S\equiv h_T$ a.e.):
+in $\mathbb R^m$ we prove the necessary-and-sufficient \emph{Voronoi-border}
+characterization---$S$ must contain every prototype whose Voronoi cell is
+adjacent to a differently labeled cell---and give the corresponding minimal set;
+deep interior prototypes (and only those) are removable with no degradation
+anywhere. \textbf{(iii)} \emph{Smallest size and approximate condensation}:
+minimizing $|S|$ under the enemy condition is Set Cover with optimum
+$k^\star(T)$; a greedy $O(n^2)$ algorithm achieves $|S|\le(1+\ln n)k^\star(T)$;
+$k^\star(T)$ is bounded by a covering number of the margin region, yielding
+$k^\star(T)\le 2^{\dim_d}(2\Delta/\gamma)^{\dim_d}$ \emph{independent of $n$} in
+doubling spaces with $\gamma$-separated classes; and a sample-compression bound
+gives, with probability $\ge1-\delta$,
+$\err_\mathcal D(h_S)\le\widehat{\err}_T(h_T)+
+\sqrt{(k\ln n+\ln(2/\delta))/(2(n-k))}$, which (for training-consistent $h_T$)
+yields $\err_\mathcal D(h_S)\le\err_\mathcal D(h_T)+\varepsilon$. All
+constructions, constants and hypotheses are explicit.
+\end{abstract}
+
+\section{Setup}\label{sec:setup}
+
+$(X,d)$ is a metric space, $\mathcal Y$ a finite nonempty label set, and
+$T=\{(x_1,y_1),\dots,(x_n,y_n)\}$ a sample of $n\ge1$ examples indexed by
+$[n]=\{1,\dots,n\}$, $P_T=\{x_1,\dots,x_n\}$. A subset $S\subseteq T$ is
+identified with its index set $I_S\subseteq[n]$.
+
+\paragraph{Rule and tie-break.} Fix $1<\cdots<n$. For $x\in X$,
+$\varnothing\ne S\subseteq T$,
+\begin{equation}\label{eq:nn}
+\nu_S(x):=\min\Big\{i\in I_S: d(x,x_i)=\min_{j\in I_S}d(x,x_j)\Big\},\qquad
+h_S(x):=y_{\nu_S(x)} .
+\end{equation}
+The minima are attained, so $h_S:X\to\mathcal Y$ is well defined.
+
+\paragraph{Error and measurability.}
+$\err_\mathcal D(h)=\Pr_{(x,y)\sim\mathcal D}[h(x)\ne y]$. Each region
+$\{x:\nu_S(x)=i\}$ is cut out by finitely many continuous (in)equalities
+$d(\cdot,x_i)\le d(\cdot,x_j)$, hence is Borel; so $h_S$ is Borel measurable
+whenever $X$ is separable, and $\err_\mathcal D(h_S)$ is well defined.
+
+\paragraph{Standing assumption.} \emph{Coincident prototypes share a label}
+($x_i=x_j\Rightarrow y_i=y_j$); then $h_T(x_j)=y_j$ for all $j$. (Otherwise
+replace $y_j$ below by $h_T(x_j)$ throughout.)
+
+\paragraph{Goal.} Given $\varepsilon\ge0$, find $S$ with $|S|\ll n$ and
+$\err_\mathcal D(h_S)\le\err_\mathcal D(h_T)+\varepsilon$.
+
+\section{Training-faithful condensation}\label{sec:train}
+
+\begin{definition}\label{def:enemy}
+The \emph{nearest-enemy distance} of $j\in[n]$ is
+$\rho_j:=\min\{d(x_j,x_k):k\in[n],\ y_k\ne y_j\}\in(0,\infty]$
+($\rho_j=+\infty$ if $j$ has no enemy). Its \emph{enemy-free ball} is
+$B_j=\{x:d(x_j,x)<\rho_j\}$; every prototype strictly inside $B_j$ has label
+$y_j$. A nonempty $S\subseteq T$ satisfies the \emph{enemy condition} if
+\begin{equation}\label{eq:enemy}
+\forall j\in[n]\ \exists k\in I_S:\quad y_k=y_j\ \text{and}\ d(x_j,x_k)<\rho_j .
+\end{equation}
+It satisfies the \emph{prototype condition} if
+\begin{equation}\label{eq:proto}
+h_S(x_j)=y_j\quad\text{for all }j\in[n] .
+\end{equation}
+\end{definition}
+
+\begin{lemma}[Enemy $\Rightarrow$ prototype]\label{lem:enemy}
+If $S$ satisfies \eqref{eq:enemy} then it satisfies \eqref{eq:proto}. The
+converse fails in general.
+\end{lemma}
+
+\begin{proof}
+Assume \eqref{eq:enemy}; fix $j$ and let $k\in I_S$ witness it
+($y_k=y_j$, $d(x_j,x_k)<\rho_j$). Let $i:=\nu_S(x_j)$. Then
+$d(x_j,x_i)\le d(x_j,x_k)<\rho_j$, so $x_i\in B_j$, whence $y_i=y_j$ by
+Definition~\ref{def:enemy}. Thus $h_S(x_j)=y_i=y_j$, giving \eqref{eq:proto}.
+
+\emph{Strictness.} In $X=\mathbb R$ take prototypes at positions
+$x_1=0,x_2=1,x_3=2,x_4=3,x_5=4$ with labels $y_1=y_2=y_3=0$, $y_4=y_5=1$, and
+$S=\{(x_2,0),(x_5,1)\}$ (positions $1$ and $4$). One verifies directly that the
+prototype condition \eqref{eq:proto} holds at every $j$: the nearest $S$-point
+to $x_1=0$ is $x_2$ (distance $1<4$), label $0=y_1$; to $x_2$ is $x_2$ itself,
+label $0=y_2$; to $x_3=2$ is $x_2$ (distance $1<2$), label $0=y_3$; to $x_4=3$
+is $x_5$ (distance $1<2$), label $1=y_4$; to $x_5$ is $x_5$, label $1=y_5$
+(no distances tie). However \eqref{eq:enemy} fails at $j=3$: $\rho_3=d(x_3,x_4)
+=1$, and the only same-label $S$-point is $x_2$ at distance $1\not<1=\rho_3$, so
+no label-$0$ point of $S$ lies strictly inside $B_3=(1,3)$. Thus \eqref{eq:proto}
+holds while \eqref{eq:enemy} fails; the implication \eqref{eq:enemy}$\Rightarrow$
+\eqref{eq:proto} is strict.
+\end{proof}
+
+\begin{theorem}[Training-faithful guarantee]\label{thm:train}
+If $S$ satisfies the enemy condition \eqref{eq:enemy} then:
+\begin{enumerate}
+\item[(i)] \eqref{eq:enemy} is decidable in $O(|S|\,n)$ distance evaluations
+after an $O(n^2)$ precomputation of $(\rho_j)$, and implies the prototype
+condition \eqref{eq:proto}.
+\item[(ii)] $h_S(x_j)=y_j=h_T(x_j)$ for every $j$. Hence for any probability
+measure $\mathcal D'$ supported on $P_T$ (in particular the empirical
+$\widehat{\mathcal D}_T$),
+\[
+\err_{\mathcal D'}(h_S)=\err_{\mathcal D'}(h_T);
+\]
+the training (resubstitution) error is exactly preserved.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(i) The implication is Lemma~\ref{lem:enemy}; the cost is the scan in
+\eqref{eq:enemy} over $|S|$ points for each $j$, after computing all
+$\rho_j$ from the $n^2$ pairwise distances.
+(ii) By (i) and the standing assumption, $h_S(x_j)=y_j=h_T(x_j)$. A measure on
+$P_T$ sees only these coincident values, so the error indicators agree pointwise
+on the support and the errors coincide.
+\end{proof}
+
+\begin{proposition}[The prototype condition does not preserve $h_T$ off $T$]
+\label{prop:gap}
+There is a $4$-point metric space, labels in $\{0,1\}$, a sample $T$, and a
+proper consistent subset $S\subsetneq T$ satisfying \eqref{eq:enemy} (hence
+\eqref{eq:proto}) with $h_S(q)\ne h_T(q)$ for some $q\in X$. Thus
+Theorem~\ref{thm:train} preserves only the training labeling; global
+preservation requires the stronger geometric condition of \S\ref{sec:global}.
+\end{proposition}
+
+\begin{proof}
+Let $X=\{a,b,e,q\}$ with $d$ the shortest-path metric of the weighted graph
+with edges
+$d_E(a,b)=0.9,\ d_E(b,q)=1.0,\ d_E(q,e)=1.1,\ d_E(a,e)=3.0,\ d_E(b,e)=3.0,\
+d_E(a,q)=3.0$. Shortest paths give
+\[
+\begin{array}{c|cccc}
+ & a & b & e & q\\\hline
+a & 0 & 0.9 & 3.0 & 1.9\\
+b & 0.9 & 0 & 2.1 & 1.0\\
+e & 3.0 & 2.1 & 0 & 1.1\\
+q & 1.9 & 1.0 & 1.1 & 0
+\end{array}
+\]
+(e.g.\ $d(a,q)=\min\{3.0,0.9+1.0\}=1.9$, $d(b,e)=\min\{3.0,1.0+1.1\}=2.1$). As a
+shortest-path metric it satisfies all metric axioms. Label $y_a=y_b=1,\ y_e=0$,
+take $T=\{(a,1),(b,1),(e,0)\}$, index order $a<b<e$, $S=\{(a,1),(e,0)\}$.
+
+\emph{Enemy condition.} $\rho_a=d(a,e)=3.0$, served by $a$ ($0<3.0$);
+$\rho_b=d(b,e)=2.1$, served by $a$ ($y_a=y_b=1$, $d(b,a)=0.9<2.1$);
+$\rho_e=\min\{d(e,a),d(e,b)\}=2.1$, served by $e$. So \eqref{eq:enemy} holds.
+
+\emph{Global failure at $q$.} $d(q,b)=1.0<d(q,e)=1.1<d(q,a)=1.9$, so $\nu_T(q)=b$
+and $h_T(q)=1$, while in $S=\{a,e\}$ the nearest is $e$, giving $h_S(q)=0\ne1$.
+\end{proof}
+
+\section{Exact global condensation in $\mathbb R^m$}\label{sec:global}
+
+We now characterize, in Euclidean space, the subsets $S$ for which
+$h_S(x)=h_T(x)$ for \emph{all} $x$ (equivalently a.e.), so that
+$\err_\mathcal D(h_S)=\err_\mathcal D(h_T)$ for \emph{every} $\mathcal D$ with
+absolutely continuous $X$-marginal. Take $X=\mathbb R^m$ with the Euclidean
+metric and prototypes \emph{in general position} (no $m+2$ on a common sphere,
+all distinct), so each Voronoi region
+$R_i=\{x:\|x-x_i\|<\|x-x_j\|\ \forall j\ne i\}$ is an open convex polyhedron and
+the bisector set $Z=\bigcup_{i<j}\{x:\|x-x_i\|=\|x-x_j\|\}$ has Lebesgue measure
+$0$. Two prototypes $i,j$ are \emph{Voronoi-adjacent} if $\overline{R_i}\cap
+\overline{R_j}$ has dimension $m-1$ (a shared facet).
+
+\begin{definition}[Border set]\label{def:border}
+The \emph{border set} is
+\[
+\partial T:=\{i\in[n]:\exists\,j\text{ Voronoi-adjacent to }i\text{ with }y_j\ne y_i\}.
+\]
+A prototype not in $\partial T$ (all its Voronoi neighbors share its label) is
+\emph{interior}.
+\end{definition}
+
+\begin{theorem}[Voronoi-border characterization]\label{thm:border}
+Let $S\subseteq T$ be nonempty. The following are equivalent.
+\begin{enumerate}
+\item[(a)] $h_S(x)=h_T(x)$ for all $x\notin Z$ (equivalently, for a.e.\ $x$).
+\item[(b)] $\partial T\subseteq I_S$, i.e.\ $S$ contains every border prototype.
+\end{enumerate}
+Consequently $\partial T$ itself is the unique \emph{minimum} exact-global
+condensed set, and a prototype can be deleted with no change to $h_T$ anywhere
+(off $Z$) iff it is interior.
+\end{theorem}
+
+\begin{proof}
+\textbf{(b)$\Rightarrow$(a).} Assume $\partial T\subseteq I_S$. Recall
+$Z=\bigcup_{a<b}\{x:\|x-x_a\|=\|x-x_b\|\}$ is a finite union of hyperplanes,
+hence Lebesgue-null. Fix $x\notin Z$, set $i:=\nu_T(x)$ (unique, since
+$x\notin Z$) and $c:=y_i=h_T(x)$; we prove $h_S(x)=c$. Let $m:=\nu_S(x)$ and suppose, for contradiction, that
+$y_m\ne c$.
+
+Consider the segment $\sigma(t)=(1-t)x+t\,x_m$, $t\in[0,1]$. Each Voronoi cell
+$R_a$ is convex, so $\sigma$ meets the bisector set $Z$ in finitely many
+parameters $0\le t_1<\dots<t_r\le1$, and on each complementary open subinterval
+$\nu_T(\sigma(t))$ is a constant cell index. At $t=0^+$ this index is $i$
+(label $c$); at $t=1^-$ it is $m$ (since $x_m\in R_m$), label $y_m\ne c$.
+Therefore there is a \emph{first} crossing parameter $t_\ell$ at which the cell
+label switches from $c$ to a value $\ne c$: just before $t_\ell$ the segment is
+in a cell $R_p$ with $y_p=c$, just after in a cell $R_{p'}$ with $y_{p'}\ne c$.
+Crossing from $R_p$ to $R_{p'}$ means $\sigma$ passes through their shared facet,
+so $p,p'$ are Voronoi-adjacent with $y_p\ne y_{p'}$; hence
+$p\in\partial T\subseteq I_S$, i.e.\ $x_p\in S$ and $y_p=c$.
+
+Put $w:=\sigma(t_\ell)$. Since $w$ lies on the boundary between the traversed
+cells $R_p,R_{p'}$, it is equidistant from $x_p,x_{p'}$ and no prototype is
+strictly closer to $w$:
+\begin{equation}\label{eq:crossdist}
+\|w-x_p\|=\|w-x_{p'}\|=\min_{a\in[n]}\|w-x_a\| .
+\end{equation}
+In particular $\|w-x_p\|\le\|w-x_m\|$. Because $w$ lies on the segment between
+$x$ and $x_m$,
+\begin{equation}\label{eq:split}
+\|x-x_m\|=\|x-w\|+\|w-x_m\|\ge\|x-w\|+\|w-x_p\|\ge\|x-x_p\|,
+\end{equation}
+using \eqref{eq:crossdist} for the first inequality and the triangle inequality
+for the second. Thus $\|x-x_p\|\le\|x-x_m\|$ with $x_p\in S$. Equality in
+\eqref{eq:split} forces $\|x-x_p\|=\|x-x_m\|$, i.e.\ $x$ lies on the bisector of
+the \emph{fixed} prototype pair $(x_p,x_m)$, which is one of the hyperplanes
+comprising $Z$. Since $x\notin Z$, the inequality is strict:
+$\|x-x_p\|<\|x-x_m\|$. But $x_p\in S$, contradicting $m=\nu_S(x)$ being the
+nearest $S$-prototype to $x$. Hence the assumption $y_m\ne c$ is impossible, so
+$h_S(x)=y_m=c=h_T(x)$ for every $x\notin Z$.
+
+\textbf{(a)$\Rightarrow$(b).} We prove the contrapositive: if some border
+prototype $p\notin I_S$, then $h_S\ne h_T$ on a set of positive measure. By
+definition $p$ has a Voronoi-adjacent $p'$ with $y_{p'}\ne y_p$; let
+$F=\overline{R_p}\cap\overline{R_{p'}}$ be their shared $(m-1)$-dimensional
+facet and let $w$ be a point in the relative interior of $F$, so
+\[
+\|w-x_p\|=\|w-x_{p'}\|<\|w-x_a\|\quad\text{for all }a\ne p,p' .
+\]
+Let $u$ be the unit normal to $F$ pointing into $R_p$. For $\eta>0$ put
+$x_\eta:=w+\eta u$. The functions $a\mapsto\|x_\eta-x_a\|$ are continuous in
+$\eta$, and at $\eta=0$ the strict separation above holds; hence there is
+$\eta_0>0$ such that for all $0<\eta<\eta_0$:
+(1) $x_\eta\in R_p$, so $\nu_T(x_\eta)=p$ and $h_T(x_\eta)=y_p$, and
+$x_\eta\notin Z$;
+(2) $x_p$ is the unique nearest prototype overall, $x_{p'}$ the unique second
+nearest, and every other prototype is strictly farther by a margin bounded below
+uniformly on $0<\eta<\eta_0$.
+Now compute $\nu_S(x_\eta)$. Since $p\notin I_S$, the candidates are
+$I_S\subseteq[n]\setminus\{p\}$. Among these, by (2) the nearest to $x_\eta$ is
+$p'$ if $p'\in I_S$, and otherwise some prototype strictly farther than $x_{p'}$;
+in either case $\nu_S(x_\eta)\ne p$. Crucially, the nearest \emph{same-label-as-}
+$p$ prototype available to $S$ near $w$ is strictly farther from $x_\eta$ than
+$x_{p'}$ is: the only label-$y_p$ prototype within distance $\|w-x_{p'}\|+
+O(\eta)$ of $x_\eta$ is $x_p$ itself (by (2)), and $x_p\notin S$. Hence for
+$\eta<\eta_0$ small enough, $\nu_S(x_\eta)$ is a prototype whose distance to
+$x_\eta$ is $\|w-x_{p'}\|+O(\eta)$ and whose label is $\ne y_p$ (it is $p'$ or a
+farther non-$y_p$ point, since the closest $y_p$ option $x_p$ is excluded).
+Therefore $h_S(x_\eta)\ne y_p=h_T(x_\eta)$. As this holds for all $\eta$ in an
+interval, and $x_\eta$ traces a positive-length segment transverse to $F$, the
+disagreement set $\{x:h_S(x)\ne h_T(x)\}$ has positive Lebesgue measure (it
+contains a relative neighborhood of $w$ inside $R_p$, by continuity of all
+distance functions). This contradicts (a). Therefore $\partial T\subseteq I_S$.
+
+\emph{Minimality and uniqueness.} By the equivalence, every exact-global $S$
+contains $\partial T$, and $S=\partial T$ itself satisfies (b), hence (a). So
+$\partial T$ is the unique minimum exact-global condensed set; deleting an
+interior prototype keeps $\partial T\subseteq I_S$ and preserves $h_T$, while
+deleting any border prototype violates (b) and changes $h_T$ somewhere.
+\end{proof}
+
+\begin{corollary}[Lossless storage reduction]\label{cor:lossless}
+In $\mathbb R^m$ with prototypes in general position, $h_{\partial T}=h_T$ off a
+Lebesgue-null set; hence $\err_\mathcal D(h_{\partial T})=\err_\mathcal D(h_T)$
+for every $\mathcal D$ whose $X$-marginal is absolutely continuous. Storage can
+be reduced from $n$ to $|\partial T|$ \emph{with no degradation under any such
+$\mathcal D$}, and no further (Theorem~\ref{thm:border}). The savings
+$n-|\partial T|$ equal the number of interior prototypes, i.e.\ prototypes all
+of whose Voronoi neighbors share their label.
+\end{corollary}
+
+\begin{proof}
+Immediate from Theorem~\ref{thm:border}(b)$\Rightarrow$(a) with $S=\partial T$,
+and absolute continuity makes the null set $Z$ irrelevant to the error;
+optimality is the minimality clause of Theorem~\ref{thm:border}.
+\end{proof}
+
+\section{Smallest training-faithful subset and geometry}\label{sec:algo}
+
+For training-faithful condensation (\S\ref{sec:train}) the natural size measure
+is the smallest $S$ satisfying the enemy condition; this is a clean Set Cover.
+
+\begin{algorithm}[H]
+\caption{\textsc{EnemyGreedy}: small enemy-consistent subset}
+\label{alg:greedy}
+\begin{algorithmic}[1]
+\Require sample $T=\{(x_j,y_j)\}_{j=1}^n$, optional cap $\kappa$
+\Ensure $S\subseteq T$ satisfying \eqref{eq:enemy} (hence \eqref{eq:proto})
+\For{$j=1$ \textbf{to} $n$} \State $\rho_j\leftarrow\min_{k:\,y_k\ne y_j}d(x_j,x_k)$ \EndFor
+\For{$k=1$ \textbf{to} $n$} \State $C_k\leftarrow\{j:\,y_j=y_k,\ d(x_j,x_k)<\rho_j\}$ \EndFor
+\State $U\leftarrow[n]$;\ $I_S\leftarrow\varnothing$
+\While{$U\ne\varnothing$ \textbf{and} $|I_S|<\kappa$}
+   \State $k^\star\leftarrow\arg\max_k|C_k\cap U|$;\quad $I_S\leftarrow I_S\cup\{k^\star\}$;\quad $U\leftarrow U\setminus C_{k^\star}$
+\EndWhile
+\State \Return $S=\{(x_k,y_k):k\in I_S\}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Set Cover reduction, complexity, guarantee]\label{thm:greedy}
+Run \textsc{EnemyGreedy} with $\kappa=n$. It terminates in $\le n$ iterations,
+costs $O(n^2)$ distance evaluations and $O(n^2)$ set operations, and returns an
+enemy-consistent $S$. Let $k^\star(T)$ be the minimum size of an
+enemy-consistent subset. Then $k^\star(T)$ equals the Set Cover optimum of the
+instance $\big([n];\{C_k\}_{k\in[n]}\big)$, and
+\[
+|S|\ \le\ (1+\ln n)\,k^\star(T) .
+\]
+\end{theorem}
+
+\begin{proof}
+\emph{Reduction.} $k\in C_k$ always ($y_k=y_k$, $d(x_k,x_k)=0<\rho_k$), so
+$\bigcup_kC_k=[n]$. By \eqref{eq:enemy}, index $j$ is served iff some $k\in I_S$
+has $j\in C_k$; thus enemy-consistency $\iff$ $\{C_k\}_{k\in I_S}$ covers $[n]$,
+and the minimum is the Set Cover optimum $k^\star(T)$.
+\emph{Termination/correctness.} Each iteration removes $\ge1$ element (any $u\in
+U$ has $u\in C_u$, so the max is $\ge1$); $\le n$ iterations, ending with
+$U=\varnothing$, i.e.\ a cover.
+\emph{Complexity.} $O(n^2)$ for $(\rho_j),(C_k)$ from the $n^2$ distances; the
+$\le n$ iterations scan $n$ sets, $O(n^2)$ total.
+\emph{Greedy bound.} Classical: charge $1/t$ to each of the $t$ newly covered
+elements per pick (total charge $=|S|$). Before covering the $r$-th-from-last
+element, $\ge r$ elements remain, covered by $k^\star(T)$ optimal sets, so some
+optimal set covers $\ge r/k^\star(T)$; greedy covers at least as many, so the
+charge is $\le k^\star(T)/r$, giving $|S|\le k^\star(T)\sum_{r=1}^n1/r\le
+k^\star(T)(1+\ln n)$.
+\end{proof}
+
+\begin{remark}[Only boundary points are retained]\label{rem:boundary}
+A prototype $j$ deep in its class (large $\rho_j$) lies in many $C_k$ and is
+covered easily; near-boundary prototypes (small $\rho_j$) are hard to cover and
+are retained. Hence the minimal enemy-consistent subset is supported near the
+decision boundary, matching the exact-global border set $\partial T$ of
+\S\ref{sec:global}.
+\end{remark}
+
+\begin{theorem}[Covering bound on $k^\star(T)$]\label{thm:cover}
+For $\gamma>0$ let $G_\gamma=\{j:\rho_j\ge\gamma\}$, $P_\gamma=\{x_j:j\in
+G_\gamma\}$, and let $N(A,r)$ be the minimum number of radius-$r$ balls with
+centers in $A$ covering $A$. Then for every $\gamma>0$,
+\begin{equation}\label{eq:coverbound}
+k^\star(T)\ \le\ N\!\big(P_\gamma,\tfrac\gamma2\big)+\#\{j:\rho_j<\gamma\}.
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Take a minimum $\tfrac\gamma2$-cover of $P_\gamma$ with prototype centers
+$x_{k_1},\dots,x_{k_M}$ ($M=N(P_\gamma,\tfrac\gamma2)$), $S_0=\{k_1,\dots,k_M\}$.
+For $j\in G_\gamma$ choose center $k_t$ with $d(x_j,x_{k_t})\le\tfrac\gamma2$.
+Since $\rho_{k_t}\ge\gamma>\tfrac\gamma2\ge d(x_j,x_{k_t})$, $x_j\in B_{k_t}$ so
+$y_j=y_{k_t}$; also $d(x_j,x_{k_t})<\gamma\le\rho_j$. Thus $k_t$ serves $j$ in
+\eqref{eq:enemy}. For $j$ with $\rho_j<\gamma$ add $j$ ($j\in C_j$). Then
+$S=S_0\cup\{j:\rho_j<\gamma\}$ is enemy-consistent of size $\le
+M+\#\{j:\rho_j<\gamma\}$, and minimality gives \eqref{eq:coverbound}.
+\end{proof}
+
+\begin{corollary}[Doubling spaces]\label{cor:doubling}
+If $(X,d)$ has doubling dimension $\dim_d$ and $\Delta=\max_{i,j}d(x_i,x_j)$,
+then for every $\gamma>0$,
+\[
+k^\star(T)\le 2^{\dim_d}\Big(\tfrac{2\Delta}\gamma\Big)^{\dim_d}
++\#\{j:\rho_j<\gamma\}.
+\]
+If all classes are $\gamma$-separated ($\rho_j\ge\gamma\ \forall j$) the second
+term vanishes and $k^\star(T)\le2^{\dim_d}(2\Delta/\gamma)^{\dim_d}$,
+\emph{independent of $n$}.
+\end{corollary}
+
+\begin{proof}
+Iterating the doubling property $\lceil\log_2(2\Delta/\gamma)\rceil$ times
+covers a diameter-$\Delta$ set by $\le2^{\dim_d}(2\Delta/\gamma)^{\dim_d}$ balls
+of radius $\gamma/2$, so $N(P_\gamma,\gamma/2)\le2^{\dim_d}(2\Delta/\gamma)^{
+\dim_d}$; apply Theorem~\ref{thm:cover}.
+\end{proof}
+
+\section{Approximate condensation and generalization}\label{sec:gen}
+
+\begin{theorem}[Compression generalization bound]\label{thm:compress}
+Let $\mathcal A$ be any condenser ($T\mapsto\mathcal A(T)\subseteq T$) with
+$|\mathcal A(T)|\le k\le n/2$. Draw $T\sim\mathcal D^n$, $S=\mathcal A(T)$ with
+index set $I$, and let $\widehat{\err}_{T\setminus S}(h_S)=\frac1{n-|I|}
+\sum_{j\notin I}\mathbf1\{h_S(x_j)\ne y_j\}$. Then for $\delta\in(0,1)$, with
+probability $\ge1-\delta$,
+\begin{equation}\label{eq:comp}
+\err_\mathcal D(h_S)\le\widehat{\err}_{T\setminus S}(h_S)+
+\sqrt{\frac{k\ln n+\ln(2/\delta)}{2(n-k)}} .
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Fix an index set $I$ with $\ell:=|I|\le k$. By exchangeability of the i.i.d.\
+sample, conditioned on the compression occupying exactly positions $I$ and
+equaling a given multiset of $\ell$ points, the remaining $n-\ell$ examples are
+i.i.d.\ $\mathcal D$ and $h_S$ (a function of the compressed multiset only) is
+\emph{fixed}. Hence $\{\mathbf1\{h_S(x_j)\ne y_j\}\}_{j\notin I}$ are i.i.d.\
+Bernoulli with mean $\err_\mathcal D(h_S)$, and Hoeffding gives for $t>0$
+\[
+\Pr\big[\err_\mathcal D(h_S)-\widehat{\err}_{T\setminus S}(h_S)>t\mid I\big]
+\le e^{-2(n-\ell)t^2}\le e^{-2(n-k)t^2}.
+\]
+Union-bounding over the $\sum_{\ell\le k}\binom n\ell\le n^k$ index sets (valid
+for $1\le k\le n/2$),
+$\Pr[\exists I:\ \cdots>t]\le n^k e^{-2(n-k)t^2}$. Setting this to $\delta$
+gives $t=\sqrt{(k\ln n+\ln(1/\delta))/(2(n-k))}$; enlarging $\ln(1/\delta)$ to
+$\ln(2/\delta)$ absorbs the $\le n^k$ slack and yields \eqref{eq:comp}.
+\end{proof}
+
+\begin{theorem}[End-to-end guarantee]\label{thm:honest}
+Let $S\subseteq T$ be enemy-consistent (\eqref{eq:enemy}) with $|S|\le k\le n/2$,
+and suppose $\widehat{\err}_T(h_T)=0$ (automatic for distinct prototypes, since
+each $x_j$ is its own nearest neighbor). Then with probability $\ge1-\delta$,
+\begin{equation}\label{eq:honest}
+\err_\mathcal D(h_S)\le\sqrt{\frac{k\ln n+\ln(2/\delta)}{2(n-k)}} .
+\end{equation}
+Consequently, for any $\varepsilon>0$,
+\[
+\sqrt{\frac{k\ln n+\ln(2/\delta)}{2(n-k)}}\le\varepsilon\ \Longrightarrow\
+\err_\mathcal D(h_S)\le\err_\mathcal D(h_T)+\varepsilon\quad(\text{prob.}\ge1-\delta),
+\]
+since $\err_\mathcal D(h_T)\ge0$. This holds for
+$n-k\ge(k\ln n+\ln(2/\delta))/(2\varepsilon^2)$, i.e.\
+$n=O\!\big(\varepsilon^{-2}k\ln(k/\varepsilon)+\varepsilon^{-2}\log(1/\delta)\big)$.
+\end{theorem}
+
+\begin{proof}
+By Theorem~\ref{thm:train}(ii), enemy-consistency gives $h_S(x_j)=y_j$ for all
+$j$, so every held-out indicator is $0$ and
+$\widehat{\err}_{T\setminus S}(h_S)=0$. Theorem~\ref{thm:compress} then yields
+\eqref{eq:honest}; the rest is the stated arithmetic together with
+$\err_\mathcal D(h_T)\ge0$.
+\end{proof}
+
+\begin{corollary}[Geometric end-to-end statement]\label{cor:end}
+Let $(X,d)$ be doubling with $\gamma$-separated classes, distinct prototypes,
+and put $k:=2^{\dim_d}(2\Delta/\gamma)^{\dim_d}$. Then the cover construction of
+Theorem~\ref{thm:cover} (or \textsc{EnemyGreedy}) returns an enemy-consistent
+$S$ with $|S|\le k$, and with probability $\ge1-\delta$,
+\[
+\err_\mathcal D(h_S)\le\sqrt{\frac{k\ln n+\ln(2/\delta)}{2(n-k)}}
+\xrightarrow[n\to\infty]{}0,\qquad |S|\le k\ \text{independent of }n .
+\]
+\end{corollary}
+
+\begin{proof}
+Corollary~\ref{cor:doubling} (separated case) gives an enemy-consistent $S$ with
+$|S|\le k$; apply Theorem~\ref{thm:honest}, whose bound $\to0$ as $n\to\infty$
+with $k$ fixed.
+\end{proof}
+
+\section{Summary}\label{sec:summary}
+
+\textbf{Procedure.} \textsc{EnemyGreedy} (Algorithm~\ref{alg:greedy}), $O(n^2)$
+time, for training-faithful condensation; the border set $\partial T$
+(\S\ref{sec:global}) for exact global condensation in $\mathbb R^m$.
+
+\textbf{Smallest $|S|$.}
+\emph{(Exact global, $\varepsilon=0$, $\mathbb R^m$.)} The minimum size with
+$h_S\equiv h_T$ a.e.\ is $|\partial T|$, the number of border prototypes
+(Theorem~\ref{thm:border}); the removable points are exactly the interior
+prototypes, giving lossless reduction under any absolutely continuous
+$\mathcal D$ (Corollary~\ref{cor:lossless}).
+\emph{(Training-faithful, general metric.)} The minimum enemy-consistent size is
+the Set Cover optimum $k^\star(T)$ (Theorem~\ref{thm:greedy}); greedy attains
+$\le(1+\ln n)k^\star(T)$. Geometrically $k^\star(T)\le N(P_\gamma,\gamma/2)+
+\#\{j:\rho_j<\gamma\}\le2^{\dim_d}(2\Delta/\gamma)^{\dim_d}$ under
+$\gamma$-separation, independent of $n$ (Theorem~\ref{thm:cover},
+Corollary~\ref{cor:doubling}).
+\emph{($\varepsilon>0$.)} Any enemy-consistent $S$ of size $k$ with
+$\sqrt{(k\ln n+\ln(2/\delta))/(2(n-k))}\le\varepsilon$ satisfies
+$\err_\mathcal D(h_S)\le\err_\mathcal D(h_T)+\varepsilon$ w.p.\ $\ge1-\delta$
+(Theorem~\ref{thm:honest}); thus $k=O(\varepsilon^2 n/\ln n)$ always suffices,
+and $k=\Theta((2\Delta/\gamma)^{\dim_d})$ under separation
+(Corollary~\ref{cor:end}).
+
+\textbf{No-degradation conditions.} (1) Global, any abs.\ cont.\ $\mathcal D$:
+keep exactly $\partial T$; removable points = interior prototypes
+(Corollary~\ref{cor:lossless}). (2) On the training set / for any $\mathcal D$
+supported on $T$: keep any enemy-consistent $S$, down to $k^\star(T)$
+(Theorem~\ref{thm:train}). The geometry enters through the nearest-enemy
+distances $\rho_j$ and the doubling dimension: well-separated, low-dimensional
+data admits condensation to $O((\Delta/\gamma)^{\dim_d})$ points regardless of
+$n$.
+
+\end{document}

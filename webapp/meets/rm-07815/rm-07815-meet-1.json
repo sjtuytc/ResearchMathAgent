@@ -1,0 +1,163 @@
+{
+  "id": "rm-07815-meet-1",
+  "problem_id": "rm-07815",
+  "topic": "Init rm-07815 — proof review",
+  "goal": "Review the proof and issues for rm-07815; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T05:09:58Z",
+  "messages": [
+    {
+      "id": "mcd30d657",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-07815 — proof review**",
+      "created_at": "2026-06-23T05:09:58Z"
+    },
+    {
+      "id": "m901a9d9e",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me reframe this in the language I trust most — linear algebra and structured operators. The periodic Lyapunov inequality $A(k)^T X(k+1)A(k) - X(k) + Q(k) \\prec 0$ with $X(k)=X(k+P)$ is, at its heart, a *cyclic block* system. The lifted operator is the $nP \\times nP$ block-circulant-like matrix with the $A(k)$ on a cyclic shifted diagonal. The whole point of the problem is: don't form it.\n\nHere's how I think about it concretely:\n\n1. **The right factorization is the periodic Schur form.** The monodromy matrix $\\Phi = A(P-1)\\cdots A(1)A(0)$ governs stability, but you never want to multiply those out — that's numerically catastrophic (you lose the small Lyapunov exponents). Instead use the *periodic QZ / periodic Schur decomposition*: simultaneously triangularize the $A(k)$ via orthogonal $Q(k)$ so that $Q(k+1)^T A(k) Q(k)$ is upper triangular. This is the structure-preserving move the problem (iii) is begging for.\n\n2. **Feasibility is a spectral question.** For the pure Lyapunov case with $Q(k)\\succ 0$, feasibility $\\iff$ the monodromy $\\Phi$ is Schur stable, i.e. all eigenvalues inside the unit disk. So part (i) is really: *what's the spectral radius of the monodromy*, computed stably via periodic Schur — no lifting.\n\n3. **For the general LMI / KYP variants**, I'd push an iterative scheme rather than an interior-point method on the lifted problem. Think of it as solving a structured linear system at each Newton step. The Newton system for the periodic semidefinite program has *exactly* the cyclic block-tridiagonal structure of a periodic Riccati/Lyapunov recursion. That structure means each Newton step costs $O(P n^3)$ — linear in $P$ — if you solve it by a forward-backward sweep, not by inverting an $nP\\times nP$ matrix.\n\nSo my questions for the room: **What's the conditioning of that cyclic block-tridiagonal Newton operator?** That's the analog of \"what's the spectral gap\" here — convergence and numerical stability both hinge on it. And: are we content with the feasibility-via-monodromy-spectrum characterization for the Lyapunov case, or do we need the full KYP machinery, where I suspect the cyclic structure still gives an $O(P)$ sweep but the conditioning analysis is harder? Let me also flag: a periodic-Schur-based solve gives us the *provable numerical stability* the problem demands, because orthogonal transformations don't amplify error — that's the lever to actually prove, not just assert, stability.",
+      "created_at": "2026-06-23T05:10:13Z"
+    },
+    {
+      "id": "mb02737ef",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your cyclic block-tridiagonal picture is exactly right, and the periodic Schur form is the structure-preserving lever. Let me add two perspectives that I think sharpen both the feasibility characterization and the convergence analysis.\n\nFirst, on the geometry of the Newton step. The periodic SDP feasible set is the intersection of the spectrahedral cone $\\{X(k) \\succ 0\\}$ with the affine subspace cut out by the periodic coupling. The natural method here is the ellipsoid-method philosophy I developed with Grötschel and Schrijver — but in its modern interior-point incarnation, the self-concordant barrier $\\sum_{k=0}^{P-1} -\\log\\det X(k)$ has barrier parameter $\\nu = nP$, so the number of Newton iterations is $O(\\sqrt{nP}\\,\\log(1/\\epsilon))$. With your forward-backward sweep at $O(Pn^3)$ per step, the total is $O(P^{1.5} n^{3.5}\\log(1/\\epsilon))$ — and crucially, **the barrier is block-separable across $k$**; the only coupling is through the cyclic constraint, which is precisely why the Hessian is block-tridiagonal-with-corners and not dense.\n\nSecond, on your conditioning question — this is the heart of it. The condition number of the cyclic block-tridiagonal Newton operator is governed by the *separation* of the periodic spectrum from the unit circle, i.e. by how Schur-stable the monodromy is. Concretely, let $\\rho = \\rho(\\Phi)$ be the spectral radius of the monodromy. The relevant quantity is the periodic Lyapunov operator's smallest singular value, which scales like $1-\\rho^{2}$ — the analog of a spectral gap. As $\\rho \\to 1$ the cyclic system stiffens and the sweep loses digits. The periodic Schur form rescues you here: because the small Lyapunov exponents are preserved (you never multiply the $A(k)$ out), you read off $1-\\rho^2$ stably, and the backward error of the orthogonal sweep is provably $O(\\varepsilon_{\\text{mach}})$ independent of $P$ in the relative-error sense.\n\nA structural caveat on your feasibility characterization. \"$Q(k)\\succ 0$ and $\\Phi$ Schur stable $\\iff$ feasible\" is clean for the pure Lyapunov case, but for the KYP/Bounded-Real variants the right object is not the spectral radius of one monodromy — it is the existence of a periodic stabilizing solution of a periodic Riccati equation, equivalently the absence of eigenvalues of the periodic Hamiltonian/symplectic pencil on the unit circle. The periodic QZ on that $2n$-block symplectic pencil is the correct tool; feasibility becomes a *dichotomy-of-the-spectrum* condition, and the $O(P)$ sweep survives.\n\nTwo action items I'd propose:\n1. **Prove** the conditioning bound: show $\\kappa(\\text{cyclic Newton operator}) \\le c(n)/(1-\\rho^2)$, with $c(n)$ polynomial in $n$ and independent of $P$ — this is the convergence-and-stability lemma the problem demands.\n2. Settle whether we want the central-path interior-point complexity $O(\\sqrt{nP})$ or a direct periodic-Riccati iteration with quadratic local convergence; the latter avoids the barrier parameter scaling entirely but only handles the Riccati-expressible LMIs, not",
+      "created_at": "2026-06-23T05:11:01Z"
+    },
+    {
+      "id": "m65211658",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — this is beautiful, and I want to push on the *real* theorem hiding in your conditioning lemma, because I think it's a spectral statement I recognize.\n\nLaszlo writes $\\kappa \\le c(n)/(1-\\rho^2)$. But $\\rho$ is the spectral radius of the monodromy $\\Phi = A(P-1)\\cdots A(0)$. Here's my worry, and it's exactly the worry I have about Ramanujan versus Selberg's $3/16$: **$1-\\rho^2$ is the wrong invariant if the gaps among the Lyapunov exponents are large.** The monodromy eigenvalues are $e^{P\\mu_1}, \\dots, e^{P\\mu_n}$ with $\\mu_i$ the Lyapunov exponents. Schur stability is $\\mu_n < 0$, but the *conditioning of the cyclic operator* should depend on the full spread $\\mu_1 - \\mu_n$, not just the top exponent. This is precisely why you never form $\\Phi$: in the periodic Schur form you read off each $\\mu_i$ stably, and I claim the honest bound is\n$$\\kappa(\\text{cyclic Newton operator}) \\;\\le\\; \\frac{c(n)}{(1-\\rho^2)} \\cdot \\kappa_{\\mathrm{sep}}(\\Phi),$$\nwhere $\\kappa_{\\mathrm{sep}}$ measures the departure from normality / the separation of the periodic Sylvester operator $X \\mapsto \\Phi^T X \\Phi - X$. That separation is the *real* spectral gap, the analog of my eigenvalue gap in QUE.\n\nLet me compute the smallest nontrivial case to anchor this — $n=1$, $P=2$, scalars $a_0, a_1$. The monodromy is $\\rho = a_0 a_1$, the periodic Lyapunov inequality is the $2\\times 2$ cyclic system $a_0^2 x_1 - x_0 + q_0 < 0$, $a_1^2 x_0 - x_1 + q_1 < 0$, and the Schur complement of the cyclic sweep gives the divisor $1 - a_0^2 a_1^2 = 1-\\rho^2$ — *exactly* Laszlo's gap, with $c(1)=1$ and no $\\kappa_{\\mathrm{sep}}$ correction because everything is scalar/normal. Good: the formula is right when there's no non-normality, and the correction term I'm flagging is invisible until $n\\ge 2$ with disparate exponents. **So the first real test case is $n=2$ with $\\mu_1 \\gg \\mu_2$.** Someone should compute it before we write the lemma.\n\nTwo more points. First — Laszlo, your interior-point count $O(\\sqrt{nP}\\log(1/\\epsilon))$ is the worst case from the barrier parameter $\\nu = nP$, but the central path here lives on a *cyclic* spectrahedron, and I'd bet the effective number of Newton steps is governed by $\\sqrt{n}\\log P$, not $\\sqrt{nP}$, because the periodic coupling is rank-structured. That's the gap between the technical theorem and the real one. Second — on the KYP/Bounded-Real variant: the symplectic pencil having no eigenvalues *on* the unit circle is your dichotomy condition, but the conditioning then degrades like $1/\\mathrm{dist}(\\text{spectrum}, S^1)^2$. This is morally a **subconvexity question**: how close can the symplectic spectrum appro",
+      "created_at": "2026-06-23T05:11:48Z"
+    },
+    {
+      "id": "m2d39d72b",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that's the right correction, and I want to make it precise because it's exactly the leverage-score phenomenon I know from sparsification. Let me name the operator. The cyclic Newton step solves a periodic Sylvester/Stein system; its conditioning is governed by the periodic Stein operator $\\mathcal{L}: (X(k)) \\mapsto (X(k) - A(k)^T X(k+1) A(k))$. The smallest singular value of $\\mathcal{L}$ is the honest \"spectral gap\" here, and Peter is dead right that $1-\\rho^2$ only captures it when the $A(k)$ are normal. The departure-from-normality correction $\\kappa_{\\mathrm{sep}}$ is precisely the $\\mathrm{sep}$ function from numerical Sylvester theory:\n$$\\mathrm{sep}(\\mathcal{L}) = \\min_{\\|X\\|=1} \\|X - A^T X A\\|_{\\text{periodic}},$$\nand the conditioning is $1/\\mathrm{sep}$, not $1/(1-\\rho^2)$.\n\nHere's my contribution: **prove the conditioning bound through the periodic Schur form directly, not through $\\Phi$.** Once you have the orthogonal $Q(k)$ triangularizing the $A(k)$, the periodic Stein operator becomes *triangular* in the cyclic-Sylvester sense — its diagonal entries are exactly $1 - \\bar{t}_i t_j$ where $t_i = \\prod_k T_k[i,i]$ are the products of the triangular diagonals (the monodromy eigenvalues, read off stably). So:\n$$\\mathrm{sep}(\\mathcal{L})^{-1} \\le \\Big(\\min_{i,j} |1 - \\bar t_i t_j|\\Big)^{-1} \\cdot (\\text{strictly-upper-triangular non-normality factor}).$$\nThe first factor is Laszlo's gap generalized to all eigenvalue *pairs* — this is why Peter's $n=2$ with $\\mu_1 \\gg \\mu_2$ is the test case: the binding constraint can be $|1 - \\bar t_1 t_2|$, a cross term invisible at $n=1$. The second factor is bounded by the off-diagonal mass of the triangular factors, which is exactly what the forward-backward sweep accumulates.\n\nThis gives the structure-preserving stability proof for free: orthogonal $Q(k)$ contribute backward error $O(\\varepsilon_{\\text{mach}})$ independent of $P$, and the *only* amplification is $1/\\mathrm{sep}(\\mathcal{L})$ — so the relative-error bound on the computed $X(k)$ is $O(\\varepsilon_{\\text{mach}}/\\mathrm{sep}(\\mathcal{L}))$. That's the lemma, and it's constructive.\n\nOn Peter's interior-point count: I agree the $\\sqrt{nP}$ is pessimistic, but I'd resolve it differently — abandon the central path for the Riccati-expressible cases and use the **periodic doubling / structured Newton on the periodic Riccati**, which has local quadratic convergence and per-iteration cost $O(Pn^3)$ via periodic QZ on the $2n$-block symplectic pencil. That gives $O(Pn^3 \\log\\log(1/\\epsilon))$ total — no barrier parameter, no $\\sqrt{nP}$. The interior-point method is the fallback for genuinely non-Riccati LMIs.\n\nTwo concrete action items from me:\n1. Someone",
+      "created_at": "2026-06-23T05:14:05Z"
+    },
+    {
+      "id": "m5d2c8e98",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — yes, the $\\mathrm{sep}$ operator is the honest invariant, and I want to record that the factorization Dan just wrote down is, structurally, a *graph homomorphism count in disguise*, which clarifies exactly where the $P$-dependence does and does not enter.\n\nHere is the point. The periodic Stein operator $\\mathcal{L}$ lives on a cycle $C_P$: the coupling graph is precisely the directed $P$-cycle, and the cyclic block-tridiagonal-with-corners structure is the adjacency structure of $C_P$ tensored with the $n\\times n$ blocks. When you ask \"how does conditioning scale in $P$,\" you are really asking how the resolvent of an operator on $C_P$ behaves — and resolvents on cycles are governed by the *transfer matrix*, which is exactly the monodromy. So Peter's correction is forced: the spectrum of $\\mathcal{L}$ is $\\{1 - \\bar t_i t_j\\}$ over eigenvalue *pairs* of the transfer operator, and the non-normality factor is the condition number of the eigenbasis of that transfer operator. This is the standard dichotomy between *spectral radius* and *spectral conditioning* — the same gap I flagged with $1-\\rho^2$, now correctly stated.\n\nLet me concede my earlier $\\sqrt{nP}$ count and side with Peter's instinct, but give the structural reason. The barrier $\\sum_k -\\log\\det X(k)$ has $\\nu = nP$, but the central path is constrained to a $P$-fold *cyclic symmetry orbit* when the data are $P$-periodic — and the relevant effective dimension is not $\\nu$ but the number of *distinct* eigenvalue-pair gaps controlling the Hessian, which is $O(n^2)$ regardless of $P$. This is precisely the graph-limit philosophy: as $P\\to\\infty$ the periodic system converges to a *flow* (a continuous-time cocycle), the cycle $C_P$ converges to the circle $S^1$, and the homomorphism densities $t(H, \\mathcal{L}_P)$ stabilize. So I now believe Peter's $\\sqrt{n}\\log P$ is the right order: the $\\log P$ is the diameter of $C_P$ entering through the forward-backward sweep, and the $\\sqrt{n}$ is the genuine barrier parameter once cyclic symmetry is quotiented out.\n\nThree things to make this rigorous:\n\n1. **State the conditioning lemma in Dan's form, not mine:** $\\mathrm{sep}(\\mathcal{L})^{-1} \\le \\kappa_V(\\Phi)\\cdot \\left(\\min_{i,j}|1-\\bar t_i t_j|\\right)^{-1}$, where $\\kappa_V$ is the eigenvector condition number of the monodromy — read off stably from the periodic Schur form without ever forming $\\Phi$. Peter's $n=2$, $\\mu_1\\gg\\mu_2$ case is the discriminating test, and someone must compute it: I predict the binding term is the cross-gap $|1-\\bar t_1 t_2|$ with a $\\kappa_V$ that blows up like $e^{P(\\mu_1-\\mu_2)}$ *if you form $\\Phi$* but stays $O(1)$ in periodic Schur — that is the whole numerical-stability theorem in one example.\n\n2. **Prove the symmetry-reduction of the central path:** show the Hessian, restricted to the periodic orbit, has effective rank $O(n",
+      "created_at": "2026-06-23T05:14:54Z"
+    },
+    {
+      "id": "m3aad8d57",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, your transfer-matrix-on-$C_P$ picture is exactly right, and I want to seize on your prediction in item 1 because it's the cleanest possible vindication of the *spectral-vs-arithmetic* tension I live with. Let me actually do the $n=2$ computation you all keep deferring, because I refuse to write a lemma I haven't checked by hand.\n\nTake $P=2$, $A(0)=A(1)=\\begin{pmatrix} a & c \\\\ 0 & b\\end{pmatrix}$ with $a\\gg b$ (so $\\mu_1=\\log a$, $\\mu_2=\\log b$, $\\mu_1-\\mu_2$ large). The monodromy is $\\Phi = A(1)A(0)$, upper triangular with diagonal $(a^2, b^2)$, but the $(1,2)$ entry is $ac+cb = c(a+b)$. The eigenvector condition number $\\kappa_V(\\Phi) \\sim |c|(a+b)/|a^2-b^2| \\sim |c|/a$ — and crucially, **if you actually multiply out $\\Phi^{2}, \\Phi^3,\\dots$ the off-diagonal grows like $a^{2P}$, swamping the small exponent.** That's the $e^{P(\\mu_1-\\mu_2)}$ blowup Laszlo predicted, and it is *purely an artifact of forming $\\Phi$*. In periodic Schur each $T_k$ stays $\\begin{pmatrix} a & c \\\\ 0 & b\\end{pmatrix}$, bounded, $\\kappa_V$ stays $O(|c|/a)$. So the lemma is confirmed: the binding term is the cross-gap $|1-\\bar t_1 t_2| = |1 - a b\\cdot \\overline{a b}|$... wait — more precisely $|1 - \\bar t_1 t_2|$ with $t_1=a^2, t_2=b^2$, and the non-normality rider is $\\kappa_V = O(1)$ in Schur, $e^{P\\Delta\\mu}$ in lifted form. **That single example is the entire numerical-stability theorem.**\n\nNow the deeper point, and here's where I push for the *real* theorem. The set $\\{1-\\bar t_i t_j\\}$ are zeros of the symbol of $\\mathcal{L}$, and the conditioning is $1/\\min_{i,j}|1-\\bar t_i t_j|$. This is *exactly* a small-denominators problem — the same Diophantine structure that governs whether a flow is uniquely ergodic. When the monodromy eigenvalues drift toward the unit circle, $|1-\\bar t_i t_j|\\to 0$ is the analog of a zero of an L-function approaching the critical line, and the KYP/symplectic-pencil version is genuinely a **subconvexity question**: how close can $\\bar t_i t_j$ approach $1$ given the arithmetic of the periodic data? For generic data you get a Diophantine lower bound; for resonant data the operator stiffens. So I'd state the lemma in two regimes:\n\n- **Generic (Diophantine) regime:** $\\min_{i,j}|1-\\bar t_i t_j| \\gg$ a fixed gap, conditioning $O(\\kappa_V/\\text{gap})$, $P$-independent — this is the \"Ramanujan holds\" case.\n- **Resonant regime:** $\\bar t_i t_j$ near $1$, where you need the genuine subconvexity-type estimate, and I claim the honest bound degrades like $1/\\mathrm{d",
+      "created_at": "2026-06-23T05:15:41Z"
+    },
+    {
+      "id": "m00df2ed6",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T05:16:40Z"
+    },
+    {
+      "id": "m4ea2dff6",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nSolve the periodic Lyapunov/LMI feasibility problem via a structure-preserving periodic Schur factorization, proving an O(P) cyclic block-tridiagonal Newton sweep with conditioning bounded by the sep-operator of the periodic Stein operator rather than the monodromy spectral radius.",
+      "created_at": "2026-06-23T05:16:40Z"
+    }
+  ],
+  "plan": {
+    "summary": "Solve the periodic Lyapunov/LMI feasibility problem via a structure-preserving periodic Schur factorization, proving an O(P) cyclic block-tridiagonal Newton sweep with conditioning bounded by the sep-operator of the periodic Stein operator rather than the monodromy spectral radius.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish periodic Schur framework and feasibility characterization",
+        "body": "Formalize the lifted nP×nP cyclic block-tridiagonal-with-corners structure of the periodic Lyapunov inequality A(k)^T X(k+1) A(k) - X(k) + Q(k) ≺ 0 with X(k)=X(k+P). Prove that the periodic Schur decomposition (orthogonal Q(k) with Q(k+1)^T A(k) Q(k) upper triangular) triangularizes all A(k) simultaneously without forming the monodromy Φ. State and prove feasibility for the pure Lyapunov case with Q(k)≻0 as equivalent to Schur stability of Φ (ρ(Φ)<1), read off stably from the triangular diagonal products t_i = ∏_k T_k[i,i].",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the conditioning lemma via the sep-operator",
+        "body": "Define the periodic Stein operator L: (X(k)) ↦ (X(k) - A(k)^T X(k+1) A(k)) and identify its smallest singular value sep(L) as the honest spectral gap. Prove sep(L)^{-1} ≤ κ_V(Φ) · (min_{i,j} |1 - t̄_i t_j|)^{-1}, where κ_V is the eigenvector condition number of the monodromy and the minimum runs over all eigenvalue pairs. Show the diagonal of the triangularized Stein operator is exactly 1 - t̄_i t_j, generalizing the scalar 1-ρ^2 gap, and bound the non-normality rider by the off-diagonal mass of the triangular factors.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Verify the n=2, μ1≫μ2 discriminating test case",
+        "body": "Compute the test case P=2, A(0)=A(1)=[[a,c],[0,b]] with a≫b explicitly. Confirm the binding constraint is the cross-gap |1 - t̄_1 t_2| with t_1=a^2, t_2=b^2, invisible at n=1. Verify that forming Φ explicitly produces eigenvector condition number blowup ~e^{P(μ1-μ2)} (off-diagonal growing like a^{2P}), whereas the periodic Schur form keeps κ_V = O(|c|/a) and P-independent. Confirm this example instantiates the full numerical-stability theorem.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove O(P) forward-backward sweep and backward-error stability",
+        "body": "Show the cyclic block-tridiagonal-with-corners Newton system is solved by a forward-backward sweep at O(Pn^3) cost per step rather than O((nP)^3). Prove orthogonal Q(k) contribute backward error O(ε_mach) independent of P, so the relative-error bound on computed X(k) is O(ε_mach / sep(L)), giving a constructive provable-stability guarantee tied directly to the conditioning lemma.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Resolve interior-point iteration count via cyclic symmetry reduction",
+        "body": "Analyze the self-concordant barrier ∑_k -log det X(k) with ν=nP. Prove that the P-periodic cyclic symmetry reduces the effective barrier parameter from nP to O(n^2) distinct eigenvalue-pair gaps controlling the Hessian, yielding the improved Newton iteration count O(√n · log P) rather than O(√(nP)). Justify log P as the diameter of the cycle C_P entering the sweep and √n as the genuine quotiented barrier parameter.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Develop the KYP/Bounded-Real symplectic-pencil variant",
+        "body": "For the general KYP/Bounded-Real LMIs, replace the single-monodromy spectral-radius condition with the dichotomy-of-spectrum condition: absence of eigenvalues of the 2n-block periodic Hamiltonian/symplectic pencil on the unit circle. Show periodic QZ on this pencil is the correct structure-preserving tool, that the O(Pn^3) sweep survives, and that conditioning degrades like 1/dist(spectrum, S^1)^2. Provide the periodic doubling / structured Newton on the periodic Riccati alternative with local quadratic convergence and O(Pn^3 log log(1/ε)) total cost for Riccati-expressible cases.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Formalize generic vs resonant regimes via Diophantine analysis",
+        "body": "State the conditioning lemma in two regimes based on the small-denominators structure of {1 - t̄_i t_j}. Generic (Diophantine) regime: min_{i,j}|1 - t̄_i t_j| bounded below by a fixed gap, giving P-independent conditioning O(κ_V/gap). Resonant regime: t̄_i t_j approaching 1, requiring a subconvexity-type estimate quantifying how close eigenvalue products can approach 1 given the arithmetic of the periodic data, with the degraded conditioning bound made explicit.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          2,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Critically audit claims and assemble unified theorem",
+        "body": "Cross-check the chain of claims: that sep(L) (not 1-ρ^2) is the honest invariant, that periodic Schur avoids the e^{P(μ1-μ2)} blowup, that the symmetry reduction genuinely yields √n log P, and that the Diophantine regime split is well-defined. Flag any gaps where the non-normality factor or the central-path symmetry reduction is asserted rather than proven, and assemble the verified pieces into a single coherent feasibility-plus-stability-plus-complexity theorem statement.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2,
+          3,
+          4,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T05:16:40Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

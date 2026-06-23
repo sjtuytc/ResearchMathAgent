@@ -1,0 +1,152 @@
+{
+  "id": "rm-10298-meet-1",
+  "problem_id": "rm-10298",
+  "topic": "Init rm-10298 — proof review",
+  "goal": "Review the proof and issues for rm-10298; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T04:13:29Z",
+  "messages": [
+    {
+      "id": "m5e14ae70",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-10298 — proof review**",
+      "created_at": "2026-06-23T04:13:29Z"
+    },
+    {
+      "id": "meb67c56a",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about something before we get spectral about everything: this problem is *not* a Laplacian problem. The setup mentions $\\varepsilon$-light subsets in my notes, but the actual statement here is a single-machine scheduling problem — unit jobs, integer due dates, precedence constraints forming disjoint directed chains, minimize total tardiness $\\sum_j \\max\\{0, \\sigma(j) - d_j\\}$. I want us to not force the effective-resistance hammer onto a screw.\n\nSo let me think algorithmically about what's actually here. The structure is very rigid:\n- Unit processing times mean the completion time of a job equals its position $\\sigma(j) \\in \\{1,\\dots,n\\}$.\n- Precedence is a disjoint union of chains, so within each chain the order is forced; we're really *interleaving* $k$ chains into a single sequence.\n- This smells like it could go either way: the chain structure is benign, but total tardiness is the classically hard objective.\n\nHere is the sharp question for the room: **without precedence, unit jobs with due dates and total tardiness is trivially solved by EDD** (earliest due date) — that's optimal, $O(n\\log n)$. So all the hardness, if any, must come from the chain precedence forcing us to schedule a job *before* its due date is \"ready\" in EDD order. The question is whether interleaving chains under a tardiness objective is NP-hard.\n\nMy instinct: this is **NP-hard**, by reduction from a partition-type or sequencing problem, precisely because chains let you encode \"blocks\" that must stay together in order, and total tardiness lets you penalize bad interleavings. The known result $1 \\mid \\text{prec} \\mid \\sum T_j$ is NP-hard for general precedence; the real content is whether restricting to *chains* (in/out-degree $\\le 1$) keeps it hard. I'd bet yes — chains are already enough to encode 2-partition-like gadgets.\n\nAction plan: (1) someone state precisely what's claimed — poly algorithm or hardness? (2) If hardness, let's nail the reduction; I suspect a reduction from a number problem where chain lengths encode item sizes and due dates encode the target. (3) If poly, show me the DP and its state space. What does the current proof actually claim?",
+      "created_at": "2026-06-23T04:13:42Z"
+    },
+    {
+      "id": "mae1ad8bf",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right to set aside the $\\varepsilon$-light framing — my notes there were attached to the wrong problem; let me engage with the scheduling question on its own terms, and I think his instinct is wrong on the direction.\n\nLet me argue this is **polynomial**, and the structure is much friendlier than general precedence. The key observation: with unit times, position equals completion time, so we are choosing a permutation respecting a partial order that is a disjoint union of chains. This is exactly the setting where exchange arguments are clean.\n\nA few structural points:\n\n1. **EDD within a chain is consistent with precedence only if due dates are \"agreeable.\"** The genuine difficulty is when a chain forces an early-due job *after* a late-due job. But Lawler's classical result on $1\\mid\\text{chains}\\mid\\sum w_j C_j$ and the related decomposition theory tells us chains behave like *merged super-jobs* under a Smith-type ratio rule. Total tardiness lacks the linear structure of $\\sum w_j C_j$, but the chain order still lets us define a merging.\n\n2. The decisive question is whether the objective $\\sum_j \\max\\{0,\\sigma(j)-d_j\\}$ admits Lawler's **decomposition / interchange** structure. For $1\\mid\\text{prec}\\mid\\sum T_j$ with *series-parallel* precedence — and a disjoint union of chains is the simplest series-parallel order — Lawler (1978) gave a pseudopolynomial dynamic program, and for chains specifically the interchange argument is exact, not merely pseudopolynomial, because unit times bound positions by $n$.\n\n3. Concretely: think of this as merging $k$ sorted streams. Define a DP whose state records, for each chain, how many of its jobs have been placed. That state space is $\\prod (\\ell_i+1) \\le 2^k$ in the worst case — *exponential in the number of chains*. So a naive DP is **not** polynomial. This is the real gap, and it is where Dan's hardness instinct gets its oxygen.\n\nSo I'd refine the action plan: the problem reduces to **whether the merge of chains under total tardiness has an optimal exchange rule that avoids the product state space**. I conjecture yes via a Smith-ratio analog: at each step, among the currently-available chain heads, pick the job by a modified-due-date rule (Lawler's MDD), and prove optimality by an adjacent-transposition argument. If the adjacent-interchange inequality holds for unit jobs — and with unit times the tardiness change under a swap is a simple step function — then a greedy $O(n\\log n)$ algorithm is optimal and we are done in P.\n\nAction item I'll take: verify the adjacent-transposition inequality for swapping two available chain-heads under $\\sum T_j$. If it fails, that failure *is* the gadget Dan wants for a reduction.",
+      "created_at": "2026-06-23T04:14:29Z"
+    },
+    {
+      "id": "me6d8657f",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me compute the first few cases by hand, the way I always do — before we vote P versus NP-hard.\n\nTake two chains and try László's adjacent-transposition rule. Here is the trouble: with unit jobs the local exchange of two *available* heads $a, b$ does give a clean step function, but the heads of a chain are not free agents — swapping $a$ ahead of $b$ commits you to whatever sits *behind* $a$ in its chain. So the adjacent-interchange argument is not local in the objective; it's local in the wrong variable. That's exactly where I expect the greedy MDD to break, and it's the oxygen Dan wants.\n\nNow, here is the real theorem behind the technical one. There is a classical fact that I think settles the direction immediately: **Du, Leung, and Young (1990)** proved that $1 \\mid \\text{chains} \\mid \\sum T_j$ is NP-hard — and the gadget is exactly chains, in-degree and out-degree $\\le 1$, with the reduction from a partition-type problem encoding item sizes as chain lengths and the target as due dates. That is precisely Dan's instinct, made into a theorem. So I'd put my money firmly on **NP-hard**, and László's product state space $\\prod(\\ell_i+1)$ is not a mere artifact of a naive DP — it reflects genuine hardness.\n\nBut let me push for the *content*, not the citation. The question I always ask: is this a Ramanujan phenomenon — i.e., is there a hidden rigidity that collapses the state space? For $1 \\mid\\mid \\sum T_j$ on a single chain it's trivially forced; for two chains you already have a binary interleaving decision at each merge point, and total tardiness lets you score the imbalance — that's a 2-PARTITION gadget. The cleanest check, László, is your own action item: write the swap inequality for two heads where one head drags a tail of due-date-$\\infty$ jobs. I claim the inequality flips sign depending on how many *future* jobs in each chain are already tardy — and that sign flip is the NP-hardness.\n\nSo action plan: (1) confirm we're rediscovering Du–Leung–Young versus claiming something new; (2) if the problem asks specifically for this restricted in/out-degree $\\le 1$ case and that's *not* covered, build the explicit chains-of-equal-length gadget reducing from EVEN-ODD PARTITION; (3) the honest statement is then **NP-hard**, with the unit-time, position-equals-completion structure giving us a clean pseudopolynomial DP of size $O(n \\cdot \\sum d_j)$ as the matching upper bound.",
+      "created_at": "2026-06-23T04:15:14Z"
+    },
+    {
+      "id": "mc0d8aaaf",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that citation is decisive and I'll happily update — Du–Leung–Young (1990) settles the direction, and the gadget is exactly our in/out-degree $\\le 1$ chains, so this *is* their theorem, not something new. Good. My hardness instinct was right but I want to be honest that it was an instinct; their reduction from a partition variant is the content.\n\nBut let me push on the thing that actually interests me, because I never want to stop at \"NP-hard, QED.\" Two algorithmic points:\n\n1. **The pseudopolynomial DP is the right matching upper bound, and unit times make it sharp.** Since position equals completion time, every $\\sigma(j) \\in \\{1,\\dots,n\\}$, so $\\sum_j \\max\\{0,\\sigma(j)-d_j\\} \\le \\binom{n}{2}$. The objective is bounded by $O(n^2)$ *regardless* of the $d_j$ magnitudes. That means we don't need $\\sum d_j$ in the state — we can WLOG cap $d_j$ at $n$, and the DP over \"number placed from each chain\" has value bounded polynomially. So this is hard in the strong sense only if the *number of chains* is unbounded; the hardness lives in the product state space $\\prod(\\ell_i+1)$ that László correctly flagged.\n\n2. **This pins down exactly where the problem is easy.** Fixing $k$ = number of chains, the DP is $O(n^k)$ — polynomial. So the problem is in **XP** parametrized by $k$, and the open algorithmic question I'd actually care about is whether it's **FPT** in $k$ or $W[1]$-hard. The Du–Leung–Young reduction uses *many* chains (one per partition item), so it says nothing about fixed $k$. That's the live question.\n\nSo my refined verdict: the problem as stated is **NP-hard** (Du–Leung–Young, restricted to chains), the matching upper bound is a pseudopolynomial DP that here is genuinely polynomial in the *objective value* because unit times bound it by $n^2$, and the interesting residue is the parametrized complexity in the number of chains. László — your adjacent-transposition inequality is exactly the certificate for the $k=2$ case being polynomial; Peter's predicted sign-flip is why it can't extend to unbounded $k$.",
+      "created_at": "2026-06-23T04:17:28Z"
+    },
+    {
+      "id": "m4d724611",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Peter, the Du–Leung–Young citation is decisive, and I accept the correction to my direction — my conjectured MDD greedy fails exactly where you said: the swap is local in the wrong variable, because a chain head drags its tail. Let me concede cleanly and then sharpen Dan's residue, which is the genuinely interesting mathematics.\n\nA few points to firm up the picture:\n\n1. **The objective bound is the key structural insight, and Dan is exactly right.** With unit times, $\\sigma(j)\\le n$, so we may cap $d_j$ at $n$ without loss, and the optimum is at most $\\binom{n}{2}$. This means the *strong* NP-hardness lives entirely in the combinatorics of interleaving — there is no number-theoretic largeness hiding in the data once positions are bounded. That is a much cleaner statement than the generic pseudopolynomial story.\n\n2. **On the FPT-in-$k$ question.** I'd phrase the DP more carefully. The state $(a_1,\\dots,a_k)$ recording how many jobs are placed from each chain determines the current time $t=\\sum_i a_i$, and the marginal cost of placing chain $i$'s next head at time $t+1$ is $\\max\\{0, t+1 - d_{(\\text{head})}\\}$. So the DP is over a $k$-dimensional grid with monotone transitions — a shortest path in the lattice $\\prod \\{0,\\dots,\\ell_i\\}$. The real question is whether this lattice DP has a Monge-like or submodular structure that collapses the frontier. I suspect the cost-to-go is *not* submodular in $(a_1,\\dots,a_k)$ in general — and that failure is precisely Peter's predicted sign-flip. If it *were* submodular we'd get FPT for free.\n\n3. **My honest guess: $W[1]$-hard in $k$.** The Du–Leung–Young reduction is the wrong tool here since it spends chains profligately, but the merge-of-streams structure with a balancing objective is exactly the shape of problems that turn out $W[1]$-hard — the partition-style scoring wants many items, but a *grid-packing* variant on few chains with long tails can encode a $k$-dimensional matching flavor. I would look for a reduction from $k$-MULTICOLORED CLIQUE or GRID TILING, where each chain is a coordinate and due dates enforce diagonal constraints.\n\n4. The clean positive result we *can* certify: for fixed $k$ the problem is in XP via the $O(n^k)$ lattice DP, and my $k=2$ adjacent-transposition inequality gives genuine polynomiality there. So the honest verdict for the writeup: **NP-hard (Du–Leung–Young, exactly our in/out-degree $\\le 1$ chains); polynomial objective bound $n^2$ from unit times; XP in $k$; FPT-vs-$W[1]$ open and, I conjecture, $W[1]$-hard.**\n\nAction item for me: test submodularity of the lattice cost-to-go on three chains, since that single inequality decides whether Dan's FPT hope survives.",
+      "created_at": "2026-06-23T04:18:15Z"
+    },
+    {
+      "id": "m2efb9ee6",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — we've converged on the direction, and Du–Leung–Young is the theorem. But let me compute the $k=2$ case honestly to make sure László's adjacent-transposition certificate is actually *correct*, because I don't want us to declare $k=2$ polynomial on faith.\n\nTwo chains, heads $a$ (due $d_a$) and $b$ (due $d_b$), to be placed at positions $t+1, t+2$. Place $a$ first: cost $\\max\\{0,t+1-d_a\\}+\\max\\{0,t+2-d_b\\}$. Place $b$ first: $\\max\\{0,t+1-d_b\\}+\\max\\{0,t+2-d_a\\}$. Subtract: this is a clean monotone step-function in $t$, and EDD on the two *heads* wins locally. Fine. **But** — and this is exactly my sign-flip — the choice commits the tail. If $a$'s tail has jobs with tiny due dates, placing $a$ first frees them earlier; the local comparison ignores that. So the adjacent-transposition inequality is correct *only* as a statement about two isolated heads, and László's $k=2$ polynomiality must come not from the swap rule but from the fact that the lattice DP is two-dimensional: it's a shortest path on an $\\ell_1\\times\\ell_2$ grid, genuinely $O(n^2)$. Let's not conflate the greedy (which fails) with the DP (which works). The $k=2$ result is the DP, full stop.\n\nNow to László's submodularity test, which is the real question. I'll make a prediction in the GUE spirit — when there's a hidden rigidity, the cost-to-go is submodular and you get FPT; when the system is \"chaotic,\" the frontier doesn't collapse. The cost-to-go here is a sum of $\\max\\{0,\\cdot\\}$ terms whose *kinks* sit at the due dates, and those kinks are placed adversarially by the reduction. That's the analog of a spectrum with no rigidity — I'd bet **against** submodularity, hence with László on $W[1]$-hardness. Grid Tiling is the right source: each chain is a coordinate axis, and a due date $d$ on a deep tail-job is a diagonal constraint $a_1+\\cdots+a_k \\le d$ that couples the coordinates — exactly the diagonal incidence Grid Tiling needs.\n\nOne sharpening for the writeup: Dan's observation that $d_j$ can be capped at $n$ is the cleanest part — it says this is **weakly** NP-hard *only* in disguise; the hardness is purely combinatorial interleaving, not number-largeness. So the honest theorem is: NP-hard via Du–Leung–Young; objective $\\le \\binom{n}{2}$ kills any number-theoretic content; XP in $k$ via the lattice DP; and I'll join László in conjecturing $W[1]$-hard from Grid Tiling. Let me take the action item of writing the diagonal gadget — each chain's tail encoding a coordinate value through where its first tardy job appears.",
+      "created_at": "2026-06-23T04:19:02Z"
+    },
+    {
+      "id": "m51039b97",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T04:19:57Z"
+    },
+    {
+      "id": "m2e5f99ee",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nEstablish that 1|chains|∑T_j with unit jobs is NP-hard via Du–Leung–Young, show the objective is bounded by n² (capping due dates at n), prove XP membership in the number of chains via a lattice DP, and investigate the FPT-vs-W[1]-hardness question.",
+      "created_at": "2026-06-23T04:19:57Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish that 1|chains|∑T_j with unit jobs is NP-hard via Du–Leung–Young, show the objective is bounded by n² (capping due dates at n), prove XP membership in the number of chains via a lattice DP, and investigate the FPT-vs-W[1]-hardness question.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Confirm the Du–Leung–Young hardness applies",
+        "body": "Verify that Du, Leung, and Young (1990) prove 1|chains|∑T_j NP-hard with precedence being a disjoint union of chains (in/out-degree ≤ 1), and that unit processing times are consistent with their reduction. Confirm the reduction source (partition-type / even-odd partition) and that the gadget exactly matches the problem's restricted in/out-degree ≤ 1 setting, so no new hardness proof is needed.",
+        "agent": "verifier-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the polynomial objective bound and due-date capping",
+        "body": "Show that with unit processing times position equals completion time, so σ(j) ∈ {1,...,n} and the total tardiness ∑_j max{0, σ(j) - d_j} ≤ C(n,2) = O(n²) regardless of due-date magnitudes. Conclude that one may WLOG cap each d_j at n, eliminating any number-theoretic largeness and showing the hardness is purely combinatorial interleaving (weak NP-hardness in disguise).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 2,
+        "title": "Formalize the lattice DP and XP membership in k",
+        "body": "Define the dynamic program with state (a_1,...,a_k) recording the number of placed jobs from each chain, where current time t = ∑ a_i and the marginal cost of placing chain i's next head is max{0, t+1 - d_head}. Show this is a monotone shortest-path problem on the grid ∏{0,...,ℓ_i}, giving O(n^k) time. Conclude the problem is in XP parametrized by the number of chains k, and explicitly verify the k=2 case is O(n²) via the 2D grid DP.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Clarify that greedy MDD fails while the DP succeeds",
+        "body": "Document that the adjacent-transposition / modified-due-date greedy rule is correct only for two isolated heads but fails in general because swapping commits the chain tail (the comparison is local in the wrong variable). Provide the explicit k=2 swap-inequality computation for heads a,b placed at positions t+1,t+2, show it is a clean step function for isolated heads, and emphasize that k=2 polynomiality comes from the 2D lattice DP, not the greedy rule.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Test submodularity of the lattice cost-to-go",
+        "body": "On three chains, test whether the cost-to-go function over the lattice (a_1,...,a_k) is submodular. The cost-to-go is a sum of max{0,·} terms whose kinks sit at the due dates; check whether these adversarially-placed kinks break submodularity. If submodular, FPT in k follows; if not, this failure is the predicted sign-flip motivating W[1]-hardness.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Construct a Grid Tiling reduction for W[1]-hardness",
+        "body": "Attempt to prove W[1]-hardness in the number of chains k by reducing from Grid Tiling (or k-Multicolored Clique). Encode each chain as a coordinate axis, with a due date d on a deep tail-job acting as a diagonal constraint a_1 + ... + a_k ≤ d that couples the coordinates, realizing the diagonal incidence structure Grid Tiling requires. Build the explicit diagonal gadget where each chain's tail encodes a coordinate value via the position of its first tardy job.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Assemble the final verdict and writeup",
+        "body": "Synthesize the results into a coherent theorem: NP-hard via Du–Leung–Young restricted to in/out-degree ≤ 1 chains; objective bounded by O(n²) so hardness is combinatorial not numerical; XP in k via the O(n^k) lattice DP with k=2 polynomial; and the FPT-vs-W[1] status (conjectured W[1]-hard) resolved or stated as open based on the reduction attempt. Ensure all claims are properly cited and internally consistent.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          0,
+          1,
+          2,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T04:19:57Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

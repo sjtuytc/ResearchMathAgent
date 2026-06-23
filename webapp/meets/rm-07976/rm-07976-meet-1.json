@@ -1,0 +1,161 @@
+{
+  "id": "rm-07976-meet-1",
+  "problem_id": "rm-07976",
+  "topic": "Init rm-07976 — proof review",
+  "goal": "Review the proof and issues for rm-07976; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T03:02:58Z",
+  "messages": [
+    {
+      "id": "m7e637402",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-07976 — proof review**",
+      "created_at": "2026-06-23T03:02:58Z"
+    },
+    {
+      "id": "mfb58ff76",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about scope: this problem is quite far from my usual spectral playground. We're not being asked about cuts or eigenvalues — we're asked whether matroid equality of two represented matroids is decidable in polynomial time over a fixed finite field $\\mathbb{F}$.\n\nLet me reframe it in a way I can actually attack algebraically:\n\n1. $M(A_1) = M(A_2)$ means: for every $S \\subseteq E$, the columns of $A_1|_S$ are independent iff the columns of $A_2|_S$ are independent. Equivalently, the two matroids have the same set of *bases*, or the same set of *circuits*.\n\n2. The naive obstacle is the exponential number of subsets $S$. But matroid equality doesn't require checking all $2^{|E|}$ subsets — it suffices to check equality of the *rank functions*, and even that reduces to comparing circuits or comparing the bases of fixed rank.\n\n3. Here's the key structural fact I'd lean on: two matroids on the same ground set are equal iff they have the same rank $r$ and the same collection of circuits. A circuit is a minimal dependent set. For a represented matroid, $S$ is a circuit iff the columns $A|_S$ have a nontrivial linear dependence with *all coefficients nonzero* and $S$ is minimal with this property — i.e., $\\dim\\ker(A|_S) = 1$ and the kernel vector has full support.\n\nSo the real question is whether circuit-equality can be certified in polynomial time. My instinct, the way I'd phrase it: **can we find a separating witness by solving a linear system?** That is, if $M(A_1) \\neq M(A_2)$, is there always a *small* witness set $S$ — say of size $O(r)$ — that is independent in one and dependent in the other, which we can find via linear algebra rather than enumeration?\n\nThat witness would be a basis exchange: if the matroids differ, they differ on some basis. There exists $B$ that's a basis of $M(A_1)$ but not of $M(A_2)$ (or vice versa). Both have rank $\\le r \\le \\min(\\text{rows})$. The witness has size exactly $r$. The catch is *finding* it — there are exponentially many candidate bases, and over a fixed finite field randomized sampling of column subsets need not hit a separating basis with good probability.\n\nTwo concrete questions for the room:\n- Is the intended answer **yes** (poly-time) or is this secretly a hardness result? Matroid problems are notoriously susceptible to oracle lower bounds, but here we have *explicit representations*, which is much stronger than oracle access.\n- Does fixing $\\mathbb{F}$ matter essentially? Over a fixed field the number of distinct column vectors up to scaling is $(|\\mathbb{F}|^d - 1)/(|\\mathbb{F}|-1)$, so for fixed $\\mathbb{F}$ and bounded rank the structure is finite — but rank can grow with input. What's the actual barrier to a poly-time circuit comparison?",
+      "created_at": "2026-06-23T03:03:14Z"
+    },
+    {
+      "id": "m8b7fb043",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your reduction to circuit-equality is the right first move, but let me sharpen where the difficulty actually lives, because I think this problem has a clean and beautiful answer.\n\nThe key observation: equality of represented matroids is exactly equality of the **bases of fixed rank $r$**, and a basis $B$ of $M(A_1)$ corresponds to a nonzero $r\\times r$ minor of $A_1$. So $M(A_1)=M(A_2)$ iff $A_1$ and $A_2$ have the *same support pattern of $r\\times r$ minors* — the same set of nonvanishing maximal minors. This is precisely the data of the **Grassmann–Plücker coordinates**: the matroid is the support of the vector of Plücker coordinates $(\\det A|_B)_{B}$.\n\nNow here is the structural point I want to press. Whether a given $S$ is independent is a *single* polynomial (a determinant) over $\\mathbb{F}$ that is computable in polynomial time. The obstacle is the exponential family of such $S$. But notice that nonequality means there is a separating set, and by the augmentation/exchange axiom — exactly the matroid axiom in your problem statement — a separating set can always be found by a **local exchange**: if $B$ is a common basis and the matroids differ, there is a basis differing from some common basis by a single element swap. So the search space for a witness is not all $2^{|E|}$ subsets but the polynomially-many one-element neighbors of a single basis. That is the matroid-exchange analog of the kind of local-to-global argument I used in the perfect graph and matching polytope settings.\n\nConcretely: compute a basis $B$ of $M(A_1)$ by Gaussian elimination. Check that $B$ is a basis of $M(A_2)$ — if not, done, they differ. If $B$ is common, then for matroids of the same rank, equality holds **iff** for every $e\\in B$ and every $f\\notin B$, the swap $B-e+f$ is a basis of $M(A_1)$ iff it is a basis of $M(A_2)$. This is $O(r(|E|-r))$ determinant checks, each polynomial-time.\n\nThe correctness rests on a lemma: two matroids of the same rank with a common basis $B$ are equal iff their *fundamental-circuit data with respect to $B$ agree*, i.e., for each $f\\notin B$ the fundamental circuit $C(f,B)$ is identical in both. The fundamental circuit of $f$ is exactly $\\{f\\}\\cup\\{e\\in B : B-e+f \\text{ is a basis}\\}$, recoverable from the single-swap tests. And a matroid is determined by any one basis together with its fundamental circuits — this is standard matroid reconstruction.\n\nSo the answer is **yes, polynomial time**, and fixing $\\mathbb{F}$ is barely needed — only to make field arithmetic and rank computation polynomial in bit-length. Dan, your worry about exponentially many bases is real but dissolved by the exchange axiom: we never enumerate bases, we only probe the $O(r\\cdot|E|)$ fundamental-circuit relations around a single anchor basis. Let me ask the room to stress-test the reconstruction lemma — is one basis plus its fundamental circuits genuinely enough, or do we need to verify it against a second anchor basis to rule out a pathological pair agreeing on $B$'s circuits but differing elsewhere?",
+      "created_at": "2026-06-23T03:04:02Z"
+    },
+    {
+      "id": "md85357ab",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Beautiful, László — but let me stress-test that reconstruction lemma, because I think you're handing the room a corollary while the real theorem is hiding underneath. Let me compute the smallest case by hand, the way I always do.\n\nIs one basis $B$ plus its fundamental circuits $C(f,B)$ genuinely enough to determine the matroid? **Yes** — this is a classical fact, the \"fundamental circuit reconstruction.\" Given $B$ and the fundamental circuits, the bases are exactly the maximal independent sets, and the symmetric exchange property lets you generate the full basis system from $B$ and the $C(f,B)$. So you do *not* need a second anchor. The fundamental circuit incidence matrix $\\{e \\in C(f,B)\\}_{e \\in B, f \\notin B}$ is the standard representation $[I \\mid D]$ of the matroid — it carries the entire matroid. That's the real content: a matroid is its standard representation over the *Boolean* support pattern.\n\nBut here is the sharp point I want to press. László says \"check $B-e+f$ is a basis in both.\" That probes the **fundamental circuits**, the rank-$(r{-}1)$ flats through $B$. The danger is whether agreement on *single* swaps forces agreement on *all* subsets. Let me verify the lemma actually closes:\n\n- Suppose $M(A_1), M(A_2)$ share basis $B$ and have identical fundamental circuits $C(f,B)$ for all $f \\notin B$. Take any circuit $C$ of $M(A_1)$. By circuit elimination against the fundamental circuits, $C$ is determined by the $C(f,B)$ — every circuit is a \"symmetric difference combination\" of fundamental ones in the matroid sense. So the circuit families coincide. ∎\n\nSo the algorithm is genuinely $O(r(|E|-r))$ determinant evaluations, polynomial in bit-length. **The answer is yes.**\n\nNow — *is fixing $\\mathbb{F}$ really needed?* Almost not, as László said, only for field arithmetic. But let me provoke: the determinant tests are over $\\mathbb{F}$, and over a *small* fixed field you must be careful that \"linearly independent\" is a genuine $\\mathbb{F}$-statement — a swap $B-e+f$ can be dependent over $\\mathbb{F}_2$ but independent over $\\mathbb{Q}$. The matroid lives over the *chosen* field, and the algorithm respects that automatically since every test is an honest $\\mathbb{F}$-determinant. Good. There's no Ramanujan-style anomaly here — no exponentially large witness, no hidden non-Archimedean pathology. The exchange axiom is doing exactly what an expander does in my thin-groups work: it gives you a *local* mixing condition that certifies a *global* property without enumeration. That's the real theorem.",
+      "created_at": "2026-06-23T03:04:48Z"
+    },
+    {
+      "id": "m899d1e1d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "László and Peter, you've essentially handed me the algorithm I was groping toward — and I'm convinced the answer is **yes**. But let me put on my algorithmic-rigor hat, because I think the reconstruction lemma needs one more turn of the screw before we declare victory.\n\nThe clean claim is: *common basis $B$ + identical fundamental circuits $\\Rightarrow$ equal matroids.* I agree this is the classical standard-representation fact — the matrix $[I \\mid D]$ where $D$ is the Boolean fundamental-circuit incidence determines the matroid. But here's the subtlety I want flagged: the algorithm tests each swap $B - e + f$ for being a basis, which recovers $D$ *as a Boolean matrix* — i.e., the support pattern $\\{e \\in C(f,B)\\}$. Two **distinct** matrices over $\\mathbb{F}$ can have the same Boolean fundamental-circuit pattern and yet represent **different matroids**, because the matroid is determined by the *vanishing pattern of all minors*, not just the $r\\times r$ minors adjacent to $B$. The reconstruction lemma is the assertion that this can't happen — that the Boolean pattern of single swaps already fixes all higher dependencies. That's exactly the circuit-elimination argument Peter sketched, and it does close. Good. So the algorithm is correct, and it's genuinely $O(r(|E|-r))$ determinant evaluations — nearly-linear in the number of probes, polynomial in bit-length.\n\nTwo refinements, in my idiom:\n\n1. **First, check ranks agree.** Compute $r_1 = \\mathrm{rank}(A_1)$, $r_2 = \\mathrm{rank}(A_2)$ by Gaussian elimination. If $r_1 \\ne r_2$ they differ immediately — and crucially, the whole single-swap argument *presupposes equal rank*. Don't skip this; it's where a pathological pair would otherwise sneak through.\n\n2. **The witness is small and explicit — that's the part I love.** If they differ, the algorithm outputs a separating set of size exactly $r$ (a swap basis good in one, bad in the other). This is the analog of what I always demand in sparsification: not just \"a sparsifier exists\" but \"here is the edge, sampled by its leverage score.\" Here the separating swap is the leverage-score-1 witness, and we find it by solving a linear system (the determinant test *is* a linear-algebra certificate), never by enumeration. The exchange axiom plays the role my effective resistances play — it's the local quantity that controls a global structural property.\n\nSo: yes, polynomial time, fixing $\\mathbb{F}$ matters only for arithmetic, and the proof is fully constructive. My one action item — let's write the reconstruction lemma's circuit-elimination step out in full, because that single line is carrying the entire correctness of the algorithm, and it's exactly the spot a referee will poke.",
+      "created_at": "2026-06-23T03:07:08Z"
+    },
+    {
+      "id": "mb193b584",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — I must retract part of my own claim. We have been too quick, and the reconstruction lemma as stated does *not* close. Let me be the one to break my own argument, because the gap is exactly where the matroid theory bites.\n\nThe error is in conflating two things: the *fundamental circuits with respect to $B$* and the *Boolean single-swap pattern*. They are **not** the same data, and here is why. The single-swap test tells you, for each $e \\in B$ and $f \\notin B$, whether $B - e + f$ is a basis. The fundamental circuit is $C(f,B) = \\{f\\} \\cup \\{e \\in B : B - e + f \\text{ is a basis}\\}$. So far so good — these *do* agree. But the claim \"a matroid is determined by one basis plus its fundamental circuits\" is **false** in general. The correct statement is much weaker:\n\n- A matroid is determined by $B$ together with its fundamental circuits **only when the matroid is representable and we already know $D$ as a matrix over $\\mathbb{F}$**, i.e. $[I \\mid D]$. The Boolean *support* of $D$ does **not** determine the matroid.\n\nConcrete counterexample to the support claim: take $D$ a $3\\times 3$ all-ones support. The Fano matroid $F_7$ and the non-Fano matroid $F_7^-$ have *the same standard representation support pattern* $[I_3 \\mid \\mathbf{1}]$ — they differ precisely in whether one $3\\times 3$ minor of $D$ vanishes, which is invisible to the single-swap tests around $B$. The single swaps only probe $2\\times 2$ minors of $D$ (a swap $B-e+f$ flips one column), so a $3\\times 3$ vanishing — a non-fundamental circuit — is *not detected*. Peter's \"circuit elimination\" step quietly assumed the higher circuits are forced; they are not.\n\nSo Dan's instinct in his very first message was the correct worry, and I was wrong to dissolve it. The genuine content is:\n\n1. Two represented matroids are equal iff **all** maximal minors have the same vanishing pattern — the full Plücker support, not just the fundamental ones.\n2. Single-swap (= rank-$(r{-}1)$ flat) data is genuinely insufficient: $F_7$ vs $F_7^-$ over different fields, or more sharply two matrices over the *same* field with identical fundamental circuits but a differing $k$-element circuit for $k \\le r$.\n\nThe real question survives intact and is harder than we admitted: can we certify equality of the *entire* Plücker support pattern in polynomial time without enumerating $\\binom{|E|}{r}$ minors? That is the actual theorem, and the exchange axiom alone does not give it — we need to control circuits of all sizes, not just fundamental ones. I suggest we focus the next session there.",
+      "created_at": "2026-06-23T03:07:52Z"
+    },
+    {
+      "id": "m6a842a63",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, that's exactly the right retraction — and let me say, $F_7$ versus $F_7^-$ is the canonical first example I should have computed *before* declaring victory. I got seduced by the local-mixing analogy. Let me now actually think about the real theorem.\n\nBut wait — let me be careful about what your counterexample shows and what it doesn't. The Fano/non-Fano distinction is over *different* fields ($F_7$ is $\\mathbb{F}_2$-representable, $F_7^-$ is not). The question fixes $\\mathbb{F}$ and gives us *honest matrices over $\\mathbb{F}$*. So the right form of your objection is the second one: two matrices over the *same* $\\mathbb{F}$ with identical fundamental circuits w.r.t. a common $B$ but a differing $k$-element circuit for some $k \\le r$. That's the genuine gap, and I agree it's real — the single-swap data probes only the $2\\times 2$ minors of $D$, and a vanishing $3\\times 3$ minor of $D$ is a non-fundamental circuit invisible to it.\n\nNow here is where I want to push back toward optimism, and it's a point from my function-field work with Katz. We are *not* in the matroid-oracle world — we have explicit coordinates. The Plücker vector $(\\det A|_B)_B$ is a single point in projective space, and its support is a *variety-theoretic* object. Concretely:\n\n- $M(A_1) = M(A_2)$ iff for every $r$-subset $B$, $\\det A_1|_B = 0 \\iff \\det A_2|_B = 0$.\n- This is a statement about the common/distinct zero patterns of two collections of polynomials (the maximal minors), but evaluated at the *fixed integer point* given by the matrices — so it's not algebraic geometry, it's a finite computation, just exponentially large naively.\n\nSo the real theorem we want: **is there a polynomial-time certificate that two given $\\mathbb{F}$-matrices have the same maximal-minor vanishing pattern?** Let me float the honest possibilities, because I suspect the answer may be **no** in general:\n\n1. This smells like it could be **coNP-hard**. To certify *inequality* you exhibit one separating $r$-set — that's a short witness, so inequality is in NP. Equality being the complement, the natural question is whether equality is coNP-complete. Has anyone reduced a known hard problem (matroid intersection of representations? a SAT-encoding into minor vanishing patterns?) to this?\n\n2. The contrast with our failed local argument is instructive: fundamental circuits give the matroid *if you also know $D$ over $\\mathbb{F}$* — but we are *given* $D$ over $\\mathbb{F}$! That is, $M(A_1)$ is completely determined by $A_1$. The difficulty is not reconstruction, it's *comparison* without enumeration.\n\nHere's my concrete proposal to attack it, in the spirit of \"compute the smallest genuine case.\" Build the smallest pair over $\\mathbb{F}_2$ with a common basis $B$, identical fundamental circuits, but a differing $3\\times 3$ circuit. If such a pair exists and is small, it kills the local algorithm definitively and forces us to confront the global comparison head-on. If we can't build one, that itself is information. My instinct, frankly, is that this problem is **hard** — the matroid representation packs in enough combinatorial freedom that I'd bet against polynomial time. Let's find the obstruction rather than the algorithm.",
+      "created_at": "2026-06-23T03:08:43Z"
+    },
+    {
+      "id": "m904c3029",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T03:09:34Z"
+    },
+    {
+      "id": "mb653fd37",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nDetermine whether equality of two represented matroids over a fixed finite field is decidable in polynomial time, after the local single-swap/fundamental-circuit algorithm was shown insufficient and the problem reduced to certifying that two matrices have the same maximal-minor vanishing (Plücker support) pattern.",
+      "created_at": "2026-06-23T03:09:34Z"
+    }
+  ],
+  "plan": {
+    "summary": "Determine whether equality of two represented matroids over a fixed finite field is decidable in polynomial time, after the local single-swap/fundamental-circuit algorithm was shown insufficient and the problem reduced to certifying that two matrices have the same maximal-minor vanishing (Plücker support) pattern.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the problem as Plücker support equality",
+        "body": "State precisely that M(A_1)=M(A_2) iff for every r-subset B of columns, det(A_1|_B)=0 iff det(A_2|_B)=0, after first checking rank(A_1)=rank(A_2). Establish that inequality has a short witness (one separating r-set), placing the inequality decision problem in NP and equality in coNP. Fix the field F and clarify that all determinant tests are honest F-computations.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Construct an explicit counterexample to the local algorithm",
+        "body": "Build the smallest possible pair of matrices over F_2 (or another small fixed field) sharing a common basis B with identical fundamental circuits C(f,B) for all f, but differing in a k-element circuit for some k<=r (e.g. a vanishing 3x3 minor of D in one matrix but not the other). This concretely demonstrates that single-swap/fundamental-circuit data is insufficient. If no such small pair exists, document that as evidence and explain why.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Verify the F_7 vs F_7^- analysis and the retraction",
+        "body": "Carefully verify Lovász's retraction: confirm that the Boolean support pattern of D does not determine the matroid, that single swaps probe only 2x2 minors of D, and that Fano/non-Fano differ over different fields. Distinguish the cross-field example from the same-field gap, confirming which form of the objection actually applies to the fixed-F problem statement.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Investigate coNP-hardness of equality",
+        "body": "Attempt to reduce a known hard problem (e.g. SAT encoded into minor-vanishing patterns, or matroid intersection of representations) to certifying that two F-matrices have the same maximal-minor vanishing pattern. The goal is to prove equality is coNP-complete, or to identify obstructions to such a reduction.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Search for a polynomial-time global certificate",
+        "body": "In parallel with the hardness route, explore whether the explicit coordinate data (the Plücker vector as a single projective point) admits a polynomial-time equality certificate that controls circuits of ALL sizes, not just fundamental ones. Examine algebraic/variety-theoretic structure of the maximal-minor support and any leverage of the fixed finite field bounding distinct column classes.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Critically compare the hardness and algorithm directions",
+        "body": "Assess the competing evidence from the hardness reduction (step 3) and the algorithmic search (step 4), including Sarnak's bet that representation freedom forces hardness. Identify which direction is better supported and pinpoint the exact structural fact that would settle the dichotomy.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Synthesize and write the rigorous final argument",
+        "body": "Produce the final result: either a complete polynomial-time algorithm with a fully written-out correctness proof for the global Plücker-support comparison, or a complete coNP-hardness proof. Explicitly state the role of fixing F (arithmetic only vs essential) and include the rank-equality precheck and the small separating witness in the positive case.",
+        "agent": "solver-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Final verification of the chosen resolution",
+        "body": "Independently verify the final argument from step 6 end-to-end: check the rank precheck, the correctness of the global comparison or the validity of the hardness reduction, and confirm no remaining gap analogous to the failed fundamental-circuit reconstruction lemma survives.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T03:09:34Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

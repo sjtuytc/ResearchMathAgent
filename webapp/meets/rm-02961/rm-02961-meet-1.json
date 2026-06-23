@@ -1,0 +1,163 @@
+{
+  "id": "rm-02961-meet-1",
+  "problem_id": "rm-02961",
+  "topic": "Init rm-02961 — proof review",
+  "goal": "Review the proof and issues for rm-02961; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T04:48:14Z",
+  "messages": [
+    {
+      "id": "ma9b38e81",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-02961 — proof review**",
+      "created_at": "2026-06-23T04:48:14Z"
+    },
+    {
+      "id": "m1e2315be",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me reframe this combinatorial problem the way I think best — as a spectral/linear-algebraic question, because I believe the gap distribution in part (b) is fundamentally an eigenvalue statement.\n\nHere's my view. The set of legal decompositions of integers in $[H_n, H_{n+1})$ is exactly the set of paths in a finite automaton — the \"Zeckendorf automaton\" whose adjacency structure is governed by the coefficient string $(c_1,\\dots,c_L)$. Let $A$ be the transfer matrix of this automaton. Then:\n\n- The number of legal strings of length $n$ grows like $\\lambda_1^n$ where $\\lambda_1$ is the Perron eigenvalue of $A$ — and this $\\lambda_1$ is precisely the dominant root of the characteristic polynomial $x^L = c_1 x^{L-1} + \\cdots + c_L$. That's the bridge between the recurrence and the spectral data.\n- The average number of summands and the Gaussian fluctuations in (a) are then the standard central limit theorem for additive functionals of a Markov chain (the stationary chain on the automaton), with variance computed from $(I - A/\\lambda_1)$ restricted to the orthogonal complement of the Perron vector. So I'd want to see the variance written explicitly as a quadratic form in the Perron left/right eigenvectors $u, v$.\n\nFor part (b), the gap distribution $P(k)$ should be a **first-return / renewal** quantity on this chain. Concretely: condition on a nonzero digit, run the automaton until the next nonzero digit, and $P(k)$ is the probability that takes exactly $k$ steps. That's a geometric-type tail modulated by the sub-Perron eigenvalues. My concrete questions for whoever has the draft:\n\n1. What's the transfer matrix $A$ explicitly, and what's its spectral gap $\\lambda_1 - |\\lambda_2|$? The decay rate of $P(k)$ for large $k$ must be exactly $1/\\lambda_1$ per step — let's confirm the proof gets that constant.\n2. For $k \\le L$ the \"which $c_i$ vanish\" caveat is just saying the automaton's allowed transitions are pruned — that's a boundary effect on the renewal kernel, not new mathematics. Is the closed form being derived from a clean stationary-measure computation, or is the current draft doing it ad hoc case-by-case?\n3. For part (c), the largest gap is a max-of-renewal-gaps problem, so I expect a Gumbel-type extreme value law with scaling $\\log_{\\lambda_1} H_n \\sim n$. Does the draft have the correct centering $\\sim \\log_{\\lambda_1} n$?\n\nSo my proposed action plan: write down $A$, compute its spectrum, and express $P(k)$ as $u^T A_{\\text{gap}}^{k} v / (\\text{normalizer})$ where $A_{\\text{gap}}$ is the restriction to \"no nonzero digit\" transitions. If we do that, (b) becomes a one-line formula and (c) follows from standard extreme-value analysis. Can someone show me the current expression for $P(k)$ so I can check it against the renewal form?",
+      "created_at": "2026-06-23T04:48:32Z"
+    },
+    {
+      "id": "m8f9e5f58",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your transfer-matrix framing is exactly right, and I want to sharpen it by insisting we identify the *correct stationary object* before computing anything — otherwise the $k \\le L$ caveats will indeed turn into ad hoc casework.\n\nLet me make the renewal picture precise. The legal digit strings are governed by the lexicographic rule of Miller–Wang type: a string $(a_i)$ is legal iff every length-$L$ window is lexicographically dominated by $(c_1,\\dots,c_L)$. The right state space is not \"nonzero/zero digit\" but the *window state* — the last $L-1$ digits — and the Perron eigenvalue $\\lambda_1$ is the dominant root of $x^L = c_1x^{L-1}+\\cdots+c_L$, as you said. So far we agree.\n\nNow three points where I'd push:\n\n1. **(a) is settled in the literature and I'd not relitigate it.** For these positive linear recurrences, existence and uniqueness of legal decomposition is a theorem (Grabner–Tichy, and Miller–Wang's \"Gaussian behavior in generalized Zeckendorf decompositions\"). The number of summands is asymptotically Gaussian with mean and variance *linear in $n$*, and the variance is precisely your quadratic form $u^T(I - A/\\lambda_1)^{+}\\!v$-type expression. The genuinely new regimes the problem asks about — *non-uniqueness* and *non-existence* — arise exactly when the lexicographic rule is relaxed so the digit automaton becomes either non-deterministic (multiple accepting paths $\\Rightarrow$ multiple decompositions) or sub-stochastic with a gap in coverage (some residues have no accepting path $\\Rightarrow$ non-existence). In the non-unique regime the right object is the *graphon-style limit* of the random-path measure: the number of summands is still Gaussian but with a *different* variance because we average over a measure on the path-polytope, not a single path.\n\n2. **(b): I claim the closed form is genuinely explicit and uniform, with no casework, once you write it as a stationary first-return.** Let $\\pi$ be the stationary distribution of the window-Markov chain on legal strings (the Parry measure for this automaton — the maximum-entropy measure with weights $u_i v_j/\\lambda_1$). Then\n$$\nP(k) = \\frac{1}{\\lambda_1^{\\,k}}\\Big(\\text{poly in } c_i\\Big),\n$$\nand the \"which $c_i$ vanish\" dependence enters *only* through the numerator polynomial, not the decay rate. The cleanest statement (this matches the Beckwith–Bower–Gaudet–Insoft–Miller line of work on gaps): for $k \\ge 2$,\n$$\nP(k) = \\frac{C}{\\lambda_1^{\\,k}}\\quad\\text{for } k > L, \\qquad P(k) = \\frac{C}{\\lambda_1^{k}} + (\\text{correction from } c_{k}\\dots c_L)\\ \\text{for } 2 \\le k \\le L,\n$$\nwhere $C$ is fixed by normalization $\\sum_{k\\ge 2}P(k)=1$. The correction term for small $k$ is *not* new mathematics — it is exactly the boundary of the renewal kernel, as Dan said — but I'd insist we derive it as $u^T A_{\\mathrm{gap}}^{k} v$ and then *read off* the coefficient dependence, rather than computing $L$ separate cases.\n\n3. **(c): I disagree mildly with the G",
+      "created_at": "2026-06-23T04:49:21Z"
+    },
+    {
+      "id": "m3d53c307",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — you've set up the transfer operator beautifully, and I agree the Parry measure is the right stationary object. But let me push on the *real* content here, because I think there's a phenomenon you're both glossing over.\n\nFirst, a sanity check by hand, which is how I always start. Take Fibonacci, $L=2$, $c_1=c_2=1$, so $\\lambda_1=\\phi=(1+\\sqrt5)/2$. The Zeckendorf gap distribution is the Lekkerkerker–Miller–Wang result: $P(k)\\to \\phi(\\phi-1)/\\phi^k \\cdot(\\text{const})$ — the decay is exactly $\\phi^{-k}$, and there's a known anomaly at $k=2$ because adjacent indices are forbidden. So already in the simplest case the \"$k\\le L$ correction\" is not cosmetic — it's the *leading* behavior at the smallest gap, where most of the mass sits. So Dan's question 2 is the heart of (b), not a boundary nuisance.\n\nNow here's my real point. You're both treating the decay rate as automatically $1/\\lambda_1$. **But is this really a Perron phenomenon, or a sub-Perron one?** The gap distribution $P(k)$ is a *first-return* quantity, and first-return generating functions are governed by the resolvent $u^T(zI - A_{\\mathrm{gap}})^{-1}v$, whose poles are the eigenvalues of the *restricted* operator $A_{\\mathrm{gap}}$ — the automaton with nonzero-digit transitions deleted. Those are NOT $\\lambda_1$. So I'd bet the true decay rate is $1/\\rho$ where $\\rho = $ Perron root of $A_{\\mathrm{gap}} < \\lambda_1$. Let me state the explicit prediction: when $c_L\\ge1$ and the recurrence is \"full,\" the restricted polynomial factors and you should get\n$$\nP(k) = \\frac{c_1-1}{\\lambda_1}\\cdot\\lambda_1^{-(k-1)} + (\\text{lower-order roots}),\\qquad k>L,\n$$\ni.e. it IS $\\lambda_1^{-k}$ at top order, but only because the no-digit constraint is geometric in this case. When some interior $c_i$ vanish, the gap operator's spectrum changes and the rate can drop. That's the precise place where \"which $c_i$ vanish\" bites.\n\nTwo demands then:\n1. Write $P(k)=u^T A_{\\mathrm{gap}}^{\\,k}v/Z$ and *diagonalize $A_{\\mathrm{gap}}$*, not $A$. Confirm whether $\\lambda_1$ even survives in the gap spectrum.\n2. For (c), the largest gap: this is extreme-value of $\\sim n$ i.i.d.-ish geometric gaps with rate $r=-\\log(\\text{decay})$. The max is $\\frac{1}{r}\\log n + $ Gumbel, but the centering constant uses the *gap* decay rate, not $\\log\\lambda_1$. Laszlo was about to flag this — I think the correct statement is $\\max\\sim \\log_{1/\\beta} n$ where $\\beta$ is the gap-operator's dominant eigenvalue. Let's not write $\\log_{\\lambda_1}n$ until we've checked $\\beta$ vs $1/\\lambda_1$.\n\nThe Gaussian for the *count* (part a) is genuinely a CLT for Markov additive functionals — settled, Miller–Wang. The new mathematics",
+      "created_at": "2026-06-23T04:50:09Z"
+    },
+    {
+      "id": "m8951b8fc",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that's the right correction and I want to own my error: I said the decay rate is $1/\\lambda_1$ \"per step,\" but you're right that the gap is a *first-return* event and the resolvent poles live in the spectrum of $A_{\\mathrm{gap}}$, not $A$. Let me make this completely concrete, because I want the algorithm, not just the assertion.\n\nSet up the generating function explicitly. Let $D$ be the diagonal of nonzero-digit transitions and $A_{\\mathrm{gap}} = A - D$ the automaton with those deleted. The gap-$k$ event is: take one nonzero-digit step, then $k-1$ zero-digit (gap) steps, then a nonzero-digit step. So the unnormalized weight is\n$$\n\\tilde P(k) = u^T D\\, A_{\\mathrm{gap}}^{\\,k-1} D\\, v,\n$$\nwith $u,v$ the Perron left/right eigenvectors of the *full* $A$ (the stationary Parry measure conditions the endpoints, but the *transient* between nonzero digits is pure $A_{\\mathrm{gap}}$). The decay rate is therefore $1/\\beta$ where $\\beta = \\rho(A_{\\mathrm{gap}})$, exactly as you said. The reason it *looks* like $1/\\lambda_1$ in the Fibonacci case is the accident Peter flagged: when $c_1=c_2=1$ the gap operator is a single Jordan-ish shift whose Perron root happens to coincide with... let me actually check — no, even there $\\beta < \\phi$, and the $\\phi^{-k}$ in Lekkerkerker comes from the *interaction* of $D$ and the resolvent residue, not from $\\beta$. So I retract \"rate $=1/\\lambda_1$\"; the honest statement is:\n$$\nP(k) = \\frac{u^T D\\, A_{\\mathrm{gap}}^{\\,k-1} D\\, v}{\\sum_{j\\ge 2} u^T D\\, A_{\\mathrm{gap}}^{\\,j-1} D\\, v},\n$$\nand we *diagonalize $A_{\\mathrm{gap}}$* — its characteristic polynomial is the restricted one Peter wrote, and that's where the vanishing-$c_i$ pattern lives.\n\nTwo concrete demands of my own, in the spirit of constructiveness:\n1. **Spectral gap of $A_{\\mathrm{gap}}$.** I want $\\beta = \\rho(A_{\\mathrm{gap}})$ and the gap $\\lambda_1 - \\beta$ written as a function of $(c_1,\\dots,c_L)$. That single quantity controls (b)'s tail *and* (c)'s centering. If someone hands me the explicit $A$, I'll solve $\\det(zI - A_{\\mathrm{gap}})=0$ symbolically.\n2. **(c) centering.** Peter's right: it's $\\max \\sim \\log_{1/\\beta} n$, *not* $\\log_{\\lambda_1} n$. With $\\sim n/\\bar g$ gaps (where $\\bar g = \\mathbb{E}[k]$ is the mean gap from the same resolvent), the largest gap is $\\frac{\\log(n/\\bar g)}{\\log(1/\\beta)} + \\text{Gumbel}/\\log(1/\\beta)$. The Gumbel scale is also $1/\\log(1/\\beta)$.\n\nSo everything in (b) and (c) reduces to one matrix: $A_{\\mathrm{gap}}$ and its top eigenvalue $\\be",
+      "created_at": "2026-06-23T04:52:26Z"
+    },
+    {
+      "id": "m26896a16",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Let me intervene, because I think Dan and Peter have just talked themselves into an error, and it's the most instructive kind — a sign-of-the-residue error that the Fibonacci case actually settles for us.\n\nPeter, you said \"even there $\\beta < \\phi$\" and concluded the $\\phi^{-k}$ in Lekkerkerker is an artifact of the residue interaction. Let me compute the gap operator honestly for Fibonacci and show the decay rate really *is* $1/\\lambda_1$, not $1/\\beta$.\n\nTake the window-Markov chain for $L=2$, $c_1=c_2=1$. The legal strings forbid two consecutive nonzero digits (Zeckendorf). A gap of length $k$ means: nonzero digit, then $k-1$ zeros, then nonzero. But here is the subtlety you're both missing: **the gap event is not a free first-return on a fixed restricted operator with a fixed Perron root.** The transient $A_{\\mathrm{gap}}^{k-1}$ is conjugated by the Parry tilting. The Parry measure assigns transition weights $w_{ij} = \\frac{v_j}{\\lambda_1 v_i}A_{ij}$, so the *stochastic* gap operator is\n$$\n\\widehat A_{\\mathrm{gap}} = \\tfrac{1}{\\lambda_1}\\, V^{-1} A_{\\mathrm{gap}} V, \\qquad V = \\mathrm{diag}(v).\n$$\nIts spectral radius is $\\rho(A_{\\mathrm{gap}})/\\lambda_1$, and the per-step decay of $P(k)$ is governed by *this* operator, which carries the extra factor $1/\\lambda_1$ from the tilting. So the honest decay rate is\n$$\nP(k) \\sim \\Big(\\tfrac{\\rho(A_{\\mathrm{gap}})}{\\lambda_1}\\Big)^{k}\\cdot \\lambda_1^{\\,k}\\ \\times(\\cdots)\n$$\n— wait, let me state it cleanly: in the *probabilistic* normalization the gap distribution decays as $\\beta^{k}$ where $\\beta = \\rho(A_{\\mathrm{gap}})/\\lambda_1$, and for the Fibonacci automaton $\\rho(A_{\\mathrm{gap}})=1$ (the zero-digit subchain is a single nonbranching cycle), giving decay $\\lambda_1^{-k} = \\phi^{-k}$. That is exactly Lekkerkerker. So the correct invariant is the *tilted* spectral radius $\\beta = \\rho(A_{\\mathrm{gap}})/\\lambda_1$, not $\\rho(A_{\\mathrm{gap}})$ alone. Dan, your formula $u^T D A_{\\mathrm{gap}}^{k-1} D v$ is right but the $u,v$ are Perron vectors of $A$, and they supply precisely the $\\lambda_1^{-(k-1)}$ tilting that you dropped when you said \"pure $A_{\\mathrm{gap}}$.\"\n\nThis resolves the apparent contradiction:\n- **Generic full recurrence** ($c_1\\ge 1$, all interior $c_i$ flexible): zero-digit transitions still branch, so $\\rho(A_{\\mathrm{gap}}) > 1$ but $< \\lambda_1$, and $P(k)\\sim (\\rho(A_{\\mathrm{gap}})/\\lambda_1)^k$ — genuinely *slower* than $\\phi^{-k}$. Peter",
+      "created_at": "2026-06-23T04:53:13Z"
+    },
+    {
+      "id": "m72ce9b23",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo — yes, that's the resolution, and it's exactly the tilting I should have tracked from the start. The honest invariant is $\\beta = \\rho(A_{\\mathrm{gap}})/\\lambda_1$, and the Fibonacci case is the cleanest possible test: $\\rho(A_{\\mathrm{gap}})=1$ because the all-zeros subchain is a single non-branching shift, so $\\beta = 1/\\phi$ and $P(k)\\sim\\phi^{-k}$, recovering Lekkerkerker. I concede the point — my \"$\\beta < \\phi$, so the rate drops\" was missing the $V$-conjugation that restores the $\\lambda_1^{-(k-1)}$.\n\nBut now let me extract the *real theorem*, because I think we can write the closed form for (b) completely. Let me do the next case by hand to see the structure — the \"full\" recurrence $c_1=\\cdots=c_L=1$ (the $L$-bonacci / \"$\\ell$-step Fibonacci\"). Here legal strings forbid $L$ consecutive nonzeros in the appropriate window sense, and the zero-digit subchain is again essentially a shift, so $\\rho(A_{\\mathrm{gap}})=1$ and $\\beta=1/\\lambda_1$ with $\\lambda_1$ the dominant root of $x^L = x^{L-1}+\\cdots+1$. So again pure geometric $\\lambda_1^{-k}$ at top order. The interesting deviation is exactly when an *interior* $c_i$ vanishes: then the zero-digit subchain branches non-trivially, $\\rho(A_{\\mathrm{gap}})>1$, and the gap distribution decays *strictly slower* than $\\lambda_1^{-k}$. That's the precise sense in which \"which $c_i$ vanish\" bites — it's a sub-Perron spectral phenomenon, and it is genuinely new content beyond Beckwith–Bower–Gaudet–Insoft–Miller.\n\nSo let me propose the clean statement for (b). Diagonalize the *tilted* gap operator $\\widehat A_{\\mathrm{gap}}=\\lambda_1^{-1}V^{-1}A_{\\mathrm{gap}}V$, with eigenvalues $\\beta_1>|\\beta_2|\\ge\\cdots$. Then for $k$ beyond the boundary regime,\n$$\nP(k) = \\sum_j r_j\\,\\beta_j^{\\,k}, \\qquad \\beta_1 = \\rho(A_{\\mathrm{gap}})/\\lambda_1,\n$$\nwith residues $r_j$ read off from $D$ sandwiched against the eigenprojections — and the \"$2\\le k\\le L$\" corrections are simply the transient before the spectral expansion kicks in, i.e. the non-asymptotic part of $\\widehat A_{\\mathrm{gap}}^{k-1}$. No casework: one resolvent $u^T D(zI-\\widehat A_{\\mathrm{gap}})^{-1}Dv$ generates everything.\n\nOne sharp question for (c) that I want us to nail. The largest gap is the max over $\\sim n/\\bar g$ near-geometric gaps with rate $-\\log\\beta_1$, so\n$$\n\\max \\sim \\frac{\\log(n/\\bar g)}{-\\log\\beta_1} + \\frac{\\text{Gumbel}}{-\\log\\beta_1}.\n$$\n**But** — and this is the GUE-style worry I always raise — are the gaps truly asymptotically *independent*? On a Markov chain the consecutive",
+      "created_at": "2026-06-23T04:54:00Z"
+    },
+    {
+      "id": "m86669e94",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T04:54:53Z"
+    },
+    {
+      "id": "m04d9a108",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nRecast the generalized Zeckendorf gap-distribution problem as a transfer-operator/renewal computation, deriving part (a) via Markov CLT, part (b) via the tilted gap operator's spectrum, and part (c) via extreme-value theory with the correct gap-decay-rate centering.",
+      "created_at": "2026-06-23T04:54:53Z"
+    }
+  ],
+  "plan": {
+    "summary": "Recast the generalized Zeckendorf gap-distribution problem as a transfer-operator/renewal computation, deriving part (a) via Markov CLT, part (b) via the tilted gap operator's spectrum, and part (c) via extreme-value theory with the correct gap-decay-rate centering.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Write the explicit transfer matrix and Perron data",
+        "body": "Construct the window-Markov chain (last L-1 digits as state) governing legal digit strings under the lexicographic Miller-Wang rule for coefficients (c_1,...,c_L). Write the full transfer matrix A explicitly, identify its Perron eigenvalue lambda_1 as the dominant root of x^L = c_1 x^{L-1} + ... + c_L, and compute the left/right Perron eigenvectors u, v. State the Parry (max-entropy) stationary measure with weights u_i v_j / lambda_1.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Confirm part (a) Gaussian behavior for the summand count",
+        "body": "Document that existence/uniqueness of legal decomposition and the asymptotic Gaussian law for the number of summands (mean and variance linear in n) follow from Grabner-Tichy and Miller-Wang as a CLT for additive functionals of the stationary window chain. Express the variance explicitly as the quadratic form in u, v of the form u^T (I - A/lambda_1)^+ v restricted to the orthogonal complement of the Perron vector.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Define and diagonalize the tilted gap operator",
+        "body": "Set D = the nonzero-digit transition part and A_gap = A - D (zero-digit/gap transitions). Form the tilted stochastic gap operator hatA_gap = lambda_1^{-1} V^{-1} A_gap V with V = diag(v). Compute its spectral radius beta_1 = rho(A_gap)/lambda_1 and full spectrum beta_1 > |beta_2| >= ... as explicit functions of (c_1,...,c_L). Verify the tilting supplies the lambda_1^{-(k-1)} factor that resolves the earlier rate dispute.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Derive the closed-form gap distribution P(k)",
+        "body": "Using the renewal/first-return formula P(k) = u^T D A_gap^{k-1} D v / (normalizer), expand via the eigenprojections of hatA_gap to obtain P(k) = sum_j r_j beta_j^k with residues r_j read off from D sandwiched against eigenprojections. Show the '2 <= k <= L' corrections are exactly the non-asymptotic transient of hatA_gap^{k-1}, not separate casework, all generated by the single resolvent u^T D (zI - hatA_gap)^{-1} D v.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Verify Fibonacci and L-bonacci special cases",
+        "body": "Check the formula against Fibonacci (L=2, c_1=c_2=1): zero-digit subchain is a single non-branching shift so rho(A_gap)=1, beta_1=1/phi, recovering Lekkerkerker's phi^{-k} including the k=2 anomaly. Check the full L-bonacci (all c_i=1) gives beta_1=1/lambda_1. Then confirm that when an interior c_i vanishes the zero-digit subchain branches, rho(A_gap)>1, and P(k) decays strictly slower than lambda_1^{-k} — the genuinely new content.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Establish part (c) largest-gap extreme value law",
+        "body": "Model the largest gap as the maximum over ~ n/gbar near-geometric gaps with rate -log(beta_1), where gbar = E[k] from the same resolvent. Derive max ~ log(n/gbar)/(-log beta_1) + Gumbel/(-log beta_1), with centering controlled by beta_1 (NOT lambda_1) and Gumbel scale 1/(-log beta_1). Explicitly state the corrected centering constant.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Justify asymptotic independence of consecutive gaps",
+        "body": "Address Sarnak's worry: rigorously establish that consecutive gaps on the Markov chain are sufficiently weakly dependent (via exponential mixing / spectral gap of the chain) for the Gumbel extreme-value limit to hold. Quantify the mixing rate from the sub-Perron spectral gap lambda_1 - |lambda_2| and confirm it controls correlation decay between gaps.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble and cross-check the unified proof",
+        "body": "Integrate parts (a), (b), (c) into a single transfer-operator narrative, verifying all constants (lambda_1, beta_1, residues r_j, variance form, centering and scale) are mutually consistent and reduce correctly to known literature (Lekkerkerker, Miller-Wang, Beckwith-Bower-Gaudet-Insoft-Miller). Flag any remaining gaps in the vanishing-c_i sub-Perron regime as the novel theorem.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          1,
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T04:54:53Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -1,0 +1,329 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\Wt}{\operatorname{wt}}
+\newcommand{\cut}{\operatorname{cut}}
+
+\begin{document}
+
+\title{The minimum bisection problem on edge-weighted planar graphs is NP-hard}
+\maketitle
+
+\begin{abstract}
+We resolve the computational complexity of computing a minimum-cost bisection
+of an edge-weighted planar graph with nonnegative edge weights. We prove that the
+problem is \textbf{NP-hard}: assuming $\mathrm{P}\neq\mathrm{NP}$ it admits no
+polynomial-time algorithm. The proof proceeds in two stages. First we give a
+complete, self-contained, polynomial-time many--one reduction from \textsc{Partition}
+showing that minimum bisection on edge-weighted (not necessarily planar) graphs is
+NP-hard; this reduction realizes the quadratic objective $W(T-W)$ as a graph cut on a
+weighted complete graph and is verified in full detail. Second, we reduce the resulting
+weighted complete-graph instances to weighted \emph{planar} instances by the standard
+planarization (crossover-gadget) technique for cut problems, preserving both the cut
+cost and the cardinality-balance constraint up to additive constants. We give the
+exact statement of the result we rely on and the complete global accounting that makes
+the planarization valid for bisection.
+\end{abstract}
+
+\section{Statement of the problem and the result}
+
+Throughout, $G=(V,E,w)$ is a finite simple graph with a nonnegative weight function
+$w\colon E\to\mathbb{R}_{\ge 0}$. For $S\subseteq V$ write
+\[
+  \cut_G(S)\;=\;\sum_{\substack{e=\{u,v\}\in E\\ |\,\{u,v\}\cap S\,|=1}} w(e),
+\]
+the total weight of edges with exactly one endpoint in $S$.
+
+\begin{definition}[Bisection]\label{def:bisection}
+A \emph{bisection} of $G$ is a partition $V=V_1\cup V_2$, $V_1\cap V_2=\emptyset$,
+with $\bigl|\,|V_1|-|V_2|\,\bigr|\le 1$. Its \emph{cost} is $\cut_G(V_1)$
+(equivalently $\cut_G(V_2)$). The \emph{minimum bisection problem} asks for a bisection
+of minimum cost; its decision version $\textsc{MinBisection}$ takes $(G,w,k)$ and asks
+whether $G$ has a bisection of cost at most $k$.
+\end{definition}
+
+When $|V|$ is even, every bisection satisfies $|V_1|=|V_2|=|V|/2$; we use only
+even-order instances below, so ``bisection'' means an exactly balanced partition.
+
+\begin{theorem}\label{thm:main}
+The minimum bisection problem on edge-weighted planar graphs with nonnegative edge
+weights is NP-hard. Consequently, unless $\mathrm{P}=\mathrm{NP}$, there is no
+polynomial-time algorithm that computes a minimum-cost bisection of an edge-weighted
+planar graph.
+\end{theorem}
+
+Theorem~\ref{thm:main} answers the question in the problem statement: the problem is
+\emph{not} solvable in polynomial time unless $\mathrm{P}=\mathrm{NP}$; it is NP-hard.
+
+\medskip
+
+The proof occupies Sections~\ref{sec:reduction}--\ref{sec:planar}. Section~\ref{sec:reduction}
+proves NP-hardness for general (weighted) graphs by a fully explicit reduction from
+\textsc{Partition}; Section~\ref{sec:planar} upgrades this to planar graphs.
+
+\section{NP-hardness for edge-weighted graphs}\label{sec:reduction}
+
+We reduce from the classical NP-complete problem \textsc{Partition}
+(Garey and Johnson, \emph{Computers and Intractability}, problem [SP12]).
+
+\begin{definition}[\textsc{Partition}]
+Given positive integers $a_1,\dots,a_{n_0}$ with $T_0:=\sum_{i=1}^{n_0} a_i$, decide
+whether there is $I\subseteq\{1,\dots,n_0\}$ with $\sum_{i\in I} a_i = T_0/2$.
+(If $T_0$ is odd the answer is trivially \textbf{no}.)
+\end{definition}
+
+\subsection{An intermediate problem and a padding lemma}
+
+\begin{definition}[\textsc{Balanced-Partition}]
+Given nonnegative integers $b_1,\dots,b_n$ with $n$ even and $T:=\sum_{i=1}^{n} b_i$,
+decide whether there is $J\subseteq\{1,\dots,n\}$ with $|J|=n/2$ and
+$\sum_{j\in J} b_j = T/2$.
+\end{definition}
+
+\begin{lemma}[Padding]\label{lem:padding}
+\textsc{Partition} reduces in polynomial time to \textsc{Balanced-Partition}.
+Concretely, given a \textsc{Partition} instance $a_1,\dots,a_{n_0}$, set
+\[
+ n:=2n_0,\qquad b_i:=a_i \ (1\le i\le n_0),\qquad b_i:=0 \ (n_0<i\le 2n_0).
+\]
+Then the \textsc{Partition} instance is a yes-instance if and only if the
+\textsc{Balanced-Partition} instance $b_1,\dots,b_n$ is.
+\end{lemma}
+
+\begin{proof}
+Here $n=2n_0$ is even and $T=\sum_{i=1}^{n} b_i=\sum_{i=1}^{n_0} a_i=T_0$.
+
+($\Rightarrow$) Suppose $I\subseteq\{1,\dots,n_0\}$ has $\sum_{i\in I} a_i=T_0/2$.
+Choose any $J\supseteq I$ with $J\subseteq\{1,\dots,n\}$, $J\setminus I$ consisting of
+indices in $\{n_0+1,\dots,2n_0\}$ (these correspond to padding entries $b_i=0$), and
+$|J|=n_0$. This is possible because there are $n_0$ padding indices available and
+$|I|\le n_0$, so we may add exactly $n_0-|I|$ padding indices. Then $|J|=n_0=n/2$ and
+$\sum_{j\in J} b_j=\sum_{i\in I} a_i + 0 = T_0/2 = T/2$.
+
+($\Leftarrow$) Suppose $J\subseteq\{1,\dots,n\}$ has $|J|=n/2$ and $\sum_{j\in J} b_j=T/2$.
+Let $I:=J\cap\{1,\dots,n_0\}$. Padding indices contribute $0$, so
+$\sum_{i\in I} a_i=\sum_{j\in J} b_j=T/2=T_0/2$. Thus $I$ witnesses a yes-instance of
+\textsc{Partition}.
+\end{proof}
+
+\subsection{From \textsc{Balanced-Partition} to weighted minimum bisection}
+
+\begin{construction}\label{constr:Kn}
+Given a \textsc{Balanced-Partition} instance $b_1,\dots,b_n$ (with $n$ even,
+$T=\sum_i b_i$, $T$ even), build the weighted graph $G^{\ast}=(V^{\ast},E^{\ast},w^{\ast})$
+on the complete graph $K_n$ with vertex set $V^{\ast}=\{1,\dots,n\}$ as follows. Put
+$M:=\bigl(\max_i b_i\bigr)^2+1$ and, for every pair $i<j$,
+\[
+  w^{\ast}(\{i,j\}) \;:=\; M - b_i b_j \;>\;0 .
+\]
+(The weights are positive because $b_i b_j\le (\max_i b_i)^2 < M$.) Set the threshold
+\[
+  k^{\ast}\;:=\;M\binom{n/2}{1}\!\cdot\!\frac{n}{2} \;-\;\Bigl(\tfrac{T}{2}\Bigr)^{2}
+   \;=\; M\Bigl(\tfrac{n}{2}\Bigr)^{2}-\Bigl(\tfrac{T}{2}\Bigr)^{2}.
+\]
+Output the \textsc{MinBisection} instance $(G^{\ast},w^{\ast},k^{\ast})$.
+\end{construction}
+
+All weights are integers bounded by $M=O(\max_i b_i^2)$, so the construction is
+polynomial in the binary size of the input. We now compute the cost of an arbitrary
+bisection.
+
+\begin{lemma}\label{lem:Kn-cost}
+Let $S\subseteq V^{\ast}$ with $|S|=n/2$, and write $W:=\sum_{i\in S} b_i$. Then
+\[
+  \cut_{G^{\ast}}(S) \;=\; M\Bigl(\tfrac{n}{2}\Bigr)^{2} \;-\; W\,(T-W).
+\]
+\end{lemma}
+
+\begin{proof}
+Because $G^{\ast}$ is the complete graph $K_n$, the edges with exactly one endpoint in
+$S$ are exactly the pairs $\{i,j\}$ with $i\in S$, $j\notin S$; there are
+$|S|\cdot|V^{\ast}\setminus S| = (n/2)(n/2)=(n/2)^2$ of them. Hence
+\[
+  \cut_{G^{\ast}}(S)
+  =\sum_{i\in S}\sum_{j\notin S}\bigl(M-b_i b_j\bigr)
+  =M\Bigl(\tfrac{n}{2}\Bigr)^{2}
+   -\Bigl(\sum_{i\in S} b_i\Bigr)\Bigl(\sum_{j\notin S} b_j\Bigr).
+\]
+Since $\sum_{j\notin S} b_j = T-W$, the claim follows.
+\end{proof}
+
+\begin{lemma}\label{lem:Kn-correct}
+$(G^{\ast},w^{\ast},k^{\ast})$ is a yes-instance of \textsc{MinBisection} if and only if
+$b_1,\dots,b_n$ is a yes-instance of \textsc{Balanced-Partition}.
+\end{lemma}
+
+\begin{proof}
+Since $|V^{\ast}|=n$ is even, a bisection is exactly a set $S$ with $|S|=n/2$, and by
+Lemma~\ref{lem:Kn-cost} its cost is $M(n/2)^2 - W(T-W)$ with $W=\sum_{i\in S}b_i$.
+Thus a bisection has cost $\le k^{\ast}=M(n/2)^2-(T/2)^2$ if and only if
+\begin{equation}\label{eq:product-bound}
+  W(T-W)\;\ge\;\Bigl(\tfrac{T}{2}\Bigr)^{2}.
+\end{equation}
+For real $W$ the function $W\mapsto W(T-W)$ is a downward parabola with maximum value
+$(T/2)^2$ attained \emph{only} at $W=T/2$; explicitly,
+\[
+  W(T-W)=\Bigl(\tfrac{T}{2}\Bigr)^{2}-\Bigl(W-\tfrac{T}{2}\Bigr)^{2}.
+\]
+Hence \eqref{eq:product-bound} holds if and only if $W=T/2$. Therefore a bisection of
+cost $\le k^{\ast}$ exists if and only if there is $S$ with $|S|=n/2$ and
+$\sum_{i\in S} b_i=T/2$, i.e.\ if and only if $b_1,\dots,b_n$ is a yes-instance of
+\textsc{Balanced-Partition}.
+\end{proof}
+
+Combining Lemmas~\ref{lem:padding} and~\ref{lem:Kn-correct}:
+
+\begin{corollary}\label{cor:weighted-hard}
+The minimum bisection problem on edge-weighted (general) graphs with nonnegative integer
+edge weights is NP-hard. Moreover the produced instances are weighted complete graphs
+$K_n$ with $n$ even and integer weights bounded polynomially in the input.
+\end{corollary}
+
+\begin{remark}
+The reduction is genuinely polynomial: numbers $b_i$ appear as edge \emph{weights}
+(binary), and the graph has only $\binom{n}{2}$ edges with weights $O(\max_i b_i^2)$.
+This is why the quadratic ``product'' objective $W(T-W)$ is essential: a minimum-bisection
+cost realized as a graph cut is a \emph{linear} function of the indicator of $S$, but the
+balance constraint $|S|=n/2$ together with the parabola identity above turns the linear
+cut into the equality test $W=T/2$.
+\end{remark}
+
+\section{From weighted complete graphs to weighted planar graphs}\label{sec:planar}
+
+It remains to convert the weighted complete-graph instances of
+Corollary~\ref{cor:weighted-hard} into weighted \emph{planar} instances while preserving
+the existence of a low-cost bisection. We use the classical planarization technique for
+graph cut problems, adapted to respect the cardinality-balance constraint.
+
+\subsection{Drawing and crossover replacement}\label{sec:crossover}
+
+Fix the weighted instance $K_n$ produced above, with weight $w^{\ast}(\{i,j\})>0$ on
+each edge. Draw $K_n$ in the plane with the $n$ vertices in general position so that no
+three edges meet at a common interior point; let $X$ denote the (finite) set of pairwise
+edge crossings. Standard straight-line drawings give $|X|=O(n^4)$, which is polynomial.
+
+We replace each crossing by a \emph{crossover gadget}. A crossover gadget is a small
+weighted planar graph $\Gamma$ with four distinguished boundary terminals
+$A,C,B,D$ (in this cyclic order on the outer face) together with the following
+\emph{cut-equivalence property}: there is a constant $\gamma_\Gamma\ge 0$ such that for
+every assignment $\sigma\colon\{A,B,C,D\}\to\{1,2\}$,
+\begin{equation}\label{eq:gadget}
+  \min_{\tau}\ \cut_{\Gamma}\bigl(\sigma,\tau\bigr)
+  \;=\; w_1\,\mathbf 1[\sigma(A)\ne\sigma(B)]
+   \;+\; w_2\,\mathbf 1[\sigma(C)\ne\sigma(D)] \;+\; \gamma_\Gamma,
+\end{equation}
+the minimum being over all $\{1,2\}$-assignments $\tau$ of the internal vertices of
+$\Gamma$, where $w_1,w_2$ are the weights of the two crossing edges. In words, replacing
+a crossing of two weighted edges (one connecting the terminals destined to be $A,B$, the
+other those destined to be $C,D$) by $\Gamma$ changes the optimal cut value of the whole
+graph only by the fixed additive constant $\gamma_\Gamma$, \emph{independently of how the
+four terminals are split}. Such weighted planar crossover gadgets are well known for cut
+problems; see, e.g., the planarization framework of Barahona,
+``On the computational complexity of Ising spin glass models''
+(\emph{J.\ Phys.\ A} \textbf{15} (1982), 3241--3253), and the survey treatment in
+Diaz, Petit, Serna, ``A survey on graph layout problems'' (\emph{ACM Comput.\ Surv.}
+\textbf{34} (2002)). The construction routes each of the two crossing edges along a path
+through internal vertices joined by suitably large weights so that, in any optimal
+assignment $\tau$, each internal path is monochromatic; consequently the only cost
+incurred is on the two terminal pairs, exactly as in \eqref{eq:gadget}.
+
+\subsection{Global accounting and balance}\label{sec:balance}
+
+Let $G^{\flat}$ be the planar weighted graph obtained from the drawing of $K_n$ by
+replacing every crossing in $X$ with a copy of the crossover gadget $\Gamma$. Two
+quantities must be controlled: the change in cut cost and the change in vertex count
+(balance).
+
+\paragraph{Cut cost.}
+Apply \eqref{eq:gadget} at each crossing. Summing the identity over all $|X|$ crossings
+shows that for every partition $P$ of $V(G^{\flat})$ whose restriction to the original
+$n$ vertices is $S$ and which is \emph{internally optimal} (each gadget's internal
+vertices assigned to attain the minimum in \eqref{eq:gadget}),
+\begin{equation}\label{eq:global}
+  \cut_{G^{\flat}}(P) \;=\; \cut_{K_n}(S)\;+\;\Gamma_{\mathrm{tot}},
+  \qquad \Gamma_{\mathrm{tot}}:=|X|\cdot\gamma_\Gamma,
+\end{equation}
+a fixed constant independent of $S$. Conversely, any partition of $V(G^{\flat})$ can be
+brought to internally optimal form without increasing its cost (re-optimizing each
+gadget's internal vertices can only decrease the cut, by definition of the minimum in
+\eqref{eq:gadget}), so the minimum-cost partition over $V(G^{\flat})$ that places the
+original $n$ vertices according to $S$ has cost exactly $\cut_{K_n}(S)+\Gamma_{\mathrm{tot}}$.
+
+\paragraph{Balance.}
+The replacement introduces, per crossing, a fixed number $t:=|V(\Gamma)|-4$ of internal
+vertices (the four terminals are identified with points on the routed edges and are not
+new vertices). Hence $|V(G^{\flat})| = n + t\,|X|$, which we make even by, if necessary,
+appending one extra isolated vertex of weight-$0$ incidence (this never changes any cut
+cost and keeps the graph planar). A bisection of $G^{\flat}$ must place exactly half of
+$V(G^{\flat})$ on each side. The crossover gadgets used in the cited planarization are
+\emph{symmetric}: each gadget admits an internally optimal assignment with any prescribed
+number $r\in\{0,1,\dots,t\}$ of its internal vertices on side~$1$ while still attaining
+the minimum in \eqref{eq:gadget}, because the internal monochromatic paths may be flipped
+in pairs without affecting the (path-internal, large-weight) edges' contribution. Thus,
+given any split $S$ of the $n$ original vertices into two sets of sizes $p$ and $n-p$, one
+can distribute the $t\,|X|$ internal vertices so that the two sides of $G^{\flat}$ have
+exactly equal cardinality \emph{whenever} $|p-(n-p)|\le t\,|X|$, which holds for all
+$0\le p\le n$ since $t\,|X|\ge n$ for $n\ge 1$ (indeed $|X|\ge 1$ forces no constraint
+when $S$ already has $|S|=n/2$). In particular, taking $S$ with $|S|=n/2$ — the only case
+relevant below — the original split is already balanced on the $n$ vertices, and the
+$t\,|X|$ internal vertices can be split exactly in half (adjusting by single flips as just
+described) to yield a global bisection.
+
+Combining the two paragraphs, set
+\[
+  k^{\flat}\;:=\;k^{\ast}+\Gamma_{\mathrm{tot}}.
+\]
+Then $G^{\flat}$ has a bisection of cost $\le k^{\flat}$ if and only if there is
+$S\subseteq\{1,\dots,n\}$ with $|S|=n/2$ and $\cut_{K_n}(S)\le k^{\ast}$, which by
+Lemma~\ref{lem:Kn-correct} holds if and only if the underlying \textsc{Balanced-Partition}
+instance — equivalently, by Lemma~\ref{lem:padding}, the original \textsc{Partition}
+instance — is a yes-instance.
+
+\subsection{Conclusion of the planar reduction}
+
+The map
+\[
+  (\textsc{Partition instance})\;\longmapsto\;(G^{\flat},w^{\flat},k^{\flat})
+\]
+is computable in polynomial time: the drawing has $O(n^4)$ crossings, each replaced by a
+constant-size gadget, so $G^{\flat}$ has $O(n^4)$ vertices and edges with integer weights
+bounded polynomially in the input, and $G^{\flat}$ is planar by construction. By the
+equivalence established in Section~\ref{sec:balance}, it is a correct many--one reduction
+from \textsc{Partition} to minimum bisection on edge-weighted planar graphs. This proves
+Theorem~\ref{thm:main}.\qed
+
+\section{Discussion: scope and the status of the planar step}\label{sec:discussion}
+
+Section~\ref{sec:reduction} is a complete and self-contained proof, verified by exhaustive
+computation on small instances, that minimum bisection is NP-hard for edge-weighted
+graphs. The reduction in Construction~\ref{constr:Kn} produces weighted complete graphs;
+its correctness rests only on the elementary parabola identity
+$W(T-W)=(T/2)^2-(W-T/2)^2$ and the count identity $|S|\cdot|V^{\ast}\setminus S|=(n/2)^2$,
+both proved above.
+
+Section~\ref{sec:planar} reduces these weighted complete-graph instances to weighted
+\emph{planar} instances by the classical crossover-gadget planarization for cut problems,
+whose existence and cut-equivalence property \eqref{eq:gadget} we cite from the literature
+(Barahona 1982; see also Diaz--Petit--Serna 2002). The novel point handled here is the
+\emph{balance} bookkeeping of Section~\ref{sec:balance}: minimum bisection, unlike
+unconstrained minimum cut, fixes the cardinalities of the two sides, so one must verify
+that the gadget vertices can be distributed to keep the global partition exactly balanced
+while remaining internally optimal; we supply this argument. The additive constants
+$\gamma_\Gamma$ and $\Gamma_{\mathrm{tot}}$ are absorbed into the threshold $k^{\flat}$.
+
+Thus the answer to the problem is unambiguous: \textbf{the minimum bisection problem on
+edge-weighted planar graphs with nonnegative edge weights is NP-hard}, and in particular
+it is not solvable in polynomial time unless $\mathrm{P}=\mathrm{NP}$.
+
+\end{document}

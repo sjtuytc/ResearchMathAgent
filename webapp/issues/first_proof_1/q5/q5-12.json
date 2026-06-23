@@ -3,7 +3,7 @@
   "problem_id": "q5",
   "dataset": "first_proof_1",
   "title": "Converse: connectivity bookkeeping across induction only summarized",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,28 @@
       "role": "human",
       "body": "In the proof of Theorem 1 (converse), the geometric part $\\widetilde{E\\mathcal P}\\otimes E$ is handled by 'applying Lemma geom to the homotopy Mackey functors', concluding 'its $\\mathcal O$-slice connectivity is $\\ge n$'. This is a summary, not a proof, and it skips the central content of the theorem.\n\nSpecifically:\n1. $\\widetilde{E\\mathcal P}\\otimes E$ is **not** a single $\\Sigma^kHM$. One must filter it by its homotopy Mackey functors $\\underline\\pi_k$, identify each layer as $\\Sigma^k H\\underline\\pi_k$ (geometric over $G/G$), apply Lemma geom to get layer slice index $k\\,[G:\\chi^{\\mathcal O}(G)]$, and then use $\\min\\{k:\\underline\\pi_k\\ne 0\\}=\\mathrm{conn}(\\Phi^G E)=\\mathrm{gconn}(E)(G)$ to deduce membership in $\\tau^{\\mathcal O}_{\\ge [G:\\chi(G)]\\cdot\\mathrm{gconn}(E)(G)}\\subseteq\\tau^{\\mathcal O}_{\\ge n}$.\n2. The downward induction over the subgroup lattice must reconcile the multiplier $[H:\\chi^{\\mathcal O}(H)]$ at intermediate $H$ with the **restricted** transfer system $\\mathcal O|_H$. The proof never proves $\\chi^{\\mathcal O|_H}(H)=\\chi^{\\mathcal O}(H)$ nor that $i_H^*\\tau^{\\mathcal O}_{\\ge n}$ is the $\\mathcal O|_H$-connective category with the correctly scaled index.\n\nThis translation from homotopy degree of $\\Phi^G E$ to slice index via the factor $[G:\\chi^{\\mathcal O}(H)]$ is exactly the novel content beyond HY18 and is entirely elided.",
       "created_at": "2026-06-17T18:10:57Z"
+    },
+    {
+      "id": "cb82aafdf",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Re-review: addressed in current `solution.tex`.\n(1) The geometric part is now treated as a Whitehead filtration of $\\Phi^GE$ with layers $\\Sigma^jHA_j$, transported by $\\Phi^{-1}$ to $\\widetilde{E\\mathcal P}\\otimes\\Sigma^jHM_j\\in\\tau_{\\ge jr_G}$ via `lem:geom`(2), and $j\\ge c=\\mathrm{gconn}(E)(G)$ with $cr_G\\ge n$ gives membership in $\\tau_{\\ge n}$. (2) The induction bookkeeping is routed through `lem:restr`(1) ($\\chi^{\\mathcal O|_H}=\\chi^{\\mathcal O}$, proved) and (2) ($\\mathrm{gconn}$ unchanged) plus `lem:induced`/`lem:restr`(4); the proof explicitly avoids needing $i_H^*\\tau^{\\mathcal O}_{\\ge n}=\\tau^{\\mathcal O|_H}_{\\ge n}$. This gap is closed.",
+      "created_at": "2026-06-21T22:09:30Z"
+    },
+    {
+      "id": "cb5952e38",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Verification of the converse connectivity bookkeeping; one small gap closed.\n\nI read the full converse proof (`Proof of P(G,O)`), the geometric-slice Lemma `lem:geom`, Corollary `cor:exact-slice`, and the supporting lemmas `lem:restr`, `lem:induced`, `lem:shift`, `lem:index`, `def:geom`/`prop:geomEM`. Both concerns of this issue are substantively addressed in the current text; I verified the mathematics line by line and made one targeted addition.\n\n**Point 1 (geometric part is a filtration, not a single $\\Sigma^kHM$).** Fully spelled out:\n- *Step G-1* presents $\\Phi^GE$ as the sequential **colimit** of its connective Whitehead/cellular tower $F_q=\\mathrm{sk}_q\\Phi^GE$, with cofiber layers $\\Sigma^{q+1}H\\pi_{q+1}(\\Phi^GE)$, starting at $c=\\mathrm{conn}(\\Phi^GE)=\\mathrm{gconn}(E)(G)$ (so $\\min\\{k:\\underline\\pi_k\\neq0\\}=c$ is used exactly as the issue demands). Convergence is proved as a colimit (not a Postnikov limit), which is what legitimizes membership in the colimit-closed $\\tau^{\\mathcal O}_{\\ge n}$.\n- *Step G-2* transports each layer by the localization equivalence $\\Phi^{-1}$ (L2), identifying $\\Phi^{-1}(\\Sigma^jHA_j)\\simeq\\widetilde{E\\mathcal P}\\otimes\\Sigma^jHM_j$ with $M_j=\\underline{A_j}^{\\mathrm{geo}}$ geometric (existence/connectivity for **every** abelian group via Def `def:geom` + Prop `prop:geomEM`(C),(G1),(G2)). Lemma `lem:geom`(2) supplies the layer slice index $jr_G$, i.e. the $k\\,[G:\\chi^{\\mathcal O}(G)]$ factor that is the novel content.\n- The deduction $\\tau^{\\mathcal O}_{\\ge jr_G}\\subseteq\\tau^{\\mathcal O}_{\\ge cr_G}\\subseteq\\tau^{\\mathcal O}_{\\ge n}$ uses $j\\ge c$ and the $H=G$ hypothesis $cr_G\\ge n$.\n\n**Gap I found and fixed.** The two displayed subcategory inclusions in Step G-2 relied on the *monotonicity* $\\tau^{\\mathcal O}_{\\ge a}\\subseteq\\tau^{\\mathcal O}_{\\ge b}$ for $a\\ge b$, which was used silently at this load-bearing point and not justified anywhere. I added a short proof: the generating set for index $a$ is a literal subset of that for index $b$, and $\\langle-\\rangle_{\\ge}$ (smallest subcategory closed under (o1)-(o3) containing the generators) is monotone in the generating set; applied with $(a,b)=(jr_G,cr_G)$ and $(cr_G,n)$ (all integer inequalities). This removes the only unjustified step in the geometric bookkeeping.\n\n**Point 2 (induction vs. restricted transfer system).** Fully addressed:\n- `lem:restr`(1): $\\chi^{\\mathcal O|_H}(K)=\\chi^{\\mathcal O}(K)$ (proved from the axioms, so the multiplier $r_H=[H:\\chi^{\\mathcal O}(H)]$ is intrinsic to $\\mathcal O|_H$); (2): $\\mathrm{gconn}(i_H^*E)=\\mathrm{gconn}(E)$ on subgroups of $H$.\n- The induction is run on $(K,\\mathcal O|_K)$ applied to $i_K^*E$ and bridged to the $G$-level via `lem:restr`(3)/(4) and `lem:induced`. The proof explicitly **avoids** the false/over-strong equality $i_H^*\\tau^{\\mathcal O}_{\\ge n}=\\tau^{\\mathcal O|_H}_{\\ge n}$, using only the two genuinely-proved inclusions (cf. `rem:ind-link`).\n- The degree-shift multiplier is reconciled with $\\mathcal O|_H$ by `lem:shift`+`lem:index` over the restricted system, with `lem:restr`(1') ensuring admissibility is the same in $\\mathcal O$, $\\mathcal O|_H$, $\\mathcal O|_K$.\n\nI also re-checked the index arithmetic in `lem:geom`(3) ($|T|>kr_G\\Rightarrow|T/G|>k$ via $|T|\\le r_G|T/G|$) and the proper-$H'$ case of `cor:exact-slice` (where $i_{H'}^*HM\\simeq0$ kills the mapping group outright, sidestepping the $r_{H'}<r_G$ mismatch the issue worried about). These are correct.\n\nConclusion: with the monotonicity justification added, the translation from homotopy degree of $\\Phi^GE$ to slice index via $[G:\\chi^{\\mathcal O}(H)]$ across the induction is now fully proved, not summarized. Resolving.",
+      "created_at": "2026-06-21T22:38:48Z"
+    },
+    {
+      "id": "eve9a12735",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T22:38:51Z"
     }
   ]
 }

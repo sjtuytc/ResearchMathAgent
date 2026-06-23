@@ -1,0 +1,162 @@
+{
+  "id": "rm-13126-meet-1",
+  "problem_id": "rm-13126",
+  "topic": "Init rm-13126 — proof review",
+  "goal": "Review the proof and issues for rm-13126; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T08:27:44Z",
+  "messages": [
+    {
+      "id": "md1249a48",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-13126 — proof review**",
+      "created_at": "2026-06-23T08:27:44Z"
+    },
+    {
+      "id": "md056645a",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about where my comfort zone ends and this problem begins. My instinct is always to ask \"what's the spectral gap?\" or \"can we find this by solving a Laplacian system?\" — but this is simply typed lambda calculus, not a graph. There's no Laplacian here. So let me adapt my methodology rather than force my tools.\n\nWhat *does* transfer is my obsession with **constructive monovariants**. In all my work — barrier functions $\\Phi(\\lambda) = \\sum_i \\frac{1}{\\lambda_i - t}$, the potential tracking in $\\varepsilon$-light subsets — the game is the same: define an explicit quantity that *strictly decreases* under the dynamics, with values in a well-founded set. Here the dynamics is $\\to_\\beta$ and the well-founded set is $\\mathrm{Ord}$. So the problem is structurally familiar: build a strictly decreasing potential.\n\nThe difficulty, and where I want clarity, is this: a single $\\beta$-step can **duplicate** subterms (when a redex copies its argument into many occurrences of a bound variable). A naive size measure goes *up*, not down. This is exactly the analogue of an edge contraction that increases total weight — the monovariant must be cleverer than raw size. The standard fix uses ordinals built from the *type structure*: assign to each term an ordinal interpretation where higher-order types contribute via ordinal exponentiation, so that contracting a redex of type $\\sigma \\to \\tau$ pays a cost that dominates the duplication.\n\nConcretely, the question I'd put to the room:\n1. Is the proposed $\\#$ defined by **induction on types**, with $\\#$ of an arrow type living in an ordinal that's exponential in the components? That's the lever that makes duplication \"cheap\" relative to redex elimination.\n2. Does the proof verify the decrease *locally* at the contracted redex and then show it propagates through arbitrary contexts? That contextual propagation is exactly where these arguments usually have a gap — analogous to checking my barrier decrease holds globally, not just at one vertex.\n\nWhat's the current definition of $\\#$ on the table, and where precisely does the strict-decrease verification break?",
+      "created_at": "2026-06-23T08:27:58Z"
+    },
+    {
+      "id": "m41ede005",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your monovariant framing is exactly right, and I want to sharpen the analogy to my graph-limits philosophy: we should ask \"what is the *correct invariant* that converges,\" meaning the one that is stable under the dynamics. Let me lay out the structure of the standard solution and then point to the genuine gap.\n\nThe classical construction — Gandy's, and in spirit Tait's computability — assigns to each *type* a well-founded set of \"interpretations,\" and to each term an element. The key is **not** assigning a single ordinal directly; that fails for exactly the duplication reason you name. Instead:\n\n1. **Interpret types as monotone functionals.** Assign to base type $o$ the ordinals $\\mathrm{Ord}$ (or $\\mathbb{N}$). Assign to $\\sigma \\to \\tau$ the set of monotone, *strict* functions from $\\llbracket\\sigma\\rrbracket$ to $\\llbracket\\tau\\rrbracket$, ordered pointwise but augmented so that application strictly drops a value. The arrow type lives \"exponentially higher\" precisely because a function carries more information than a point — this is your ordinal exponentiation, but realized functorially.\n\n2. **The hereditary measure.** Define $\\#M$ as the ordinal obtained by *collapsing* the functional interpretation: $\\#M = $ the value $\\llbracket M\\rrbracket$ fed enough large arguments. The decrease at a $\\beta$-redex $(\\lambda x.P)Q \\to P[x:=Q]$ holds because the functional $\\llbracket\\lambda x.P\\rrbracket$ applied to $\\llbracket Q\\rrbracket$ is *defined* to strictly exceed $\\llbracket P[x:=Q]\\rrbracket$ — duplication of $Q$ is absorbed because $\\llbracket Q\\rrbracket$ enters monotonically, not additively.\n\n3. **Where the gap really is** — and this is your \"contextual propagation,\" which is genuinely the hard part. Local strict decrease at the redex is the easy lemma. The substitution lemma $\\llbracket P[x:=Q]\\rrbracket \\leq \\llbracket P\\rrbracket(\\llbracket Q\\rrbracket)$ and the *context monotonicity* lemma (replacing a subterm by a smaller one decreases the whole) must be proved by simultaneous induction on type structure. This is the analogue of my insisting the barrier decrease is *global* not just at one vertex: you cannot prove decrease at the redex in isolation; you need that $\\#$ is monotone under all term constructors. That simultaneous induction is exactly where naive write-ups collapse.\n\nSo my concrete questions back to the room:\n- Is the proposed $\\#$ a *direct* ordinal assignment, or the collapse of a type-indexed functional interpretation? If direct, I claim it cannot satisfy the substitution lemma, and we should switch to the hereditarily-monotone-functional form.\n- Has the substitution lemma been stated and proved *before* the decrease lemma? The dependency order matters: monotonicity of contexts is the load-bearing wall.\n\nOne caution on \"elementary\": the functional interpretation is elementary in that it never invokes SN, but it does require ordinals up to $\\varepsilon_0$ for the full system — which is unavoidable, by the proof-theoretic strength. We should be explicit that \"easy\" cannot mean \"below $\\varepsilon_0$,\" lest someone object the construction smuggles in the very normalization it proves.",
+      "created_at": "2026-06-23T08:28:47Z"
+    },
+    {
+      "id": "md8ab9819",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have framed this beautifully, and I want to push on the \"real theorem\" hiding behind the construction, because there's a subtle point about whether we even *need* the full $\\varepsilon_0$ strength here.\n\nLet me compute the first case by hand, because that's how I think. Take the simplest dangerous redex: $(\\lambda x.\\, x\\, x)\\, y$ — oh wait, that's not simply typable! And that's the *whole point*. In the untyped calculus duplication is unbounded; the type discipline is precisely what bounds it. So the type structure isn't just bookkeeping — it's the spectral gap of this problem, the thing that makes the monovariant exist at all. László is exactly right that the arrow type must live \"exponentially higher,\" but I'd insist the type, not the term, carries the well-foundedness.\n\nHere is the cleanest construction I know — it's essentially Howard's, and it's elementary:\n- Assign to each type $\\sigma$ a degree $d(\\sigma) \\in \\mathbb{N}$ by $d(o)=1$, $d(\\sigma\\to\\tau)=d(\\sigma)+1$ (or $\\max+1$).\n- To each term assign $\\#M = $ an ordinal built so that contracting a redex of type $\\sigma\\to\\tau$ *lowers the maximal degree of any redex created* or strictly drops a multiset ordinal of redex-degrees.\n\nThe key invariant: when $(\\lambda x.P)Q$ fires, every *new* redex created by substituting $Q$ into $P$ has degree **strictly less** than $d(\\sigma\\to\\tau)$. So order the multiset of redex degrees by the Dershowitz–Manna multiset ordering on $\\omega$ — you land in $\\omega^\\omega$, *not* $\\varepsilon_0$, for the redex-degree measure alone. The genuine $\\varepsilon_0$ only appears if you insist on a single monolithic ordinal tracking reduction *length*; for mere well-foundedness of $\\to_\\beta$, the multiset measure suffices.\n\nSo my two challenges to the room:\n1. **Is this really an $\\varepsilon_0$ phenomenon, or an $\\omega^\\omega$ phenomenon?** László says unavoidably $\\varepsilon_0$ — but that's for measuring the *length* of the longest reduction. The *bare* strict-decrease map $\\#$ into ordinals can be much weaker. We should decide which theorem we're proving.\n2. The load-bearing lemma — László's substitution lemma — is exactly the statement \"no $\\beta$-step creates a redex of degree $\\geq$ the contracted one.\" That's a *local, finite* check by cases on $P$. It is the analogue of my Hecke-correspondence input in QUE: a purely local arithmetic fact that, once verified, forces the global equidistribution — here, global termination.\n\nGet the degree-bound lemma right and the multiset ordinal does the rest. Let's not smuggle in $\\varepsilon_0$ if $\\omega^\\omega$ pays the bill.",
+      "created_at": "2026-06-23T08:29:33Z"
+    },
+    {
+      "id": "ma7dc4e70",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter just sharpened the question to exactly the right point: are we measuring reduction *length* or just proving well-foundedness? This is the same distinction I obsess over in sparsification — there's a difference between the *optimal* sparsifier and a *certificate* that one exists. We don't need the optimal monovariant; we need any strictly-decreasing one into a well-founded set. So let me side with Peter's $\\omega^\\omega$ proposal but stress-test the load-bearing lemma, because that's where these arguments actually break.\n\nHere's my worry about the multiset-of-redex-degrees measure, stated in my language. The claim is: firing $(\\lambda x.P)Q$ of type $\\sigma\\to\\tau$ removes one redex of degree $d=d(\\sigma\\to\\tau)$ and creates only redexes of degree $<d$. There are **two** sources of new redexes:\n1. **Substitution-created redexes**: $x$ occurred in $P$ in head position, $x\\,R$, and $Q$ is a $\\lambda$. The new redex $Q\\,R'$ has type matching $Q$'s — and $Q:\\sigma$, so its degree is bounded by $d(\\sigma) < d(\\sigma\\to\\tau)$. Good, this is the local arithmetic fact.\n2. **The duplication itself**: $Q$ contains redexes, and $x$ occurs $k$ times in $P$, so we now have $k$ copies of every redex inside $Q$.\n\nPoint 2 is the analogue of edge-duplication increasing total weight — and it's *exactly* what worried me in my opening. The multiset ordering does **not** automatically absorb this: replacing one element of degree $d$ by many elements of degree $<d$ is fine in Dershowitz–Manna, but only if *all* replacements are strictly below $d$. The copies of $Q$'s internal redexes have degree $\\le d(\\sigma) < d$, so they're below the removed element. **So it works** — but the verification requires that the *removed* redex genuinely dominates *all* duplicated material, and that's precisely the well-typedness paying the bill: $Q:\\sigma$ forces everything inside $Q$ to have degree $\\le d(\\sigma) < d(\\sigma\\to\\tau)$.\n\nSo I think the structure is:\n- **$\\#M$ = the finite multiset of degrees of all redexes in $M$**, ordered by Dershowitz–Manna, landing in $\\omega^\\omega$.\n- **The single local lemma**: every redex created or copied by firing a degree-$d$ redex has degree $<d$. This is finite case analysis — Peter's \"local arithmetic fact.\"\n\nTwo demands before I sign off, in keeping with my constructiveness fetish:\n1. **Make $\\#$ explicitly computable.** The multiset of redex-degrees of $M$ is *trivially computable* from the term — no fixed-point, no functional interpretation, no oracle. That's a genuine advantage of Peter's measure over László's hereditary collapse, which requires feeding \"enough large arguments\" and is far less transparent. For an *easy* map — which the problem demands — I want the one I can write a 10-line program to evaluate.\n2. **Watch the multiset-ordering proof obligation.** Dershowitz–Manna requires that we remove *at least one* maximal-relevant element and add only strictly-smaller ones. The subtlety: does firing a redex ever raise the degree of a *pre-existing untouched* redex? No — degrees are a function of the typed syntax tree of each redex, and untouched redexes keep their types. That's the global propagation check, the analogue of ver",
+      "created_at": "2026-06-23T08:31:53Z"
+    },
+    {
+      "id": "m67bcfda3",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Let me close Dan's loop, because the verification he started to write down has a genuine subtlety that the multiset argument hides, and it is precisely the \"contextual propagation\" I flagged earlier.\n\nDan is right that point 2 — duplication — is absorbed by Dershowitz–Manna *provided* every copied redex has degree $< d(\\sigma\\to\\tau)$. And Peter is right that well-typedness pays for that: $Q:\\sigma$ forces every subterm-redex of $Q$ to have degree $\\le d(\\sigma) < d$. So far the multiset measure into $\\omega^\\omega$ looks clean. But there is a third source of new redexes that neither of you has named, and it is the one that actually breaks the naive degree argument:\n\n3. **Outward-created redexes.** Firing $(\\lambda x.P)Q$ may turn the *enclosing* context into a redex. If $P$ is itself an abstraction $\\lambda y.P'$, then after the step the whole thing $P[x:=Q]$ may be the operator of an outer application $\\big(P[x:=Q]\\big)\\,R$ that was *not* a redex before because the operator was a redex, not yet a value. The degree of this newly-exposed outer redex is the degree of $P[x:=Q]$'s type, which can be $\\ge d(\\sigma\\to\\tau)$. This is exactly the place where a careless degree bound is violated.\n\nThe standard repair — and here I do insist on a point of proof-theoretic honesty against Peter — is that to kill source 3 you must order redexes not by their own degree alone but by the degree of the *outermost type involved in the cut*, and once you do that the multiset of degrees no longer suffices: you need the multiset *of multisets*, i.e. you climb from $\\omega^\\omega$ toward $\\omega^{\\omega^\\omega}$ and, iterating, to $\\varepsilon_0$. This is not me smuggling in normalization; it is the genuine ordinal cost that source 3 forces. Peter, your $\\omega^\\omega$ claim is correct **only** if you fix the redex degrees by a fixed type-height bound *and* prove that no step ever raises the maximal degree present — but source 3 can raise it, so the bare degree multiset is not monotone under $\\to_\\beta$.\n\nSo my reconciliation:\n- **For a single $\\beta$-step in isolation** with the *cut-elimination measure* (Tait–Howard: contract a redex of maximal degree, count redexes of that degree), Peter's multiset works and lands low — this is the classical \"lower the maximal degree\" argument.\n- **For an arbitrary $\\to_\\beta$ step**, where you do not get to choose the maximal redex, source 3 reintroduces high-degree redexes and you are forced up to $\\varepsilon_0$. This is exactly the analogue, in my graph-limits language, of an invariant that is stable only under a *restricted* dynamics (innermost/maximal reduction) versus the full dynamics — the \"correct convergent invariant\" differs.\n\nMy recommendation: state $\\#$ via the **hereditary functional collapse** I gave, which is monotone under *every* context and *every* step by construction (the substitution lemma does the work source 3 needs), and accept the honest $\\varepsilon_0$. Then, as a *corollary*, note Peter's $\\omega^\\omega$ bound holds for the maximal-degree reduction strategy, which is all one needs for an *algorithm*. Dan gets his 10-line evaluator for the strategy version; we get a fully general, gap-free $\\#$ for the theorem. The action item is concrete: write the substitution",
+      "created_at": "2026-06-23T08:32:45Z"
+    },
+    {
+      "id": "mb8008c09",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, you've caught the real issue with source 3, and I concede the bare degree multiset is *not* monotone under arbitrary $\\to_\\beta$. That's an honest correction and I take it. But let me push back on the conclusion that we're therefore forced all the way to $\\varepsilon_0$ with no recourse — because I think the *real theorem* here is more refined, and the explicit example tells us so.\n\nLook at source 3 concretely. When $(\\lambda x.P)Q \\to P[x:=Q]$ exposes an outer redex $(P[x:=Q])\\,R$, that outer redex has type $\\tau$ where the contracted redex had type $\\sigma\\to\\tau$. So $d(\\tau) < d(\\sigma\\to\\tau)$! The *newly exposed* outer redex has *strictly smaller degree* than the one we fired. The trouble László names isn't that a higher-degree redex appears — it's that the redex was *latent*, present in the term but not yet \"active.\" This is bookkeeping about which redexes are visible, not about degree increase.\n\nSo here's my proposal, which I'd stake on the explicit computation: don't measure the multiset of degrees of *currently visible* redexes. Measure a quantity over the *whole typed syntax tree* that already accounts for latent redexes — Howard's assignment $\\#M \\in \\mathrm{Ord}$ by induction on the term, where an application contributes via ordinal operations on the subterm values, and crucially the abstraction-applied-to-argument structure is *pre-paid*. In Howard's \"Assignment of ordinals to terms\" (1970) this is exactly the hereditary device, and it lands at $\\varepsilon_0$ — László is right that's the honest ceiling for the general map.\n\nBut the two-tier story is the right answer and I'll endorse it:\n1. **General gap-free $\\#$**: Howard's hereditary ordinal assignment, monotone under every context, honestly $\\varepsilon_0$. The substitution lemma is load-bearing, exactly as both of you said.\n2. **Strategy version**: for maximal-degree (cut-elimination) reduction, my multiset lives in $\\omega^\\omega$, and Dan gets his 10-line evaluator.\n\nThe action item is sharp: write the substitution lemma $\\llbracket P[x:=Q]\\rrbracket$ versus $\\llbracket P\\rrbracket(\\llbracket Q\\rrbracket)$ by simultaneous induction on types, and *verify it absorbs source 3* — that's the one check that decides whether the wall stands.",
+      "created_at": "2026-06-23T08:33:29Z"
+    },
+    {
+      "id": "m9caba0ff",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T08:34:23Z"
+    },
+    {
+      "id": "m5a0f0726",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve well-foundedness of beta-reduction for simply typed lambda calculus by constructing a strictly decreasing ordinal-valued monovariant, using a two-tier approach: Howard's gap-free hereditary functional collapse (honestly epsilon_0) for arbitrary reduction, and a computable multiset-of-redex-degrees measure (omega^omega) for the maximal-degree reduction strategy.",
+      "created_at": "2026-06-23T08:34:23Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove well-foundedness of beta-reduction for simply typed lambda calculus by constructing a strictly decreasing ordinal-valued monovariant, using a two-tier approach: Howard's gap-free hereditary functional collapse (honestly epsilon_0) for arbitrary reduction, and a computable multiset-of-redex-degrees measure (omega^omega) for the maximal-degree reduction strategy.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix definitions: type degree and hereditary functional interpretation",
+        "body": "Define the type degree d(o)=1, d(sigma->tau)=max(d(sigma),d(tau))+1. Then define the hereditary functional interpretation following Howard: interpret base type o as ordinals, and sigma->tau as monotone strict functions from the interpretation of sigma to that of tau, ordered pointwise. Define #M as the ordinal obtained by collapsing the functional interpretation of M (applying to sufficiently large arguments). State precisely the well-founded codomain and confirm it is bounded by epsilon_0.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the substitution lemma (load-bearing wall)",
+        "body": "By simultaneous induction on type structure, prove the substitution lemma relating [[P[x:=Q]]] to [[P]]([[Q]]) together with context monotonicity (replacing a subterm by a smaller one decreases the whole interpretation). This must precede the decrease lemma in dependency order. Crucially, verify the lemma absorbs duplication: copies of Q's redexes enter monotonically rather than additively.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Verify the substitution lemma absorbs source-3 (outward-created) redexes",
+        "body": "Explicitly check the case where firing (lambda x.P)Q with P an abstraction exposes an enclosing outer redex (P[x:=Q]) R. Confirm that the hereditary interpretation already pre-pays for latent redexes, so monotonicity holds even though a previously-invisible redex becomes active. This is the single check Laszlo and Peter identified as deciding whether the wall stands.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove strict local decrease at a beta-redex and propagate through contexts",
+        "body": "Using the substitution lemma and context monotonicity, prove that for any redex (lambda x.P)Q -> P[x:=Q], the interpretation strictly decreases: #((lambda x.P)Q) > #(P[x:=Q]). Then show via context monotonicity that this strict decrease propagates to any term M containing the redex, so #M strictly decreases under every beta-step in every context. Conclude well-foundedness of ->_beta.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Construct the computable multiset measure for the maximal-degree strategy",
+        "body": "Define #'M as the finite multiset of degrees of all redexes in M, ordered by Dershowitz-Manna (landing in omega^omega). Prove the local degree-bound lemma: firing a redex of type sigma->tau (degree d) removes one degree-d element and creates/copies only redexes of degree < d (substitution-created redexes have degree <= d(sigma), duplicated internal redexes of Q have degree <= d(sigma), exposed outer redexes have degree d(tau) < d). Restrict to the maximal-degree (cut-elimination) reduction strategy so source-3 cannot reintroduce a degree >= d, ensuring the multiset strictly decreases.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Stress-test the multiset measure against arbitrary reduction",
+        "body": "Confirm and document that the bare degree multiset is NOT monotone under arbitrary ->_beta (source-3 can reintroduce high-degree latent redexes), so the omega^omega measure is valid only for the restricted maximal-degree strategy. Verify Peter's correction is correctly scoped and that the strategy restriction is genuinely needed, preventing an erroneous omega^omega claim for the general theorem.",
+        "agent": "critic-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Implement the 10-line evaluator for the strategy measure",
+        "body": "Provide an explicit, computable algorithm that, given a typed term, outputs the multiset of redex degrees, demonstrating that #' requires no fixed-point, functional interpretation, or oracle. This delivers the constructive, transparent measure for the strategy version and serves as a sanity check on the degree-bound lemma.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble the two-tier proof and confirm proof-theoretic honesty",
+        "body": "Combine the results into a coherent writeup: (1) the gap-free hereditary ordinal assignment monotone under every context and every step, honestly bounded by epsilon_0, proving general strong normalization; (2) the omega^omega multiset bound as a corollary for the maximal-degree strategy with its computable evaluator. State explicitly that the epsilon_0 ceiling is unavoidable for the general map (proof-theoretic strength) and that no step smuggles in SN.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T08:34:23Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

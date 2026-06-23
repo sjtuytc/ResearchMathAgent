@@ -1,0 +1,161 @@
+{
+  "id": "rm-11345-meet-1",
+  "problem_id": "rm-11345",
+  "topic": "Init rm-11345 — proof review",
+  "goal": "Review the proof and issues for rm-11345; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T01:40:44Z",
+  "messages": [
+    {
+      "id": "mf432f4bf",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-11345 — proof review**",
+      "created_at": "2026-06-23T01:40:44Z"
+    },
+    {
+      "id": "mb2b33a05",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "I have to be honest about what's in front of us: this problem statement has nothing to do with $\\varepsilon$-light subsets, spectral sparsification, or Laplacians. It's a closed-form algebra problem — decompose $10 = x + y$ with $0 < x < y$ and $(y + x/y)\\cdot x = n$. Let me just solve it directly, since constructiveness is what I care about and here the \"algorithm\" is the quadratic formula.\n\nSubstitute $y = 10 - x$. The constraint becomes\n$$\\left(10 - x + \\frac{x}{10-x}\\right)x = n.$$\nMultiply through by $(10-x)$:\n$$x\\big[(10-x)^2 + x\\big] = n(10-x).$$\nExpanding $(10-x)^2 = 100 - 20x + x^2$, the bracket is $x^2 - 19x + 100$, so\n$$x^3 - 19x^2 + 100x = 100n - 10nx,$$\ni.e.\n$$x^3 - 19x^2 + (100 + 10n)x - 100n = 0.$$\n\nNow here's the nice structure — let me look for a factorization. Try $x = 10$: $1000 - 1900 + 1000 + 100n - 100n = 100 \\neq 0$. Try grouping: $x^3 - 19x^2 + 100x + 10nx - 100n$. The last two terms give $10n(x - 10)$, and $x^3 - 19x^2 + 100x = x(x^2 - 19x + 100)$. That doesn't factor cleanly either, so my reading of the cross-term may be off — **before I go further, what is the intended grouping in the term $(y + x/y)\\cdot x$?** Is it $(y + x/y)\\cdot x$ as written, or is it possibly $(y + x)/y \\cdot x$, or $(y + x)\\cdot y \\cdot x$? The answer changes whether we get a cubic or a clean quadratic.\n\nIf the intended expression is the genuinely clean one $(x + y)\\cdot \\tfrac{x}{y}\\cdot$something, we'd reduce to a quadratic and get $x,y$ as $\\tfrac{1}{2}(10 \\mp \\sqrt{\\,\\cdot\\,})$, with rationality governed by whether a discriminant is a perfect square — a Pell-type condition for integrality. So: **let's pin down the grouping**, then I'll give the explicit roots and the exact arithmetic condition (discriminant being a square) characterizing rational and integral $n$. What's the precise parenthesization?",
+      "created_at": "2026-06-23T01:40:56Z"
+    },
+    {
+      "id": "m3cdf2b55",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right that this is, stripped of the ornamentation, an elementary problem — and right to insist on pinning down the parenthesization before computing. But let me suggest that the *intended* problem is almost certainly the classical one, and that the grouping $(y + x/y)\\cdot x$ is a transcription artifact. The phrase \"decomposition of 10\" with \"smaller part $x$\" and \"larger part $y$\" is the language of a classical division-of-a-quantity problem, and the clean reading is\n$$\\left(y + \\frac{x}{y}\\right) = \\frac{n}{x}, \\quad\\text{or more likely}\\quad y + \\frac{x}{y} = n,$$\ni.e. the product structure is spurious. Consider the genuinely classical form: $x + y = 10$ and $x \\cdot y = n$ — Diophantus's own problem. Then $x, y = \\tfrac{1}{2}(10 \\mp \\sqrt{100 - 4n})$, real iff $n \\le 25$, with $0 < x < y$ forcing $0 < n < 25$.\n\nOn the arithmetic: rationality of $x,y$ is governed by $100 - 4n = 4(25 - n)$ being a perfect square of a rational, i.e. $25 - n$ a rational square; integrality requires $25 - n$ a perfect square $m^2$ with $m$ of the right parity, giving $x = 5 - m$, $y = 5 + m$, $m \\in \\{1,2,3,4\\}$ for positive integer parts. This is the Pell-type/discriminant-square condition Dan anticipated — no Pell equation proper, just a square-discriminant criterion. My recommendation: we adopt the reading that yields the quadratic, solve it cleanly, and footnote the literal cubic reading of $(y+x/y)\\cdot x = n$ as a degenerate variant. The structural point — that solvability is a statement about a discriminant lying in the image of the squaring map on $\\mathbb{Q}$ (resp. $\\mathbb{Z}$) — is invariant under either reading; only the discriminant polynomial changes.",
+      "created_at": "2026-06-23T01:41:42Z"
+    },
+    {
+      "id": "m77fc5899",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Gentlemen, let me push back on the rush to \"fix\" the problem. Lovász wants to declare the product structure spurious and retreat to Diophantus $xy = n$ — but that's throwing away the actual content. Let me just *take the problem literally* and compute, the way I always do: check the first few cases by hand.\n\nThe literal reading $(y + x/y)x = n$ with $y = 10-x$ gives Dan's cubic\n$$f(x) = x^3 - 19x^2 + (100+10n)x - 100n = 0.$$\nNow watch — there *is* clean structure, you just have to group correctly:\n$$x^3 - 19x^2 + 100x + 10n(x-10) = x(x^2 - 19x + 100) - 10n(10 - x).$$\nAnd $x^2 - 19x + 100$ doesn't factor over $\\mathbb{Q}$, fine, but here's the real point: write it in terms of $y = 10-x$. Then $x/y$ rational $\\iff x,y$ rational, and the equation is\n$$xy + \\frac{x^2}{y} = n, \\quad\\text{i.e.}\\quad \\frac{x(y^2 + x)}{y} = n.$$\n\nSo the genuine arithmetic question — the \"real theorem\" behind the technical one — is: **for which $n$ does the cubic have a root $x \\in (0,5)$, and when is that root rational?** This is *not* a discriminant-of-a-quadratic question; it's whether the cubic has a rational root, which by the rational root theorem means $x = p/q$ with the splitting field condition. The Galois group of the cubic over $\\mathbb{Q}(n)$ governs everything — that's the genuine content, and it's strictly richer than the Pell-type square criterion Lovász is offering.\n\nMy recommendation: do **not** sanitize. Solve the cubic honestly. As a function of $x \\in (0,5)$, the map $x \\mapsto n(x) = x(y^2+x)/y$ is what we should study — its monotonicity tells you exactly the range of $n$ for which a solution with $0 < x < y$ exists, and that's a one-line calculus fact giving the existence interval. Then rationality is: $n(x)$ takes a rational value at a rational $x$. Let me ask the provocative question: is there *any* $n$ for which the cubic is irreducible but still has the relevant real root be... no — a real cubic root is either rational or has degree 3 over $\\mathbb{Q}$. So integral/rational $n$ with rational $x$ is precisely the image of $\\mathbb{Q}\\cap(0,5)$ under $n(\\cdot)$. Clean, complete, and faithful to what was asked. Let's not footnote the real problem into oblivion.",
+      "created_at": "2026-06-23T01:42:27Z"
+    },
+    {
+      "id": "m4a6abbed",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Sarnak is right and I want to retract my hedging. Let me take the literal cubic seriously, because the parametrization he suggests is exactly the constructive object I'd want, and it settles everything.\n\nTake the literal reading and parametrize by $x$. With $y = 10 - x$,\n$$n(x) = \\frac{x(y^2 + x)}{y} = \\frac{x\\big((10-x)^2 + x\\big)}{10-x} = \\frac{x(x^2 - 19x + 100)}{10-x}.$$\nOn the domain $x \\in (0,5)$ (which is exactly $0 < x < y$), this is a smooth function and the existence question is just: **what is its range?** Let me compute the endpoints: $n(0^+) = 0$ and $n(5^-) = \\frac{5(25 - 95 + 100)}{5} = 30$. So at the symmetric point $x=y=5$ we get $n = 30$, not $25$ — that already shows Lovász's $xy=n$ reading gives the *wrong* boundary and confirms we should not sanitize.\n\nNow the real question, the one I always insist on: **is $n(x)$ monotone on $(0,5)$?** If it is, then for every $n \\in (0,30)$ there's a *unique* $x \\in (0,5)$, the decomposition exists and is unique, and the map $x \\mapsto n$ is a bijection $(0,5) \\to (0,30)$. That's a one-line calculus check on $n'(x)$ — someone should verify the derivative has no zero in $(0,5)$; I'd bet it's strictly increasing.\n\nFor the arithmetic, Sarnak's dichotomy is the clean statement: a real root of a rational cubic is either rational or of degree exactly $3$. So the set of $n$ admitting a *rational* decomposition is precisely the image\n$$\\{\\, n(x) : x \\in \\mathbb{Q} \\cap (0,5)\\,\\},$$\na countable dense subset of $(0,30)$ — there is **no** finite list and **no** clean discriminant criterion, unlike the quadratic reading. Integrality is then the further condition that $n(p/q) \\in \\mathbb{Z}$, which by clearing denominators is a divisibility constraint $(10-x) \\mid x(x^2-19x+100)$ at rational $x$. **Action items:** (1) confirm monotonicity of $n(x)$ to nail the existence interval $(0,30)$; (2) write $x,y$ explicitly via Cardano on the cubic $x^3 - 19x^2 + (100+10n)x - 100n = 0$ for the irrational case; (3) state the rational/integral characterization as the image of $\\mathbb{Q}\\cap(0,5)$, not a square-discriminant. That's faithful and constructive.",
+      "created_at": "2026-06-23T01:44:41Z"
+    },
+    {
+      "id": "m035d27b2",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "I concede the point — Sarnak and Dan have convinced me, and I want to retract my \"sanitization.\" Taking the literal cubic is not only faithful, it is the *correct* extremal-structure instinct: the boundary value $n(5^-)=30$ versus my erroneous $25$ is exactly the kind of diagnostic I always demand of an extremal example. The symmetric point $x=y=5$ is the natural extremal configuration here, and it lands at $30$, full stop. So my quadratic reading was the wrong model.\n\nLet me now contribute the one piece that is still unsettled — Dan's monotonicity conjecture, which I can resolve cleanly. With\n$$n(x) = \\frac{x(x^2 - 19x + 100)}{10 - x},$$\nwrite $g(x) = x(x^2-19x+100) = x^3 - 19x^2 + 100x$ and $h(x)=10-x$. Then\n$$n'(x) = \\frac{g'(x)h(x) + g(x)}{h(x)^2},$$\nsince $h'=-1$. The numerator is\n$$N(x) = (3x^2 - 38x + 100)(10 - x) + (x^3 - 19x^2 + 100x).$$\nExpanding: $(3x^2-38x+100)(10-x) = -3x^3 + 68x^2 - 480x + 1000$, and adding $g(x)$ gives\n$$N(x) = -2x^3 + 49x^2 - 380x + 1000.$$\nOn $(0,5)$ one checks $N(0)=1000>0$ and $N(5) = -250 + 1225 - 1900 + 1000 = 75 > 0$; and $N'(x) = -6x^2 + 98x - 380$ has roots near $x\\approx 5.6, 11.7$, so $N$ is increasing then decreasing but stays positive throughout $(0,5)$ (its minimum on the interval is at the endpoints). Hence $N(x)>0$ on $(0,5)$, so $n$ is **strictly increasing**, giving a bijection $(0,5)\\to(0,30)$. Dan's bet is confirmed.\n\nOn the arithmetic I fully endorse Sarnak's dichotomy: a real root of an irreducible rational cubic has degree exactly $3$, so the rational-$n$ set is the image $\\{n(x): x\\in\\mathbb{Q}\\cap(0,5)\\}$ — a dense countable set, *no* discriminant criterion. Two structural footnotes:\n1. For integrality, $x=p/q$ in lowest terms forces $q \\mid (10-x)$-clearing, and the cleanest characterization is: $n\\in\\mathbb{Z}$ iff $(10-x)\\mid x(x^2-19x+100)$ — but note $x(x^2-19x+100) = x\\cdot h(x)\\cdot(\\text{stuff}) + \\text{remainder}$; polynomial division of $g(x)$ by $(10-x)$ gives remainder $g(10)=1000-1900+1000=100$, so $n(x)= -(x^2-9x+10) + \\tfrac{100}{10-x}$. Thus $n\\in\\mathbb{Z}$ with $x$ rational requires $\\tfrac{100}{10-x}$ to combine with $-(x^2-9x+10)$ into an integer — a transparent divisibility lens.\n2. So the explicit answer: $n(x) = \\frac{100}{10-x} - x^2 + 9x - 10$. That reformulation is the genuinely useful closed form, and it makes the pole at $x=",
+      "created_at": "2026-06-23T01:45:26Z"
+    },
+    {
+      "id": "m986a9acd",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Excellent — Lovász's reformulation is the real gem here, and I want to seize on it because it reveals the genuine structure. Let me complete his cut-off identity. Polynomial division gives exactly\n$$n(x) = \\frac{100}{10-x} - x^2 + 9x - 10.$$\nNow substitute $u = 10 - x = y$, the *larger* part, where $u \\in (5,10)$. Then $x = 10-u$ and a clean computation gives\n$$n = \\frac{100}{u} - (10-u)^2 + 9(10-u) - 10 = \\frac{100}{u} + u^2 - 29u + 100.$$\nLet me sanity-check at the symmetric point $u = 5$: $20 + 25 - 145 + 100 = 0$? No — that gives $0$, but we want $30$. Let me recompute: $-(10-u)^2 = -(u^2 - 20u + 100) = -u^2 + 20u - 100$, and $9(10-u) = 90 - 9u$. So $n = 100/u - u^2 + 20u - 100 + 90 - 9u - 10 = 100/u - u^2 + 11u - 20$. At $u=5$: $20 - 25 + 55 - 20 = 30$. **Good**, that's the boundary. So the faithful closed form is\n$$n = \\frac{100}{u} - u^2 + 11u - 20, \\qquad u = y \\in (5,10).$$\n\nNow the arithmetic, and here is where I insist on precision. The integrality lens is exactly Lovász's: with $x = p/q$ in lowest terms, the term $100/(10-x) = 100q/(10q - p)$ controls everything. For $n \\in \\mathbb{Z}$ we need $(10q - p) \\mid 100q$, and since $\\gcd(10q-p, q) = \\gcd(p,q) = 1$, this collapses to $(10q - p) \\mid 100$. **That** is the clean Diophantine condition — not a Pell equation, not a discriminant, but a divisor condition on $100$. For *integral* $x$ (so $q=1$, $x \\in \\{1,2,3,4\\}$) we get the finite list immediately: $(10-x)\\mid 100$ holds for $x \\in \\{0,5,...\\}$ — wait, $10-x \\in \\{6,7,8,9\\}$, and only $x$ with $(10-x)\\mid 100$... none of $6,7,8,9$ divide $100$! So $n$ is *never* an integer for integral $x \\in \\{1,2,3,4\\}$ except where the remaining polynomial part conspires. Let me check $x=2$: $n = 100/8 - 4 + 18 - 10 = 12.5 + 4 = 16.5$. Not integer. $x=4$: $100/6 - 16 + 36 - 10 = 16.67 + 10 = 26.67$. Not integer.\n\nSo here is the provocative payoff: **there are no integer–integer solutions at all** in the literal reading — integral $(x,y)$ never yields integral $n$, because $\\{6,7,8,9\\}$ are coprime to the structure. The rational solutions form the dense countable image, governed by $(10q-p)\\mid 100$. This is the genuine theorem, and it is *strictly richer and more surprising* than the sanitized $25 - n = \\square$ story Lovász first offered. The cubic was telling the truth all along. I'm satisfied — let's record the closed form, the bijection $(0,30)$, and the divisor-of-$100$ rationality criterion as the final answer.",
+      "created_at": "2026-06-23T01:46:11Z"
+    },
+    {
+      "id": "m8876d76c",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T01:47:02Z"
+    },
+    {
+      "id": "m82ad4894",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nSolve the literal problem: decompose 10 = x + y with 0 < x < y and (y + x/y)x = n by reducing to the cubic x^3 - 19x^2 + (100+10n)x - 100n = 0, establishing the bijection n: (0,5) -> (0,30), and characterizing rational/integral solutions via the divisor-of-100 condition.",
+      "created_at": "2026-06-23T01:47:02Z"
+    }
+  ],
+  "plan": {
+    "summary": "Solve the literal problem: decompose 10 = x + y with 0 < x < y and (y + x/y)x = n by reducing to the cubic x^3 - 19x^2 + (100+10n)x - 100n = 0, establishing the bijection n: (0,5) -> (0,30), and characterizing rational/integral solutions via the divisor-of-100 condition.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the literal reading and derive the cubic",
+        "body": "Take the expression literally as (y + x/y)*x = n with y = 10 - x. Substitute and clear denominators to obtain x[(10-x)^2 + x] = n(10-x), i.e. x^3 - 19x^2 + (100+10n)x - 100n = 0. Confirm the equivalent parametrization n(x) = x(x^2 - 19x + 100)/(10 - x) and that 0 < x < y corresponds exactly to x in (0,5).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Compute endpoint values and the symmetric boundary",
+        "body": "Evaluate n(0+) = 0 and n(5-) = 30, confirming the symmetric configuration x = y = 5 yields n = 30 (not 25). This diagnostic rules out the sanitized xy = n quadratic reading. Record these as the candidate boundaries of the existence interval.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove strict monotonicity to establish the bijection",
+        "body": "Differentiate n(x) using g(x) = x^3 - 19x^2 + 100x and h(x) = 10 - x: numerator N(x) = -2x^3 + 49x^2 - 380x + 1000. Verify N(0) = 1000 > 0, N(5) = 75 > 0, and analyze N via N'(x) = -6x^2 + 98x - 380 (roots near 5.6 and 11.7) to show N(x) > 0 throughout (0,5). Conclude n is strictly increasing, giving a bijection (0,5) -> (0,30) and a unique decomposition for every n in (0,30).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Derive the polynomial-division closed form",
+        "body": "Perform polynomial division of g(x) by (10 - x); the remainder is g(10) = 100, yielding n(x) = 100/(10-x) - x^2 + 9x - 10. Substitute u = y = 10 - x in (5,10) to obtain n = 100/u - u^2 + 11u - 20, and sanity-check at u = 5 that n = 30. Record both closed forms as the principal results.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Establish the rationality / divisor criterion",
+        "body": "Using the closed form, write x = p/q in lowest terms so that 100/(10-x) = 100q/(10q - p). Since gcd(10q - p, q) = gcd(p, q) = 1, integrality of n collapses to (10q - p) | 100. Conclude the set of n admitting a rational decomposition is the dense countable image {n(x) : x in Q cap (0,5)} governed by this divisor-of-100 condition — not a discriminant or Pell criterion. Also invoke the cubic dichotomy: a real root of an irreducible rational cubic has degree exactly 3.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify the no-integer-integer-solution claim",
+        "body": "For integral x in {1,2,3,4}, the larger part 10 - x lies in {6,7,8,9}, none of which divide 100; explicitly check x = 2 gives n = 16.5 and x = 4 gives n = 26.67. Verify rigorously that no integral (x,y) yields integral n, contrasting with the would-be sanitized list m in {1,2,3,4}. Confirm the surprising conclusion that integer-integer solutions do not exist in the literal reading.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Cross-check all numerical and algebraic claims",
+        "body": "Independently re-derive the cubic, re-expand N(x), re-verify the polynomial-division remainder 100, re-check the u-substitution closed form at multiple points, and re-confirm the divisor condition (10q - p) | 100 with sample rational x. Flag any sign or arithmetic discrepancy (e.g. the intermediate miscomputations in the discussion) before finalizing.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          4,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble the final faithful write-up",
+        "body": "Compile the final answer: the literal cubic, the strictly increasing bijection n: (0,5) -> (0,30) with existence interval 0 < n < 30, the closed forms n(x) = 100/(10-x) - x^2 + 9x - 10 and n = 100/u - u^2 + 11u - 20, Cardano expressions for irrational roots, the divisor-of-100 rationality criterion, and the no-integer-integer-solution theorem. Footnote the sanitized quadratic reading as a rejected variant.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T01:47:02Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

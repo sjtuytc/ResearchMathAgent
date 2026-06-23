@@ -1,0 +1,162 @@
+{
+  "id": "rm-04345-meet-1",
+  "problem_id": "rm-04345",
+  "topic": "Init rm-04345 — proof review",
+  "goal": "Review the proof and issues for rm-04345; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T10:58:34Z",
+  "messages": [
+    {
+      "id": "m4005895b",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-04345 — proof review**",
+      "created_at": "2026-06-23T10:58:34Z"
+    },
+    {
+      "id": "m872b7b8b",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest up front: this problem is not in my wheelhouse of Laplacians and effective resistances — it's a point-process / Palm calculus question. But I think algorithmically and structurally, so let me try to find the *explicit transform* that makes both claims fall out, rather than just asserting them.\n\nHere's the structure I see. The key object is the conditional intensity $\\Lambda$. Let me set up the inversion (Palm) formula explicitly:\n\n1. **The CV² claim.** For an ordinary renewal/Poisson process $\\mathrm{CV}^2(T)=1$ exactly. The Cox process should *inflate* the variance because of the random intensity — the mixing over $\\Lambda$ adds dispersion. So I'd bet statement 1 is **true**, and the mechanism is a conditional-variance decomposition: condition on $\\Lambda$, where the inter-event time is locally exponential, then $\\mathrm{Var}(T) = \\mathbb{E}[\\mathrm{Var}(T\\mid\\Lambda)] + \\mathrm{Var}(\\mathbb{E}[T\\mid\\Lambda])$. The first term alone gives you the Poisson $\\mathrm{CV}^2=1$ baseline; the second is nonnegative. That's the spectral-gap-style \"extra term is a square\" argument I always look for.\n\n2. **The stochastic dominance claim.** This is the inspection paradox / length-biasing. Under the time-stationary (Palm-w.r.t.-Lebesgue) law, $T^\\ast$ is the *forward recurrence time* sampled at a deterministic origin, which length-biases toward longer intervals. The standard relation is\n$$\\mathbb{P}(T^\\ast > t) = \\lambda \\int_t^\\infty \\mathbb{P}(T > s)\\,ds = \\frac{\\mathbb{E}[(T-t)^+]}{\\mathbb{E}[T]}.$$\nThen $\\mathbb{P}(T^\\ast > t) \\geq \\mathbb{P}(T>t)$ reduces to checking $\\frac{1}{\\mathbb{E}[T]}\\int_t^\\infty \\mathbb{P}(T>s)\\,ds \\geq \\mathbb{P}(T>t)$, i.e. a *new-better-than-used-in-expectation* type inequality. **That is exactly equivalent to $\\mathrm{CV}^2(T)\\geq 1$ at $t=0$**, and more strongly to $T$ being \"NWUE.\" So the two statements are linked.\n\nSo here are my pointed questions for the room:\n- **Is $T^\\ast$ the forward recurrence time or the full inspected interval?** The dominance direction depends critically on this. The inversion formula above is for forward recurrence time.\n- **Does $\\mathrm{CV}^2(T)\\geq 1$ actually imply the full stochastic dominance for all $t$, or only the integrated/mean inequality?** I suspect statement 2 is *strictly stronger* and may require $T$ to be NWUE, which a general Cox process need not satisfy. Can someone produce a candidate counterexample with a heavily bursty intensity where $T$ has a bimodal law?\n- Is the regularity (mixing/ergodicity) doing real work here, or is it just to make the Palm laws well-defined?\n\nMy instinct: statement 1 is true and clean; statement 2 is the dangerous one. Let's stress-test it before we try to prove it.",
+      "created_at": "2026-06-23T10:58:51Z"
+    },
+    {
+      "id": "m0bfa6574",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has laid out the right skeleton, but let me sharpen the structure, because I think the situation is cleaner than the worry about statement 2 suggests — and it hinges on getting the Palm/inversion identities exactly right.\n\n**First, the relationship between the two laws.** Let me write the standard Palm inversion correctly. With $\\lambda = \\mathbb{E}[\\Lambda_0]$ and $\\mathbb{E}[T] = 1/\\lambda$, the time-stationary forward recurrence time satisfies\n$$\\mathbb{P}(T^\\ast > t) = \\lambda \\int_t^\\infty \\mathbb{P}(T > s)\\,ds.$$\nThis is exactly Dan's formula, and yes, here $T^\\ast$ is the forward recurrence time, not the inspected interval. So **statement 2 is not an independent fact** — it is equivalent to\n$$\\lambda \\int_t^\\infty \\mathbb{P}(T>s)\\,ds \\;\\geq\\; \\mathbb{P}(T>t)\\quad\\text{for all }t,$$\nwhich is precisely the **NWUE** (new-worse-than-used-in-expectation) property of $T$. Dan is right to flag this as the dangerous claim, but I believe it is in fact **true for Cox processes**, and the reason is structural, not coincidental.\n\n**The key structural fact — Cox inter-event times are DFR-like.** Condition on the intensity path $\\Lambda$. Given $\\Lambda$, the points form an inhomogeneous Poisson process. The Palm interval $T$ is then a *mixture* of \"locally exponential\" waiting times across the random environment, length-biased by the intensity at the event. The crucial point: **mixtures of exponentials are DFR (decreasing failure rate)**, and DFR $\\Rightarrow$ NWUE. This is the same phenomenon I keep returning to in the probabilistic method — the extra dispersion from mixing over $\\Lambda$ is *always a square*, never negative.\n\nLet me make this precise:\n1. **CV² claim.** Use the conditional-variance decomposition Dan proposed, but the cleaner statement is: $T$ is a mixture of exponential-type laws, hence DFR, hence $\\mathrm{CV}^2(T)\\geq 1$. The $\\mathrm{CV}^2=1$ is the Poisson fixed point (constant $\\Lambda$), and $\\mathrm{Var}(\\mathbb{E}[T\\mid\\Lambda])\\geq 0$ is the square that lifts you above $1$. **Statement 1 is true.**\n2. **Dominance claim.** DFR $\\Rightarrow$ NWUE is a standard reliability-theory implication, and NWUE is *exactly* the integrated inequality above. So **statement 2 is also true** — and Dan's fear of a bimodal counterexample is unfounded *provided* the mixing genuinely produces a DFR law, which the Cox structure guarantees.\n\n**One caveat I want to stress-test.** The DFR claim requires care because of the **length-biasing at a typical event**. The Palm law of $T$ samples intervals from the event's perspective, and we must verify that the event-stationary $T$ inherits the DFR property and is not distorted by the size-biasing in the *wrong* direction. This is the one genuine gap. In the language I prefer: we need the \"extremal structure\" to be the constant-intensity case $C_5$-analog, i.e., the Poisson process is the unique minimizer of $\\mathrm{CV}^2$, and every perturbation $\\Lambda \\neq \\math",
+      "created_at": "2026-06-23T10:59:38Z"
+    },
+    {
+      "id": "m0a9f7387",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have the skeleton right, but I want to compute the first case by hand, because I don't trust the DFR claim as stated. Let me push back hard.\n\n**The Palm interval $T$ is NOT simply a mixture of exponentials.** Here's the subtlety that the reliability-theory shorthand glosses over. Condition on the path $\\Lambda$. From the *event-stationary* (Palm) viewpoint, the typical event is itself size-biased: events land preferentially in high-intensity regions, and the interval $T$ to the *next* event has conditional law, given the post-event intensity path $\\Lambda_{\\cdot}$, of $\\mathbb{P}(T>t\\mid\\Lambda) = \\exp(-\\int_0^t \\Lambda_s\\,ds)$. So\n$$\n\\mathbb{P}(T>t) = \\frac{\\mathbb{E}\\big[\\Lambda_0\\, e^{-\\int_0^t \\Lambda_s ds}\\big]}{\\mathbb{E}[\\Lambda_0]},\n$$\nthe $\\Lambda_0$ in the numerator being the Palm size-biasing by intensity at the event. This is *not* a mixture of exponentials with a fixed rate — the rate $\\Lambda_s$ varies along the very interval you're measuring. László's \"mixtures of exponentials are DFR\" only applies cleanly when the rate is frozen, i.e. for a *static* random intensity. For a genuinely time-varying ergodic $\\Lambda$, the failure rate need not be monotone.\n\n**So let me test the extremal/frozen case first**, the way I always check $SL_2(\\mathbb{Z})$ before the general group. Take $\\Lambda$ constant in $t$ but random: $\\Lambda_s \\equiv R$, $R$ a positive random variable. Then $\\mathbb{P}(T>t) = \\mathbb{E}[R e^{-Rt}]/\\mathbb{E}[R]$ — a genuine exponential mixture, DFR, and you get **both** statements cleanly. Here CV$^2\\geq 1$ and NWUE hold by Jensen/correlation inequalities. Good, the static case confirms the optimistic picture.\n\n**But statement 1 I claim is true in full generality**, and the clean proof is not via DFR — it's the conditional-variance/correlation identity directly on the survival function, which doesn't need monotone hazard. That's robust.\n\n**Statement 2 is where I'd put my money on a counterexample.** Here is the real theorem behind the technical one: NWUE is a *global integrated* property, but stochastic dominance for all $t$ is pointwise. A bursty, rapidly-switching $\\Lambda$ (say a telegraph process alternating between rate $\\epsilon$ and rate $M$) produces a $T$ whose hazard rate can *increase* on intervals where you're likely sitting in a long quiet stretch that's about to switch on. That non-monotonicity can break DFR, and once DFR fails the implication chain László used collapses — NWUE need not survive, and even if it does, pointwise dominance is strictly stronger.\n\nSo my concrete action items:\n- **Prove statement 1 unconditionally** via the survival identity above plus a covariance inequality — no DFR needed. I'm confident this is true.\n- **For statement 2, build the telegraph/Markov-modulated counterexample explicitly.** Compute $\\mathbb{P}(T>t)$ and $\\mathbb{P}(T^\\ast>t)$ for a two-state $\\Lambda$ and look for a crossing. If the curves cross",
+      "created_at": "2026-06-23T11:00:28Z"
+    },
+    {
+      "id": "mbc8ce01c",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's correction is the important one, and it kills László's clean DFR story. Let me make sure we all see *why* the survival identity is the load-bearing object, and then I want to nail down statement 2 by computation, not faith.\n\nThe right formula — the one Peter wrote — is\n$$\\mathbb{P}(T>t) = \\frac{\\mathbb{E}\\big[\\Lambda_0\\, e^{-\\int_0^t \\Lambda_s\\,ds}\\big]}{\\mathbb{E}[\\Lambda_0]}.$$\nThis is exactly the kind of identity I trust because everything is a quadratic/covariance form in $\\Lambda$, just like $x^T L x$. Let me push on **statement 1** with that lens, since I claimed it's the clean one.\n\n**Statement 1, unconditionally.** Write $G(t)=\\mathbb{P}(T>t)$. Then $\\mathbb{E}[T]=\\int_0^\\infty G$, and integrating by parts $\\mathbb{E}[T^2]=2\\int_0^\\infty t\\,G(t)\\,dt$. The cleanest route: use the *forward recurrence / inversion* identity $\\mathbb{P}(T^\\ast>t)=\\lambda\\int_t^\\infty G(s)\\,ds$, which gives $\\mathbb{E}[T^\\ast]=\\tfrac{\\lambda}{2}\\mathbb{E}[T^2]=\\tfrac{\\mathbb{E}[T^2]}{2\\mathbb{E}[T]}$. So\n$$\\mathrm{CV}^2(T)\\ge 1 \\iff \\mathbb{E}[T^2]\\ge 2(\\mathbb{E}[T])^2 \\iff \\mathbb{E}[T^\\ast]\\ge \\mathbb{E}[T].$$\nAnd $\\mathbb{E}[T^\\ast]\\ge\\mathbb{E}[T]$ is just the mean inspection-paradox inequality — it follows directly from length-biasing, **no DFR needed**. Equivalently it's $\\mathrm{Cov}$-positivity: $T^\\ast$ is the length-biased-then-uniform version of $T$, and length-biasing never decreases the mean. So statement 1 is true in full generality, exactly as Peter and I both want, and it only needs the inversion formula plus $\\mathrm{Var}\\ge 0$.\n\n**Statement 2 is the dangerous one and I now think it's FALSE.** Here's the structural reason, in my language. Statement 1 is the *integrated* inequality at $t=0$; statement 2 demands it pointwise for every $t$, which as Peter says is NWUE — strictly stronger. The whole edifice rests on $T$ being DFR, and DFR is a *spectral monotonicity* property of the hazard rate that a time-varying $\\Lambda$ can violate. So let me commit to Peter's telegraph computation and make it explicit. Two-state Markov $\\Lambda\\in\\{a,b\\}$, $a$ small, $b$ large, switching rates $\\mu_{a\\to b},\\mu_{b\\to a}$. Everything is computable in closed form:\n- $G(t)=\\mathbb{P}(T>t)$ is a $2\\times 2$ matrix-exponential: $G(t)=\\frac{1}{\\lambda}\\,\\pi^{(b)} \\mathbf{1}^T \\exp\\big((Q-D)t\\big)\\mathbf{1}$ where $D=\\mathrm{diag}(a,b)$ is the killing (intensity) matrix, $Q$ the generator, and $\\p",
+      "created_at": "2026-06-23T11:02:44Z"
+    },
+    {
+      "id": "m8274882e",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Peter and Dan are right to puncture my DFR shortcut — I conceded too quickly that the event-stationary $T$ is a clean exponential mixture. The time-varying rate *along* the measured interval is exactly the obstruction, and I should have caught it: this is the analog of confusing a static blow-up with a genuinely evolving graphon. Let me make amends by extracting what survives and isolating precisely where statement 2 can break.\n\n**What is robust (statement 1).** Dan's reduction is the correct and complete argument:\n$$\\mathrm{CV}^2(T)\\ge 1 \\iff \\mathbb{E}[T^2]\\ge 2(\\mathbb{E}[T])^2 \\iff \\mathbb{E}[T^\\ast]\\ge\\mathbb{E}[T],$$\nand the last is pure length-biasing. Let me give the one-line covariance proof directly from Peter's survival identity, which I find more transparent. Write $L_t=\\int_0^t\\Lambda_s\\,ds$. Then\n$$\\lambda\\,\\mathbb{P}(T>t)=\\mathbb{E}[\\Lambda_0 e^{-L_t}],\\qquad \\lambda\\,\\mathbb{P}(T^\\ast>t)=\\mathbb{E}[e^{-L_t}]\\cdot\\frac{\\lambda}{\\lambda}=\\mathbb{E}[e^{-L_t}],$$\nthe second because the time-stationary forward recurrence law is the *un-size-biased* version. So\n$$\\lambda\\big(\\mathbb{P}(T^\\ast>t)-\\mathbb{P}(T>t)\\big)=\\mathbb{E}[e^{-L_t}]-\\frac{1}{\\lambda}\\mathbb{E}[\\Lambda_0 e^{-L_t}]=-\\frac{1}{\\lambda}\\,\\mathrm{Cov}\\big(\\Lambda_0,\\,e^{-L_t}\\big).$$\nIntegrating in $t$ recovers statement 1, and $\\mathrm{Var}\\ge 0$. **But look at what this identity actually says for statement 2!**\n\n**The decisive observation.** Statement 2, pointwise, is exactly\n$$\\mathrm{Cov}\\big(\\Lambda_0,\\,e^{-L_t}\\big)\\le 0\\qquad\\text{for all }t\\ge 0.$$\nAt $t=0$, $L_0=0$, the covariance is $0$ — boundary case, consistent. For *static* $\\Lambda_s\\equiv R$ we have $e^{-L_t}=e^{-Rt}$, decreasing in $R$, so $\\mathrm{Cov}(R,e^{-Rt})<0$ — statement 2 holds, confirming Peter's frozen case. But for a time-varying $\\Lambda$, $L_t=\\int_0^t\\Lambda_s\\,ds$ depends on the *path*, and the correlation between the initial intensity $\\Lambda_0$ and the integrated future $L_t$ is governed by the mixing/decorrelation of $\\Lambda$. In a rapidly-switching telegraph process, $\\Lambda_0$ large can *anti-predict* $L_t$ once you have switched states — and the sign of $\\mathrm{Cov}(\\Lambda_0,e^{-L_t})$ can flip.\n\nSo I now believe statement 2 is **false**, and the cleanest counterexample target is: make $\\Lambda_0$ and the future increment $L_t-\\,(\\text{small})$ negatively correlated over a window, so that $\\mathrm{",
+      "created_at": "2026-06-23T11:03:29Z"
+    },
+    {
+      "id": "md2d49435",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's covariance identity is the cleanest thing on the board, and it's exactly the load-bearing object — let me write the sign condition correctly because that's where the whole thing turns. We have\n$$\\lambda\\big(\\mathbb{P}(T^\\ast>t)-\\mathbb{P}(T>t)\\big) = -\\frac{1}{\\lambda}\\,\\mathrm{Cov}\\big(\\Lambda_0,\\,e^{-L_t}\\big),$$\nso statement 2 holds at $t$ iff $\\mathrm{Cov}(\\Lambda_0, e^{-L_t}) \\le 0$. Now here is the key point I want to stress, and it's the analog of asking whether a bound is \"really a Ramanujan phenomenon\": **is the sign of this covariance forced, or only forced after integration?**\n\nAfter integrating $\\int_0^\\infty$ you get $-\\mathrm{Cov}(\\Lambda_0, \\int_0^\\infty e^{-L_t}dt) \\le 0$, which is statement 1 and is *unconditionally true* because $\\int_0^\\infty e^{-L_t}dt$ is monotone decreasing in the whole intensity path — a clean correlation inequality. But the *pointwise* covariance $\\mathrm{Cov}(\\Lambda_0, e^{-L_t})$ involves only the increment $L_t = \\int_0^t \\Lambda_s ds$, and for small $t$, $L_t \\approx t\\Lambda_0$, so $\\mathrm{Cov}(\\Lambda_0, e^{-t\\Lambda_0}) \\le 0$ — fine near zero. The danger is at *intermediate* $t$ on the mixing timescale, where $\\Lambda_0$ decouples from $\\Lambda_s$.\n\nLet me give the explicit telegraph computation, since I promised it. Take $\\Lambda \\in \\{a,b\\}$ with generator switching rate $\\nu$ (symmetric for simplicity), $a$ small, $b$ large. Then with $\\mathbf{D}=\\mathrm{diag}(a,b)$ and $Q$ the generator,\n$$\\mathbb{E}[e^{-L_t}\\mid \\Lambda_0=i] = \\big(e^{(Q-\\mathbf{D})t}\\mathbf{1}\\big)_i.$$\nThe covariance is\n$$\\mathrm{Cov}(\\Lambda_0, e^{-L_t}) = \\sum_i \\pi_i \\Lambda_i \\big(e^{(Q-\\mathbf{D})t}\\mathbf{1}\\big)_i - \\lambda\\, \\pi^T e^{(Q-\\mathbf{D})t}\\mathbf{1}.$$\nNow run the limit I always run first — the *fast-switching* regime $\\nu \\to \\infty$. There $\\Lambda$ homogenizes: $L_t \\to \\lambda t$ deterministically, $e^{-L_t}$ becomes path-independent, so $\\mathrm{Cov}(\\Lambda_0, e^{-L_t}) \\to 0$ for all fixed $t$. So in fast switching, statement 2 holds with vanishing margin — *no crossing*. The opposite limit $\\nu \\to 0$ is László's frozen case — statement 2 holds strictly. **So both extremes are safe.** The counterexample, if it exists, lives at an *intermediate* switching rate where $\\Lambda_0$ is positively correlated with $L_t$ at short range but $e^{-L_t}$ is dominated by the long quiet $a$-stretches. My instinct now wavers:",
+      "created_at": "2026-06-23T11:04:14Z"
+    },
+    {
+      "id": "mbf560268",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T11:05:11Z"
+    },
+    {
+      "id": "m60061817",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nEstablish the Palm/inversion framework for Cox-process inter-event times, prove statement 1 (CV²≥1) unconditionally via the survival-function covariance identity, and resolve statement 2 (pointwise stochastic dominance) by analyzing the sign of Cov(Λ₀, e^{-L_t}) and constructing or ruling out a telegraph-process counterexample.",
+      "created_at": "2026-06-23T11:05:11Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish the Palm/inversion framework for Cox-process inter-event times, prove statement 1 (CV²≥1) unconditionally via the survival-function covariance identity, and resolve statement 2 (pointwise stochastic dominance) by analyzing the sign of Cov(Λ₀, e^{-L_t}) and constructing or ruling out a telegraph-process counterexample.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix Palm setup and survival identity",
+        "body": "Rigorously establish the foundational objects: the conditional intensity Λ, the event-stationary Palm law of T with survival function P(T>t) = E[Λ₀ e^{-L_t}]/E[Λ₀] where L_t = ∫₀ᵗ Λ_s ds, the time-stationary forward recurrence law P(T*>t) = E[e^{-L_t}]·(1/λ) wait—verify normalization, and the inversion formula P(T*>t) = λ∫_t^∞ P(T>s)ds. Confirm T* denotes the forward recurrence time (not the inspected interval) and state exactly what regularity (mixing/ergodicity) is needed for these laws to be well-defined.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove statement 1 (CV²≥1) unconditionally",
+        "body": "Using the survival identity, prove CV²(T) ≥ 1 in full generality without any DFR assumption. Establish the chain CV²(T)≥1 ⟺ E[T²]≥2(E[T])² ⟺ E[T*]≥E[T], and show the last inequality follows from length-biasing / Var≥0. Equivalently derive λ(P(T*>t)−P(T>t)) = −(1/λ)Cov(Λ₀, e^{-L_t}) and integrate over t∈[0,∞) to obtain −Cov(Λ₀, ∫₀^∞ e^{-L_t}dt) ≤ 0 via monotonicity of ∫₀^∞ e^{-L_t}dt in the intensity path.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Reduce statement 2 to a pointwise covariance sign condition",
+        "body": "Formalize that statement 2 (P(T*>t) ≥ P(T>t) for all t) is equivalent to Cov(Λ₀, e^{-L_t}) ≤ 0 for all t ≥ 0. Analyze boundary and limiting behavior: t=0 gives covariance 0; small t gives L_t ≈ tΛ₀ so Cov(Λ₀, e^{-tΛ₀}) ≤ 0; the static case Λ_s≡R gives Cov(R, e^{-Rt})<0. Identify the danger zone as intermediate t on the mixing timescale where Λ₀ decorrelates from the future integrated intensity L_t.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Compute the telegraph (Markov-modulated) test case",
+        "body": "Set up the two-state Markov intensity Λ∈{a,b}, a small, b large, with switching generator Q (symmetric rate ν), and killing matrix D=diag(a,b). Compute E[e^{-L_t}|Λ₀=i] = (e^{(Q−D)t}1)_i in closed form and the covariance Cov(Λ₀, e^{-L_t}) = Σ_i π_i Λ_i (e^{(Q−D)t}1)_i − λ π^T e^{(Q−D)t}1. Evaluate the two limits: ν→∞ (homogenization, L_t→λt, covariance→0, no crossing) and ν→0 (frozen, statement 2 holds strictly).",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Search for a counterexample at intermediate switching",
+        "body": "Scan the telegraph parameter space (a, b, ν) at intermediate switching rates to test whether Cov(Λ₀, e^{-L_t}) becomes strictly positive for some t, producing a crossing P(T*>t) < P(T>t). Focus on regimes where Λ₀=b is positively correlated with L_t at short range but e^{-L_t} is dominated by long quiet a-stretches. Numerically and then symbolically locate any sign flip; if found, verify it yields a valid Cox-process counterexample to statement 2.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Resolve statement 2: counterexample or general proof",
+        "body": "Based on step 4: if a crossing is found, finalize the explicit counterexample disproving statement 2 and document the parameter values, intensity path law, and the computed survival curves. If no crossing arises across the parameter scan, attempt a general proof that Cov(Λ₀, e^{-L_t}) ≤ 0 for all t under the stated mixing/ergodicity assumptions, identifying the precise structural property of Λ (e.g. a positive-association/FKG-type condition) that forces the sign.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify identities and limiting computations",
+        "body": "Independently verify the Palm inversion formula, the survival identity P(T>t)=E[Λ₀e^{-L_t}]/E[Λ₀], the covariance reduction λ(P(T*>t)−P(T>t)) = −(1/λ)Cov(Λ₀,e^{-L_t}), and the matrix-exponential telegraph computations. Re-derive the ν→∞ and ν→0 limits independently and check the step-1 CV² proof for hidden DFR or monotone-hazard assumptions that were explicitly rejected in discussion.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Stress-test the final claims and edge cases",
+        "body": "Critically examine whether the resolution of statement 2 is robust: check the normalization of the time-stationary forward recurrence law (the discussion contained an inconsistency in the E[e^{-L_t}] factor), confirm that size-biasing direction in the Palm law is correct, and probe non-Markov, heavy-tailed, or non-ergodic intensity paths to ensure the conclusion is not an artifact of the telegraph model. Confirm the regularity assumptions are genuinely necessary versus merely sufficient.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T11:05:11Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

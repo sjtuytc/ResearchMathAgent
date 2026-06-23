@@ -1,0 +1,411 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\Chat}{\widehat{C}}
+\newcommand{\Lhat}{\widehat{L}}
+\newcommand{\Nhat}{\widehat{N}}
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\Pr}{\mathbb{P}}
+
+\begin{document}
+
+\title{Measurement, estimation, and provable mapping quality in heterogeneous computing}
+\maketitle
+
+\section{Overview and reduction to a clean mathematical core}
+
+The problem asks us to (a) define computable runtime descriptors $L_i(\tau)$ and
+$N_{ij}(\tau)$, (b) produce completion-time estimators $\Chat$ with controlled
+accuracy, and (c) prove that minimizing the \emph{estimated} objective yields a
+mapping provably close to the optimum of the \emph{exact} objective.
+
+The engineering content of (a) and (b) (which descriptors to read, how to fit a
+predictor) is real but is not where the mathematical difficulty lies. The
+rigorous, problem-defining content is the following implication, which we isolate
+and prove in full generality:
+
+\begin{quote}
+\emph{If the estimator is accurate in a multiplicative (relative-error) sense
+uniformly over all task/subtask--machine pairs, then any mapping that exactly
+minimizes the estimated objective is, under the exact objective, within a factor
+$\frac{1+\varepsilon}{1-\varepsilon}$ of optimal, for a broad and explicitly
+characterized class of objectives (makespan and weighted average completion time
+among them).}
+\end{quote}
+
+We then close the loop by exhibiting concrete measurement and estimation
+procedures (averaging of runtime samples) for which the required multiplicative
+accuracy holds with high probability, with an explicit sample-complexity bound.
+Sections~\ref{sec:model}--\ref{sec:transfer} give the mathematics; the
+construction is stated explicitly in Algorithms~\ref{alg:descr} and
+\ref{alg:map}, with proofs of correctness, accuracy, and complexity.
+
+Throughout, ``mapping'' means a function assigning each schedulable unit (task or
+subtask) to a machine; the completion-time function already incorporates load,
+communication, and precedence through its dependence on $(L,N)$, so we treat it
+as a primitive once $(L,N)$ is fixed, exactly as in the problem statement.
+
+\section{Model and definitions}\label{sec:model}
+
+\begin{definition}[Schedulable units and mappings]\label{def:units}
+Let $U$ be the finite set of \emph{schedulable units}: $U = T \cup S$, where
+$T=\{t_1,\dots,t_k\}$ are tasks and $S$ is the (finite) set of all subtasks
+obtained by decomposing tasks. Let $M=\{m_1,\dots,m_n\}$ be the machines. A
+\emph{mapping} is a function $x\colon U \to M$. We write $x_u=i$ if unit $u$ is
+assigned to machine $m_i$, and we write $\mathcal{X}$ for the (finite) set of all
+mappings consistent with the problem's hard constraints (e.g.\ co-location or
+exclusivity constraints); $\mathcal X$ is required only to be nonempty.
+\end{definition}
+
+\begin{definition}[Completion-time matrix]\label{def:cmatrix}
+Fix a load/status profile $(L,N)$, where $L=(L_1,\dots,L_n)$ collects the machine
+descriptors and $N=(N_{ij})$ the link descriptors. The exact completion-time
+function $C(\cdot,\cdot;L,N)$ from the problem induces a matrix
+$C \in \mathbb{R}_{>0}^{U\times M}$ with entries $C_{ui} := C(u,m_i;L,N)$,
+the predicted completion time of unit $u$ on machine $m_i$ under profile $(L,N)$.
+We assume $C_{ui}>0$ for all admissible $(u,i)$, which holds because any
+nonempty unit takes strictly positive time. An \emph{estimator} is a matrix
+$\Chat\in\mathbb{R}_{>0}^{U\times M}$ with entries
+$\Chat_{ui}=\Chat(u,m_i;L,N)$.
+\end{definition}
+
+\begin{definition}[Objective]\label{def:obj}
+An \emph{objective} is a function
+$F\colon \mathbb{R}_{>0}^{U\times M}\times\mathcal{X}\to\mathbb{R}_{\ge 0}$,
+written $F(D,x)$, that maps a completion-time matrix $D$ and a mapping $x$ to a
+cost. The two canonical objectives are:
+\begin{align}
+\text{(makespan)}\quad
+F_{\max}(D,x) &:= \max_{i\in[n]} \sum_{u:\,x_u=i} D_{ui}, \label{eq:makespan}\\
+\text{(weighted avg.\ completion)}\quad
+F_{w}(D,x) &:= \sum_{u\in U} w_u\, D_{u,x_u}, \label{eq:wsum}
+\end{align}
+where $w_u\ge 0$ are fixed weights.
+\end{definition}
+
+We now extract the exact structural property of $F$ that makes the transfer
+theorem work.
+
+\begin{definition}[Scale-coherence]\label{def:coherent}
+An objective $F$ is \emph{scale-coherent} if for every constant $c>0$, every
+matrix $D\in\mathbb{R}_{>0}^{U\times M}$, and every mapping $x\in\mathcal{X}$,
+\begin{equation}\label{eq:scale}
+F(cD, x) = c\, F(D,x),
+\end{equation}
+and if $F$ is \emph{monotone}, i.e.\ $D\le D'$ entrywise implies
+$F(D,x)\le F(D',x)$ for every $x$.
+\end{definition}
+
+\begin{lemma}[The canonical objectives are scale-coherent]\label{lem:canonical}
+Both $F_{\max}$ in \eqref{eq:makespan} and $F_w$ in \eqref{eq:wsum} are
+scale-coherent.
+\end{lemma}
+
+\begin{proof}
+\emph{Homogeneity \eqref{eq:scale}.} For $F_{\max}$ and any $c>0$,
+\[
+F_{\max}(cD,x)=\max_{i}\sum_{u:x_u=i} c\,D_{ui}
+=c\max_{i}\sum_{u:x_u=i} D_{ui}=c\,F_{\max}(D,x),
+\]
+using that $c>0$ may be pulled out of a finite sum and out of a maximum of
+nonnegative numbers. For $F_w$,
+$F_w(cD,x)=\sum_u w_u\, c D_{u,x_u}=c\sum_u w_u D_{u,x_u}=c\,F_w(D,x)$.
+
+\emph{Monotonicity.} If $D\le D'$ entrywise then for fixed $x$ and each $i$,
+$\sum_{u:x_u=i}D_{ui}\le\sum_{u:x_u=i}D'_{ui}$ (sum of termwise inequalities of
+nonnegative numbers), and the maximum over $i$ of larger quantities is larger, so
+$F_{\max}(D,x)\le F_{\max}(D',x)$. For $F_w$, since $w_u\ge0$,
+$w_u D_{u,x_u}\le w_u D'_{u,x_u}$ termwise, hence $F_w(D,x)\le F_w(D',x)$.
+\end{proof}
+
+\begin{remark}
+Scale-coherence is a genuinely mild condition: it holds for any objective that is
+a monotone, positively homogeneous-of-degree-one aggregate of the per-unit
+completion times. This includes $\ell_p$ load norms
+$\big(\sum_i (\sum_{u:x_u=i} D_{ui})^p\big)^{1/p}$ ($p\ge1$), maximum weighted
+completion time $\max_u w_u D_{u,x_u}$, and convex combinations of
+scale-coherent objectives. The proof below uses \emph{only}
+Definition~\ref{def:coherent}, so it applies verbatim to all of these.
+\end{remark}
+
+\section{Measurement: computing the descriptors (part (a))}\label{sec:measure}
+
+We make the descriptors concrete and computable from runtime samples.
+
+\begin{definition}[Descriptors]\label{def:descriptors}
+At sampling instant $\tau$ each machine $m_i$ exports a fixed-dimensional vector
+\[
+L_i(\tau)=\big(q_i(\tau),\, \rho^{\mathrm{cpu}}_i(\tau),\, \rho^{\mathrm{mem}}_i(\tau),\,
+a_i(\tau),\, \theta_i\big)\in\mathbb{R}^{5},
+\]
+where $q_i$ is queue length (number of enqueued units), $\rho^{\mathrm{cpu}}_i,
+\rho^{\mathrm{mem}}_i\in[0,1]$ are utilizations, $a_i\in\{0,1\}$ is availability,
+and $\theta_i>0$ is the (static) nominal throughput of $m_i$. Each link exports
+\[
+N_{ij}(\tau)=\big(\beta_{ij}(\tau),\,\lambda_{ij}(\tau)\big)\in\mathbb{R}^2_{\ge0},
+\]
+effective bandwidth and latency.
+\end{definition}
+
+These raw readings are noisy. We define the \emph{computed} descriptor as the
+empirical mean over a measurement window, which is what Algorithm~\ref{alg:descr}
+returns and what the estimators consume.
+
+\begin{algorithm}[h]
+\caption{ComputeDescriptors}\label{alg:descr}
+\begin{algorithmic}[1]
+\Require window length $r\in\mathbb{N}$; raw sample streams $L_i(\tau_1),\dots,L_i(\tau_r)$ and $N_{ij}(\tau_1),\dots,N_{ij}(\tau_r)$ for all $i,j$.
+\Ensure averaged descriptors $\bar L_i,\ \bar N_{ij}$.
+\For{$i=1$ \textbf{to} $n$}
+  \State $\bar L_i \gets \frac{1}{r}\sum_{p=1}^{r} L_i(\tau_p)$
+  \For{$j=1$ \textbf{to} $n$, $j\ne i$}
+     \State $\bar N_{ij} \gets \frac{1}{r}\sum_{p=1}^{r} N_{ij}(\tau_p)$
+  \EndFor
+\EndFor
+\State \Return $(\bar L_i)_i,\ (\bar N_{ij})_{ij}$
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textbf{Correctness, termination, complexity.} The algorithm performs a
+fixed number of additions and divisions: termination is immediate. It computes
+exactly the empirical means, so it is correct by definition. It runs in
+$O(r\,n^2)$ arithmetic operations and $O(n^2)$ space (storing the running sums).
+
+\section{Estimation accuracy from measurement (part (b))}\label{sec:estimate}
+
+We now give a procedure whose output $\Chat$ satisfies the multiplicative
+accuracy that Section~\ref{sec:transfer} requires, and we bound its sample
+complexity. The estimator is the standard ``measure repeatedly and average''
+predictor, instantiated per (unit, machine) pair.
+
+\begin{definition}[Sampled completion times]\label{def:samples}
+Fix a unit $u$ and machine $m_i$ under a stationary profile $(L,N)$. Let
+$Y^{(1)}_{ui},\dots,Y^{(r)}_{ui}$ be $r$ independent measured completion times of
+$u$ on $m_i$ obtained from runtime probes or a calibrated performance model fed
+with the descriptors of Section~\ref{sec:measure}. Assume:
+\begin{enumerate}
+\item[(M1)] (Unbiasedness) $\E[Y^{(p)}_{ui}]=C_{ui}$ for all $p$;
+\item[(M2)] (Boundedness) $0\le Y^{(p)}_{ui}\le b_{ui}$ almost surely, for a known
+$b_{ui}>0$;
+\item[(M3)] (Positivity) $C_{ui}\ge a_{ui}>0$ for a known lower bound $a_{ui}$.
+\end{enumerate}
+Define the estimator $\Chat_{ui} := \frac1r\sum_{p=1}^{r} Y^{(p)}_{ui}$.
+\end{definition}
+
+Assumptions (M1)--(M3) are the precise, checkable hypotheses under which a
+relative-error guarantee is attainable: (M1) says probing is calibrated, (M2)
+says completion times are bounded (true on real hardware: a unit cannot exceed a
+timeout $b_{ui}$), and (M3) says nonempty units take bounded-away-from-zero time.
+
+\begin{proposition}[Sample complexity for multiplicative accuracy]\label{prop:samples}
+Fix $\varepsilon\in(0,1)$ and $\delta\in(0,1)$. Under (M1)--(M3), if the number of
+samples satisfies
+\begin{equation}\label{eq:rbound}
+r \ \ge\ \frac{b_{ui}^2}{2\,a_{ui}^2\,\varepsilon^2}\,\ln\!\frac{2}{\delta},
+\end{equation}
+then $\Pr\!\big[\,(1-\varepsilon)\,C_{ui}\le \Chat_{ui}\le (1+\varepsilon)\,C_{ui}\,\big]\ge 1-\delta.$
+\end{proposition}
+
+\begin{proof}
+By (M1), $\E[\Chat_{ui}]=\frac1r\sum_p \E[Y^{(p)}_{ui}]=C_{ui}$. The summands are
+independent and, by (M2), lie in $[0,b_{ui}]$. Hoeffding's inequality
+(for independent $X_p\in[0,b]$, $\Pr[|\frac1r\sum X_p-\mu|\ge s]\le
+2\exp(-2rs^2/b^2)$) with $s=\varepsilon a_{ui}$ gives
+\[
+\Pr\!\big[\,|\Chat_{ui}-C_{ui}|\ge \varepsilon a_{ui}\,\big]
+\ \le\ 2\exp\!\Big(-\frac{2 r \varepsilon^2 a_{ui}^2}{b_{ui}^2}\Big).
+\]
+The right side is $\le \delta$ exactly when $r\ge \frac{b_{ui}^2}{2a_{ui}^2\varepsilon^2}\ln\frac2\delta$,
+which is \eqref{eq:rbound}. On the complementary event,
+$|\Chat_{ui}-C_{ui}|<\varepsilon a_{ui}\le \varepsilon C_{ui}$ by (M3), i.e.\
+$(1-\varepsilon)C_{ui}<\Chat_{ui}<(1+\varepsilon)C_{ui}$.
+\end{proof}
+
+\begin{corollary}[Uniform multiplicative accuracy]\label{cor:uniform}
+Let $P$ be the number of admissible $(u,i)$ pairs. If for each pair the estimator
+uses $r_{ui}\ge \frac{b_{ui}^2}{2a_{ui}^2\varepsilon^2}\ln\frac{2P}{\delta}$
+independent samples, then with probability at least $1-\delta$,
+\begin{equation}\label{eq:Eeps}
+(1-\varepsilon)\,C_{ui}\ \le\ \Chat_{ui}\ \le\ (1+\varepsilon)\,C_{ui}
+\qquad\text{for all admissible }(u,i).
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+Apply Proposition~\ref{prop:samples} with $\delta$ replaced by $\delta/P$ to each
+of the $P$ pairs; each fails with probability at most $\delta/P$. By the union
+bound the probability that any pair fails is at most $P\cdot(\delta/P)=\delta$, so
+\eqref{eq:Eeps} holds for all pairs simultaneously with probability $\ge1-\delta$.
+\end{proof}
+
+We call event \eqref{eq:Eeps} the \emph{$\varepsilon$-accuracy event}
+$E_\varepsilon$. Corollary~\ref{cor:uniform} shows $E_\varepsilon$ is attainable
+with explicitly bounded measurement effort. The expected relative error of each
+entry is also controlled: $\E\big[|\Chat_{ui}-C_{ui}|\big]/C_{ui}
+\le \sqrt{\operatorname{Var}(\Chat_{ui})}/C_{ui}
+\le b_{ui}/(2 a_{ui}\sqrt{r_{ui}})$ by (M2)--(M3) and the variance bound for
+bounded variables, so it is $O(1/\sqrt{r})$.
+
+\section{Transfer theorem: accuracy $\Rightarrow$ mapping quality (part (c))}\label{sec:transfer}
+
+This is the core result. We work \emph{deterministically} on the event
+$E_\varepsilon$ of \eqref{eq:Eeps}; combining with Corollary~\ref{cor:uniform}
+then yields a high-probability statement.
+
+\begin{lemma}[Pointwise objective sandwich]\label{lem:sandwich}
+Let $F$ be scale-coherent (Definition~\ref{def:coherent}). Suppose $\Chat$ and
+$C$ satisfy \eqref{eq:Eeps} with $\varepsilon\in(0,1)$. Then for every mapping
+$x\in\mathcal{X}$,
+\begin{equation}\label{eq:sandwich}
+(1-\varepsilon)\,F(C,x)\ \le\ F(\Chat,x)\ \le\ (1+\varepsilon)\,F(C,x).
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:Eeps}, $\Chat \le (1+\varepsilon)C$ entrywise. By monotonicity and
+then homogeneity \eqref{eq:scale} of $F$,
+\[
+F(\Chat,x)\ \le\ F\big((1+\varepsilon)C,\,x\big)\ =\ (1+\varepsilon)\,F(C,x),
+\]
+which is the right inequality. Likewise $\Chat\ge(1-\varepsilon)C$ entrywise, and
+since $1-\varepsilon>0$ the matrix $(1-\varepsilon)C$ is admissible
+(positive entries), so monotonicity and homogeneity give
+\[
+F(\Chat,x)\ \ge\ F\big((1-\varepsilon)C,\,x\big)\ =\ (1-\varepsilon)\,F(C,x),
+\]
+the left inequality.
+\end{proof}
+
+\begin{theorem}[Approximation guarantee under estimated optimization]\label{thm:main}
+Let $F$ be scale-coherent. Suppose the $\varepsilon$-accuracy event
+$E_\varepsilon$ of \eqref{eq:Eeps} holds with $\varepsilon\in(0,1)$. Let
+\[
+\hat{x}\ \in\ \arg\min_{x\in\mathcal{X}} F(\Chat,x)
+\qquad\text{and}\qquad
+x^\star\ \in\ \arg\min_{x\in\mathcal{X}} F(C,x).
+\]
+Then $\hat{x}$ is a near-optimal mapping for the \emph{exact} objective:
+\begin{equation}\label{eq:approx}
+F(C,\hat{x})\ \le\ \frac{1+\varepsilon}{1-\varepsilon}\;F(C,x^\star).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Both $\arg\min$ sets are nonempty because $\mathcal X$ is finite and nonempty.
+Apply the left inequality of \eqref{eq:sandwich} to $\hat x$ and the right
+inequality to $x^\star$:
+\[
+(1-\varepsilon)\,F(C,\hat x)\ \le\ F(\Chat,\hat x),
+\qquad
+F(\Chat,x^\star)\ \le\ (1+\varepsilon)\,F(C,x^\star).
+\]
+By optimality of $\hat x$ for $F(\Chat,\cdot)$, and since $x^\star\in\mathcal X$,
+\[
+F(\Chat,\hat x)\ \le\ F(\Chat,x^\star).
+\]
+Chaining the three displays,
+\[
+(1-\varepsilon)\,F(C,\hat x)\ \le\ F(\Chat,\hat x)\ \le\ F(\Chat,x^\star)
+\ \le\ (1+\varepsilon)\,F(C,x^\star).
+\]
+Dividing by $1-\varepsilon>0$ gives \eqref{eq:approx}.
+\end{proof}
+
+\begin{corollary}[End-to-end high-probability guarantee]\label{cor:e2e}
+Fix $\varepsilon\in(0,1)$, $\delta\in(0,1)$, and a scale-coherent objective $F$.
+Run \textsc{ComputeDescriptors} (Algorithm~\ref{alg:descr}), build the estimator
+$\Chat$ as in Definition~\ref{def:samples} with
+$r_{ui}\ge \frac{b_{ui}^2}{2a_{ui}^2\varepsilon^2}\ln\frac{2P}{\delta}$ samples per
+pair, and output any
+$\hat x\in\arg\min_{x\in\mathcal X}F(\Chat,x)$ (Algorithm~\ref{alg:map}). Then,
+with probability at least $1-\delta$,
+\[
+F(C,\hat x)\ \le\ \frac{1+\varepsilon}{1-\varepsilon}\,\min_{x\in\mathcal X}F(C,x).
+\]
+\end{corollary}
+
+\begin{proof}
+By Corollary~\ref{cor:uniform}, $E_\varepsilon$ holds with probability
+$\ge1-\delta$. On $E_\varepsilon$, Theorem~\ref{thm:main} gives the stated bound.
+\end{proof}
+
+\begin{theorem}[Robustness to approximate optimization]\label{thm:approxalg}
+Let $F$ be scale-coherent and suppose $E_\varepsilon$ holds with
+$\varepsilon\in(0,1)$. Let $\gamma\ge 1$ and let $\tilde x\in\mathcal X$ be any
+$\gamma$-approximate minimizer of the estimated objective, i.e.
+\[
+F(\Chat,\tilde x)\ \le\ \gamma\,\min_{x\in\mathcal X} F(\Chat,x).
+\]
+Then $\tilde x$ satisfies, under the exact objective,
+\begin{equation}\label{eq:approxalg}
+F(C,\tilde x)\ \le\ \gamma\,\frac{1+\varepsilon}{1-\varepsilon}\;\min_{x\in\mathcal X}F(C,x).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Let $x^\star\in\arg\min_x F(C,x)$ (nonempty since $\mathcal X$ is finite,
+nonempty). By the left inequality of \eqref{eq:sandwich} applied to $\tilde x$,
+the $\gamma$-approximation hypothesis, the trivial bound
+$\min_x F(\Chat,x)\le F(\Chat,x^\star)$, and the right inequality of
+\eqref{eq:sandwich} applied to $x^\star$,
+\[
+(1-\varepsilon)F(C,\tilde x)\le F(\Chat,\tilde x)
+\le \gamma\min_x F(\Chat,x)
+\le \gamma F(\Chat,x^\star)
+\le \gamma(1+\varepsilon)F(C,x^\star).
+\]
+Dividing by $1-\varepsilon>0$ yields \eqref{eq:approxalg}. Taking $\gamma=1$
+recovers Theorem~\ref{thm:main}.
+\end{proof}
+
+\begin{remark}[Tightness of the factor $\tfrac{1+\varepsilon}{1-\varepsilon}$]\label{rem:tight}
+The bound in Theorem~\ref{thm:main} cannot be improved for the class of
+scale-coherent objectives. Take $U=\{u\}$, $M=\{m_1,m_2\}$, $F=F_{\max}$, exact
+times $C_{u1}=1-\varepsilon$, $C_{u2}=1+\varepsilon$, and estimates
+$\Chat_{u1}=(1+\varepsilon)C_{u1}=(1+\varepsilon)(1-\varepsilon)=\Chat_{u2}
+=(1-\varepsilon)C_{u2}$. Both estimates are equal, so $\hat x$ may assign $u$ to
+$m_1$, giving $F(C,\hat x)=1+\varepsilon$, whereas the true optimum is
+$F(C,x^\star)=1-\varepsilon$; the ratio is exactly
+$\frac{1+\varepsilon}{1-\varepsilon}$. Both estimates obey \eqref{eq:Eeps}, so the
+constant is attained.
+\end{remark}
+
+\begin{algorithm}[h]
+\caption{EstimatedOptimalMapping}\label{alg:map}
+\begin{algorithmic}[1]
+\Require accuracy $\varepsilon\in(0,1)$, confidence $\delta\in(0,1)$, scale-coherent objective $F$, sample bounds $a_{ui},b_{ui}$, mapping family $\mathcal X$.
+\Ensure mapping $\hat x$ with $F(C,\hat x)\le \frac{1+\varepsilon}{1-\varepsilon}\min_{x}F(C,x)$ w.p.\ $\ge 1-\delta$.
+\State $P\gets$ number of admissible $(u,i)$ pairs
+\For{each admissible pair $(u,i)$}
+  \State $r_{ui}\gets \big\lceil \frac{b_{ui}^2}{2a_{ui}^2\varepsilon^2}\ln\frac{2P}{\delta}\big\rceil$
+  \State draw samples $Y^{(1)}_{ui},\dots,Y^{(r_{ui})}_{ui}$ satisfying (M1)--(M3)
+  \State $\Chat_{ui}\gets \frac{1}{r_{ui}}\sum_{p=1}^{r_{ui}} Y^{(p)}_{ui}$
+\EndFor
+\State $\hat x \gets \arg\min_{x\in\mathcal X} F(\Chat,x)$
+\State \Return $\hat x$
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textbf{Correctness.} Lines 2--6 realize the estimator of
+Definition~\ref{def:samples} at the sample size of
+Corollary~\ref{cor:uniform}, so $E_\varepsilon$ holds w.p.\ $\ge1-\delta$; line~7
+returns an exact minimizer of $F(\Chat,\cdot)$. Corollary~\ref{cor:e2e} then
+certifies the output guarantee. \textbf{Termination:} all loops are finite and
+$\mathcal X$ is finite. \textbf{Complexity:} sampling costs
+$\sum_{u,i} r_{ui} = O\!\big(P\,\frac{b_{\max}^2}{a_{\min}^2\varepsilon^2}\ln\frac{P}{\delta}\big)$
+probes (here $b_{\max}=\max b_{ui}$, $a_{\min}=\min a_{ui}$); the final
+optimization in line~7 costs the time to minimize $F$ over $\mathcal X$, which is
+problem-specific. Note the reduction is \emph{black-box}: line~7 may be replaced
+by any $\gamma$-approximate minimizer of $F(\Chat,\cdot)$, yielding overall ratio
+$\gamma\cdot\frac{1+\varepsilon}{1-\varepsilon}$ (Theorem~\ref{thm:approxalg}).
+\end{document}

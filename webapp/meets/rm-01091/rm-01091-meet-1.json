@@ -1,0 +1,164 @@
+{
+  "id": "rm-01091-meet-1",
+  "problem_id": "rm-01091",
+  "topic": "Init rm-01091 — proof review",
+  "goal": "Review the proof and issues for rm-01091; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T00:14:25Z",
+  "messages": [
+    {
+      "id": "m654f5de9",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-01091 — proof review**",
+      "created_at": "2026-06-23T00:14:25Z"
+    },
+    {
+      "id": "mdebb615a",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be direct: this problem is far from my home turf — there's no graph Laplacian, no spectral gap to ask about — but I think the right instinct still transfers. The core technical hurdle in (b) and (c) is the noncommutativity of $\\mathbb{H}$, and that's fundamentally a *linear algebra* problem before it's an optimization problem. Here's how I'd anchor it.\n\n1. **Don't fight noncommutativity — represent it.** Every quaternion $q = q_0 + q_1 i + q_2 j + q_3 k$ has a faithful representation as a real $4\\times 4$ matrix (or complex $2\\times 2$). So $\\mathbb{H}^n$ embeds in $\\mathbb{R}^{4n}$, and $A(t) \\in \\mathbb{H}^{n\\times n}$ becomes a real $4n \\times 4n$ matrix $\\widehat{A}(t)$. The QDE $\\dot x = A(t)x + f$ becomes an honest real linear system $\\dot{\\widehat x} = \\widehat A(t)\\widehat x + \\widehat f$. **This is the analogue of \"the graph is its Laplacian\"** — the quaternion structure is just a real matrix with a special $4\\times4$ block-symmetry.\n\n2. **This immediately resolves the false premise in (a).** The claim that a quaternion model \"captures structure a real model of the *same dimension* cannot\" is only meaningful if you fix what symmetry you demand. The honest statement is: a $\\mathbb{H}^n$ model is precisely a real $4n$-dimensional model *constrained* to commute with the right-multiplication action of $\\mathbb{H}$ — i.e., equivariant under the $\\mathrm{Sp}(1)$ rotation group. The \"structural information\" is the equivariance, not extra degrees of freedom. That's the precise criterion they're asking for, and it should be stated as: $\\widehat A$ lies in the commutant of the right $\\mathbb{H}$-action.\n\n3. **For the gradient in (b): there is no holomorphic obstruction here because $J$ is real-valued.** Since $J:\\mathbb{H}^n\\to\\mathbb{R}$, just pull it back to $J:\\mathbb{R}^{4n}\\to\\mathbb{R}$ and use the ordinary real gradient and Hessian. The \"quaternion gradient\" is then *defined* to be the repackaging of $\\nabla_{\\mathbb{R}^{4n}} J$ into $\\mathbb{H}^n$ via the inverse embedding. Convexity, KKT, existence/uniqueness are then *literally* the real theorems — nothing new to prove, only to translate. I'd want to see whether the authors are claiming something stronger; if so, what is it?\n\n4. **What's the actual content, then?** The only genuinely new mathematics lives where the noncommutativity is irreducible: (i) the state-transition operator for $\\dot x = A(t)x$, where time-ordering matters because $A(s)A(t)\\ne A(t)A(s)$ — there the Peano–Baker series doesn't collapse to a matrix exponential; and (ii) the Pontryagin maximum principle in (c), where the adjoint equation involves left/right multiplications that don't commute. **That** is where I'd focus the proof review.\n\nSo my action-plan question to the group: are we claiming results beyond what the $4n\\times 4n$ real lift gives for free? If yes, point me to the exact lemma. If no, then (b) is essentially a translation exercise and the real difficulty — and the only place convergence guarantees in (c) need",
+      "created_at": "2026-06-23T00:14:43Z"
+    },
+    {
+      "id": "m0dc86629",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your representation-theoretic reframing is exactly right, and I want to sharpen it with the language of equivariance and a structural caveat. The faithful embedding $\\mathbb{H} \\hookrightarrow \\mathbb{R}^{4\\times4}$ realizes left-multiplication, but one must be careful: a $\\mathbb{H}^n$ model corresponds to the *commutant* of the **right** $\\mathbb{H}$-action, which by the double commutant theorem is precisely $M_n(\\mathbb{H})$ acting on the left. So the \"structural content\" of (a) is, as you say, equivariance under $\\mathrm{Sp}(1)$, not extra dimensions — this is a representation-stability statement, and I would formalize it exactly this way: *a real $4n$-dimensional linear model is quaternionic iff $\\widehat{A}$ lies in the commutant algebra of the right $\\mathbb{H}$-action*, which is a closed subalgebra of dimension $4n^2$ inside the $16n^2$-dimensional $\\mathbb{R}^{4n\\times4n}$.\n\nNow let me push back on one thing in your point 3. You are correct that for $J:\\mathbb{H}^n\\to\\mathbb{R}$ the gradient is just the real gradient on $\\mathbb{R}^{4n}$ repackaged — there is no Cauchy–Riemann obstruction. But there *is* genuine content the authors may be missing: the natural inner-product geometry on $\\mathbb{H}^n$ is the quaternion Hermitian form $\\langle x,y\\rangle = \\sum_i \\bar{x}_i y_i$, which is quaternion-valued, and a *convexity* notion that respects the $\\mathrm{Sp}(1)$-symmetry need not coincide with naive $\\mathbb{R}^{4n}$-convexity. Geodesic convexity on the symmetric space $\\mathrm{GL}_n(\\mathbb{H})/\\mathrm{Sp}(n)$ is the right invariant notion, and *that* is not a translation exercise — it is where the noncommutativity actually bites.\n\nWhere I most agree with you is the localization of the real difficulty:\n1. **The state-transition operator.** Since $A(s)A(t)\\neq A(t)A(s)$, the solution is the time-ordered Peano–Baker series $\\Phi(t,s) = I + \\int_s^t A + \\int_s^t\\int_s^{\\tau_1} A(\\tau_1)A(\\tau_2)\\,\\cdots$ — no $\\exp$ collapse. This is genuinely a multiplicative-integral / ordered-exponential question, and uniqueness/existence there is real work.\n2. **The Pontryagin principle in (c).** The adjoint equation mixes left- and right-multiplications, and the Hamiltonian $\\langle p, A x\\rangle$ must be handled with the *real part* of the quaternion pairing to land in $\\mathbb{R}$ — the maximum principle then quantifies over a noncommutative costate.\n\nMy action item: I would ask the authors to state precisely whether any claimed theorem in (b) survives *only* in the quaternion-geodesic-convex sense and fails under the real lift. If every result is invariant under the embedding, then (b) is bookkeeping and the paper's real theorem lives entirely in (c) — and there a Pontryagin-type convergence guarantee with ordered exponentials is a legitimate and nontrivial contribution.",
+      "created_at": "2026-06-23T00:15:30Z"
+    },
+    {
+      "id": "m98cc2f39",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — you've both nailed the representation theory, and I want to amplify Laszlo's point about the symmetric space because *that's* where the real geometry lives, and it's a story I know intimately from a completely different direction.\n\nThe space $\\mathrm{GL}_n(\\mathbb{H})/\\mathrm{Sp}(n)$ is a Riemannian symmetric space of noncompact type — it's exactly the kind of arithmetic quotient I've spent my life on, except here the structure group is $\\mathrm{Sp}(n)$ rather than $\\mathrm{SO}(n)$ or $\\mathrm{SU}(n)$. So let me push hard on three points:\n\n1. **What is the *real* theorem in (b)?** I claim it is precisely Laszlo's geodesic convexity statement. On $\\mathrm{GL}_n(\\mathbb{H})/\\mathrm{Sp}(n)$ the natural objects are the $\\mathrm{Sp}(1)\\times\\mathrm{Sp}(n)$-invariant functions, and there convexity along geodesics $\\gamma(t)=e^{tX}p$ is *not* the same as Euclidean convexity in the $\\mathbb{R}^{4n^2}$ lift. The standard example is the log-det / Busemann-type functions — geodesically convex, Euclidean-nonconvex. So the \"translation exercise\" view is wrong *only* if the authors commit to the invariant metric. Otherwise Dan is right: it's bookkeeping.\n\n2. **But is this a Ramanujan phenomenon?** Let me be provocative. The deep symmetric-space input I'd bring is *quaternionic harmonic analysis*: the spectral theory on $\\mathrm{Sp}(n)\\backslash\\mathrm{GL}_n(\\mathbb{H})$. If the gradient flow in (c) is the geometric flow on this space, then its convergence rate is governed by a spectral gap — the bottom eigenvalue of the relevant Laplacian. Dan, *this* is your spectral gap, hiding in plain sight! The convergence guarantee for quaternion gradient descent should be a $\\lambda_1$ statement on the symmetric space, and the $\\mathrm{Sp}(1)$-equivariance is exactly the constraint that determines which representations appear.\n\n3. **The ordered exponential and a concrete first case.** I always compute $n=1$ by hand. For $\\dot{x}=A(t)x$, $x\\in\\mathbb{H}$, with $A(t)$ a pure quaternion of constant length, the time-ordering is genuine: $\\Phi(t,s)$ traces a path in $\\mathrm{Sp}(1)\\cong SU(2)$. This is *literally* the spin holonomy — quantum chaos people know it as the Berry-phase / WKB ordered product. So the Peano–Baker series is the holonomy of an $SU(2)$-connection, and the noncommutativity is curvature. That tells me the right convergence estimate in (c) is a *holonomy bound*, controlled by $\\int \\|A\\|$ — Magnus expansion convergence, which is sharp.\n\nSo my action item, sharper than Laszlo's: ask the authors whether their convergence rate in (c) is stated as a spectral gap on $\\mathrm{GL}_n(\\mathbb{H})/\\mathrm{Sp}(n)$. If yes, that's the real theorem and it's worth proving. If they just iterate the real $4n$-lift, they've thrown away the very $\\mathrm{Sp}(1)$-equivariance that",
+      "created_at": "2026-06-23T00:16:17Z"
+    },
+    {
+      "id": "mb2946045",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, you've handed me exactly the spectral gap I was missing, and I want to make it *algorithmic* rather than leave it as a $\\lambda_1$ existence statement. Here's the thing: if the convergence of quaternion gradient descent in (c) is geodesic on $\\mathrm{GL}_n(\\mathbb{H})/\\mathrm{Sp}(n)$, then we should be able to write down the iteration and bound its rate explicitly — and I claim the relevant object is a *quaternion Hessian as a self-adjoint operator on the tangent space*, whose condition number is the gap you're describing.\n\nLet me push on three concrete points:\n\n1. **Make the metric a preconditioner, not a mystery.** Laszlo and Peter are right that Euclidean $\\mathbb{R}^{4n}$ convexity $\\neq$ geodesic convexity. But operationally, geodesic gradient descent on a symmetric space is just *Riemannian* gradient descent where the metric tensor reweights the real gradient. This is exactly the situation in my Laplacian solver work: the naive gradient is preconditioned by the inverse metric. So the question \"is (b) bookkeeping?\" has a sharp answer — the gradient is the real gradient (Laszlo conceded the no-Cauchy-Riemann point), but the *step* is preconditioned by the $\\mathrm{Sp}(n)$-invariant metric. The new content is the preconditioner, and its quality is the condition number $\\kappa = \\lambda_{\\max}/\\lambda_{\\min}$ of the quaternion Hessian.\n\n2. **The ordered exponential needs an actual algorithm.** Peter's holonomy/Magnus picture is beautiful but it's an existence-and-bounds story. To *solve* $\\dot x = A(t)x$ over $\\mathbb{H}^n$ I want a discretization with provable error, and the honest answer is: lift to the $4n\\times4n$ real system $\\dot{\\widehat x} = \\widehat A(t)\\widehat x$ and run a structure-preserving integrator that stays in the commutant of the right $\\mathbb{H}$-action — a quaternionic analogue of a symplectic/geometric integrator. The Magnus expansion convergence $\\int\\|A\\| < \\pi$ gives the step-size bound. That's a theorem one can *state and prove*, and it's the real deliverable of (c).\n\n3. **Where's the actual spectral gap I can compute?** For Pontryagin in (c), the costate equation runs the adjoint $\\widehat A(t)^\\top$ backward. Convergence of the resulting two-point boundary-value iteration is governed by the spectrum of the lifted Hamiltonian system — and *that* is a $4n\\times4n$ real eigenvalue problem I know how to attack. So my action item, complementing Peter's: don't just ask whether the rate is \"a spectral gap on the symmetric space.\" Ask for the explicit operator whose eigenvalues give the rate, and verify it's the same gap under the lift. If the answer is the condition number of the invariant Hessian, then (b) and (c) fuse into one clean theorem: *quaternion gradient descent converges at rate $(\\kappa-1)/(\\kappa+1)$ where $\\kappa$ is the $\\mathrm{Sp}(n)$-invariant Hessian condition number*. That I would believe and build on.",
+      "created_at": "2026-06-23T00:18:34Z"
+    },
+    {
+      "id": "m353b6585",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your fusion of (b) and (c) into the single statement \"$(\\kappa-1)/(\\kappa+1)$ with $\\kappa$ the $\\mathrm{Sp}(n)$-invariant Hessian condition number\" is the right target — but I want to insert one structural warning that bears directly on whether that rate is even *achievable*, and it comes from the geometry Peter and I were circling.\n\n1. **Geodesic convexity buys you no global rate without curvature control.** On $\\mathrm{GL}_n(\\mathbb{H})/\\mathrm{Sp}(n)$, a symmetric space of *noncompact* type, the sectional curvature is nonpositive. That is good news — geodesically convex functions have unique minima and gradient flow converges. But the Riemannian gradient descent rate degrades with curvature: the contraction $(\\kappa-1)/(\\kappa+1)$ is the *flat* answer, and on a negatively curved space you pay a curvature-distortion factor $\\zeta(\\kappa, \\mathrm{diam})$ exactly as in the Zhang–Sra analysis of geodesically convex optimization. So Dan's clean rate holds *only* in a bounded geodesic ball; one must state the diameter of the feasible set $\\Omega$. That is a genuine theorem to prove, not bookkeeping.\n\n2. **The condition number is itself a representation-theoretic quantity.** Here is where I push back gently. The quaternion Hessian, being $\\mathrm{Sp}(n)$-invariant, decomposes along the *isotypic components* of the $\\mathrm{Sp}(1)\\times\\mathrm{Sp}(n)$ action — exactly the representation-stability decomposition I flagged earlier. So $\\kappa = \\lambda_{\\max}/\\lambda_{\\min}$ is not one number but a maximum over irreducible blocks, and Peter's spectral gap $\\lambda_1$ is the gap *within the trivial isotypic component*. The honest convergence statement is block-diagonal: rate $(\\kappa_\\rho-1)/(\\kappa_\\rho+1)$ per irrep $\\rho$. This is the quaternionic analogue of how the $\\theta$-function on a vertex-transitive graph diagonalizes over the irreps of the automorphism group — the same philosophy that made $\\theta(C_5)=\\sqrt 5$ computable.\n\n3. **A caution on the false premise in (a), now made precise.** We have all agreed the \"extra structure\" is equivariance, not dimension. But there is a *measure-theoretic* sense in which the quaternion model genuinely differs: the set of $\\mathrm{Sp}(1)$-equivariant operators is a measure-zero, $4n^2$-dimensional subvariety of the $16n^2$-dimensional real models. Optimizing *within* the commutant versus optimizing in the ambient space gives different minimizers unless $J$ is itself equivariant. So the precise criterion the authors must state is: **the QDE model is irreducible iff $J$ and the constraint $\\Omega$ are $\\mathrm{Sp}(1)$-invariant**, in which case the minimizer lies in the commutant by an averaging (Reynolds-operator) argument. If $J$ is not invariant, the quaternion structure is decoration and Dan's lift wins.\n\nMy consolidated action item: ask the authors for (i) the diameter-dependent curvature constant in the (c) rate, and (ii) the isotypic decomposition of their Hessian. If both are present, the paper has one real theorem; if absent, (b)–(c) coll",
+      "created_at": "2026-06-23T00:19:21Z"
+    },
+    {
+      "id": "mc3008233",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, your isotypic decomposition is *exactly* the right move, and it lets me say something sharp about what $\\lambda_1$ really is here. Let me take the three of you and tie it to the trace formula, because there's a beautiful rigidity I don't want us to miss.\n\n1. **The curvature factor is a Selberg phenomenon.** Laszlo is right that on $\\mathrm{GL}_n(\\mathbb{H})/\\mathrm{Sp}(n)$, nonpositive curvature gives you the Zhang–Sra distortion $\\zeta(\\kappa,\\mathrm{diam})$. But notice *which* symmetric space this is: it's a higher-rank space (rank $n$), and higher rank means the geodesic flow is **not** ergodic in the chaotic sense — it's *integrable* along the flats. This is precisely the dichotomy I lived through in quantum unique ergodicity: rank one ($\\mathbb{H}^2$, $SL_2$) gives you exponential mixing and clean spectral gaps, but in higher rank the flats carry the slow modes. So the diameter-dependent constant Laszlo wants is governed by how the feasible ball $\\Omega$ intersects the maximal flat $\\mathbb{R}^n$. **The worst convergence direction is along a flat**, where curvature is zero and you get no contraction beyond the Euclidean $(\\kappa-1)/(\\kappa+1)$. That's the honest statement.\n\n2. **The block decomposition has an arithmetic skeleton.** Here's my provocation: $\\kappa_\\rho$ per irrep is the spectral data, but if $A(t)$ is *periodic* — which it is in every engineering application in (a), color signals and robotic gaits are periodic! — then the relevant object is the spectrum of the monodromy $\\Phi(T,0) \\in \\mathrm{Sp}(1)\\times GL_n(\\mathbb{H})$, and Floquet theory takes over. The convergence rate is then the *Lyapunov spectrum* of the ordered exponential, and by my Magnus picture this is a holonomy. The Selberg trace formula analogue: $\\sum_\\rho h(\\lambda_\\rho) = \\sum_{\\gamma} (\\text{closed orbits of the monodromy})$. For $n=1$ I compute it by hand: the closed orbits are the *rational rotation numbers* of the $SU(2)$ holonomy — quantization!\n\n3. **Is the gap a Ramanujan bound?** This is the question I keep returning to. We want $\\lambda_{\\min}$ bounded *below* uniformly. In my world, the analogous statement — that the spectral gap doesn't degenerate as you go up a tower of covers — is the Ramanujan / Selberg $3/16$ phenomenon. Here the \"tower\" is increasing $n$ (more quaternion components). **Does $\\lambda_{\\min}$ of the invariant Hessian stay bounded below as $n\\to\\infty$?** If yes, you have a *dimension-free* convergence rate — the real prize, and what makes this more than the $4n$-lift. If no, the quaternion structure gives no asymptotic advantage and Dan's lift wins by default.\n\nSo my consolidated demand to the authors: state whether your rate is **dimension-free in $n$** (Ramanujan-type) or merely a fixed-$n$ condition number. And for periodic $A(t)$ — which is the only case that matters in (a) — give me the Floquet/holonomy spectrum, not the instantaneous Hessian. Get those two and (b)–(c) is one",
+      "created_at": "2026-06-23T00:20:10Z"
+    },
+    {
+      "id": "m6503b847",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T00:21:09Z"
+    },
+    {
+      "id": "m57e2c3f2",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nResolve rm-01091 by lifting the quaternion model to a 4n-dimensional real system, identifying the genuine new content as Sp(1)-equivariance and noncommutative time-ordering, and proving a geodesic-convex convergence rate on GL_n(H)/Sp(n) controlled by the Sp(n)-invariant Hessian condition number.",
+      "created_at": "2026-06-23T00:21:09Z"
+    }
+  ],
+  "plan": {
+    "summary": "Resolve rm-01091 by lifting the quaternion model to a 4n-dimensional real system, identifying the genuine new content as Sp(1)-equivariance and noncommutative time-ordering, and proving a geodesic-convex convergence rate on GL_n(H)/Sp(n) controlled by the Sp(n)-invariant Hessian condition number.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish the real matrix lift and equivariance criterion",
+        "body": "Make rigorous the faithful embedding H -> R^{4x4} realizing left-multiplication, extend it to A(t) in H^{nxn} as a real 4n x 4n matrix, and prove that H^n models correspond exactly to the commutant of the right H-action (a closed subalgebra of dimension 4n^2 inside the 16n^2-dimensional real model space). State precisely the resolution of (a): the 'extra structure' is Sp(1)-equivariance, not extra dimensions, and the QDE model is irreducible iff J and the constraint set Omega are Sp(1)-invariant (Reynolds/averaging argument).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Settle whether (b) is translation or genuine geodesic content",
+        "body": "Pull back J:H^n -> R to J:R^{4n} -> R and confirm there is no Cauchy-Riemann obstruction, so the gradient is the repackaged real gradient. Then determine whether any claimed theorem in (b) survives ONLY in the quaternion-geodesic-convex sense on the symmetric space GL_n(H)/Sp(n) and fails under the real lift (log-det / Busemann-type examples). Decide the dichotomy: if all results are lift-invariant, (b) is bookkeeping; if the authors commit to the Sp(n)-invariant metric, identify the genuinely new content.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Construct the ordered exponential and a provable integrator",
+        "body": "For the QDE dot x = A(t)x + f, build the time-ordered Peano-Baker / multiplicative-integral solution (no exp collapse since A(s)A(t) != A(t)A(s)). Prove existence/uniqueness of the state-transition operator Phi(t,s). Then give a concrete discretization: lift to the 4n x 4n real system and run a structure-preserving (commutant-preserving) geometric integrator, with provable error and the Magnus convergence step-size bound integral||A|| < pi. Work the n=1 case explicitly as SU(2) spin holonomy to validate.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Define the Sp(n)-invariant Hessian and its isotypic decomposition",
+        "body": "Define the quaternion Hessian as a self-adjoint operator on the tangent space of GL_n(H)/Sp(n). Decompose it along the isotypic components of the Sp(1) x Sp(n) action, so that kappa = lambda_max/lambda_min becomes a maximum over irreducible blocks and Peter's gap lambda_1 is the gap within the trivial isotypic component. State the per-irrep condition numbers kappa_rho explicitly.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Prove the curvature-corrected convergence rate for (c)",
+        "body": "State and prove the Pontryagin maximum principle for (c), handling the adjoint/costate equation with mixed left/right multiplications using the real part of the quaternion pairing. Establish the geodesic gradient-descent rate as preconditioned Riemannian descent: the flat rate (kappa-1)/(kappa+1) per irrep, corrected by the Zhang-Sra curvature-distortion factor zeta(kappa, diam) since the space is nonpositively curved noncompact type. Crucially identify that the worst direction lies along the maximal flat R^n (rank n), where curvature is zero. Provide the explicit operator (lifted Hamiltonian system, a 4n x 4n real eigenvalue problem) whose spectrum gives the rate and verify it matches under the lift.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Analyze the periodic (Floquet) case and dimension-free gap",
+        "body": "For periodic A(t) (the engineering-relevant case: color signals, robotic gaits), replace the instantaneous Hessian with the monodromy spectrum: compute Phi(T,0) in Sp(1) x GL_n(H), apply Floquet theory, and express the rate via the Lyapunov/holonomy spectrum. Then address the Ramanujan-type question: does lambda_min of the invariant Hessian stay bounded below as n -> infinity, yielding a dimension-free convergence rate? Determine whether the authors' rate is dimension-free (the real prize) or merely a fixed-n condition number.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Critically test whether the quaternion structure adds value over the lift",
+        "body": "Stress-test the central claim by checking whether the quaternion (commutant) optimization genuinely differs from ambient R^{4n} optimization: confirm the commutant is a measure-zero 4n^2-dimensional subvariety and that minimizers coincide only when J is equivariant. Identify failure modes where the quaternion structure is mere 'decoration' and Dan's lift wins. Flag any gap where claimed results in (b)/(c) collapse to bookkeeping.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1,
+          4,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Verify consistency of rates, lifts, and special cases",
+        "body": "Cross-check that the spectral gap stated on the symmetric space equals the spectrum of the lifted 4n x 4n Hamiltonian operator; verify the n=1 SU(2) holonomy computation against the general Magnus bound; confirm the isotypic block rates aggregate correctly to the global rate; and validate the curvature/diameter constants and the dimension-free conclusion (or its failure) against the Floquet analysis. Certify the fused theorem 'quaternion gradient descent converges at rate (kappa-1)/(kappa+1) with the stated curvature correction.'",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T00:21:09Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

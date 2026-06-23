@@ -1,0 +1,163 @@
+{
+  "id": "rm-04406-meet-1",
+  "problem_id": "rm-04406",
+  "topic": "Init rm-04406 — proof review",
+  "goal": "Review the proof and issues for rm-04406; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T02:29:15Z",
+  "messages": [
+    {
+      "id": "m344b8b41",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-04406 — proof review**",
+      "created_at": "2026-06-23T02:29:15Z"
+    },
+    {
+      "id": "me4f44c32",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me start by translating this into the language I trust: matrices. A signed adjacency matrix $A^\\sigma$ has exactly two distinct eigenvalues $\\lambda_1 \\neq \\lambda_2$ iff its minimal polynomial is quadratic, i.e.,\n$$(A^\\sigma - \\lambda_1 I)(A^\\sigma - \\lambda_2 I) = 0.$$\nExpanding, $(A^\\sigma)^2 = (\\lambda_1+\\lambda_2)A^\\sigma - \\lambda_1\\lambda_2 I$. Now here's the crucial structural observation: the diagonal of $(A^\\sigma)^2$ is just the degree vector $d$ (since $\\sigma(uv)^2=1$), so reading the diagonal entries gives\n$$d_v = -\\lambda_1\\lambda_2 \\quad \\text{for all } v,$$\nmeaning **the graph must be regular**, say $k$-regular, with $\\lambda_1\\lambda_2 = -k$. And the off-diagonal of $(A^\\sigma)^2$ gives, for $u\\neq v$,\n$$\\sum_{w} A^\\sigma_{uw}A^\\sigma_{wv} = (\\lambda_1+\\lambda_2)\\,A^\\sigma_{uv}.$$\n\nSo this is exactly the signed analogue of a *strongly regular graph* condition, but cleaner. Let me name the two cases:\n- If $u\\sim v$: the number of signed common neighbors equals $(\\lambda_1+\\lambda_2) - $ (correction), constant.\n- If $u\\not\\sim v$: the signed count of common neighbors must be $0$.\n\nThis is what I'd call a **signed strongly regular** condition, and the trace conditions ($\\operatorname{tr}A^\\sigma=0$, $\\operatorname{tr}(A^\\sigma)^2 = nk$) pin down the multiplicities. My question to the room: before we hunt for a full classification, what's known about the *integrality* constraints? If $\\lambda_1+\\lambda_2 \\neq 0$ the eigenvalues are forced to be integers by the multiplicity/trace argument, exactly as in the strongly-regular case. The genuinely interesting case is the **symmetric spectrum** $\\lambda_{1,2}=\\pm\\sqrt{k}$, where $A^\\sigma$ is essentially a $\\frac{1}{\\sqrt k}$-scaled orthogonal matrix — these are the signed graphs with $(A^\\sigma)^2 = kI$, i.e. **weighing matrices / conference-matrix-like objects**. Is that the regime we're stuck on?",
+      "created_at": "2026-06-23T02:29:26Z"
+    },
+    {
+      "id": "m2b2a5efc",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's reduction is exactly right, and it cleaves the problem into two regimes that we should treat with completely different tools.\n\nLet me sharpen the dichotomy. Write $\\lambda_1 + \\lambda_2 = s$ and $\\lambda_1\\lambda_2 = -k$, so $(A^\\sigma)^2 = sA^\\sigma + kI$ on a $k$-regular graph.\n\n**Case 1: $s \\neq 0$.** Here Dan's integrality argument applies. From $\\operatorname{tr} A^\\sigma = m_1\\lambda_1 + m_2\\lambda_2 = 0$ with $m_1+m_2 = n$, if $\\lambda_1,\\lambda_2$ are irrational conjugates we'd need $m_1=m_2$, forcing $\\lambda_1=-\\lambda_2$, i.e. $s=0$ — contradiction. So $s\\neq 0$ forces *integer* eigenvalues. This is the genuinely \"signed strongly regular\" world and I expect it to be parametrizable by association-scheme-type data: the off-diagonal relation $\\sum_w A^\\sigma_{uw}A^\\sigma_{wv} = sA^\\sigma_{uv}$ for $u\\not\\sim v$ says the signed common-neighbor count vanishes on non-edges, which is a strong coherence condition.\n\n**Case 2: $s = 0$, so $(A^\\sigma)^2 = kI$.** This is the heart of the matter, and Dan named it correctly: $\\tfrac{1}{\\sqrt k}A^\\sigma$ is a *symmetric orthogonal matrix with zero diagonal* — precisely a **symmetric weighing matrix $W(n,k)$** whose support is the graph $G$. The two eigenvalues are $\\pm\\sqrt k$ with equal multiplicity $n/2$, so $n$ is even and $A^\\sigma$ is traceless with $\\operatorname{tr}=0$ automatically.\n\nTwo remarks from my own toolkit:\n\n1. **The full-support case $k=n-1$** gives exactly the symmetric **conference matrices** ($CC^\\top = (n-1)I$, zero diagonal), tied to Paley/Seidel two-graphs — and *switching equivalence* is the natural symmetry here, just as Seidel switching is for two-graphs. We should state the classification modulo switching from the outset, as the problem does.\n\n2. I'd push back gently on framing this purely as a finite census. The condition $(A^\\sigma)^2=kI$ is a *spectral rigidity* statement, and weighing matrices are governed by deep number-theoretic existence constraints (Hadamard-type, the Bruck–Ryser–Chowla obstructions). A \"complete characterization\" in Case 2 may be no cleaner than the classification of weighing matrices itself — which is open. So our honest target should be: **a structural reduction**, Case 1 $\\to$ integral signed strongly regular graphs (finite, scheme-theoretic), Case 2 $\\to$ symmetric weighing matrices up to switching.\n\nOne question for the room, in my graph-limits spirit: is there a vertex-transitive/blow-up canonical form? In the SRG world the extremal objects are highly symmetric. For Case 2, the regular two-graphs already give us the symmetric structure — is every $s=0$ example switching-equivalent to one with a transitive automorphism group, or are there genuinely \"irregular\" weighing matrices with two eigenvalues?",
+      "created_at": "2026-06-23T02:30:13Z"
+    },
+    {
+      "id": "m1671c06c",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Wonderful — Dan and László have laid the bones bare, and I want to inject the spectral-statistics viewpoint, because I think it tells us *which* of these objects are the \"real\" ones.\n\nFirst, an explicit sanity check, my usual habit. Take $C_4$ with all $+$: spectrum $\\{2,0,0,-2\\}$ — three eigenvalues, fails. But sign one edge $-$: $A^\\sigma$ becomes switching-equivalent to... let me just say the smallest genuine $s=0$ example is the signed $C_4$ realizing $W(4,?)$ — and the cleanest nontrivial cases are exactly the Paley conference matrices on $q+1$ vertices, $q\\equiv 1\\pmod 4$. So the *Paley* construction sits at the center of Case 2, and that's no accident — it's the same Gauss-sum arithmetic that controls the Ramanujan bound for those graphs.\n\nNow here is my real point. László asks whether every $s=0$ example is essentially transitive. The right question is: **is this a Ramanujan phenomenon?** For a $k$-regular signed graph with $(A^\\sigma)^2=kI$, the eigenvalues are $\\pm\\sqrt k$ — that is *exactly* the Ramanujan bound $|\\lambda|\\le 2\\sqrt{k-1}$ saturated in the extreme. These signed graphs are, spectrally, the most rigid possible objects: a two-point spectrum on the Ramanujan circle. So Case 2 is the signed analogue of Ramanujan graphs collapsed to a single shell — the LPS/Margulis story but with the spectrum forced onto two atoms.\n\nThree concrete remarks:\n1. **Case 1, $s\\ne0$:** integer eigenvalues, and the off-diagonal coherence is a genuine *association scheme* of class $\\le 2$. I'd bet these are precisely signings of strongly regular graphs whose Seidel/sign structure realizes a two-class fusion — finite, listable, governed by the same integrality + Krein conditions as Delsarte–Seidel.\n2. **Case 2 is NOT a census we'll finish**, and László is right to resist that framing. The weighing-matrix existence problem is open. But the *symmetric* constraint plus switching is much more rigid than general $W(n,k)$ — switching-equivalence to a regular two-graph is, I conjecture, generic but not universal; there will be sporadic non-transitive symmetric weighing matrices, just as there are sporadic regular graphs with anomalous spectra.\n3. The statistical test: compute the level-spacing / moment data of $A^\\sigma$ across many random signings on a fixed $k$-regular $G$. The two-eigenvalue examples are *measure-zero, maximally non-GUE* events — they are the deterministic spikes against the Kesten–McKay background. That tells us they're arithmetic, and arithmetic means Gauss sums, means Paley, means conference matrices.\n\nSo my proposed honest target sharpens László's: Case 1 $=$ a finite family of integral signed SRGs (provably listable via Krein/absolute bound), Case 2 $=$ symmetric weighing matrices, with the **theorem behind the theorem** being that the \"clean\" infinite families are exactly the conference/Paley objects, and everything else is switching-equivalent to a regular two-graph except for a controllable sporadic set. Shall we try to nail the absolute bound for Case 1 first — that's the part where I think a *complete* classification is actually within reach?",
+      "created_at": "2026-06-23T02:31:05Z"
+    },
+    {
+      "id": "m6873d02c",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Good — Peter's \"measure-zero deterministic spikes\" framing is exactly right, and it tells me these objects are arithmetic, not generic. But let me push back on the resignation about Case 2 being \"not a census we'll finish,\" because I think we're conflating two questions: the *existence* of weighing matrices (genuinely open, BRC obstructions and all) versus the *structure* of the two-eigenvalue condition given that one exists. The latter is where my tools bite.\n\nHere's the point. In Case 2, $(A^\\sigma)^2 = kI$ means $P := \\frac{1}{2}(I + \\frac{1}{\\sqrt k}A^\\sigma)$ is the orthogonal projection onto the $+\\sqrt k$ eigenspace, of rank $n/2$. So write $A^\\sigma = \\sqrt k\\,(2P - I)$. Now $P = U U^\\top$ where the rows of $U \\in \\mathbb{R}^{n \\times (n/2)}$ are unit vectors $v_1,\\dots,v_n$ (since $P_{vv} = \\frac12$ forces $\\|v_v\\|^2 = \\frac12$ — rescale to unit). The off-diagonal structure becomes\n$$\\langle v_u, v_v\\rangle = \\tfrac{1}{2\\sqrt k}A^\\sigma_{uv} = \\pm\\tfrac{1}{2\\sqrt k} \\text{ if } u\\sim v, \\quad 0 \\text{ if } u\\not\\sim v.$$\nThat is an **equiangular** configuration with two-valued inner products supported on $G$. This is precisely the regime of my Kadison–Singer / interlacing-families machinery: we have an isotropic-up-to-scaling system $\\sum_v v_v v_v^\\top \\propto P$, with bounded weights $\\|v_v\\|^2$ uniform. The two-eigenvalue condition is a *frame* condition.\n\nTwo concrete proposals:\n\n1. **Case 1, $s \\neq 0$, made algorithmic.** Don't just invoke the absolute bound abstractly. The condition $\\sum_w A^\\sigma_{uw}A^\\sigma_{wv} = s A^\\sigma_{uv}$ for $u\\not\\sim v$ is a system I can *test by solving a Laplacian-type system*. Given a candidate $k$-regular $G$, the signing $\\sigma$ exists iff a $\\{\\pm1\\}$ solution to a quadratic feasibility system exists, and the integrality of $\\lambda_{1,2}$ plus $\\lambda_1\\lambda_2 = -k$ bounds $k$ and $n$ via the multiplicity equation $m_1\\lambda_1 + m_2\\lambda_2 = 0$. This is finite and I'd like to actually enumerate it, not just declare it listable.\n\n2. **Switching is the gauge symmetry, so fix the gauge.** Switching by $D = \\mathrm{diag}(\\pm1)$ sends $A^\\sigma \\mapsto DA^\\sigma D$ and fixes the spectrum. In the frame picture this is $v_u \\mapsto \\pm v_u$. So the *real* invariant is the Gram matrix up to sign-diagonal conjugation — equivalently, the **two-graph** / Seidel structure László named. My question back to the room: can we characterize when the equiangular frame above has a sign-diagonal that makes it group-symmetric? That's a barrier-function / potential argument — track $\\Phi(D) = \\|\\sum_v (Dv)_v(Dv)_v^\\top - \\frac{n}",
+      "created_at": "2026-06-23T02:33:23Z"
+    },
+    {
+      "id": "m0fc2c638",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's frame picture is the right canonical form, and I want to connect it to a structure I've thought about for decades — because the equiangular system he wrote down is *exactly* an orthonormal representation in disguise.\n\nRecall my orthonormal representations from the $\\theta$-function paper: assign unit vectors $v_u$ to vertices so that $\\langle v_u, v_v\\rangle = 0$ on **non**-adjacent pairs. Dan's frame has precisely that property — $\\langle v_u, v_v\\rangle = 0$ for $u \\not\\sim v$ — but with the *adjacent* pairs pinned to a single magnitude $\\pm \\frac{1}{2\\sqrt k}$. So Case 2 is the world of **rigid two-valued orthonormal representations in dimension $n/2$**. The $\\theta$-function machinery tells us when such low-dimensional representations exist; the rigidity here (all inner products equal in modulus) is what forces arithmetic, exactly as Peter says.\n\nLet me make three points:\n\n1. **On the gauge question Dan posed.** Switching by $D$ is a sign flip $v_u \\mapsto \\pm v_u$, and the switching-invariant is the unordered set of products $\\langle v_u, v_v\\rangle\\langle v_v, v_w\\rangle\\langle v_w, v_u\\rangle$ over triangles — the **signed triangle / Seidel two-graph cocycle**. A signing is switching-equivalent to a group-symmetric (regular two-graph) one iff this $\\{\\pm 1\\}$-cocycle is invariant under a transitive automorphism group of the underlying $G$. So Dan's barrier function $\\Phi(D)$ is really minimizing over the coboundary $B^1(G;\\{\\pm1\\})$, and the obstruction lives in $H^1$. This is clean and finite to test.\n\n2. **On Case 1 and listability — I want to sharpen Peter's \"absolute bound.\"** With integer eigenvalues $\\lambda_1 > \\lambda_2$, $\\lambda_1\\lambda_2 = -k$, $\\lambda_1+\\lambda_2=s$, and multiplicities $m_1\\lambda_1 = -m_2\\lambda_2$, the orthonormal-representation dimension is $\\min(m_1,m_2)$, and the *absolute bound* $n \\le \\binom{\\min(m_1,m_2)+1}{2}$ comes directly from the linear independence of the rank-one frame elements in $\\mathrm{Sym}(\\mathbb{R}^{m})$ — the same counting that gives the absolute bound for SRGs. That bounds $n$ in terms of $s,k$ and makes Case 1 a genuine finite census. I agree with Dan: let us *enumerate*, not merely declare.\n\n3. **A caution on graph limits.** I raised vertex-transitivity earlier; I now think the right continuous object is *not* a graphon but a **graphing** or a measure on the orthogonality variety — these are sparse-spectral, Ramanujan-saturated, hence the dense-graphon limit is degenerate (all homomorphism densities collapse). So my own graph-limits tool is the *wrong* one here, and I say so plainly. The correct limiting framework is Benjamini–Schramm / spectral measures, where the Kesten–McKay background Peter invoked is the law and our objects are the atoms.\n\nSo I endorse the split: Case 1 — integral signed SRGs, finite via the absolute bound, let us run it; Case 2 — symmetric weighing matrices as rigid two-valued orthonormal",
+      "created_at": "2026-06-23T02:34:12Z"
+    },
+    {
+      "id": "m7a4d19d1",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's cohomological framing is exactly right, and it lets me make the arithmetic explicit — let me push the Case 2 story to its real conclusion.\n\nThe switching-invariant cocycle in $H^1(G;\\{\\pm1\\})$ that László named is, for the *triangle* products, nothing but the Seidel two-graph, and when $G=K_n$ (full support, $k=n-1$) we are looking at **regular two-graphs** $\\leftrightarrow$ symmetric conference matrices. Here is the theorem behind the theorem: a symmetric conference matrix of order $n$ exists only if $n\\equiv 2\\pmod 4$ and $n-1$ is a sum of two squares — that is *precisely* a Bruck–Ryser–Chowla / Gauss-sum constraint, and the Paley construction at $n=q+1$, $q\\equiv1\\pmod4$ saturates it. So the \"clean infinite family\" in Case 2 is governed by the same quadratic-residue character sums $\\sum_x \\left(\\frac{x}{q}\\right)\\left(\\frac{x+1}{q}\\right)$ that give the Ramanujan bound. This is not analogy — the $\\pm\\sqrt k$ spectrum *is* the saturated Ramanujan/Weil bound.\n\nThree sharpenings:\n\n1. **The eigenvalue $\\pm\\sqrt k$ is an arithmetic obstruction, not just a spectral one.** For $A^\\sigma$ integral entries, $\\sqrt k\\notin\\mathbb{Q}$ forces $k$ a non-square, $m_1=m_2=n/2$, and then $\\det(A^\\sigma)=(\\pm\\sqrt k)^n = \\pm k^{n/2}\\in\\mathbb{Z}$ is consistent, but the *integral* equivalence class of the lattice $A^\\sigma$ defines is controlled by the genus — exactly where BRC obstructions live. So Dan is right that *given existence* the structure is rigid, but existence and structure are coupled through the same number theory.\n\n2. **Beyond full support.** For $k<n-1$ the support graph $G$ matters, and László's $H^1$ obstruction is the gauge-fixing. But I'd conjecture the connected $s=0$ examples are *exactly* switching classes of regular two-graphs on the descendants — i.e. every connected symmetric weighing matrix with two eigenvalues comes from a conference matrix by a Seidel-type derivation, up to a sporadic finite set. That is the honest \"characterization.\"\n\n3. **For Case 1, let us run the census now.** With $\\lambda_1\\lambda_2=-k$, $s=\\lambda_1+\\lambda_2$ integral, $m_1\\lambda_1+m_2\\lambda_2=0$ and László's absolute bound $n\\le\\binom{m+1}{2}$, the smallest cases are tiny — let me bet that the first genuine $s\\ne0$ example is a signed Petersen-type object with spectrum $\\{ (\\text{int}), (\\text{int})\\}$, and I'd like Dan to actually enumerate $k\\le 10$. The Krein conditions will cut the list dramatically.\n\nSo the real theorem: **Case 1 is a finite Delsarte–Krein census; Case 2 is the Paley/conference world plus a sporadic remainder, and the dividing line is Gauss-sum arithmetic.** Shall we compute the $k\\le 6$ table on the board?",
+      "created_at": "2026-06-23T02:34:59Z"
+    },
+    {
+      "id": "m82f3fb4a",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T02:35:59Z"
+    },
+    {
+      "id": "m8ee32766",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nClassify connected signed graphs whose signed adjacency matrix has exactly two distinct eigenvalues by reducing via the minimal polynomial to a k-regular condition, splitting into Case 1 (s≠0, integral signed strongly regular graphs, finite census) and Case 2 (s=0, symmetric weighing matrices / conference-matrix world up to switching).",
+      "created_at": "2026-06-23T02:35:59Z"
+    }
+  ],
+  "plan": {
+    "summary": "Classify connected signed graphs whose signed adjacency matrix has exactly two distinct eigenvalues by reducing via the minimal polynomial to a k-regular condition, splitting into Case 1 (s≠0, integral signed strongly regular graphs, finite census) and Case 2 (s=0, symmetric weighing matrices / conference-matrix world up to switching).",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish the minimal-polynomial reduction",
+        "body": "Prove rigorously that A^σ has exactly two distinct eigenvalues λ1≠λ2 iff (A^σ-λ1 I)(A^σ-λ2 I)=0, hence (A^σ)^2 = sA^σ + kI with s=λ1+λ2, -k=λ1λ2. Read off the diagonal of (A^σ)^2 to show the graph must be k-regular with d_v=-λ1λ2=k, and read off the off-diagonal to obtain the signed-common-neighbor coherence condition Σ_w A^σ_{uw}A^σ_{wv}=s·A^σ_{uv} for u≠v. Conclude the clean dichotomy s≠0 vs s=0.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the integrality dichotomy",
+        "body": "Using trace conditions tr A^σ=0 (=m1λ1+m2λ2) and tr(A^σ)^2=nk with m1+m2=n, show that if s≠0 the eigenvalues are forced to be integers (irrational conjugates would force m1=m2 and hence λ1=-λ2, i.e. s=0). For s=0 show λ1,2=±√k with equal multiplicities n/2, so n is even and (A^σ)^2=kI. This cleanly separates Case 1 (integral) from Case 2 (symmetric weighing matrix).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Derive the absolute bound for Case 1",
+        "body": "In Case 1, with integer λ1>λ2, λ1λ2=-k, λ1+λ2=s and multiplicities satisfying m1λ1+m2λ2=0, set m=min(m1,m2) and construct the rank-one frame in Sym(R^m) from the eigenspace projections. Prove the absolute bound n ≤ C(m+1,2) by linear independence of the rank-one elements, paralleling the SRG absolute bound. Add the Krein-type inequalities. Conclude Case 1 is a finite census parametrized by (s,k,m1,m2).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Enumerate the Case 1 census for small k",
+        "body": "Algorithmically enumerate all admissible parameter tuples (k,n,s,λ1,λ2,m1,m2) for k≤10 satisfying the integrality, multiplicity equation m1λ1+m2λ2=0, the absolute bound from step 2, and Krein conditions. For each surviving tuple, set up the {±1} quadratic feasibility system encoding Σ_w A^σ_{uw}A^σ_{wv}=s·A^σ_{uv} on candidate k-regular graphs and test existence (e.g. via the Laplacian-type / interlacing solver). Produce the explicit table of realizable signed strongly regular graphs.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Build the frame / orthonormal-representation canonical form for Case 2",
+        "body": "In Case 2 set P=½(I+ A^σ/√k), the rank-n/2 projector onto the +√k eigenspace, and write rows of U with P=UUᵀ giving vectors v_u with ⟨v_u,v_v⟩=±1/(2√k) for u∼v and 0 for u≁v. Establish this as a rigid two-valued orthonormal representation in dimension n/2, and identify switching by D=diag(±1) as the gauge symmetry v_u↦±v_u. Formalize the switching-invariant as the {±1} triangle cocycle in H^1(G;{±1}) (the Seidel two-graph), and prove a signing is switching-equivalent to a regular-two-graph/group-symmetric form iff the cocycle is fixed by a transitive automorphism group.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Characterize the conference/Paley family and existence obstructions in Case 2",
+        "body": "Handle the full-support case k=n-1: show A^σ becomes a symmetric conference matrix CCᵀ=(n-1)I, equivalent to regular two-graphs. State and justify the Bruck–Ryser–Chowla / Gauss-sum existence constraints (n≡2 mod 4 and n-1 a sum of two squares) and exhibit the Paley construction at n=q+1, q≡1 mod 4 as the saturating arithmetic family. For k<n-1, formulate the conjecture that connected s=0 examples are switching classes of regular two-graphs (Seidel descendants) up to a controllable sporadic remainder, and delimit exactly what is provable versus open.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify all proofs and worked examples",
+        "body": "Independently check the minimal-polynomial reduction and regularity claim (step 0), the integrality dichotomy and multiplicity algebra (step 1), the absolute bound derivation (step 2), and the Case 1 census tuples and feasibility results (step 3). Validate small examples: C4 all-plus has three eigenvalues (fails); a single-sign-flipped C4 and the smallest Paley conference cases realize s=0. Confirm the frame/projector identity P²=P and the H^1 cocycle invariance under switching in step 4. Flag any gaps.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Stress-test scope, framing, and limiting model",
+        "body": "Critically assess whether the stated 'complete characterization' is achievable or whether Case 2 honestly reduces to the open weighing-matrix existence problem; ensure the final claim distinguishes structural reduction from full census. Challenge the conjecture in step 5 by searching for non-transitive symmetric weighing matrices (sporadic counterexamples). Verify the claim that dense-graphon limits are degenerate and that Benjamini–Schramm / spectral-measure (Kesten–McKay background) is the correct limiting framework, so no overstated symmetry/transitivity conclusions slip in.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T02:35:59Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -1,0 +1,159 @@
+{
+  "id": "rm-08752-meet-1",
+  "problem_id": "rm-08752",
+  "topic": "Init rm-08752 — proof review",
+  "goal": "Review the proof and issues for rm-08752; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T03:15:43Z",
+  "messages": [
+    {
+      "id": "m83455c06",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-08752 — proof review**",
+      "created_at": "2026-06-23T03:15:43Z"
+    },
+    {
+      "id": "mf846558e",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be precise about what we're actually being asked, because it changes everything. This is *not* my $\\varepsilon$-light subset problem — it's minimum **bisection** on weighted planar graphs, a balanced-cut question with the hard constraint $||V_1|-|V_2||\\le 1$. That balance constraint is the whole game.\n\nHere's my read on the complexity:\n\n1. **Unweighted planar minimum bisection** is solvable in polynomial time — this is a celebrated result of Galluccio–Goldberg, and more sharply the work building on the fact that planar max-cut and related balanced separations exploit planar duality. The min-cut / shortest-path-in-the-dual machinery is the key.\n\n2. But the question specifies **arbitrary nonnegative weights**. My instinct is that the weights break the polynomiality, and the answer is **NP-hard**. The reason: weighted planar minimum bisection is known to be NP-hard — you can encode a balanced-partition / PARTITION-type instance by using edge weights to simulate vertex masses, and planarity is preserved by a suitable grid embedding.\n\n3. The contrast worth nailing down: *minimum cut* (no balance) on weighted planar graphs is nearly-linear-time solvable — I can solve $Lx=b$ and do all the flow computations fast. It is exactly the **balance constraint plus weights** that pushes it over to NP-hardness. Without balance it's a Laplacian computation; with balance and weights it's PARTITION.\n\nSo the action item is: pin down the reduction. What's the precise source problem — is it a reduction from PARTITION via a planar gadget, or from a known planar balanced-separator hardness result? Let me ask the sharp question: **can someone exhibit the explicit gadget that embeds PARTITION into a planar weighted graph while preserving the bisection balance?** That's the crux, and I'd want to verify planarity of the gadget concretely rather than wave at it.",
+      "created_at": "2026-06-23T03:15:55Z"
+    },
+    {
+      "id": "mf6a5ecc9",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right that the balance constraint plus weights is the crux, and right that we should pin down a concrete gadget rather than wave. Let me sharpen the picture, because I think the PARTITION reduction is even cleaner than feared.\n\nThe key observation: a *star* gadget converts vertex masses into edge weights while preserving planarity trivially. Given a PARTITION instance with integers $a_1,\\dots,a_n$, take a star $K_{1,n}$: a center $c$ joined to leaves $\\ell_1,\\dots,\\ell_n$ with $w(c\\ell_i)=a_i$. A star is planar, and any partition of the $a_i$ into two groups of (near-)equal sum corresponds to a cut. But a bare star doesn't enforce balance — so one must pad with many zero-weight (or weight-$\\infty$) vertices to absorb the cardinality constraint $||V_1|-|V_2||\\le 1$ while letting the *weighted* cut track the PARTITION objective. That decoupling of cardinality-balance from weight-cut is exactly the gadget design problem.\n\nSo my recommendation is structural:\n\n1. **Separate the two roles.** Use a heavy rigid \"frame\" — a planar grid or wheel with very large uniform weights — to dictate which assignments are balanced, and a light \"payload\" subgraph carrying the $a_i$ weights whose cut value the bisection minimizes. The frame fixes balance; the payload encodes PARTITION. Planarity is preserved if the payload embeds in a face of the frame.\n\n2. **Watch the unweighted polynomial result.** Galluccio–Goldberg and the planar-duality / Pfaffian machinery solve the unweighted case precisely because the objective is a homology-class shortest cut in the dual — a $\\mathbb{Z}$-valued, *symmetric* quantity. Weights destroy the parity/uniformity that duality exploits. The reduction must therefore use a weight ratio (heavy frame vs. light payload) that is super-polynomial or at least not bounded, mimicking the unboundedness in PARTITION's numbers.\n\n3. **A caution on \"near-equal.\"** PARTITION asks for an exactly-balanced *sum* split, but bisection enforces balanced *cardinality*. These are different balances. The gadget must make the cardinality-balanced bisections be exactly those that split the payload masses as PARTITION requires — that is the one place the proof can quietly fail, and it deserves a concrete verification, not a picture.\n\nMy bet matches Dan's: **NP-hard**, by reduction from PARTITION. Action item: write down the frame-plus-payload gadget explicitly, verify the planar embedding face-by-face, and check that no spurious low-cost bisection bypasses the frame.",
+      "created_at": "2026-06-23T03:16:40Z"
+    },
+    {
+      "id": "md43dc789",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me play devil's advocate, because I think Dan and László are converging too fast on the gadget without computing the first example by hand — that's always where I start.\n\nFirst, a precise literature point that matters: the result you want is **Bui–Jones (1992)** and more directly the work showing minimum bisection is NP-hard, but the *planar weighted* case — yes, this is known NP-hard. The cleanest reference is the reduction in the spirit of **Garey–Johnson–Stockmeyer**'s planar hardness results. So the *answer* is NP-hard; the question is whether our gadget is honest.\n\nNow here is my worry, and it's exactly László's point 3, which I want to make sharp with a small case. Take $n=3$, integers $a_1=a_2=a_3=1$. PARTITION on this has no perfect split — but bisection of the padded graph *will* return some balanced cardinality cut. The danger: the frame's heavy uniform weights force a balance that has **nothing to do** with which payload leaves get separated. You can satisfy $||V_1|-|V_2||\\le 1$ by shuffling frame vertices while keeping all payload leaves on one side, cost zero on the payload. That's exactly the \"spurious low-cost bisection\" — and a bare star plus padding will fall into it.\n\nSo the real content of the reduction — the *theorem behind the technical one* — is a **rigidity lemma**: the heavy frame must be designed so that any near-balanced bisection is forced to cut the payload, i.e., the frame ties each payload leaf's side to a specific frame region. This is where I'd insist on the weight ratio being superpolynomial, as László said, but more than that: you need the frame to make the cardinality count and the payload assignment *rigidly coupled*. \n\nHere's my concrete proposal: don't use a star. Use **chains** of length proportional to $a_i$ — replace mass $a_i$ by a path of $a_i$ unit-weight edges with heavily-weighted \"anchor\" endpoints. Then cardinality automatically tracks the integer $a_i$, because cutting that payload component costs you, and the *number of vertices* you move equals the partition weight. This collapses the cardinality-balance and sum-balance into the *same* quantity — which is precisely what dissolves László's point-3 gap. Planarity is trivial: paths and anchors embed in a single face.\n\nAction item from me: verify the chain gadget on $a=(1,1,2)$ explicitly — four cases by hand — and check that the unique balanced bisection of cost zero exists iff PARTITION is solvable. If that small case is rigid, the general reduction is rigid. Compute first, embed second.",
+      "created_at": "2026-06-23T03:17:26Z"
+    },
+    {
+      "id": "m9818cb89",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's chain idea is the right instinct — collapse the two balances into one quantity — but let me stress-test it as an algorithm designer, because the chain trick has a subtle cost-accounting issue.\n\nIf you replace mass $a_i$ by a path of $a_i$ unit-weight edges, then cutting that path *anywhere* costs $1$, not $a_i$. So the payload cut cost no longer tracks the PARTITION objective — it tracks how many chains you sever, which is at most $n$, independent of the $a_i$. That's backwards from what we want. The mechanism we need is: **vertex count tracks $a_i$, cut cost is paid for separating a chain from its anchor.** So make the chain internally *heavy* (weight $W \\gg 1$ within the chain, so you never want to cut inside it) and the anchor-to-frame edge *light* (the only edge whose cut you actually pay for). Then each chain is rigid as a block, moves $a_i$ vertices as a unit, and you pay the light boundary edge exactly when you assign it to the minority side. Now cardinality-balance literally *is* sum-balance.\n\nTwo points from my own work:\n\n1. **This is genuinely a balanced-cut, not a Laplacian computation.** Min cut on weighted planar graphs I can do in nearly-linear time by solving $Lx=b$ and using planar duality — the objective is a single homology class. The balance constraint is what makes the dual cut a *constrained* shortest cycle, and that constraint is what Galluccio–Goldberg exploit only because the unweighted objective is $\\mathbb{Z}$-valued and symmetric. The heavy/light weight ratio destroys that symmetry — exactly László's point 2.\n\n2. **The rigidity lemma needs a quantitative gap, not just \"superpolynomial.\"** Set internal chain weight $W = n \\cdot (\\sum a_i) + 1$. Then any bisection that cuts inside a chain pays more than the entire achievable payload-boundary cost, so the optimum never does it. That's a clean, checkable inequality — I want it written as an inequality, not a picture.\n\nLet me ask the sharp question: with heavy chains and light anchor edges, is the cardinality *exactly* $\\sum_{i \\in V_1} a_i$ plus a fixed frame contribution? If so, then balanced cardinality $\\iff$ PARTITION, and I'm convinced. Verify it on $a=(1,1,2)$ as Peter says, and write the $W$-inequality explicitly.",
+      "created_at": "2026-06-23T03:19:40Z"
+    },
+    {
+      "id": "m1883dd0f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's correction is exactly right, and it tightens my frame-plus-payload picture into something I'm now willing to certify. Let me write the construction cleanly and check the rigidity inequality, because I think we can dispose of Peter's $n=3$ worry rigorously rather than by picture.\n\n**The construction.** Given PARTITION instance $a_1,\\dots,a_n$ with $S=\\sum a_i$ (assume $S$ even; the goal is a split into two parts of sum $S/2$):\n\n- For each $i$, build a *block* $B_i$: a path on $a_i$ vertices with internal edges of weight $W$, and one designated vertex of $B_i$ joined by a **light edge of weight $1$** to a global hub $h$.\n- The hub $h$ is the entire \"frame.\" The graph is $\\{h\\} \\cup \\bigcup_i B_i$, which is planar — indeed it is *outerplanar*, each block hanging off $h$ in its own face. (No grid needed; the hub is the frame.)\n- Total vertex count is $S+1$. Pad with $S+1$ isolated... no — to make cardinality match, add a twin hub $h'$ with the same light-edge structure mirrored, or simply add isolated zero-weight vertices so that $|V|$ is even and the balance target is $|V|/2$.\n\n**The rigidity inequality.** Set $W = nS + 1$. In an optimal bisection, no block is ever split: cutting one internal edge costs $W > nS \\ge$ the total weight of *all* light edges, which is $n$. So every $B_i$ lies entirely in $V_1$ or entirely in $V_2$ — the block moves as a rigid unit of $a_i$ vertices, exactly Dan's point. This is precisely a quantitative instance of the philosophy behind the Local Lemma's slack condition: you want a verifiable margin, $W > \\sum_e w(e)_{\\text{light}}$, not an asymptotic gesture.\n\n**Cardinality $=$ sum.** Place $h$ in $V_1$. Then $|V_1| = 1 + \\sum_{i:\\,B_i\\subset V_1} a_i$ (plus fixed padding). Balanced cardinality $\\iff \\sum_{i \\in V_1} a_i = S/2$, which is *exactly* PARTITION. The cut cost equals the number of blocks on the minority side — but crucially, **the balance constraint forces the sum-split**, so the cut cost is irrelevant to the reduction; PARTITION-feasibility is equivalent to *existence of a balanced bisection*, period. This dissolves Peter's $a=(1,1,2)$ concern cleanly: $S=4$, target $S/2=2$, and the only balanced block-assignments are $\\{a=2\\}$ vs $\\{1,1\\}$ — feasible; for $a=(1,1,3)$, $S=5$ odd, no balanced bisection exists, matching PARTITION's infeasibility.\n\n**One honest caveat, my old point 3.** We must ensure the *padding* vertices cannot be shuffled to fake balance independently of the blocks. So padding vertices must carry weight-$0$ edges *only*, and we must make $|V|$ such that the balance target can be met **only** by a correct block split. The cleanest fix: use exactly $S/2$ padding mechanics so the cardinality equation has no free play. That is the one inequality to nail down on paper.\n\nSo: **NP-hard**, by reduction from PARTITION, via heavy blocks + light hub edges. The contrast with Galluccio–Goldberg is now",
+      "created_at": "2026-06-23T03:20:28Z"
+    },
+    {
+      "id": "m8311973d",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's construction is clean, but let me do what I always do — actually run the small case to the end, because I smell a bug in the *padding*, which is exactly where the proof can quietly die.\n\nTake $a=(1,1,2)$, so $S=4$, blocks $B_1,B_2$ of size $1$ and $B_3$ of size $2$. With the hub we have $4+1=5$ payload vertices. To make $|V|$ even for an honest bisection you pad — but **how many** padding vertices, and where do they go? Here is the trap: padding vertices are isolated with weight-$0$ edges, so the bisection can put them *anywhere at zero cost*. They are exactly the \"frame vertices you shuffle\" I warned about in my $n=3$ remark. If you add enough free vertices, you can satisfy $\\big||V_1|-|V_2|\\big|\\le 1$ by moving padding alone, leaving *every block on one side*, cut cost zero — and that bisection exists whether or not PARTITION does. So the claim \"balanced bisection exists $\\iff$ PARTITION\" is **false** once you have free padding.\n\nThe fix is to have *no free play whatsoever*: the cardinality equation must be forced entirely by the blocks. Concretely — duplicate the instance. Build **two mirror copies** of the blocks hanging off the same hub $h$, an \"up\" copy and a \"down\" copy, so $|V|=2S+1$ and there is no isolated padding at all. Now $|V_1|-|V_2|$ is controlled purely by which blocks (up vs. down) go where, and you tune so that balance forces a genuine $S/2$ split. That is the honest version of László's \"no free play\" caveat — and notice it's the same rigidity philosophy as my chains: collapse cardinality and sum into one quantity with *zero slack*.\n\nSo I'll certify the conclusion — **NP-hard, reduction from PARTITION** — but the action item I insist on is: write the padding count as an exact equation with no free variable, and re-run $a=(1,1,2)$ *with the padding included* to confirm no spurious zero-cost balanced cut. Compute the actual example to the bottom, padding and all; that's where the real theorem lives.",
+      "created_at": "2026-06-23T03:21:12Z"
+    },
+    {
+      "id": "m27c2428e",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T03:22:03Z"
+    },
+    {
+      "id": "mb4d5a8f8",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve that minimum bisection on weighted planar graphs is NP-hard via a reduction from PARTITION using heavy rigid blocks attached by light edges to a hub, contrasting with the polynomial unweighted case.",
+      "created_at": "2026-06-23T03:22:03Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that minimum bisection on weighted planar graphs is NP-hard via a reduction from PARTITION using heavy rigid blocks attached by light edges to a hub, contrasting with the polynomial unweighted case.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the problem statement and target answer",
+        "body": "State precisely the problem: minimum bisection on planar graphs with arbitrary nonnegative edge weights under the hard cardinality balance constraint ||V_1|-|V_2|| <= 1. Record the established contrast: unweighted planar minimum bisection is polynomial (Galluccio-Goldberg via planar duality / homology-class shortest cut), while the weighted balanced case is conjectured NP-hard. Confirm the target conclusion is NP-hardness by reduction from PARTITION.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Construct the heavy-block / light-hub gadget",
+        "body": "Given a PARTITION instance a_1,...,a_n with S = sum a_i (S even), build for each i a block B_i: a path on a_i vertices with internal edges of weight W, with one designated vertex of B_i joined by a light edge of weight 1 to a global hub h. Verify the resulting graph {h} U (union of B_i) is planar (in fact outerplanar, each block hanging off h in its own face). Document the construction formally.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove the rigidity inequality",
+        "body": "Set W = nS + 1 and prove that in any optimal bisection no block is ever split: cutting a single internal edge costs W > nS >= total weight n of all light edges, so each B_i lies entirely in V_1 or V_2 and moves as a rigid unit of a_i vertices. Write this as an explicit checkable inequality W > sum of light-edge weights, not an asymptotic gesture.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Resolve the padding / free-play gap",
+        "body": "Address Peter's bug: free isolated zero-weight padding vertices can be shuffled to satisfy the cardinality constraint while leaving all blocks on one side, yielding a spurious zero-cost balanced cut independent of PARTITION feasibility. Replace free padding with a no-slack design (e.g., two mirror copies of the blocks hanging off the hub giving |V| = 2S+1, or an exact padding-count equation with no free variable) so that cardinality balance is forced entirely by the block assignment. Write the padding/cardinality relation as an exact equation.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Establish cardinality = sum equivalence",
+        "body": "With h placed in V_1, show |V_1| = (fixed frame/padding contribution) + sum over {i : B_i in V_1} a_i, so that the cardinality balance constraint holds iff sum_{i in V_1} a_i = S/2, which is exactly PARTITION. Conclude that a balanced bisection exists iff the PARTITION instance is solvable, making the reduction valid in polynomial time.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify the small case a=(1,1,2) with padding included",
+        "body": "Run the full reduction by hand on a=(1,1,2), S=4, target S/2=2, including the chosen no-slack padding. Enumerate all balanced block assignments, confirm the only balanced splits are {a=2} vs {1,1} (feasible) and that for a=(1,1,3), S=5 odd, no balanced bisection exists. Critically confirm no spurious zero-cost balanced cut arises from padding manipulation.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Stress-test the reduction for hidden failure modes",
+        "body": "Critically examine remaining vulnerabilities: confirm planarity is preserved by the final mirrored/padded construction face-by-face, verify the distinction between cardinality-balance and sum-balance is genuinely collapsed with zero slack, check that the weight ratio (heavy W vs light edges) does not violate any 'arbitrary nonnegative weights' assumptions, and ensure no low-cost bisection bypasses the intended block coupling.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble the final NP-hardness proof",
+        "body": "Combine the construction, rigidity inequality, padding equation, cardinality=sum equivalence, and verified example into a complete, self-contained proof that weighted planar minimum bisection is NP-hard via PARTITION. Include the explicit contrast with the polynomial unweighted case to clarify that the weights plus balance constraint are jointly responsible for hardness.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T03:22:03Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

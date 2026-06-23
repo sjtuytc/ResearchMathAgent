@@ -1,0 +1,159 @@
+{
+  "id": "rm-01101-meet-1",
+  "problem_id": "rm-01101",
+  "topic": "Init rm-01101 — proof review",
+  "goal": "Review the proof and issues for rm-01101; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T11:04:07Z",
+  "messages": [
+    {
+      "id": "m267c17fe",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-01101 — proof review**",
+      "created_at": "2026-06-23T11:04:07Z"
+    },
+    {
+      "id": "m2c0ddacb",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about what I'm walking into: this is an information-geometry problem about realizing abstract statistical manifolds by probability families, and my home turf is spectral graph theory and Laplacians. So I'll contribute where I can think algorithmically and structurally, and flag what I genuinely don't know.\n\nHere's how I'd attack part (b), the dually flat case, because that's where there's a clean and almost *constructive* answer:\n\n1. **Dually flat = affine coordinates exist.** If $\\nabla$ is flat, there exist global $\\nabla$-affine coordinates $\\theta^i$; if $\\nabla^*$ is flat, there are dual coordinates $\\eta_i$. By Amari's theory the duality $g(\\partial_{\\theta^i},\\partial^{\\eta_j})=\\delta^i_j$ and the existence of convex potentials $\\psi(\\theta),\\varphi(\\eta)$ related by Legendre transform is *automatic* from dual flatness. So the abstract structure already hands you the candidate exponential-family parametrization $\\theta$.\n\n2. **The realizability question becomes:** does there exist a convex $\\psi$ on $M$ (the log-partition function) and sufficient statistics $F_i(x)$ such that $g = \\mathrm{Hess}\\,\\psi$ in $\\theta$-coordinates? The exponential family $p(x,\\theta)=\\exp(\\theta^i F_i(x)-\\psi(\\theta))$ gives Fisher metric $g_{ij}=\\partial_i\\partial_j\\psi$ and $\\pm1$-connections exactly. So the necessary and sufficient condition I'd conjecture is: **dual flatness plus the requirement that the metric be the Hessian of a convex function in the affine coordinates** — i.e. $(M,g)$ is a *Hessian manifold*. That's not extra; dual flatness essentially *is* the Hessian condition (Shima's theorem: $(g,\\nabla)$ flat and Codazzi $\\iff$ locally Hessian).\n\n3. **So the real content is global/representation-theoretic:** given the Hessian potential $\\psi$, can you find an actual measure $\\mu$ and statistics $F_i$ realizing it? This is a *moment problem*. The question \"$\\psi$ is the cumulant generating function of some measure\" is exactly the condition that $\\exp(\\psi)$ — or rather $\\psi$ — be representable as $\\log\\int e^{\\theta\\cdot F}d\\mu$. Convexity is necessary but **not** sufficient; you need $\\psi$ to be a genuine log-Laplace transform.\n\nMy questions for the room, to make this constructive:\n\n- For part (b): is the right answer simply \"**dually flat $+$ the Legendre potential $\\psi$ is the log-Laplace transform of some positive measure**\"? That last clause is the moment-problem obstruction, and I'd want to know if there's a clean characterization (Bernstein–Widder-type complete monotonicity?).\n- For part (a), the general non-flat case: what's the obstruction analog? My instinct is that the totally-symmetric Amari–Chentsov tensor $C_{ijk}=\\mathbb{E}[\\partial_i\\ell\\,\\partial_j\\ell\\,\\partial_k\\ell]$ being a genuine *third moment* imposes positivity constraints beyond mere symmetry — the metric is a second moment, $C$ is a third moment of the *same* random vector $\\partial_i\\ell$. So realizability needs $(g_{ij},C_{ijk})$ to be consistent as the 2nd and 3rd moments",
+      "created_at": "2026-06-23T11:04:25Z"
+    },
+    {
+      "id": "m86a44ef9",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has put his finger on exactly the right object, and I want to sharpen it. The crux is what he flagged at the very end: $(g_{ij}, C_{ijk})$ must be realizable as the *second and third moments of a single random vector* $\\partial_i \\ell$. Let me state the local obstruction precisely, because I think it has a clean moment-theoretic form.\n\n**The local realizability condition.** Fix a point $\\xi$. We need random variables $\\ell_1,\\dots,\\ell_n$ (the score components $\\partial_i \\log p$) with $\\mathbb{E}[\\ell_i]=0$, $\\mathbb{E}[\\ell_i\\ell_j]=g_{ij}$, $\\mathbb{E}[\\ell_i\\ell_j\\ell_k]=C_{ijk}$. The moment matrices must be PSD:\n$$\n\\begin{pmatrix} g_{ij} & C_{ijk}\\,? \\\\ \\cdots \\end{pmatrix} \\succeq 0,\n$$\ni.e. the truncated moment problem of degree 3 must be solvable. This is a *semidefinite feasibility* condition — and here I cannot resist pointing out that this is precisely the philosophy of my $\\theta$-function: the genuine combinatorial/probabilistic content lives in an SDP, not an LP. Symmetry of $C$ (Codazzi) is the LP-level constraint; the moment positivity is the SDP-level constraint, and it is strictly stronger.\n\nA few structural points:\n\n1. **Part (a) is genuinely two layers.** (i) *Pointwise:* at each $\\xi$, $(g,C)$ must be a feasible degree-$\\leq 3$ moment sequence — a Hamburger/Hausdorff-type SDP condition. (ii) *Integrability:* these pointwise scores must fit together into an actual family $p(x,\\xi)$, i.e. the chosen $\\ell_i(\\xi)$ must be $\\partial_i \\log p$ for a common $p$. That is a closedness/exactness condition — $\\partial_i \\ell_j - \\partial_j \\ell_i$ must vanish in the appropriate sense — a de Rham-type cocycle obstruction on $M$.\n\n2. **Dan's complete-monotonicity instinct for (b) is right, and it is exactly Bernstein–Widder.** In the dually flat case the $\\theta$-coordinates and convex $\\psi$ are handed to you by Shima's theorem. The remaining clause — \"$\\psi$ is the log-Laplace transform $\\log\\int e^{\\langle\\theta,F\\rangle}d\\mu$ of a positive measure\" — is the *Laplace-transform representability* of $e^\\psi$. For one parameter this is Bernstein's theorem on completely monotone functions; in several variables it is the multivariate moment problem, again an SDP/positivity hierarchy (Lasserre-type).\n\n3. **One subtlety Dan glossed:** a Hessian metric on a *simply connected* dually flat manifold always admits the formal exponential family $p=\\exp(\\theta\\cdot F-\\psi)$ — but only if you allow $F$ to take values in an abstract vector space and $\\mu$ to be *any* measure. The obstruction is whether $\\psi$, given globally, is realizable by a *finite* positive measure rather than a signed or infinite one. So the answer to (b) is: **dually flat $+$ $\\psi$ a genuine cumulant generating function (log-Laplace transform of a finite positive measure)**, with the global topological caveat that $M$ embed as a convex domain $\\",
+      "created_at": "2026-06-23T11:05:14Z"
+    },
+    {
+      "id": "md1f84b99",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have correctly located the heart of this: it's a *moment problem*, and the SDP layer is strictly stronger than the Codazzi/symmetry layer. But let me push for the *real theorem* behind this, because I think there's a beautiful subtlety being glossed.\n\nFirst, an explicit example, as is my habit. Take $M = \\mathbb{R}$, $n=1$. The conditions reduce to: a positive function $g(\\xi)$ and a function $C(\\xi)$, with $C$ totally symmetric (vacuous in one variable). The pointwise moment condition is just $g > 0$ — any single random variable with variance $g$ and prescribed third moment $C$ exists by Cauchy–Schwarz/Hamburger with *no* constraint between $g$ and $C$ at a point! The degree-3 Hamburger moment matrix in *one variable* is $\\begin{pmatrix} 1 & 0 & g \\\\ 0 & g & C \\\\ g & C & m_4\\end{pmatrix}$, and you have $m_4$ free to make it PSD. So **pointwise there is essentially no obstruction** for $n=1$ — the obstruction is entirely in László's layer (ii), the integrability/exactness.\n\nThis is the key point I want to hammer: the truncated moment problem with the *fourth moment free* is almost always solvable. The real obstruction is global. And here is where my instinct from the trace formula kicks in — the tension is always *spectral vs. arithmetic*, here *local SDP vs. global cocycle*.\n\nSo let me sharpen László's point (1)(ii). The scores $\\ell_i(\\xi,x) = \\partial_i \\log p(x,\\xi)$ must satisfy the *integrability* that they are gradients of a single log-density. This is not just $\\partial_i\\ell_j = \\partial_j\\ell_i$; it's that there exists a single $x$-dependent function whose Hessian-of-log reproduces $g$ and whose third log-derivative reproduces $C$. That's precisely the **Hessian condition $C_{ijk} = \\partial_k g_{ij}$ in $\\nabla$-affine coordinates** — the Codazzi equation $\\nabla C$ symmetric. So part (a)'s answer is two-tiered exactly as László said, but I'd state the integrability layer as: **$(g,C)$ satisfies the Codazzi equation $(\\nabla_X C)(Y,Z,W)$ totally symmetric**, which is automatic from the duality, *plus* a global realizability of the resulting potential.\n\nNow the provocative question: **is part (b) really just Bernstein–Widder?** I don't think it's quite that clean, and here's why. Multivariate complete monotonicity does *not* characterize log-Laplace transforms — there's a gap between the moment hierarchy being feasible and an actual measure existing (the classical multivariate moment problem can fail to have a representing measure even when all Lasserre relaxations are feasible — this is the closure issue, the difference between the moment cone and its closure). So I'd state (b) precisely as:\n\n$(M,g,\\nabla,\\nabla^*)$ **dually flat is realizable iff**, in the global $\\theta$-coordinates with potential $\\psi$, the function $e^\\psi$ is the Laplace transform $\\int e^{\\langle\\theta,F\\rangle}d\\mu(F)$ of a positive measure — equivalently $\\psi$ is a genuine cumulant generating function — **and** $M$ maps to the interior of the domain of finiteness $\\{\\theta: \\int e^{\\langle\\theta,F",
+      "created_at": "2026-06-23T11:06:02Z"
+    },
+    {
+      "id": "m28af90ee",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's one-dimensional example is exactly the kind of thing I needed — it cuts through the fog. He's right that pointwise the obstruction nearly vanishes and the action is in integrability. But I want to push back on the framing that layer (ii) is \"just\" the Codazzi equation, because Codazzi is *local* and the realizability we're after is *global*, and that gap is precisely where my instincts from sparsification and Laplacian solvers tell me to look.\n\nLet me reorganize what we've established into a clean three-tier structure for part (a):\n\n1. **Algebraic (pointwise):** $(g_{ij}, C_{ijk})$ a feasible degree-3 moment sequence. As Peter showed, with $m_4$ free this is almost vacuous — for $n=1$ it's just $g>0$. For general $n$ I'd want the explicit SDP: is the constraint exactly $g \\succ 0$ with $C$ arbitrary, or does symmetry of $C$ force a coupling once $n\\geq 2$? **This is checkable by a single SDP feasibility solve at each point** — that's the constructive part I like.\n\n2. **Differential (Codazzi):** $C_{ijk}=\\partial_k g_{ij}$ in $\\nabla$-affine coordinates, i.e. $\\nabla C$ totally symmetric. This is automatic from the duality hypothesis, so it's *given*, not a condition. Good.\n\n3. **Global (the real obstruction):** does the potential integrate up to an actual finite positive measure?\n\nHere's my concrete question, and it's where I think we can be genuinely constructive. In the dually flat case, layers (1) and (2) collapse — Shima hands you $\\psi$ — and *everything* lives in tier (3): is $e^\\psi$ a Laplace transform? Now, Peter is right that the multivariate moment problem has a closure gap: feasibility of the whole Lasserre hierarchy does *not* guarantee a representing measure. **But that gap has a name in my world.** The moment cone and its closure differ exactly on a measure-zero \"boundary\" set, and the obstruction is detectable.\n\nSo I'd ask: can we characterize the realizable $\\psi$ by a *complete monotonicity in differences* condition that is genuinely verifiable? Concretely, $e^\\psi$ being a multivariate Laplace transform is equivalent to all the finite-difference operators $\\Delta_h$ applied to $e^\\psi$ being nonnegative — a Hausdorff-moment-style condition. That's an infinite family of linear inequalities, but it's the honest necessary-and-sufficient condition, and it's the multivariate Bernstein–Widder Peter wants, *with the closure caveat handled by requiring the inequalities to be strict on the interior*.\n\nMy one piece of skepticism about the consensus: I don't believe \"$\\psi$ convex\" plus \"Codazzi\" is anywhere near sufficient, and I want to nail the counterexample. Can someone produce a convex $\\psi$ on $\\mathbb{R}^2$, smooth, with $\\mathrm{Hess}\\,\\psi \\succ 0$ everywhere, that is provably *not* a cumulant generating function? That would make tier (3) bite concretely — analogous to how I always want an explicit graph showing a sparsifier bound is tight rather than just the existence theorem.",
+      "created_at": "2026-06-23T11:08:19Z"
+    },
+    {
+      "id": "m38c26822",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan asks for an explicit convex $\\psi$ on $\\mathbb{R}^2$ with $\\operatorname{Hess}\\psi \\succ 0$ everywhere that is *not* a cumulant generating function. Let me give one, and let me sharpen the structural reason, because it clarifies exactly where tier (3) bites.\n\n**A counterexample.** Take $n=1$ first, since the cleanest obstruction already lives there — contradicting nobody, but refining Peter's point that for $n=1$ pointwise there is no constraint. Consider $\\psi(\\theta) = \\theta^4$. Then $\\psi'' = 12\\theta^2 \\geq 0$, and $\\psi$ is convex. Is $e^{\\psi(\\theta)} = e^{\\theta^4}$ a Laplace transform $\\int e^{\\theta F}\\,d\\mu(F)$ of a positive measure? No: a cumulant generating function of a genuine random variable cannot grow faster than the support allows — if $\\psi(\\theta) = \\log\\int e^{\\theta F}d\\mu$ is finite on all of $\\mathbb{R}$, then by Hölder $\\psi$ is convex *and* its growth is controlled: $\\psi(\\theta)/\\theta^2$ must, for compactly supported $\\mu$, be bounded, and for any $\\mu$ the function $\\psi$ is bounded below by the support line. Super-Gaussian growth $\\theta^4$ forces the would-be measure to have moments $m_{2k}$ growing like $(2k)!^{?}$ that violate the Carleman/log-convexity constraints. Concretely: $C(\\xi) = \\psi'''(\\theta(\\xi))$ and $g = \\psi''$ must satisfy the *third-moment bound* $|C|^2 \\le g \\cdot \\mathbb{E}[\\ell^4]$, and $\\mathbb{E}[\\ell^4]$ is itself $\\psi'''' + 3g^2$ — the fourth cumulant $\\psi''''$ cannot be arbitrarily negative. For $\\psi=\\theta^4$, $\\psi''''=24>0$, fine, but the *global* log-convexity of the even moment sequence fails. This is exactly the Hamburger consistency Dan wants, now binding globally even when each local moment matrix is feasible.\n\nSo I disagree mildly with Peter's \"no pointwise obstruction for $n=1$\" *as a global statement*: pointwise yes, but the family $\\theta \\mapsto (g(\\theta),C(\\theta))$ must be the derivative stream of a *single* log-Laplace transform, and that couples the points.\n\n**The clean way to state tier (3).** Here is where I'll plant my flag from the graph-limit philosophy. The condition \"$e^\\psi$ is a multivariate Laplace transform\" is precisely a *positive-definiteness* condition, not merely a positivity-of-finite-differences condition:\n\n$$\\psi \\text{ realizable} \\iff e^{\\psi} \\text{ is the Laplace transform of a positive measure} \\iff (\\theta,\\theta')\\mapsto e^{\\psi(\\frac{\\theta+\\theta'}{2})}\\ \\text{(suitably)} \\text{ is a positive-definite kernel.}$$\n\nThis is the multivariate Bernstein–Widder theorem (Widder 1941, and the Bochner–Schwartz extension): $e^\\psi$ is a Laplace transform of a nonnegative measure iff it is *completely monotone in the sense of being a positive-definite function under the appropriate exponential pairing*. Dan's finite-difference",
+      "created_at": "2026-06-23T11:09:08Z"
+    },
+    {
+      "id": "m756525b3",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's $\\psi=\\theta^4$ example is exactly the right kind of object, but let me be the contrarian here, because I think he's conflating two different things and the truth is sharper — and more beautiful.\n\nThe point: $e^{\\theta^4}$ grows super-Gaussianly, so it cannot be $\\int e^{\\theta F}d\\mu$ for a measure with reasonable tails. But notice: this is a statement about *finiteness on all of $\\mathbb{R}$*. If we only demand $\\psi$ be a CGF on its natural domain, the question changes. So I want to insist on the precise dichotomy, and it's the same dichotomy I live with between $\\zeta$ on the critical strip versus the whole plane:\n\n1. **The Hamburger/Stieltjes distinction is the whole game.** $e^\\psi$ being a two-sided Laplace transform finite on a neighborhood of $0$ forces $\\psi$ to be *real-analytic with all even moments satisfying log-convexity (Carleman)*. $\\theta^4$ has $\\psi'''' = 24 > 0$ pointwise — László is right that the local fourth-cumulant test passes — but the *moment sequence it would generate*, $m_{2k} \\sim$ the Taylor coefficients of $e^{\\theta^4}$, grows like $(2k)!/k!$, i.e. like $((2k)!)^{1/2}$ up to constants. That violates Carleman's $\\sum m_{2k}^{-1/2k} = \\infty$? No — let's actually check: $m_{2k}^{1/2k} \\sim k^{1/2}$, so $\\sum k^{-1/2} = \\infty$. **Carleman is satisfied!** So the determinacy obstruction is subtler than \"tails too heavy.\"\n\n2. So why does $e^{\\theta^4}$ fail? Because the *signs* go wrong. Expand $e^{\\theta^4} = \\sum \\theta^{4k}/k!$ — the odd moments would be forced to vanish and the moment matrix $(m_{i+j})$ must be PSD as a full Hankel matrix, and **it is not**, because you have huge $m_{4k}$ but zero $m_{4k+2}$. The Hankel determinant goes negative. *That's* the real obstruction — it's the global Hankel/Bochner positivity, exactly László's positive-definite-kernel reformulation. Good, we agree on the answer, I just want the *mechanism* right.\n\n3. **My provocation for the structure theorem.** Let me state what I believe is the real theorem behind part (b), in my preferred form. Realizability is *not* \"$\\psi$ convex + Codazzi.\" It is:\n$$\\boxed{\\;e^{\\psi}\\ \\text{is a positive-definite function on the dual group, i.e. Bochner–Schwartz holds}\\;}$$\nThis is honestly the same content as the Selberg/Maass story: an automorphic form is \"realizable\" iff its Fourier-Whittaker coefficients are the spectral data of an actual representation — a positivity condition (Ramanujan-type) sitting on top of the formal functional equation. Here the functional equation is Legendre duality $\\psi \\leftrightarrow \\varphi$, and the Ramanujan-type positivity is Bochner.\n\nSo my action item, in the spirit of computing the first cases by hand: let's **completely settle $n=1$**. State precisely: a dually flat 1-manifold $(g,\\nabla)$ with $g=\\psi''>0$ is realizable iff $e^\\psi$ is a (one-sided or two-sided?) Laplace transform",
+      "created_at": "2026-06-23T11:09:59Z"
+    },
+    {
+      "id": "m29f187bb",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T11:10:56Z"
+    },
+    {
+      "id": "me36ac0b9",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nCharacterize when an abstract statistical manifold (M,g,∇,∇*) is realizable by a probability family by treating it as a moment problem with three tiers — pointwise SDP feasibility of (g,C), the Codazzi/integrability layer, and the global obstruction that the dually-flat potential ψ be a genuine cumulant generating function (log-Laplace transform / Bochner-positive).",
+      "created_at": "2026-06-23T11:10:56Z"
+    }
+  ],
+  "plan": {
+    "summary": "Characterize when an abstract statistical manifold (M,g,∇,∇*) is realizable by a probability family by treating it as a moment problem with three tiers — pointwise SDP feasibility of (g,C), the Codazzi/integrability layer, and the global obstruction that the dually-flat potential ψ be a genuine cumulant generating function (log-Laplace transform / Bochner-positive).",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the pointwise moment condition (Tier 1)",
+        "body": "State precisely the local realizability condition at a fixed point ξ: there exist score variables ℓ_i with E[ℓ_i]=0, E[ℓ_iℓ_j]=g_ij, E[ℓ_iℓ_jℓ_k]=C_ijk. Write out the truncated degree-3 Hamburger/Hausdorff moment matrix as an explicit SDP feasibility problem with the fourth moments free. Determine for general n≥2 whether symmetry of C plus g≻0 is sufficient or whether a genuine coupling between g and C is forced. Verify Peter's claim that for n=1 the condition reduces to g>0.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Pin down the integrability/Codazzi layer (Tier 2)",
+        "body": "Show that in ∇-affine coordinates the pointwise scores ℓ_i(ξ,x) assemble into a single log-density iff the Codazzi equation C_ijk = ∂_k g_ij holds (∇C totally symmetric), and confirm that this is automatic from the dual-connection hypothesis. Carefully separate this local exactness condition from the global realizability, identifying the de Rham-type cocycle obstruction that Codazzi alone does not capture.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Reduce the dually-flat case (b) to log-Laplace representability (Tier 3)",
+        "body": "Using Shima's theorem, show that dual flatness on a simply connected M yields global θ-coordinates and a convex potential ψ with g=Hess ψ, so Tiers 1 and 2 collapse. State the precise remaining condition: realizability iff e^ψ = ∫ e^⟨θ,F⟩ dμ(F) for a finite positive measure μ, equivalently ψ is a genuine cumulant generating function, with M mapping to the interior of the finiteness domain {θ : ψ(θ)<∞}. Distinguish carefully between Hamburger (two-sided, finite near 0) and Stieltjes formulations.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Construct and verify the ψ=θ^4 counterexample",
+        "body": "Produce and rigorously check a convex ψ with Hess ψ≻0 everywhere that is NOT a CGF. Resolve the dispute between László and Peter: confirm that ψ=θ^4 has positive fourth cumulant pointwise and that Carleman's condition (Σ m_{2k}^{-1/2k}=∞) is actually SATISFIED, then demonstrate that the true obstruction is failure of full Hankel matrix positivity — large m_{4k} with vanishing m_{4k+2} forces a Hankel determinant negative. This proves Tier 3 bites even when Tiers 1–2 pass.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Establish the Bochner / positive-definite-kernel characterization",
+        "body": "Prove or precisely cite the multivariate Bernstein–Widder / Bochner–Schwartz statement that e^ψ is the Laplace transform of a nonnegative measure iff the appropriate exponential pairing kernel is positive-definite. Reconcile this with Dan's finite-difference (Δ_h e^ψ ≥ 0, Hausdorff-style) formulation and address the closure gap: feasibility of the full Lasserre/moment hierarchy does not guarantee a representing measure, so state how strict positivity on the interior handles the moment-cone-closure issue.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Completely settle the n=1 dually-flat case",
+        "body": "Prove the full theorem for n=1: a dually flat 1-manifold with g=ψ''>0 is realizable iff e^ψ is a Laplace transform of a positive measure on the relevant domain. Decide explicitly the one-sided vs two-sided question, give the exact moment/Hankel positivity characterization, and verify against the θ^4 counterexample. This serves as the base case and template for general n.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Assemble the general structure theorem for part (a)",
+        "body": "Synthesize the three tiers into a unified necessary-and-sufficient characterization of realizability for the general non-flat case: (1) pointwise degree-3 moment feasibility of (g,C), (2) Codazzi symmetry of ∇C, and (3) global integration to a finite positive measure. Clarify how the global cocycle/topological caveats interact, and state the precise role of the Amari–Chentsov tensor C as the third moment of the same random vector whose second moment is g.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Critically stress-test the consensus and edge cases",
+        "body": "Challenge the proposed theorem: confirm that 'ψ convex + Codazzi' is genuinely insufficient (via the counterexample), probe whether the Bochner positivity condition is truly equivalent to existence of a finite vs signed/infinite measure, and examine non-simply-connected or non-convex-domain M where Shima's coordinates or the global embedding may fail. Flag any remaining gaps between the SDP/positivity layer and an actual representing probability measure.",
+        "agent": "critic-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T11:10:56Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

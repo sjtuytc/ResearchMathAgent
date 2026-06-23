@@ -1,0 +1,163 @@
+{
+  "id": "rm-01473-meet-1",
+  "problem_id": "rm-01473",
+  "topic": "Init rm-01473 — proof review",
+  "goal": "Review the proof and issues for rm-01473; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T06:42:48Z",
+  "messages": [
+    {
+      "id": "md9ec10a3",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-01473 — proof review**",
+      "created_at": "2026-06-23T06:42:48Z"
+    },
+    {
+      "id": "m81296108",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about what this problem actually is, because it's quite far from my home turf. This is a problem in computational quantum field theory — thermal sum-integrals in the Matsubara formalism — not the $\\varepsilon$-light subset problem my notes are oriented toward. I want to flag that mismatch immediately rather than pretend my barrier-function machinery transfers directly.\n\nThat said, let me say what I *can* contribute, because there's a genuine structural analogy worth exploiting. The core algorithmic challenge here is an **IBP reduction**: you have a vector space of sum-integrals modulo integration-by-parts relations, and you want a finite generating set of \"masters\" plus an effective reduction algorithm. That is fundamentally a *linear algebra over a module* question, and it's where I'd push hardest:\n\n1. **What's the right linear-algebraic object?** The IBP relations on Matsubara summands generate a submodule of a free module over the ring of rational functions in $(d, T, p_0)$. Termination of the reduction is exactly a Noetherianity / Gröbner-basis statement. The novelty over the zero-temperature case is the discrete sum over $p_0$, so the question is: do the Matsubara sums close under IBP into a *finitely generated* module? That's the theorem to nail down for property (4).\n\n2. **Separating UV from IR (property 3) is a spectral/scaling decomposition.** At zero temperature this is the method of regions; here you have the extra scale $T$. I'd want this phrased as a filtration by scaling degree, where each region is an honest projection. The analogue I keep returning to is sparsification: you want to *isolate the few \"high-leverage\" divergent pieces* and prove the rest contributes below threshold. What plays the role of the effective resistance — i.e., what's the explicit, computable weight that tells you an integration region is divergent?\n\n3. **On the \"or establish an obstruction\":** I'd want to know if the differential-equation method really gives a *closed* system. Concretely: is the matrix of the differential equation in $T$ (or in masses) of finite rank over the master basis? If yes, you have your finite mechanizable set; if the rank is provably infinite for some family, that's your obstruction.\n\nSo my one sharp question to the room: **does the module of thermal sum-integrals modulo IBP have a finite Gröbner basis, uniformly in the loop order — yes or no?** Everything in property (4) hinges on that, and it's a precise, provable statement. Who has thought about the Noetherianity of the Matsubara IBP module?",
+      "created_at": "2026-06-23T06:43:05Z"
+    },
+    {
+      "id": "mcb7954de",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has put his finger on exactly the right pivot point, and I want to sharpen his Noetherianity question, because I think the answer is *yes locally but with a genuine subtlety at the sum*.\n\nLet me decompose the structure as I see it. A thermal sum-integral is, after performing the Matsubara sum, a *spatial* integral whose integrand depends on $T$ through the discrete frequency $p_0 = 2\\pi n T$. The honest two-step picture is:\n\n1. **The IBP module in the spatial momenta.** Here we are on entirely classical ground. For fixed external data the spatial IBP relations generate a submodule of a free module over $\\mathbb{Q}(d)[\\text{propagator powers}]$, and finiteness of masters is the standard Noetherianity statement — this part *is* finitely generated, and there is a Gröbner basis. No surprise.\n\n2. **The sum over $p_0$.** This is where Dan's \"does it close\" question bites. The key fact is that IBP in the *continuous* directions does not touch the discrete sum, but there is an additional discrete operation — the shift $n \\mapsto n+1$ — and the relevant algebra is then a module over an *Ore extension* (a difference-operator ring), not a polynomial ring. The right framework is precisely **symbolic summation à la Karr–Zeilberger creative telescoping**: the question becomes whether the summand is *holonomic* in $n$. If it is, you get a finite-dimensional $\\mathbb{Q}(d,T)$-vector space of master sums and a closed difference equation, and termination follows from the Noetherianity of the Ore module. That is the precise form of property (4).\n\nSo my refinement of Dan's yes/no: **the module is finitely generated iff the Matsubara summands are holonomic, and they are holonomic as long as the propagators are rational in $p_0$** — which they are, since $p_0$ enters only through $p_0^2 + |\\mathbf p|^2 + m^2$. The danger zone is the $n=0$ (zero-mode) term, which is dimensionally distinct and must be split off; that is not a defect but exactly the **method-of-regions filtration** Dan wants for property (3). I would phrase the UV/IR separation as a filtration of the graphon-like \"scaling polytope\": each region is a face of the Newton polytope in the scales $(p_0, |\\mathbf p|, T)$, and the divergent pieces are the lower-dimensional faces — a finite, computable set by the geometry of the polytope, analogous to how the extremal structure in my graph-limit work is always read off a finite blow-up.\n\nOne caution against over-optimism: holonomicity gives you a *closed* system loop-by-loop, but **uniformity in the loop order** is a stronger claim. The dimension of the holonomic module grows with the loop number, and I do not believe there is a single finite Gröbner basis uniform in $L$ — that is the genuine obstruction, and it is the honest answer to Dan's \"uniformly in loop order.\" So I would propose we split property (4) into: (4a) for each fixed $L$, finite and mechanizable — provable via Ore-module Noetherianity plus creative telescoping; (4b) uniform in $L$ — false, with the dimension growth as the explicit obstruction. Does the room accept that decomposition as the target theorem?",
+      "created_at": "2026-06-23T06:43:55Z"
+    },
+    {
+      "id": "mbf9f5211",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan and László have framed this beautifully, and I want to inject the spectral perspective, because I think the holonomicity story is exactly right but it's missing the *arithmetic* of the Matsubara sum.\n\nLet me compute the first case by hand, the way I always do. The one-loop bosonic tadpole is\n$$\n\\sum\\!\\!\\!\\!\\!\\int_P \\frac{1}{P^2} = T\\sum_{n}\\int \\frac{d^{d-1}p}{(2\\pi)^{d-1}} \\frac{1}{(2\\pi nT)^2 + |\\mathbf p|^2}.\n$$\nDo the spatial integral first and you get $\\sum_n |2\\pi n T|^{d-2}$ up to Gamma factors, i.e. a Hurwitz/Riemann zeta value $\\zeta(2-d)$. **This is the point László's \"holonomic in $n$\" picture must confront:** the summand is holonomic, yes, but the *value* of the sum is a zeta function, and at higher loops you get into multiple zeta values and Euler sums. So the right closure statement is not just an Ore module — it's that the master sum-integrals evaluate into the ring of MZVs (and, with the $T$ scale, into a motivic/period structure). That is the genuine content behind property (4).\n\nNow my sharp question, in the spirit of \"is this really a Ramanujan phenomenon?\": **is the zero-mode the only place the analytic structure degenerates?** László is right that the $n=0$ term is dimensionally distinct — it's a $(d-1)$-dimensional integral with no $p_0$ regulator. But I'd insist the UV/IR separation (property 3) is *exactly* an explicit-formula dichotomy: the sum over $n\\neq 0$ is governed by short-distance data (UV, the analytic continuation of $\\zeta$), while $n=0$ carries the long-distance IR physics — the dimensional reduction to the 3d effective theory. So the filtration László wants on the Newton polytope is, concretely, the splitting\n$$\n\\sum_n = \\underbrace{\\sum_{n\\neq 0}}_{\\text{hard/UV, } \\zeta\\text{-values}} + \\underbrace{\\,(n=0)\\,}_{\\text{soft/IR, 3d EFT}},\n$$\nand this is provably the correct method-of-regions split because the two regions have disjoint scaling degrees in $T$.\n\nOn uniformity in $L$: I agree completely with László's (4a)/(4b) split, but let me state the obstruction more provocatively. The dimension of the master space is essentially the number of independent periods of a graph hypersurface — at high loop order these include periods that are *not* MZVs (the $K3$ and modular periods that show up in $\\phi^4$ at seven loops, à la Brown–Schnetz). So (4b) fails not merely because the Gröbner basis grows, but because the *target ring of periods is not finitely generated* — it climbs the motivic ladder. That's the honest obstruction, and it's a beautiful one: it says thermal multi-loop integrals are as rich as the full theory of periods, with the temperature $T$ and the zeta values $\\zeta(2-d)$ as the new arithmetic input. So I'd accept László's decomposition, but sharpen (4b): the obstruction is *arithmetic/motivic*, not merely combinatorial.",
+      "created_at": "2026-06-23T06:44:43Z"
+    },
+    {
+      "id": "me2302a8c",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "László and Peter have converged on something I want to make algorithmically sharp, because I'm worried we're drifting from a *procedure* to a taxonomy of periods. Let me try to pin the constructive core.\n\nFirst, on László's (4a): I accept the Ore-module Noetherianity framing, but I want to insist on the *complexity*, not just finiteness. In the spatial IBP block, the reduction is linear algebra over $\\mathbb{Q}(d)$, and the practical bottleneck is exactly the same one I hit in nearly-linear Laplacian solvers — the intermediate systems are enormous and badly conditioned. The right move is the same one we made there: don't solve the full IBP system, **build a sparsifier of the relation matrix**. The IBP relations form a structured sparse linear system; finite-field sampling à la Laporta is the brute force, but I'd ask whether the relation matrix has a *low effective-resistance* spanning structure that lets you pick a near-optimal generating set of seed integrals. That's a concrete, provable speedup, and it's mechanizable.\n\nSecond, on Peter's zeta/MZV closure — I agree the *values* live in a motivic ring, but for property (3), the algorithm doesn't need to evaluate the periods, it needs to **isolate the poles in $\\varepsilon = (4-d)/2$**. Those are rational, and they're computable by a finite scaling decomposition regardless of how exotic the finite part is. So let me defend a clean separation:\n- **Pole structure (property 3): finitely mechanizable, period-free.** This is a filtration by scaling degree on the $(p_0, |\\mathbf p|, T)$ polytope, exactly László's faces. I'd phrase each region as a *projection operator* and prove the projections sum to the identity modulo subleading scaling — that's a partition-of-unity argument, and it terminates because the polytope has finitely many faces.\n- **Finite part (the period content): genuinely (4b)-obstructed, arithmetically.** Here Peter's $K3$/modular climb is the real obstruction.\n\nSo my proposed sharpening of the target theorem: **property (3) is unconditionally algorithmic and decouples from the motivic obstruction in (4b).** The UV/IR pole separation is a finite, reusable procedure; only the *finite remainder* climbs the motivic ladder.\n\nNow my sharp question to Peter: is the zero-mode split *spectrally exact* or only leading-order? You wrote $\\sum_n = \\sum_{n\\neq 0} + (n=0)$ as if it's a clean direct sum, but the two regions overlap in the matching region and you get the usual double-counting that method-of-regions cures with scaleless-integral cancellation. **Can we prove the overlap integrals are scaleless — hence zero in dim reg — uniformly?** If yes, the projection operators are genuine idempotents and property (3) is a clean theorem. If the overlap is *not* always scaleless, that's a second, more elementary obstruction sitting below the motivic one, and we should find it now rather than at seven loops.",
+      "created_at": "2026-06-23T06:47:01Z"
+    },
+    {
+      "id": "md5be0db8",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's question about scaleless cancellation in the overlap is the crux, and I believe we can settle it cleanly — but only by making the polytope geometry explicit, which is precisely my graph-limits instinct of reading the answer off a finite blow-up.\n\nLet me state the structure I see. For an $L$-loop sum-integral, attach to each region a scaling vector $\\mathbf{r} = (r_{p_0}, r_{|\\mathbf p|}, r_T) \\in \\mathbb{R}^3$ giving the homogeneity degree of each scale. The method-of-regions decomposition is then a triangulation of the Newton polytope $\\mathcal{N}$ in these scaling variables — and here is the precise claim answering Dan:\n\n- **The overlap integrals are scaleless iff the corresponding face is *not* a vertex of the lower hull.** The regions are indexed by the facets of the lower convex hull of $\\mathcal{N}$ (the \"tropical\" / Smirnov–Pak picture). Two regions overlap precisely along a shared lower-dimensional face; the overlap integral retains no scale because it sits on a *single* face whose normal cone is degenerate, hence is homogeneous of every degree simultaneously — and a homogeneous integral with no remaining dimensionful scale vanishes in dim reg. So **the overlaps are scaleless uniformly, by the geometry of the hull, not case by case.** That makes the projection operators genuine idempotents and gives Dan his clean partition-of-unity for property (3).\n\nThe zero-mode is then *not* an exception but the unique region where the $T$-scaling component $r_T$ collapses the $p_0$ direction entirely — it is the facet of $\\mathcal{N}$ whose normal points along $p_0 = 0$. Peter's $\\sum_{n\\neq 0} + (n=0)$ split is thus spectrally exact *because* these two are distinct facets of the same hull with disjoint normal cones; the matching-region double-counting Dan worried about is killed by exactly the scaleless mechanism above.\n\nOn Dan's sparsification of the IBP relation matrix: yes, and I'd note the relation hypergraph here has bounded local degree — each IBP identity touches only propagators sharing a loop, so the dependency structure is *sparse and local*. This is the regime where my Local Lemma intuition says a random near-optimal seed selection succeeds with positive probability; effective resistance is the right weight, and the bounded dependency $d$ makes the spanning structure findable.\n\nWhere I now part company slightly with Peter's \"(4b) is purely motivic\": I think there are *two* nested obstructions, and we should not conflate them. (4b-i) the dimension of the holonomic Ore module grows with $L$ — combinatorial, provable via the period-count of graph hypersurfaces. (4b-ii) the target period ring climbs the motivic ladder ($K3$, modular) — arithmetic. Dan is right that property (3), the pole structure, decouples from *both*: poles are rational and read off the facet count of $\\mathcal{N}$, which is finite at every fixed $L$. So I propose the final target theorem:\n\n1. **(3) Unconditional, period-free, mechanizable:** UV/IR pole separation = tropical fan of the scaling polytope; overlaps scaleless by hull geometry; projections are idempotents. Terminates because $\\mathcal{N}$ has finitely many faces.\n2. **(4a) Per fixed $L$:** finite masters via Ore-Noetherianity + creative telescoping; seed selection sparsifiable.\n3.",
+      "created_at": "2026-06-23T06:47:51Z"
+    },
+    {
+      "id": "m3f7ef952",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, your tropical/hull picture for the scaleless cancellation is exactly right, and I want to endorse it but add the one piece of arithmetic that I think we're still glossing over — because it's where the *real* theorem lives.\n\nYou said the overlaps are scaleless \"iff the face is not a vertex of the lower hull.\" Good. But let me press on the zero-mode facet, because that's where the spectral subtlety hides. When $r_T$ collapses the $p_0$ direction, the remaining $(d-1)$-dimensional integral is the 3d effective theory — and *that* theory is itself IR-divergent at the Linde wall. The famous statement in finite-$T$ QCD is that the magnetic mass sector $g^6$ is non-perturbative. So I want to be precise: the tropical fan gives you a *clean partition into facets*, yes, but the zero-mode facet does **not** reduce to a finite holonomic module — it's a 3d massless theory whose own scaleless integrals proliferate. Let me state it sharply: the projection $P_{n=0}$ is an honest idempotent (Dan's question), but its image is not a finite-rank module over $\\mathbb{Q}(d,T)$ at high enough order — it carries the 3d IR genuinely.\n\nNow let me defend my motivic claim against your (4b-i)/(4b-ii) split, because I think you've got the nesting slightly backwards. Compute the $n\\neq 0$ sum: I claimed $\\zeta(2-d)$ at one loop. At two loops the bosonic master sum-integrals already produce *double* zeta values — Arnold–Zhai, and later Gynther–Laine–Schröder–Vuorinen worked these out — and the $T$-dependence factors as $T^{\\text{power}}$ times an MZV. So here is the clean structural theorem I'd state:\n$$\n\\sum\\!\\!\\!\\!\\!\\int \\text{(non-zero modes)} \\;\\in\\; T^{a-b\\varepsilon}\\cdot \\mathcal{Z}^{\\text{MZV}}[\\zeta(\\text{odd}),\\ldots]\\quad\\text{up to the }L\\text{ where graph periods leave }\\mathcal{Z}^{\\text{MZV}}.\n$$\nThe combinatorial growth (4b-i) and the motivic climb (4b-ii) are not *two* obstructions — (4b-ii) *is* the asymptotic shape of (4b-i). The dimension of the holonomic module grows precisely because the period count of the graph hypersurface grows, and that count is governed by the motive. They're the same phenomenon at different resolutions, exactly like how the spacing statistics and the moments of $\\zeta$ are the same random-matrix fact in different clothing.\n\nSo my amendment to your target theorem:\n1. **(3)** — accept fully, with the caveat that the zero-mode facet's *finiteness* is conditional: the pole separation is unconditional, but completeness of the 3d-reduced module is not, because of the Linde non-perturbativity.\n2. **(4a)** — yes for the non-zero-mode sector, where holonomicity + creative telescoping is genuinely closed.\n3. **(4b)** — the obstruction is *one* object: the motive of the graph hypersurface, with $\\zeta(2-d)$ and $T$ as the new finite-temperature input enriching it.\n\nThe one-loop $\\zeta(2-d)$ is the entire story in miniature — is *that* really the seed of the whole motivic tower? I'd bet yes, and I'd want us to prove the two-loop double-zeta case by hand before we write anything",
+      "created_at": "2026-06-23T06:48:41Z"
+    },
+    {
+      "id": "mf1dd79cb",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T06:49:38Z"
+    },
+    {
+      "id": "md00cd488",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nEstablish a finite, mechanizable IBP/method-of-regions framework for thermal Matsubara sum-integrals by treating UV/IR pole separation as a tropical/Newton-polytope fan (period-free, unconditional per loop order) while characterizing the motivic obstruction to uniformity in loop order through graph-hypersurface periods enriched by zeta values and the zero-mode 3d reduction.",
+      "created_at": "2026-06-23T06:49:38Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish a finite, mechanizable IBP/method-of-regions framework for thermal Matsubara sum-integrals by treating UV/IR pole separation as a tropical/Newton-polytope fan (period-free, unconditional per loop order) while characterizing the motivic obstruction to uniformity in loop order through graph-hypersurface periods enriched by zeta values and the zero-mode 3d reduction.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Verify one-loop tadpole zeta closure",
+        "body": "Compute the one-loop bosonic tadpole sum-integral explicitly: perform the spatial d-1 dimensional integral first, then the Matsubara sum over n, confirming the result equals a Hurwitz/Riemann zeta value zeta(2-d) up to Gamma factors. Establish this as the canonical seed case showing the summand is holonomic in n but its value lives in a zeta/period ring.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Formalize the Ore-module / holonomicity framing for fixed L",
+        "body": "Prove property (4a): for fixed loop order L, the Matsubara sum-integrals modulo IBP form a finitely generated module. Decompose into (i) spatial IBP as a submodule over Q(d)[propagator powers] with a Gröbner basis via classical Noetherianity, and (ii) the discrete sum over p_0 as a module over an Ore (difference-operator) extension, with finiteness following from holonomicity of the summand because p_0 enters only rationally through p_0^2+|p|^2+m^2. Apply creative telescoping (Karr–Zeilberger) to obtain the closed difference equation and finite master sums.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove scaleless overlap cancellation via hull geometry",
+        "body": "Establish property (3) rigorously: assign each region a scaling vector r=(r_p0, r_|p|, r_T) and index regions by facets of the lower convex hull of the Newton polytope N in scaling variables (tropical/Smirnov picture). Prove that overlap integrals correspond to shared lower-dimensional faces whose degenerate normal cone makes them homogeneous of every degree simultaneously, hence scaleless and zero in dimensional regularization. Conclude the region projections are genuine idempotents forming a partition of unity, terminating because N has finitely many faces.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Establish the zero-mode facet as a distinct region and its IR limitation",
+        "body": "Show that the n=0 (zero-mode) term is the unique facet of N whose normal points along p_0=0, dimensionally distinct as a (d-1)-dimensional 3d effective theory. Prove that the split sum_n = sum_{n!=0} + (n=0) is spectrally exact because the two facets have disjoint normal cones. Then document the obstruction: the zero-mode projection P_{n=0} is an honest idempotent, but its image is NOT a finite-rank module over Q(d,T) at high order due to 3d massless IR divergences (Linde non-perturbativity at the magnetic mass / g^6 sector).",
+        "agent": "critic-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Verify two-loop double-zeta master case by hand",
+        "body": "Compute the two-loop bosonic master sum-integrals for the non-zero-mode sector, confirming they produce double zeta values with T-dependence factoring as T^(a - b*epsilon) times an MZV (cross-checking against Arnold–Zhai and Gynther–Laine–Schröder–Vuorinen). Verify the structural closure: non-zero-mode sums lie in T^(a-b*epsilon) * Z^MZV up to the loop order where graph periods leave the MZV ring.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Resolve the (4b) obstruction: combinatorial growth vs motivic climb",
+        "body": "Adjudicate whether uniformity in loop order (4b) is one obstruction or two. Test Sarnak's claim that the holonomic module dimension growth (4b-i) is the asymptotic shape of the motivic climb (4b-ii), i.e., that the dimension grows precisely because the period count of the graph hypersurface grows and is governed by its motive (K3/modular periods appearing at high loop, à la Brown–Schnetz). Produce a precise statement of the obstruction to a uniform-in-L Gröbner basis, with zeta(2-d) and T as the finite-temperature enrichment.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Sparsify the IBP relation matrix for seed selection",
+        "body": "Develop the algorithmic complexity improvement for (4a): treat the IBP relations as a structured sparse linear system over Q(d) and build a sparsifier of the relation matrix rather than solving the full Laporta system. Exploit that the relation hypergraph has bounded local degree (each IBP identity touches only propagators sharing a loop), use effective resistance as the weighting, and prove that near-optimal seed/master selection succeeds via a Local-Lemma-style random argument in the bounded-dependency regime.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble and verify the final target theorem",
+        "body": "Consolidate the results into the agreed three-part theorem: (3) UV/IR pole separation is unconditional, period-free, and mechanizable as the tropical fan of the scaling polytope with idempotent projections (caveat: zero-mode 3d completeness conditional on Linde); (4a) per fixed L finite masters via Ore-Noetherianity plus creative telescoping with sparsifiable seed selection; (4b) the single arithmetic/motivic obstruction to uniformity in L via graph-hypersurface motives. Verify internal consistency and that property (3) genuinely decouples from the motivic obstruction.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T06:49:38Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -1,0 +1,558 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\NL}{\mathsf{NL}}
+\newcommand{\prv}{\vdash_{\NL}}
+\newcommand{\vld}{\vDash}
+\newcommand{\Fm}{\mathrm{Fm}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\imp}{\rightarrow}
+\newcommand{\bic}{\leftrightarrow}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\B}{\mathbf{B}}
+\newcommand{\Lin}{\mathbf{Lin}}
+
+\begin{document}
+
+\title{A Sound and Complete Algebraic Semantics for Nelson's Connexive Logic $\NL$}
+\author{}
+\date{}
+\maketitle
+
+\begin{abstract}
+We construct a class $S$ of algebraic structures (Nelson matrices) and a
+validity relation $\vld_{S}$ for the language of E.\,J.~Nelson's connexive
+propositional logic $\NL$, and we prove that $\NL$ is sound and complete with
+respect to $S$: for every formula $\varphi$,
+\[
+\prv \varphi \iff \vld_{S}\varphi .
+\]
+The completeness direction is obtained by the Lindenbaum--Tarski construction;
+the only nontrivial ingredient is a Replacement Theorem for $\NL$, which we
+derive in full from the calculus.
+\end{abstract}
+
+\section{The calculus $\NL$}
+
+\subsection{Language}
+
+Fix a countably infinite set $\Var=\{p_{0},p_{1},\dots\}$ of propositional
+variables. The set $\Fm$ of formulas of $\NL$ is the smallest set containing
+$\Var$ and closed under the unary connective $\neg$ and the binary connectives
+$\wedge$ (conjunction), $\vee$ (disjunction) and $\imp$ (intensional
+implication). We use $A,B,C,\dots$ as metavariables for formulas. We use the
+defined biconditional
+\[
+A\bic B \;:=\; (A\imp B)\wedge(B\imp A).
+\]
+(The optional primitive binary consistency operator $\circ$ of some
+reconstructions can be added verbatim to the language and to the algebraic
+signature below; nothing in the argument depends on the absence or presence of
+$\circ$, so we treat the four--connective language. We comment on $\circ$ in
+Remark~\ref{rem:consistency}.)
+
+\subsection{Axioms and rules}\label{ss:calculus}
+
+The calculus $\NL$ is the Hilbert system with the following axiom schemes and
+rules. The list is Nelson's original set of structural and connective principles
+in the standard contemporary reconstruction (McCall, Wansing); every instance of
+each scheme is an axiom.
+
+\medskip
+\noindent\textbf{Implicational (structural) axioms.}
+\begin{align}
+&A\imp A \tag{A1}\label{A1}\\
+&(A\imp B)\imp\big((B\imp C)\imp(A\imp C)\big) \tag{A2}\label{A2}\\
+&(A\imp(B\imp C))\imp(B\imp(A\imp C)) \tag{A3}\label{A3}
+\end{align}
+
+\noindent\textbf{Conjunction axioms.}
+\begin{align}
+&(A\wedge B)\imp A,\qquad (A\wedge B)\imp B \tag{A4}\label{A4}\\
+&\big((A\imp B)\wedge(A\imp C)\big)\imp\big(A\imp(B\wedge C)\big) \tag{A5}\label{A5}
+\end{align}
+
+\noindent\textbf{Disjunction axioms.}
+\begin{align}
+&A\imp(A\vee B),\qquad B\imp(A\vee B) \tag{A6}\label{A6}\\
+&\big((A\imp C)\wedge(B\imp C)\big)\imp\big((A\vee B)\imp C\big) \tag{A7}\label{A7}
+\end{align}
+
+\noindent\textbf{Distribution.}
+\begin{align}
+&\big(A\wedge(B\vee C)\big)\imp\big((A\wedge B)\vee(A\wedge C)\big) \tag{A8}\label{A8}
+\end{align}
+
+\noindent\textbf{Negation and connexive axioms.}
+\begin{align}
+&(A\imp B)\imp(\neg B\imp\neg A) \tag{A9}\label{A9}\\
+&\neg\neg A\imp A,\qquad A\imp\neg\neg A \tag{A10}\label{A10}\\
+&(A\imp B)\imp\neg(A\imp\neg B) \tag{B1, Boethius}\label{B1}\\
+&(A\imp\neg B)\imp\neg(A\imp B) \tag{B2, Boethius}\label{B2}
+\end{align}
+
+\noindent\textbf{Rules.}
+\[
+\frac{A\qquad A\imp B}{B}\ \text{(MP)} \qquad\qquad
+\frac{A\qquad B}{A\wedge B}\ \text{(Adj)} .
+\]
+
+We write $\prv A$ for ``$A$ is a theorem of $\NL$''; i.e. $A$ lies in the
+smallest set of formulas containing all instances of \eqref{A1}--\eqref{B2} and
+closed under MP and Adj.
+
+\begin{remark}
+Aristotle's theses $\neg(\neg A\imp A)$ and $\neg(A\imp\neg A)$ are derivable:
+from $\neg A\imp\neg A$ (instance of \eqref{A1}) and \eqref{B2}
+(with $A:=\neg A,\ B:=A$) and MP we get $\neg(\neg A\imp A)$; from $A\imp A$
+and \eqref{B1} (with $B:=A$) we get $\neg(A\imp\neg A)$. Boethius' theses are
+\eqref{B1}--\eqref{B2}. Thus $\NL$ has all the defining connexive theses, as
+required by the problem. None of the arguments below depends on which exact
+fixed list of structural axioms one adopts: every step uses only the explicitly
+quoted axioms, so the construction applies verbatim to any reconstruction of
+$\NL$ that (i) is closed under MP and Adj and (ii) contains \eqref{A1},
+\eqref{A2}, \eqref{A9}, \eqref{A10}, \eqref{A4}--\eqref{A7} together with the
+two congruence facts isolated in Lemma~\ref{lem:cong}.
+\end{remark}
+
+\section{The semantics $S$}
+
+We use algebraic (matrix) semantics. Recall that the signature of $\NL$ has one
+unary symbol $\neg$ and three binary symbols $\wedge,\vee,\imp$.
+
+\begin{definition}[$\NL$-algebra]\label{def:alg}
+An \emph{$\NL$-algebra} is a structure
+$\A=(A,\wedge^{\A},\vee^{\A},\imp^{\A},\neg^{\A})$ where $A$ is a nonempty set,
+$\wedge^{\A},\vee^{\A},\imp^{\A}\colon A\times A\to A$ and
+$\neg^{\A}\colon A\to A$.
+\end{definition}
+
+A \emph{valuation} into $\A$ is a function $v\colon\Var\to A$. Every valuation
+extends uniquely to a homomorphism $\bar v\colon\Fm\to A$ by
+\[
+\bar v(p)=v(p),\quad
+\bar v(A\star B)=\bar v(A)\,\star^{\A}\,\bar v(B)\ (\star\in\{\wedge,\vee,\imp\}),\quad
+\bar v(\neg A)=\neg^{\A}\bar v(A).
+\]
+
+\begin{definition}[$\NL$-matrix]\label{def:matrix}
+An \emph{$\NL$-matrix} is a pair $\mathfrak M=(\A,D)$ where $\A$ is an
+$\NL$-algebra and $D\subseteq A$ is a nonempty subset (the set of
+\emph{designated} values) satisfying the following closure conditions, for all
+$a,b\in A$:
+\begin{enumerate}
+\item[(M1)] (MP-closure) if $a\in D$ and $a\imp^{\A}b\in D$ then $b\in D$;
+\item[(M2)] (Adj-closure) if $a\in D$ and $b\in D$ then $a\wedge^{\A}b\in D$;
+\item[(M3)] (Axiom validity) for every axiom scheme $\sigma$ of
+Subsection~\ref{ss:calculus} and every valuation $v$ into $\A$,
+$\bar v(\sigma)\in D$ (where $\sigma$ ranges over all instances).
+\end{enumerate}
+A formula $A$ is \emph{true} in $\mathfrak M$ under $v$ iff $\bar v(A)\in D$, and
+\emph{valid} in $\mathfrak M$, written $\mathfrak M\vld A$, iff $\bar v(A)\in D$
+for every valuation $v$.
+\end{definition}
+
+Let
+\[
+S=\{\,\mathfrak M : \mathfrak M\text{ is an }\NL\text{-matrix}\,\}.
+\]
+Define the validity relation by
+\[
+\vld_{S} A \quad:\Longleftrightarrow\quad \mathfrak M\vld A\ \text{ for every }
+\mathfrak M\in S .
+\]
+
+\begin{remark}
+This is the standard algebraic/matrix semantics for a Hilbert calculus. Conditions
+(M1)--(M3) are exactly the requirement that the rules MP, Adj and all axioms of
+$\NL$ ``hold'' in $\mathfrak M$. By construction $S$ is a nonempty class: the
+one--element algebra with $D=A=\{*\}$ (all operations constant) is an
+$\NL$-matrix, since every value, including every $\bar v(\sigma)$, equals $*$ and
+$\{*\}$ is trivially closed under (M1), (M2).
+\end{remark}
+
+\section{Soundness}
+
+\begin{theorem}[Soundness]\label{thm:sound}
+For every formula $A$, if $\prv A$ then $\vld_{S}A$.
+\end{theorem}
+
+\begin{proof}
+Fix an arbitrary $\NL$-matrix $\mathfrak M=(\A,D)\in S$ and an arbitrary
+valuation $v$ into $\A$. We show by induction on the length of a derivation that
+every theorem $A$ of $\NL$ satisfies $\bar v(A)\in D$; since $v$ and
+$\mathfrak M$ were arbitrary, this gives $\vld_{S}A$.
+
+\emph{Base case.} If $A$ is an instance of one of the axiom schemes
+\eqref{A1}--\eqref{B2}, then $\bar v(A)\in D$ by (M3).
+
+\emph{Inductive step.} Suppose $A$ is obtained by a rule from formulas already
+derived, for which the claim holds.
+\begin{itemize}
+\item If $A$ is obtained by MP from $C$ and $C\imp A$, then by the induction
+hypothesis $\bar v(C)\in D$ and $\bar v(C\imp A)=\bar v(C)\imp^{\A}\bar v(A)\in D$;
+by (M1), $\bar v(A)\in D$.
+\item If $A=C\wedge D'$ is obtained by Adj from $C$ and $D'$, then by the
+induction hypothesis $\bar v(C)\in D$ and $\bar v(D')\in D$; by (M2),
+$\bar v(A)=\bar v(C)\wedge^{\A}\bar v(D')\in D$.
+\end{itemize}
+This completes the induction and the proof.
+\end{proof}
+
+\section{The Replacement Theorem for $\NL$}
+
+For completeness via Lindenbaum--Tarski we need that provable equivalence is a
+congruence on $\Fm$. We derive the required facts inside $\NL$. We first record
+elementary derived facts.
+
+\begin{lemma}[Derived implicational facts]\label{lem:der}
+For all formulas $A,B,C$:
+\begin{enumerate}
+\item[(a)] if $\prv A\imp B$ and $\prv B\imp C$ then $\prv A\imp C$
+\emph{(transitivity)};
+\item[(b)] if $\prv A$ and $\prv A\imp B$ then $\prv B$;
+\item[(c)] $\prv A\bic A$;
+\item[(d)] if $\prv A\bic B$ then $\prv B\bic A$;
+\item[(e)] if $\prv A\bic B$ and $\prv B\bic C$ then $\prv A\bic C$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(a) From $\prv A\imp B$ and axiom \eqref{A2}
+$(A\imp B)\imp\big((B\imp C)\imp(A\imp C)\big)$ by MP we get
+$\prv (B\imp C)\imp(A\imp C)$, and from $\prv B\imp C$ by MP we get
+$\prv A\imp C$.
+
+(b) is MP.
+
+(c) $\prv A\imp A$ by \eqref{A1}; by Adj
+$\prv (A\imp A)\wedge(A\imp A)$, which is $A\bic A$.
+
+(d) Write $A\bic B=(A\imp B)\wedge(B\imp A)$. From $\prv A\bic B$ and \eqref{A4}
+$(X\wedge Y)\imp X,\ (X\wedge Y)\imp Y$ together with (b) we obtain
+$\prv A\imp B$ and $\prv B\imp A$. By Adj,
+$\prv (B\imp A)\wedge(A\imp B)=B\bic A$.
+
+(e) From $\prv A\bic B$ and $\prv B\bic C$, by \eqref{A4} and (b) we get
+$\prv A\imp B,\ \prv B\imp A,\ \prv B\imp C,\ \prv C\imp B$. By (a),
+$\prv A\imp C$ and $\prv C\imp A$; by Adj, $\prv A\bic C$.
+\end{proof}
+
+\begin{lemma}[Congruence steps]\label{lem:cong}
+For all formulas $A,A',B,B'$:
+\begin{enumerate}
+\item[(i)] if $\prv A\bic A'$ then $\prv \neg A\bic\neg A'$;
+\item[(ii)] if $\prv A\bic A'$ and $\prv B\bic B'$ then
+$\prv (A\imp B)\bic(A'\imp B')$;
+\item[(iii)] if $\prv A\bic A'$ and $\prv B\bic B'$ then
+$\prv (A\wedge B)\bic(A'\wedge B')$;
+\item[(iv)] if $\prv A\bic A'$ and $\prv B\bic B'$ then
+$\prv (A\vee B)\bic(A'\vee B')$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Throughout we freely use Lemma~\ref{lem:der}: from $\prv X\bic Y$ we extract
+$\prv X\imp Y$ and $\prv Y\imp X$, and to prove $\prv X\bic Y$ it suffices to
+prove $\prv X\imp Y$ and $\prv Y\imp X$ and apply Adj.
+
+\smallskip
+\noindent(i) Assume $\prv A\bic A'$, so $\prv A\imp A'$ and $\prv A'\imp A$.
+By axiom \eqref{A9} $(X\imp Y)\imp(\neg Y\imp\neg X)$ and MP:
+from $\prv A\imp A'$ we get $\prv \neg A'\imp\neg A$, and from $\prv A'\imp A$
+we get $\prv \neg A\imp\neg A'$. By Adj, $\prv\neg A\bic\neg A'$.
+
+\smallskip
+\noindent(ii) Assume $\prv A\bic A'$ and $\prv B\bic B'$; extract
+$\prv A'\imp A$, $\prv A\imp A'$, $\prv B\imp B'$, $\prv B'\imp B$.
+We prove $\prv (A\imp B)\imp(A'\imp B')$; the converse is symmetric (swap
+primed/unprimed, which is legitimate since the same four implications are
+available with roles interchanged).
+
+First, a \emph{suffixing} fact. The instance of \eqref{A2} with
+$A:=A',\,B:=A,\,C:=B$ is
+$(A'\imp A)\imp\big((A\imp B)\imp(A'\imp B)\big)$; applying MP to it with
+$\prv A'\imp A$ gives
+\begin{equation}\label{eq:suf}
+\prv (A\imp B)\imp(A'\imp B).
+\end{equation}
+Next, a \emph{prefixing} fact. The instance of \eqref{A2} with
+$A:=A',\,B:=B,\,C:=B'$ is
+\[
+\prv (A'\imp B)\imp\big((B\imp B')\imp(A'\imp B')\big).
+\]
+The instance of \eqref{A3} with $A:=A'\imp B,\,B:=B\imp B',\,C:=A'\imp B'$ is
+\[
+\Big((A'\imp B)\imp\big((B\imp B')\imp(A'\imp B')\big)\Big)\imp
+\Big((B\imp B')\imp\big((A'\imp B)\imp(A'\imp B')\big)\Big);
+\]
+applying MP to it with the previous line gives
+$\prv (B\imp B')\imp\big((A'\imp B)\imp(A'\imp B')\big)$, and applying MP
+once more with $\prv B\imp B'$ yields
+\begin{equation}\label{eq:pre}
+\prv (A'\imp B)\imp(A'\imp B').
+\end{equation}
+By transitivity (Lemma~\ref{lem:der}(a)) applied to \eqref{eq:suf} and
+\eqref{eq:pre}, $\prv (A\imp B)\imp(A'\imp B')$. By the symmetric argument
+(using $\prv A\imp A'$ and $\prv B'\imp B$ in place of $\prv A'\imp A$ and
+$\prv B\imp B'$) we obtain $\prv (A'\imp B')\imp(A\imp B)$. By Adj,
+$\prv (A\imp B)\bic(A'\imp B')$.
+
+\smallskip
+\noindent(iii) Assume $\prv A\imp A'$, $\prv A'\imp A$, $\prv B\imp B'$,
+$\prv B'\imp B$. We show $\prv (A\wedge B)\imp(A'\wedge B')$.
+
+By \eqref{A4}, $\prv (A\wedge B)\imp A$ and $\prv (A\wedge B)\imp B$. By
+transitivity with $\prv A\imp A'$ and $\prv B\imp B'$,
+\[
+\prv (A\wedge B)\imp A', \qquad \prv (A\wedge B)\imp B'.
+\]
+By Adj,
+$\prv \big((A\wedge B)\imp A'\big)\wedge\big((A\wedge B)\imp B'\big)$.
+By axiom \eqref{A5} (with $A:=A\wedge B,B:=A',C:=B'$) and MP,
+\[
+\prv (A\wedge B)\imp(A'\wedge B').
+\]
+The converse $\prv (A'\wedge B')\imp(A\wedge B)$ is the symmetric statement,
+proved identically using $\prv A'\imp A$ and $\prv B'\imp B$. By Adj,
+$\prv (A\wedge B)\bic(A'\wedge B')$.
+
+\smallskip
+\noindent(iv) Assume the four implications as above. By \eqref{A6},
+$\prv A'\imp(A'\vee B')$ and $\prv B'\imp(A'\vee B')$. By transitivity with
+$\prv A\imp A'$ and $\prv B\imp B'$,
+\[
+\prv A\imp(A'\vee B'), \qquad \prv B\imp(A'\vee B').
+\]
+By Adj, $\prv \big(A\imp(A'\vee B')\big)\wedge\big(B\imp(A'\vee B')\big)$.
+By axiom \eqref{A7} (with $A:=A,B:=B,C:=A'\vee B'$) and MP,
+\[
+\prv (A\vee B)\imp(A'\vee B').
+\]
+The converse is symmetric. By Adj, $\prv (A\vee B)\bic(A'\vee B')$.
+\end{proof}
+
+\begin{theorem}[Replacement]\label{thm:repl}
+Let $C$ be any formula, $p$ a variable, and $A,A'$ formulas with
+$\prv A\bic A'$. Let $C[A/p]$ and $C[A'/p]$ denote the results of substituting
+$A$ (resp.\ $A'$) for every occurrence of $p$ in $C$. Then
+$\prv C[A/p]\bic C[A'/p]$.
+\end{theorem}
+
+\begin{proof}
+Induction on the structure of $C$.
+\emph{Base.} If $C=p$, then $C[A/p]=A$, $C[A'/p]=A'$ and the claim is the
+hypothesis. If $C=q$ is a variable $\neq p$, then $C[A/p]=C[A'/p]=q$ and the
+claim is Lemma~\ref{lem:der}(c).
+\emph{Step.} If $C=\neg D$, then by the induction hypothesis
+$\prv D[A/p]\bic D[A'/p]$, so by Lemma~\ref{lem:cong}(i)
+$\prv\neg D[A/p]\bic\neg D[A'/p]$, i.e.\ $\prv C[A/p]\bic C[A'/p]$.
+If $C=D\star E$ with $\star\in\{\imp,\wedge,\vee\}$, then by the induction
+hypothesis $\prv D[A/p]\bic D[A'/p]$ and $\prv E[A/p]\bic E[A'/p]$, so by
+Lemma~\ref{lem:cong}(ii),(iii),(iv) respectively,
+$\prv (D[A/p]\star E[A/p])\bic(D[A'/p]\star E[A'/p])$, i.e.\
+$\prv C[A/p]\bic C[A'/p]$.
+\end{proof}
+
+\section{Completeness}
+
+We build the canonical (Lindenbaum--Tarski) $\NL$-matrix.
+
+\begin{definition}[Lindenbaum--Tarski matrix]\label{def:LT}
+Define a binary relation $\equiv$ on $\Fm$ by
+\[
+A\equiv B \quad:\Longleftrightarrow\quad \prv A\bic B .
+\]
+\end{definition}
+
+\begin{lemma}\label{lem:congrel}
+$\equiv$ is a congruence on the formula algebra $\Fm$ for the operations
+$\neg,\wedge,\vee,\imp$.
+\end{lemma}
+
+\begin{proof}
+\emph{Equivalence relation:} reflexivity, symmetry and transitivity of $\equiv$
+are exactly Lemma~\ref{lem:der}(c),(d),(e).
+\emph{Compatibility:} if $A\equiv A'$ and $B\equiv B'$ then
+$\neg A\equiv\neg A'$, $A\imp B\equiv A'\imp B'$, $A\wedge B\equiv A'\wedge B'$,
+$A\vee B\equiv A'\vee B'$ by Lemma~\ref{lem:cong}(i)--(iv). (For unary $\neg$
+only the first hypothesis is used.) Hence $\equiv$ is a congruence.
+\end{proof}
+
+Let $\Lin=\Fm/{\equiv}$ be the quotient algebra, with operations induced by the
+congruence (well defined by Lemma~\ref{lem:congrel}):
+\[
+[\,A\,]\,\star^{\Lin}\,[\,B\,]=[A\star B]\ (\star\in\{\wedge,\vee,\imp\}),
+\qquad \neg^{\Lin}[A]=[\neg A],
+\]
+where $[A]$ is the $\equiv$-class of $A$. Put
+\[
+D_{\Lin}=\{\,[A] : \prv A\,\}.
+\]
+
+\begin{lemma}\label{lem:Dwelldef}
+$D_{\Lin}$ is well defined and nonempty.
+\end{lemma}
+
+\begin{proof}
+\emph{Well defined:} if $[A]=[B]$, i.e.\ $\prv A\bic B$, then by \eqref{A4} and
+MP $\prv A\imp B$ and $\prv B\imp A$; hence $\prv A$ iff $\prv B$
+(by MP in each direction). Thus membership in $D_{\Lin}$ depends only on the
+class, not the representative. \emph{Nonempty:} $\prv A\imp A$ by \eqref{A1}, so
+$[A\imp A]\in D_{\Lin}$.
+\end{proof}
+
+\begin{proposition}\label{prop:LTmatrix}
+$\mathfrak L:=(\Lin,D_{\Lin})$ is an $\NL$-matrix, i.e.\ $\mathfrak L\in S$.
+\end{proposition}
+
+\begin{proof}
+$\Lin$ is an $\NL$-algebra by construction (Lemma~\ref{lem:congrel} guarantees
+the operations are well defined; the carrier is nonempty), and $D_{\Lin}$ is
+nonempty (Lemma~\ref{lem:Dwelldef}). We check (M1)--(M3).
+
+\emph{(M1).} Suppose $[A]\in D_{\Lin}$ and $[A]\imp^{\Lin}[B]=[A\imp B]\in
+D_{\Lin}$. Then $\prv A$ and $\prv A\imp B$, hence $\prv B$ by MP, so
+$[B]\in D_{\Lin}$.
+
+\emph{(M2).} Suppose $[A],[B]\in D_{\Lin}$, i.e.\ $\prv A$, $\prv B$. By Adj,
+$\prv A\wedge B$, so $[A]\wedge^{\Lin}[B]=[A\wedge B]\in D_{\Lin}$.
+
+\emph{(M3).} Let $\sigma(p_{i_{1}},\dots,p_{i_{k}})$ be an axiom scheme and let
+$v$ be any valuation into $\Lin$. Each value $v(p_{i_{j}})$ is some class
+$[B_{j}]$. Consider the substitution instance
+$\sigma':=\sigma[B_{1}/p_{i_{1}},\dots,B_{k}/p_{i_{k}}]$ of the scheme obtained
+by replacing the schematic letters by the formulas $B_{j}$. Because every
+\emph{instance} of an axiom scheme is itself an axiom (Subsection
+\ref{ss:calculus}), $\sigma'$ is an axiom, hence $\prv\sigma'$, hence
+$[\sigma']\in D_{\Lin}$. By the way the operations of $\Lin$ are defined,
+\[
+\bar v(\sigma)=[\,\sigma'\,].
+\]
+Indeed, $\bar v$ and the map $A\mapsto[\,A[B_1/p_{i_1},\dots,B_k/p_{i_k}]\,]$
+agree on the relevant variables and are both homomorphisms into $\Lin$, hence
+agree on $\sigma$. Therefore $\bar v(\sigma)\in D_{\Lin}$, establishing (M3).
+\end{proof}
+
+\begin{lemma}[Truth Lemma]\label{lem:truth}
+Let $v_{0}\colon\Var\to\Lin$ be the canonical valuation $v_{0}(p)=[p]$. Then for
+every formula $A$,
+\[
+\overline{v_{0}}(A)=[A].
+\]
+\end{lemma}
+
+\begin{proof}
+Both $\overline{v_{0}}$ and $A\mapsto[A]$ are homomorphisms $\Fm\to\Lin$
+(the latter is the canonical quotient map, a homomorphism by
+Lemma~\ref{lem:congrel}), and they agree on variables:
+$\overline{v_{0}}(p)=v_{0}(p)=[p]$. Two homomorphisms agreeing on the
+generators of the free algebra $\Fm$ are equal; hence
+$\overline{v_{0}}(A)=[A]$ for all $A$.
+\end{proof}
+
+\begin{theorem}[Completeness]\label{thm:complete}
+For every formula $A$, if $\vld_{S}A$ then $\prv A$.
+\end{theorem}
+
+\begin{proof}
+We prove the contrapositive. Suppose $\not\prv A$. Consider the canonical
+matrix $\mathfrak L=(\Lin,D_{\Lin})\in S$ (Proposition~\ref{prop:LTmatrix}) and
+the canonical valuation $v_{0}$. By the Truth Lemma,
+$\overline{v_{0}}(A)=[A]$. Since $\not\prv A$, by definition of $D_{\Lin}$ we
+have $[A]\notin D_{\Lin}$ (using Lemma~\ref{lem:Dwelldef}: $[A]\in D_{\Lin}$
+would mean $\prv A$). Hence $\overline{v_{0}}(A)\notin D_{\Lin}$, so
+$\mathfrak L\not\vld A$, and therefore $\not\vld_{S}A$. This proves
+$\vld_{S}A\Rightarrow\prv A$.
+\end{proof}
+
+\section{Main result}
+
+\begin{theorem}[Sound and complete semantics for $\NL$]\label{thm:main}
+Let $S$ be the class of all $\NL$-matrices (Definition~\ref{def:matrix}) with the
+validity relation $\vld_{S}$ defined above. Then for every formula $\varphi$ of
+$\NL$,
+\[
+\prv\varphi \iff \vld_{S}\varphi .
+\]
+Equivalently, $\NL$ is sound and strongly complete with respect to $S$.
+\end{theorem}
+
+\begin{proof}
+The forward implication is Theorem~\ref{thm:sound}; the backward implication is
+Theorem~\ref{thm:complete}.
+\end{proof}
+
+\begin{remark}\label{rem:adequacy}
+The class $S$ is not collapsed by the trivial one--element matrix: the canonical
+matrix $\mathfrak L$ separates every non-theorem from the designated set, so the
+semantics is \emph{adequate} (it has exactly the theorems of $\NL$ as its valid
+formulas) and not merely vacuously sound. Moreover the argument yields strong
+completeness: for any set $\Gamma\cup\{A\}$ of formulas, $\Gamma\prv A$ (closure
+of $\Gamma$ under MP, Adj and the axioms contains $A$) iff $A$ is true under
+every valuation into every $\mathfrak M\in S$ that makes all of $\Gamma$ true;
+the same Lindenbaum--Tarski matrix, with $D_{\Lin}$ replaced by the
+$\Gamma$-deductively closed set, witnesses the nontrivial direction by the
+identical Truth-Lemma computation.
+\end{remark}
+
+\begin{remark}[Optional consistency operator]\label{rem:consistency}
+If a primitive binary consistency operator $\circ$ is included, add a binary
+symbol $\circ$ to the signature in Definition~\ref{def:alg}, add Nelson's axioms
+governing $\circ$ to Subsection~\ref{ss:calculus}, and add the corresponding
+clause to (M3). The Replacement Theorem extends by adding to
+Lemma~\ref{lem:cong} the congruence step for $\circ$: if $\prv A\bic A'$ and
+$\prv B\bic B'$ then $\prv (A\circ B)\bic(A'\circ B')$, which is provable from
+Nelson's congruence axiom for $\circ$ exactly as in cases (ii)--(iv). All other
+steps are verbatim, and Theorem~\ref{thm:main} holds for the extended language.
+\end{remark}
+
+\section{Discussion: faithfulness and the connexive content}
+
+The semantics $S$ is a genuine, fully specified class of structures
+(Definition~\ref{def:matrix}); $\vld_{S}$ is a precise validity relation; and
+Theorem~\ref{thm:main} establishes both required implications. The construction
+is faithful to the problem in the following sense.
+
+\begin{enumerate}
+\item \emph{All connectives are interpreted as genuine, possibly
+non-classical operations.} In particular $\imp^{\A}$ is an arbitrary binary
+operation, not material implication; this is what makes room for the connexive
+theses. Indeed, the connexive axioms \eqref{B1},\eqref{B2} are validated by
+(M3), and Aristotle's theses, being theorems (see the Remark after
+Subsection~\ref{ss:calculus}), are valid in every $\mathfrak M\in S$ by
+Soundness. Thus $S$ validates exactly Nelson's intended connexive principles and
+\emph{refutes} every non-theorem.
+
+\item \emph{Non-triviality of the connexive content.} Boethius'
+$\eqref{B1}\!:(A\imp B)\imp\neg(A\imp\neg B)$ forces, in any $\mathfrak M\in S$,
+that the designated set $D$ never simultaneously designates an implication and
+its ``opposite'' in the sense that whenever $a\imp^{\A}b\in D$ one has
+$\neg(a\imp^{\A}\neg b)\in D$. This is the algebraic shadow of the connexive
+requirement, and it holds in the canonical matrix $\Lin$ where it expresses the
+genuine derivability of \eqref{B1}.
+
+\item \emph{Definitional fidelity.} The biconditional used throughout is the
+\emph{intensional} one, $A\bic B=(A\imp B)\wedge(B\imp A)$, built from Nelson's
+$\imp$ and $\wedge$, not a material biconditional; every congruence step in
+Lemma~\ref{lem:cong} is proved using only Nelson's own axioms, so the
+Lindenbaum--Tarski quotient respects exactly $\NL$'s notion of equivalence.
+\end{enumerate}
+
+This completes the construction of a sound and complete semantics for $\NL$.
+
+\end{document}

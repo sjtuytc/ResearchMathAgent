@@ -1,0 +1,152 @@
+{
+  "id": "rm-09192-meet-1",
+  "problem_id": "rm-09192",
+  "topic": "Init rm-09192 — proof review",
+  "goal": "Review the proof and issues for rm-09192; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T22:01:59Z",
+  "messages": [
+    {
+      "id": "m3b9c2df1",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-09192 — proof review**",
+      "created_at": "2026-06-22T22:01:59Z"
+    },
+    {
+      "id": "m931177a5",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest: this problem is not really in my spectral wheelhouse — there's no $\\varepsilon$ here, no effective resistances, no Laplacian system to solve. This is a classical combinatorial statement, and it's a *theorem*, not just a true-ish heuristic. The right tool is Smith's theorem (or really Thomason's lollipop argument), not interlacing families.\n\nHere's the clean argument:\n\n1. **Smith's theorem**: in any *cubic* (3-regular) graph, every edge lies in an even number of Hamiltonian cycles. So if a cubic graph has one Hamiltonian cycle through a given edge, it has at least two.\n\n2. **Thomason's lollipop algorithm** gives this constructively, which is what I actually care about. Fix an edge $e=uv$. Start with a Hamiltonian path beginning at $u$; repeatedly do \"rotation\" moves at the loose end. Each Hamiltonian path with one fixed endpoint $u$ has exactly... the moves define a graph on Hamiltonian paths whose vertices have degree 1 or 2, so the path-graph is a union of paths and cycles. Hamiltonian *cycles* through $e$ correspond to degree-1 endpoints, which come in pairs.\n\n3. **Reducing 4-regular to cubic**: Take our $4$-regular $G$ and a Hamiltonian cycle $C$. At each vertex $v$, two of its four edges are in $C$ and two are not. Now \"split\" the vertex along $C$: this is the standard trick of looking at $G$ as edge-colored. Actually the cleanest route: orient $C$, and consider the two non-$C$ edges at each vertex. We want to perturb $C$ into a different Hamiltonian cycle.\n\nThe slick reduction: pick an edge $e \\in C$. Contract or split to produce a cubic graph in which $C$ survives as a Hamiltonian cycle through $e$, apply Smith/Thomason to get a *second* Hamiltonian cycle, then lift it back. The parity guarantees $C' \\neq C$.\n\nSo my action items for the group:\n- **Verify the cubic reduction preserves and reflects Hamiltonicity** — this is the only real gap. A 4-regular vertex splitting can create the desired second cycle, but we must check no spurious or lost cycles.\n- I'd want the argument *constructive*: Thomason's lollipop runs in finite (indeed bounded) time and outputs $C'$ explicitly. That's the version I'll trust.\n\nWhat's the proposed reduction in the current draft? If someone wrote an existence-only argument, let's replace it with the lollipop construction — I don't believe a statement like this until I can run the algorithm.",
+      "created_at": "2026-06-22T22:02:14Z"
+    },
+    {
+      "id": "m62af4e60",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your instinct to go through Smith's theorem is correct, but let me caution against the vertex-splitting reduction — it is more delicate than it looks, and I think we should avoid it entirely. There is a cleaner route that stays inside the $4$-regular world.\n\nThe right object is **Thomason's lollipop argument applied directly**, but we must respect parity. Smith's theorem is fundamentally a statement about graphs where the relevant local structure is *odd*: in a cubic graph, fixing an edge $e=uv$, the loose-end rotations give a graph $\\mathcal{H}$ on Hamiltonian paths from $u$ in which Hamiltonian cycles through $e$ are degree-$1$ vertices, hence come in pairs. The number $3$ enters because once you use the edge $e$ at $v$, exactly *two* edges remain at the loose end to rotate on, making endpoints unique. In a $4$-regular graph the loose end has *three* available edges, so the lollipop graph has vertices of degree up to $3$ — parity is destroyed and the pairing argument collapses. **This is precisely why the naive direct argument fails and why the reduction is essential.**\n\nNow to the reduction. I claim the correct one is not vertex-splitting but the following: fix the Hamiltonian cycle $C$ and an edge $e \\in C$. At each vertex $v$, the two non-$C$ edges are \"chords.\" Consider the auxiliary cubic graph $G'$ obtained by, at each vertex $v$, splitting $v$ into two vertices $v_{\\text{in}}, v_{\\text{out}}$ joined by an edge, with the two $C$-edges going to one copy and... — but here is exactly the danger you flagged: a generic $4$-to-cubic split can both **create spurious cycles** (a cycle in $G'$ need not respect the split-edge constraint) and **lose genuine ones**. So the action item is real.\n\nMy concrete proposal:\n- **Do not reduce.** Run Thomason's lollipop *intrinsically*, but track a $\\mathbb{Z}/2$ invariant adapted to the $4$-regular setting. The correct generalization is due to **Thomassen**: in a graph where all vertices have *odd* degree, every edge lies in an even number of Hamiltonian cycles. Our graph is $4$-regular — *even* degree — so Smith does **not** apply directly, and the bare statement \"two Hamiltonian cycles\" is actually **not** a consequence of Smith-type parity at all.\n- Therefore I am suspicious the clean parity proof exists. Consider: is the statement even **true**? Vertex-transitive $4$-regular graphs (the extremal structures I always ask about) certainly have many Hamiltonian cycles, but we need *every* such $G$.\n\nLet me state the real gap sharply: **For $4$-regular (even-degree) graphs, Smith's theorem gives nothing.** The proof must come from elsewhere. I believe it is still true and provable via a counting/rotation argument, but someone must produce either (a) a correct odd-degree reduction, or (b) a $4$-regular analog of the lollipop with a working invariant. Before we polish a draft, let us first confirm which of these the current write-up actually uses — because if it cites Smith on a $4$-regular graph directly, it is simply **wrong**.",
+      "created_at": "2026-06-22T22:03:02Z"
+    },
+    {
+      "id": "m298a2baa",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me compute the first case by hand, as I always do — that's where the truth hides. Take $K_5$: it's $4$-regular on $5$ vertices. How many Hamiltonian cycles? It has $\\frac{(5-1)!}{2} = 12$ of them. So certainly more than two. Now take $K_{4,4}$ minus a perfect matching, or better, the octahedron $K_{2,2,2}$ — $4$-regular on $6$ vertices, loaded with Hamiltonian cycles. In every explicit $4$-regular example the cycles come in droves. So I believe the statement, but Laszlo is exactly right that Smith gives us *nothing* directly here: $4$ is even, the $\\mathbb{Z}/2$ machinery is silent.\n\nBut here's the real theorem behind the technical one, and it's *trivial* once you see it. Fix the Hamiltonian cycle $C$. At each vertex $v$ there are two $C$-edges and two non-$C$ edges. Now form the graph $H = G \\setminus E(C)$ — delete the $n$ edges of the Hamiltonian cycle. Since $G$ is $4$-regular and $C$ contributes exactly $2$ to each vertex degree, $H$ is **$2$-regular**! A $2$-regular graph is a disjoint union of cycles. Don't reduce to cubic — that's the trap Dan and Laszlo are circling. The whole point is that *the complement of one Hamiltonian cycle inside a $4$-regular graph is a union of cycles*, and this is the parity miracle we want, living entirely in the $4$-regular world.\n\nNow: is $H$ itself a single $n$-cycle? If so, $C' = H$ is a second Hamiltonian cycle and we are done instantly. The only obstruction is that $H$ might be a union of *several* shorter cycles. So the honest remaining problem is: given $C$ and the $2$-factor $H$ of leftover edges, when $H$ is not connected, produce a second Hamiltonian cycle. This is where a rotation/swap argument enters — but it's now a finite, concrete combinatorial chase on the union $C \\cup H$, which is a $4$-regular graph decomposed into two $2$-factors. That's the **action item**: handle the disconnected-$H$ case.\n\nSo my proposal, sharply: forget Smith, forget cubic reductions. The right object is the canonical decomposition of a $4$-regular Hamiltonian graph into $C$ plus a $2$-factor $H$. Either $H$ is Hamiltonian (done), or we exploit the structure of $C \\cup H$ — two superimposed $2$-factors — to perform a swap producing $C' \\neq C$. Let me ask the room: has anyone in the draft actually used this $2$-factor complement? Because *that* is the natural invariant, and I'd bet a careful interchange argument on $C \\triangle H$ closes it in one page.",
+      "created_at": "2026-06-22T22:03:49Z"
+    },
+    {
+      "id": "mda1b5628",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that's the right move — the $2$-factor complement $H = G \\setminus E(C)$ is the canonical object, and I should have led with it instead of the cubic reduction. Let me push on your remaining case, because I think it's softer than \"a finite chase.\"\n\nSuppose $H$ is disconnected: $H = Z_1 \\sqcup Z_2 \\sqcup \\cdots \\sqcup Z_k$ with $k \\geq 2$ cycles. We have a Hamiltonian cycle $C$ and a $2$-factor $H$, and I want a *second* Hamiltonian cycle without assuming $H$ itself is one. Here's a clean construction:\n\n1. Take two distinct cycles $Z_i, Z_j$ of $H$. Since $C$ is a single Hamiltonian cycle visiting all vertices, walk along $C$; it must transition between the vertex set $V(Z_i)$ and the rest. So there exist consecutive points where $C$ enters and leaves $V(Z_i)$.\n\n2. The real handle: **build the second cycle by a partial swap.** Start from $C$ and locally exchange a $C$-edge for an $H$-edge to merge the cycle structure differently. Concretely, consider $C \\cup H$, a $4$-regular multigraph that is the union of two edge-disjoint $2$-factors. The Hamiltonian cycles of $G$ lying in $C \\cup H$ are exactly what we want, and they correspond to ways of choosing, at each vertex, which pair of the four edges to \"pass through.\"\n\n3. Here is where I'd actually want an algorithm. Define an alternating-path/rotation operation on $C \\triangle H$. Each vertex has degree $2$ in $C$ and $2$ in $H$; a \"transition system\" picks two of the four edges. $C$ is one transition system; I want a different one yielding a single $n$-cycle. The number of edges where I deviate from $C$ is my potential.\n\nBut let me flag the genuine gap, since I won't believe it until I can run it: **it is not automatic that $C \\cup H$ contains a second Hamiltonian cycle.** $C \\cup H$ might be exactly $C$ plus a union of small triangles/cycles with no alternative routing. So Peter's \"one page\" worries me — the swap needs a guaranteed *augmenting structure*.\n\nMy concrete ask: can we exhibit, in $C \\cup H$, an **alternating cycle** in the symmetric-difference sense whose toggle keeps the result connected and spanning? If $H$ is disconnected we have slack — the $k \\geq 2$ components mean $C$ uses crossing edges between them — and toggling along a $C$-$H$ alternating cycle that bridges two $Z_i$'s should reconnect things. That's the lemma to nail down. Does the draft handle the case $k \\geq 2$ at all, or does it silently assume $H$ is connected?",
+      "created_at": "2026-06-22T22:06:04Z"
+    },
+    {
+      "id": "m9ea07f7d",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Peter has identified the right canonical object, and I want to retract my earlier pessimism: the $2$-factor complement $H = G \\setminus E(C)$ is exactly the structure, and it lives entirely in the $4$-regular world as Peter insists. But Dan is right to worry, and I want to sharpen *why* the swap is not automatic — and then show it actually is.\n\nHere is the precise framework. Consider $C \\cup H$. Each vertex $v$ has two $C$-edges and two $H$-edges. A **transition system** at $v$ is a pairing of the four edges into two pairs, telling you how a closed walk \"passes through\" $v$. The cycle $C$ corresponds to the transition system that pairs (C-edge, C-edge) and (H-edge, H-edge) at every vertex. To get a *different* Hamiltonian cycle we want a different choice of transition systems giving a single spanning cycle.\n\nThe key observation, which I think resolves Dan's concern, is an **interchange along an alternating cycle**, exactly in the spirit of augmenting paths I used in matching theory. Suppose $H$ is disconnected, $H = Z_1 \\sqcup \\cdots \\sqcup Z_k$, $k \\ge 2$. Then:\n\n1. Since $C$ is connected and spanning, there exist two vertices $a, b$ consecutive on $C$ (an edge $ab \\in C$) with $a \\in V(Z_i)$, $b \\in V(Z_j)$, $i \\neq j$. Such a \"bridging\" $C$-edge must exist or $C$ could not connect the components.\n\n2. At $a$, replace the transition pairing so that we **switch into $Z_i$**; symmetrically at $b$ into $Z_j$. This is the toggle on a $C$–$H$ alternating cycle. The effect is to *merge* $Z_i$ and $Z_j$ with portions of $C$ into one longer cycle.\n\n3. The potential is the number of $H$-components touched. Each successful bridging toggle strictly decreases $k$. Since the toggle preserves the spanning property (every vertex still has degree $2$) and we only ever reconnect, after at most $k-1$ toggles we reach a single Hamiltonian cycle $C' \\neq C$.\n\nThe point Dan worried about — \"no augmenting structure\" — cannot happen *precisely because $H$ is disconnected*: disconnectedness of $H$ forces $C$ to carry bridging edges, and those bridging edges are exactly the augmenting structure. And the case $H$ connected is Peter's instant win. So the dichotomy is genuinely exhaustive.\n\nOne caution, and this is where I'd demand rigor before declaring victory: the toggle in step 2 must yield a *single* cycle merging two components, not split $C$ off elsewhere. This is the standard care needed in any alternating-cycle interchange — I insist we verify the toggled transition system is *connected*, not merely $2$-regular. That is the one-line lemma the draft must contain. If the current write-up assumes $H$ connected or omits the bridging-edge existence argument, that is the gap to close. Let me also note: the statement is true and is essentially folklore from the theory of $2$-factor decompositions — but folklore is not a proof, so let us write the augmenting-cycle lemma cleanly.",
+      "created_at": "2026-06-22T22:06:51Z"
+    },
+    {
+      "id": "m05588e18",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — but stop, both of you, because the toggle as stated is *not quite right*, and I want to nail it with an explicit small example before we declare victory. Let me play devil's advocate against my own dichotomy.\n\nThe danger: take a single bridging edge $ab \\in C$ with $a \\in Z_i$, $b \\in Z_j$. You cannot just \"switch into $Z_i$ at $a$ and into $Z_j$ at $b$\" with one toggle — a single transition change at a vertex doesn't preserve $2$-regularity globally. You need a genuine **alternating cycle** in $C \\triangle H$, not a local repairing. Here's the clean version:\n\nThe graph $C \\cup H$ has every vertex of degree $4$. Color $C$ red, $H$ blue. An **alternating cycle** is a closed walk alternating red/blue edges. Toggling along it (swap which color you \"keep\") preserves degree $2$ everywhere automatically — that's the parity miracle, exactly the symmetric-difference structure I used in QUE-style interchange arguments and that Laszlo knows from matchings.\n\nNow the real point, and it kills the \"no augmenting structure\" fear: **$C$ and $H$ are two edge-disjoint $2$-factors, so $C \\triangle H = C \\cup H$ decomposes into alternating closed walks.** When $H$ is disconnected, consider the component $Z_i$. The red edges $C$ restricted to entering/leaving $V(Z_i)$ must cross the cut $\\partial V(Z_i)$ an *even* number of times — and that number is $\\ge 2$ since $C$ is connected. That parity-even crossing is precisely a nontrivial alternating cycle threading $Z_i$. Toggle it: $Z_i$ merges with its neighbor, $k$ drops.\n\nSo I agree with Laszlo's potential argument *in spirit* but the augmenting object is the alternating cycle across the cut $\\partial V(Z_i)$, whose existence is forced by the even-crossing parity — not a pair of local switches. Let me state the lemma the draft needs:\n\n> **Lemma.** Let $C, H$ be edge-disjoint $2$-factors of $G$ with $C$ Hamiltonian and $H = Z_1 \\sqcup \\cdots \\sqcup Z_k$, $k \\ge 2$. Then there is an alternating ($C$/$H$) cycle whose toggle yields a $2$-factor with fewer components, eventually a Hamiltonian $C' \\ne C$.\n\nI'll verify it by hand on $C_6$ plus two triangles: $C = (123456)$, $H = \\{135, 246\\}$ — wait, that's $K_{3,3}$-flavored; let me actually check octahedron $K_{2,2,2}$ tonight and confirm the toggle produces the second cycle explicitly. That's my action item. **But is $C' \\ne C$ guaranteed?** Yes — the toggle changes at least one edge, since we used a blue edge. One page, but the alternating-cycle-across-the-cut formulation is the honest one. Write *that*.",
+      "created_at": "2026-06-22T22:07:39Z"
+    },
+    {
+      "id": "m16a30d61",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T22:08:26Z"
+    },
+    {
+      "id": "m42ed30ea",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nProve that a 4-regular graph with one Hamiltonian cycle C has a second by analyzing the complementary 2-factor H = G \\ E(C) and toggling alternating cycles in C ∪ H to merge components of H until a second Hamiltonian cycle emerges.",
+      "created_at": "2026-06-22T22:08:26Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that a 4-regular graph with one Hamiltonian cycle C has a second by analyzing the complementary 2-factor H = G \\ E(C) and toggling alternating cycles in C ∪ H to merge components of H until a second Hamiltonian cycle emerges.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish the 2-factor complement",
+        "body": "Prove that for a 4-regular graph G with Hamiltonian cycle C, the complement H = G \\ E(C) is a 2-regular spanning subgraph (a disjoint union of cycles Z_1, ..., Z_k), since C contributes exactly degree 2 at every vertex. Frame the whole problem as analyzing the two edge-disjoint 2-factors C (red) and H (blue) and their union C ∪ H, which is 4-regular at every vertex.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Handle the connected case",
+        "body": "Show that if H is connected (k = 1), then H is itself a single spanning n-cycle, hence a Hamiltonian cycle C' = H distinct from C (they are edge-disjoint), closing the problem instantly. State this dichotomy branch cleanly.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove existence of an alternating cut-crossing cycle",
+        "body": "For the disconnected case (k ≥ 2), prove the key lemma: pick a component Z_i; because C is connected and spanning, the red edges of C crossing the cut ∂V(Z_i) cross an even number of times, with count ≥ 2. Establish that this forces the existence of a nontrivial alternating (red/blue) closed cycle in C ∪ H threading Z_i and reaching another component. Avoid the flawed 'local single-switch' formulation Peter flagged.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove toggle preserves 2-regularity and connectivity",
+        "body": "Prove that toggling along the alternating cycle (swapping which color edges are kept) automatically preserves degree 2 at every vertex (the symmetric-difference parity miracle), yielding a new 2-factor. Crucially verify the one-line lemma Laszlo demanded: that the toggle MERGES two components of H into one rather than splitting off a new component, so the number of components strictly decreases.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Assemble the descent argument and confirm C' ≠ C",
+        "body": "Combine the lemmas into a potential/descent argument: starting from H with k ≥ 2 components, repeatedly apply the cut-crossing toggle, each strictly decreasing k, until reaching a single spanning cycle C'. Confirm C' ≠ C since each toggle uses at least one blue (H) edge not in C. Write the full proof as a clean dichotomy (connected case + descent).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify on explicit small examples",
+        "body": "Hand-verify the construction on concrete 4-regular graphs: the octahedron K_{2,2,2} on 6 vertices, K_5 on 5 vertices, and a case where H is genuinely disconnected (e.g. C_6 plus two triangles). Explicitly run the alternating-cycle toggle and confirm it produces a distinct second Hamiltonian cycle, validating that no spurious or lost cycles arise.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Stress-test for missing augmenting structure",
+        "body": "Adversarially probe Dan's concern that C ∪ H might lack an augmenting structure (e.g. C plus only small triangles with no alternative routing). Confirm rigorously that disconnectedness of H always forces bridging cut-crossings, so the feared obstruction cannot occur, and check no degenerate multigraph or parity edge case breaks the argument.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T22:08:26Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

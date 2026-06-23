@@ -3,7 +3,7 @@
   "problem_id": "q5",
   "dataset": "first_proof_1",
   "title": "Necessity: closure of the connectivity property under localizing operations not proved (fractional bound + desuspension)",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,28 @@
       "role": "agent",
       "body": "## Gap in Lemma `lem:forward` (necessity), current revised solution\n\nAfter reducing to $H=G$, the proof asserts:\n> \"$\\Phi^G$ preserves homotopy colimits and extensions and annihilates induced spectra $G_+\\otimes_K Y$ from proper $K$, so the property '$\\mathrm{conn}(\\Phi^G(-))\\ge n/r_G$' (with $r_G=[G:\\chi^{\\mathcal O}(G)]$) is closed under the operations defining $\\tau^{\\mathcal O}_{\\ge n}$; hence it suffices to check the generators.\"\n\nThe localizing subcategory $\\tau^{\\mathcal O}_{\\ge n}$ is by definition closed under **all homotopy colimits, retracts, and tensors with orbits** — which in a stable category forces closure under **cofibers**, hence (via the cofiber of $0\\to X$ vs shifts) interacts with **desuspension**. The claimed closed property\n$$\\mathcal C := \\{X : \\mathrm{conn}(\\Phi^G X)\\ge n/r_G\\}$$\nhas two problems:\n\n**(a) Fractional / non-integer bound.** $n/r_G$ is generally not an integer; spectrum connectivity is integral. One must work with $\\lceil n/r_G\\rceil$ or, better, restate the invariant multiplicatively as $r_G\\cdot\\mathrm{conn}(\\Phi^G X)\\ge n$, and check this exact integer inequality propagates. The casual use of '$\\ge n/r_G$' obscures whether the colimit-closure preserves the *integer* bound that ultimately yields $r_G\\cdot\\mathrm{gconn}(E)(G)\\ge n$.\n\n**(b) Closure direction.** Closure of a connectivity *lower bound* $\\{X:\\mathrm{conn}(\\Phi^GX)\\ge c\\}$ under filtered colimits and extensions holds in the Postnikov $t$-structure, but it is NOT closed under desuspension, and the localizing subcategory is generated using cofiber sequences that can lower connectivity of intermediate terms. The argument must first establish $\\tau^{\\mathcal O}_{\\ge n}\\subseteq \\mathrm{Sp}^G_{\\ge 0}$ (connectivity bounded below), and then confine the closure argument to the connective range where $\\mathrm{conn}(\\mathrm{cofib}(f))\\ge\\min(\\mathrm{conn},\\dots)$ behaves well. None of this is written; the closure claim is simply asserted.\n\n## Suggested fix\nDefine $\\mathcal C_n:=\\{X\\in\\mathrm{Sp}^G_{\\ge0} : r_H\\,\\mathrm{conn}(\\Phi^H X)\\ge n\\ \\forall H\\}$ (note: at all $H$, not just $G$, so the reduction-to-$H=G$ step is unnecessary). Show (i) all generators of $\\tau^{\\mathcal O}_{\\ge n}$ lie in $\\mathcal C_n$ using $\\Phi^H N^TS^1=S^{|T/H|}$, $|T|\\le r_H|T/H|$, and the double-coset formula for $\\Phi^K$ of induced cells; (ii) $\\tau^{\\mathcal O}_{\\ge n}\\subseteq\\mathrm{Sp}^G_{\\ge0}$; (iii) $\\mathcal C_n$ is closed under extensions and filtered colimits inside the connective part, using exactness of each $\\Phi^H$ and the $t$-structure inequality. Then $\\tau^{\\mathcal O}_{\\ge n}\\subseteq\\mathcal C_n$ is exactly necessity.\n\n## Difficulty\nModerate. The ingredients are standard ($t$-structure connectivity estimates, exactness of $\\Phi^H$), but they must be assembled carefully, and the integer/fractional issue and the connective-confinement must be made explicit rather than waved through.",
       "created_at": "2026-06-18T01:04:23Z"
+    },
+    {
+      "id": "c8c1dcb28",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Re-review: addressed in current `solution.tex`.\nNecessity now defines $\\mathcal C=\\{X:\\mathrm{conn}(\\Phi^GX)\\ge c\\}$, $c=n/r_G\\in\\mathbb Q$, and handles the fractional bound via $\\mathrm{conn}\\ge c\\iff\\mathrm{conn}\\ge\\lceil c\\rceil$ (connectivity is integer/$\\infty$-valued). $\\Phi^G$ is exact and preserves colimits/retracts, so $\\mathcal C$ is closed under (o1)-(o3); orbit tensors at proper $L$ land in $\\infty$-connective via $\\Phi^G(G_+\\otimes_L-)\\simeq0$. No desuspension is used (the subcategory is connective). This gap is closed.",
+      "created_at": "2026-06-21T22:09:30Z"
+    },
+    {
+      "id": "c8b63c137",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolution of the closure-under-localizing-operations gap\n\nI reviewed the current `lem:forward` (necessity) and verified it now correctly addresses both sub-concerns; I further hardened Step 2 to make the two delicate points fully explicit and self-contained.\n\n**Key clarification of the framing.** The critic's worry (b) was premised on `tau^O_{>=n}` being a *localizing* (stable, bi-sided) subcategory, which would be closed under all cofibers/fibers and hence interact with desuspension. But the solution defines `tau^O_{>=n} = <generators>_{>=}` as a **connective** subcategory: operation (o1) forms colimits and **cofibers of maps between objects already in the subcategory**, and is explicitly **not** closed under desuspension. With this one-sided generation the desuspension issue is genuinely moot — one never needs the target property to survive `Sigma^{-1}` or general fibers.\n\n**What I rewrote (Step 2 of lem:forward).** Made the integer/fractional and connective-confinement points airtight:\n\n1. **Fractional bound (a).** Replaced the casual `conn >= c` by the equivalent **integer** membership: with `c = n/r_G >= 0` and `m := ceil(c)`, since `conn` is `Z u {+-inf}`-valued, `conn(Phi^G X) >= c  <=>  conn(Phi^G X) >= ceil(c) = m  <=>  Phi^G X in Sp_{>=m}` (the `m`-connective part of the Postnikov t-structure). From there the whole argument runs with the integer bound `m`.\n\n2. **Closure direction / desuspension (b).** Spelled out the two estimates (o1) actually needs:\n   - coproducts & filtered colimits preserve `Sp_{>=m}` (homotopy groups commute with them);\n   - **cofiber of a map `f: A -> B` between two `m`-connective objects is `m`-connective**: the LES gives `pi_j C = 0` for `j<m` because `pi_j B = 0` (`j<m`) and `pi_{j-1} A = 0` (`j-1<m`). Taking `A=0` gives `Sigma^l B` for `l>=0`; extensions follow.\n   I numerically/symbolically sanity-checked this LES estimate and the `ceil` equivalence. Then I state explicitly that (o1) only forms cofibers between objects in the subcategory, never fibers/desuspensions, so `Sp_{>=m}` need only be closed in this one-sided sense — which it is — and no intermediate cofiber can drop below `m`-connectivity. This is the precise resolution of the desuspension subtlety.\n\n3. (o2) retracts and (o3) orbit tensors handled as before; for proper `L`, `Phi^G(G/L_+ ⊗ X) ≃ 0` (Step 1), so it lies in `C` unconditionally (∞-connective).\n\nSteps 3-4 (generators in `C` via `Phi^G N^T S^1 = S^{|T/G|}` and `r_G·|T/G| >= |T| >= n`, then minimality of the generated subcategory) were already correct and are unchanged. The per-subgroup reduction (Step 0, via `lem:restr`) already gives the bound at **all** `H`, so the \"all H\" form the critic requested is in place.\n\nBrace/environment balance checked; no LaTeX toolchain available to compile, but structure is sound.\n\nI consider this gap closed.",
+      "created_at": "2026-06-21T22:31:08Z"
+    },
+    {
+      "id": "eve95d5384",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T22:31:11Z"
     }
   ]
 }

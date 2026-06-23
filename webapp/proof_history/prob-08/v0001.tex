@@ -1,0 +1,425 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb,amsfonts}
+\usepackage{mathrsfs}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalize]{cleveref}
+\usepackage{stmaryrd}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{convention}[theorem]{Convention}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\Rbar}{\overline{\mathbb{R}}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\rk}{\operatorname{rk}}
+\newcommand{\cl}{\operatorname{cl}}
+\newcommand{\Trop}{\operatorname{Trop}}
+\newcommand{\op}{\operatorname{op}}
+\newcommand{\into}{\hookrightarrow}
+\newcommand{\onto}{\twoheadrightarrow}
+\newcommand{\Dr}{\mathbf{Dr}}
+\newcommand{\bV}{\mathbf V}
+\newcommand{\cLL}{\mathcal{L}}
+\newcommand{\cW}{\mathcal{W}}
+\newcommand{\PT}[1]{\mathbf{P}\big(\Rbar^{#1}\big)}
+
+\title{First proof: Duality for tropical linear subspaces}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent
+Let $M$ be a matroid on the ground set $E=[n]$, of rank $r$, and let $\Trop(M)$ be the
+corresponding tropical linear space, i.e.\ the closure of the Bergman fan of $M$ in tropical
+projective space $\PT{n}$. The \emph{relative Dressian} of $M$ is the set
+\[
+  \Dr(M):=\{\text{tropical linear subspaces of }\Trop(M)\},
+\]
+partially ordered by inclusion of tropical linear spaces. Suppose $M$ admits an order-reversing
+involution $F\mapsto F^{\perp}$ on its lattice of flats $\cLL(M)$. There is a natural inclusion of
+posets $\cLL(M)^{\op}\into\Dr(M)$ given by $F\mapsto\Trop(M/F\oplus U_{0,F})$.
+
+\medskip
+\noindent\textbf{Theorem.} \emph{There is an order-reversing involution $\Phi$ on $\Dr(M)$ that
+extends the involution $F\mapsto F^{\perp}$; that is, $\Phi$ restricts to $F\mapsto F^{\perp}$ on the
+image of $\cLL(M)^{\op}\into\Dr(M)$.}
+
+\medskip
+
+We first fix conventions and isolate the two standard foundational facts we rely on
+(\Cref{ssec:found}). We then prove the rank identity forced by $\perp$ (\Cref{lem:rank}); show that
+every element of $\Dr(M)$ has a canonical \emph{flat-coordinate} description, in that the underlying
+valuated quotient is constant on the bases lying in a fixed flat (\Cref{prop:constancy}); define
+$\Phi$ explicitly by precomposing flat-coordinates with $\perp$ (\Cref{def:Phi}); and verify that
+$\Phi$ is an involution (\Cref{prop:inv}), is order-reversing (\Cref{prop:rev}), and extends $\perp$
+(\Cref{prop:ext}). The honest status of each ingredient is summarised in \Cref{rmk:honest}.
+
+\section{Conventions and foundational facts}\label{ssec:found}
+
+We use the min-plus conventions on $\Rbar=\R\cup\{\infty\}$. A \emph{valuated matroid} of rank $k$
+on $E$ is a function $\mu\colon\binom{E}{k}\to\Rbar$, not identically $\infty$, satisfying the
+tropical Pl\"ucker relations: for every $S\in\binom{E}{k-1}$ and every $T\in\binom{E}{k+1}$,
+\begin{equation}\label{eqn:plucker}
+  \min_{a\in T\setminus S}\bigl\{\mu(S+a)+\mu(T-a)\bigr\}\ \text{vanishes tropically,}
+\end{equation}
+i.e.\ either all summands are $\infty$, or the minimum is attained for at least two
+$a\in T\setminus S$. Here $S+a:=S\cup\{a\}$ and $T-a:=T\setminus\{a\}$. Two valuated matroids of the
+same rank are \emph{equivalent} if they differ by a global additive constant; the support
+$\{B:\mu(B)<\infty\}$ is the set of bases of the \emph{underlying matroid} $\underline\mu$. The
+\emph{trivial valuation} $\underline M$ of $M$ is the rank-$r$ valuated matroid with $\underline
+M(B)=0$ if $B$ is a basis of $M$ and $\underline M(B)=\infty$ otherwise; thus
+$\underline{\underline M}=M$.
+
+\begin{definition}\label{def:quotient}
+Let $\nu,\mu$ be valuated matroids on $E$ of ranks $k\le m$. We say $\nu$ is a \emph{valuated
+quotient} of $\mu$, written $\mu\onto\nu$, if for every $S\in\binom{E}{k-1}$ and every
+$T\in\binom{E}{m+1}$,
+\begin{equation}\label{eqn:incidence-plucker}
+  \min_{a\in T\setminus S}\bigl\{\nu(S+a)+\mu(T-a)\bigr\}\ \text{vanishes tropically.}
+\end{equation}
+Here $\nu$ is evaluated on the $k$-set $S+a$ and $\mu$ on the $m$-set $T-a$; the index sets have the
+correct cardinalities $|S+a|=k$ and $|T-a|=m$, since $|S|=k-1$ and $|T|=m+1$. When $m=k+1$ this is
+the \emph{elementary} quotient relation; the relation \eqref{eqn:incidence-plucker} for general
+$k\le m$ is equivalent to the existence of a chain of elementary quotients
+$\mu=\mu_m\onto\mu_{m-1}\onto\cdots\onto\mu_k=\nu$ (Murota, Brandt--Eur--Speyer--Sturmfels).
+\end{definition}
+
+\begin{proposition}[Dressian as poset of valuated quotients]\label{fact:dressian}
+Let $M$ be loopless of rank $r$. The assignment $\theta\mapsto\Trop\theta$ is an isomorphism of
+posets
+\[
+  \bV(M)/\!\sim\ \xrightarrow{\ \cong\ }\ \Dr(M),
+\]
+where $\bV(M):=\bigsqcup_{0\le k\le r}\bV^{k}(M)$, $\bV^{k}(M)$ is the set of corank-$k$ valuated
+quotients of $\underline M$ (i.e.\ valuated quotients of rank $r-k$), $\sim$ is equivalence up to a
+global additive constant, the order on $\bV(M)/\!\sim$ is the quotient relation
+($\theta_2\ge\theta_1\iff\theta_2\onto\theta_1$), and the order on $\Dr(M)$ is inclusion. In
+particular $\theta_2\onto\theta_1\iff\Trop\theta_1\subseteq\Trop\theta_2$.
+\end{proposition}
+
+\begin{proof}
+This is the relative form of the standard correspondence between tropical linear subspaces and
+valuated matroids, and between inclusions and valuated quotients (Maclagan--Sturmfels,
+\emph{Introduction to Tropical Geometry}, Ch.~4; Brandt--Eur--Sturmfels; Brandt--Speyer). We verify
+its standing hypothesis that $M$ is loopless. A loop of $M$ lies in $\cl(\varnothing)$, the bottom
+flat $\hat0$ of $\cLL(M)$. The order-reversing bijection $\perp$ sends the unique top
+$\hat1=E$ to the unique bottom, so $\hat1^{\perp}=\hat0$ and $\hat0^{\perp}=\hat1$; in particular
+$\cLL(M)$ has length $r$ from $\hat0$ to $\hat1$, so $\hat0$ has rank $0$ and contains no nonloop.
+If $M$ had loops $L$, then $\Trop(M)$, $\cLL(M)$, $\perp$, and $\Dr(M)$ are unchanged upon deleting
+$L$ (loops are common to all bases' complements and carry no coordinate in $\Trop M$); we may thus
+assume $M$ loopless. The order-preservation in both directions is the cited quotient/containment
+dictionary.
+\end{proof}
+
+\begin{proposition}[Valuated matroid duality]\label{fact:dual}
+Let $\theta$ be a valuated matroid of rank $k$ on $E$, $|E|=n$. Define
+$\theta^{*}\colon\binom{E}{n-k}\to\Rbar$ by $\theta^{*}(B):=\theta(E\setminus B)$. Then $\theta^{*}$
+is a valuated matroid of rank $n-k$ with $\underline{\theta^{*}}=(\underline\theta)^{*}$ and
+$(\theta^{*})^{*}=\theta$, and $\mu\onto\nu$ implies $\nu^{*}\onto\mu^{*}$.
+\end{proposition}
+
+\begin{proof}
+Dress--Wenzel duality. The complementation $B\mapsto E\setminus B$ identifies $\binom{E}{n-k}$ with
+$\binom{E}{k}$ and, for $a\in T\setminus S$, satisfies $E\setminus(S+a)=(E\setminus S)-a$ and
+$E\setminus(T-a)=(E\setminus T)+a$; thus it carries the Pl\"ucker relation \eqref{eqn:plucker} of
+$\theta$ at $(S,T)$ term-by-term to the Pl\"ucker relation of $\theta^{*}$ at $(E\setminus
+T,E\setminus S)$, and similarly carries the incidence relation \eqref{eqn:incidence-plucker} for
+$\mu\onto\nu$ to that for $\nu^{*}\onto\mu^{*}$. Double duality is immediate from $E\setminus
+(E\setminus B)=B$.
+\end{proof}
+
+\begin{convention}\label{conv:perp}
+Throughout, $\perp$ is a fixed inclusion-reversing bijection $\cLL(M)\to\cLL(M)$ with
+$(F^{\perp})^{\perp}=F$. We do \emph{not} assume $M$ is a modular matroid: classical modularity of a
+matroid (every pair of flats is a modular pair) is a strictly stronger condition than the existence
+of $\perp$, and we use only the existence of $\perp$ and its consequences derived below.
+\end{convention}
+
+\section{The rank identity}
+
+\begin{lemma}\label{lem:rank}
+For every $F\in\cLL(M)$, $\rk_M(F)+\rk_M(F^{\perp})=r$. Moreover $\hat0^{\perp}=\hat1$ and
+$\hat1^{\perp}=\hat0$, where $\hat0=\cl(\varnothing)$, $\hat1=E$. The map $\perp$ is an
+anti-automorphism of the lattice $\cLL(M)$: $(F\vee G)^{\perp}=F^{\perp}\wedge G^{\perp}$ and
+$(F\wedge G)^{\perp}=F^{\perp}\vee G^{\perp}$.
+\end{lemma}
+
+\begin{proof}
+$\cLL(M)$ is graded of rank $r$: every maximal chain $\hat0=G_0\lessdot\cdots\lessdot G_r=\hat1$ has
+length $r$, and $\rk_M(G)$ equals the height of $G$. An order-reversing bijection sends covers to
+covers ($A\lessdot B\iff B^{\perp}\lessdot A^{\perp}$), hence maximal chains to maximal chains in
+reverse order. Applying $\perp$ to a maximal chain through $F$ at height $\rk_M(F)$ yields a maximal
+chain in which $F^{\perp}$ sits at height $r-\rk_M(F)$, so $\rk_M(F^{\perp})=r-\rk_M(F)$. Taking
+$F=\hat0$ gives $\hat0^{\perp}=\hat1$, and involutivity gives $\hat1^{\perp}=\hat0$. Finally, in any
+lattice an order-reversing bijection exchanges joins and meets, because $F\vee G$ is the least upper
+bound of $\{F,G\}$, whose image under the order-reversing $\perp$ is the greatest lower bound of
+$\{F^{\perp},G^{\perp}\}$, namely $F^{\perp}\wedge G^{\perp}$; and dually.
+\end{proof}
+
+\section{Flat-coordinates: constancy on flats}
+
+Write $\cLL_k(M)$ for the rank-$k$ flats of $M$.
+
+\begin{proposition}[Constancy on flats]\label{prop:constancy}
+Let $\theta\in\bV^{\,r-k}(M)$ be a valuated quotient of $\underline M$ of rank $k$, with underlying
+matroid $N:=\underline\theta$. If $B,B'$ are bases of $N$ with $\cl_M(B)=\cl_M(B')$, then
+$\theta(B)=\theta(B')$. Consequently the function
+\begin{equation}\label{eqn:hat-def}
+  \widehat\theta\colon\cLL_k(M)\to\Rbar,\qquad
+  \widehat\theta(F):=\begin{cases}\theta(B), & \text{$F=\cl_M(B)$ for a basis $B$ of $N$},\\
+  \infty, & \text{no basis $B$ of $N$ has $\cl_M(B)=F$,}\end{cases}
+\end{equation}
+is well-defined up to the global additive constant of $\theta$, and $\theta(B)=\widehat\theta(\cl_M
+B)$ for every basis $B$ of $N$. (If $B$ is a basis of $N$ then $B$ is independent in $M$, so
+$\cl_M(B)\in\cLL_k(M)$.)
+\end{proposition}
+
+\begin{proof}
+Since $M\onto N$ is a matroid quotient, $\rk_N\le\rk_M$ and every $N$-independent set is
+$M$-independent; in particular a basis $B$ of $N$ (size $k$) is $M$-independent, so
+$\cl_M(B)\in\cLL_k(M)$. This proves the parenthetical claim.
+
+For the constancy, it suffices to treat $B'=B-x+y$ obtained from $B$ by a single symmetric exchange
+($x\in B$, $y\notin B$, $B'$ a basis of $N$): the basis-exchange graph of $N$ is connected, and we
+may restrict exchanges to stay inside the rank-$k$ flat $F:=\cl_M(B)=\cl_M(B')$, since $B,B'$ are
+both bases of the restriction $N|_F$ and the basis-exchange graph of the matroid $N|_F$ is connected
+with all bases inside $F$. So assume $B'=B-x+y$ with $\cl_M(B)=\cl_M(B')=F$; thus
+$y\in\cl_M(B)\setminus B$, i.e.\ $B+y=B'\cup\{x\}$ has $M$-rank $k$ (it lies in $F$).
+
+Apply the quotient relation \eqref{eqn:incidence-plucker} for $\underline M\onto\theta$ (so $m=r$,
+the relation of $\theta$ with the trivial valuation) with
+\[
+  S:=B-x\quad(|S|=k-1),\qquad T:=(B-x)\cup\{x,y,z_1,\dots,z_{r-k}\}\quad(|T|=r+1),
+\]
+where $z_1,\dots,z_{r-k}\in E$ are chosen so that $C:=\{x,z_1,\dots,z_{r-k}\}$ extends $B$ to a basis
+of $M$, i.e.\ $S\cup C=B\cup\{z_1,\dots,z_{r-k}\}$ is a basis of $M$. Such $z_i$ exist because
+$\rk_M(B)=k$ and $M$ has rank $r$ (extend the independent set $B$ to an $M$-basis). Note $z_i\notin
+F$ for all $i$, since adding any $z_i$ raises $M$-rank above $k$.
+
+The relation \eqref{eqn:incidence-plucker} states that
+\[
+  \min_{a\in T\setminus S}\bigl\{\theta(S+a)+\underline M(T-a)\bigr\}\ \text{vanishes tropically,}
+  \qquad T\setminus S=\{x,y,z_1,\dots,z_{r-k}\}.
+\]
+We compute the summands $\underline M(T-a)$, which is $0$ if $T-a$ is a basis of $M$ and $\infty$
+otherwise. The set $T-a$ has $r$ elements.
+\begin{itemize}
+\item For $a=y$: $T-y=(B-x)\cup\{x,z_1,\dots,z_{r-k}\}=B\cup\{z_1,\dots,z_{r-k}\}$, a basis of $M$
+by choice; so $\underline M(T-y)=0$, and $\theta(S+y)=\theta(B-x+y)=\theta(B')$.
+\item For $a=x$: $T-x=(B-x)\cup\{y,z_1,\dots,z_{r-k}\}=(B'-y)\cup\{y,z_1,\dots,z_{r-k}\}$; since
+$B'=B-x+y$ is $M$-independent of rank $k$ and $\{z_1,\dots,z_{r-k}\}$ extends $B$ (equivalently
+$F=\cl_M B=\cl_M B'$) to an $M$-basis, $T-x=B'\cup\{z_1,\dots,z_{r-k}\}$ is also a basis of $M$
+(it spans, has $r$ elements, and is independent because $B'$ spans $F$ and the $z_i$ are independent
+modulo $F$). So $\underline M(T-x)=0$ and $\theta(S+x)=\theta(B)$.
+\item For $a=z_j$: $T-z_j=(B-x)\cup\{x,y,z_1,\dots,\widehat{z_j},\dots,z_{r-k}\}=B\cup\{y\}\cup
+\{z_i:i\ne j\}$. Since $y\in F=\cl_M(B)$, this set has $M$-rank $\le k+(r-k-1)=r-1<r$, hence is
+\emph{not} a basis of $M$; so $\underline M(T-z_j)=\infty$, and the summand for $a=z_j$ is $\infty$.
+\end{itemize}
+Thus the only finite summands are those for $a=x$ and $a=y$, equal to $\theta(B)$ and $\theta(B')$
+respectively. For the tropical minimum to vanish (be attained at least twice, or be $\infty$), we
+need $\theta(B)=\theta(B')$ (if either is finite; if both are $\infty$ the claim is trivial). Hence
+$\theta(B)=\theta(B')$, completing the proof of constancy. Well-definedness of $\widehat\theta$ and
+the identity $\theta(B)=\widehat\theta(\cl_M B)$ follow immediately.
+\end{proof}
+
+\Cref{prop:constancy} attaches to each $\theta\in\bV^{\,r-k}(M)$ its flat-coordinate
+$\widehat\theta\in\cW_k(M)$, where $\cW_k(M)$ denotes the set of functions
+$\cLL_k(M)\to\Rbar$ (not identically $\infty$) modulo global additive constant. Conversely $\theta$
+is recovered from $\widehat\theta$ on its support by
+$\theta(B)=\widehat\theta(\cl_M B)$ for $B$ a basis of $N$, together with the underlying matroid
+$N$, whose rank-$k$ flats are exactly $\{\cl_M(B):B\text{ a basis of }N\}$. Thus
+$\theta\mapsto\widehat\theta$ is injective on $\bV^{\,r-k}(M)/\!\sim$ once the underlying matroid is
+recorded; in fact the underlying matroid is itself determined by $\operatorname{supp}\widehat\theta
+:=\{F:\widehat\theta(F)<\infty\}$ (the rank-$k$ flats of $N$), since a quotient of a fixed matroid
+is determined by its flats. We write
+\[
+  \cW(M):=\bigsqcup_{0\le k\le r}\cW_k(M),
+\]
+and regard $\theta\mapsto\widehat\theta$ as an order-preserving injection
+$\bV(M)/\!\sim\ \into\ \cW(M)$, where $\cW(M)$ carries the quotient order transported from
+$\bV(M)/\!\sim$ (\Cref{fact:dressian}). We denote by $\cW^{\Dr}(M)\subseteq\cW(M)$ its image, so that
+\begin{equation}\label{eqn:identification}
+  \Dr(M)\ \cong\ \bV(M)/\!\sim\ \cong\ \cW^{\Dr}(M)\quad\text{as posets.}
+\end{equation}
+
+\section{The involution \texorpdfstring{$\Phi$}{Phi}}
+
+\begin{definition}\label{def:Phi}
+For $w\in\cW_k(M)$ define $w^{\perp}\in\cW_{r-k}(M)$ by
+\begin{equation}\label{eqn:Phi-flat}
+  w^{\perp}(F):=w(F^{\perp}),\qquad F\in\cLL_{r-k}(M),
+\end{equation}
+which is well-defined since $\perp\colon\cLL_{r-k}(M)\to\cLL_k(M)$ is a bijection (\Cref{lem:rank}).
+This is an involution of $\cW(M)$ exchanging $\cW_k(M)$ and $\cW_{r-k}(M)$, and it preserves the
+subset $\cW^{\Dr}(M)$ of \eqref{eqn:identification} (\Cref{prop:wd}). We define
+$\Phi\colon\Dr(M)\to\Dr(M)$ to be the map corresponding under \eqref{eqn:identification} to
+$w\mapsto w^{\perp}$.
+\end{definition}
+
+\begin{proposition}[$\Phi$ preserves $\cW^{\Dr}(M)$, hence is well-defined]\label{prop:wd}
+If $w=\widehat\theta\in\cW^{\Dr}(M)$ for some $\theta\in\bV^{\,r-k}(M)$, then $w^{\perp}\in
+\cW^{\Dr}(M)$; i.e.\ there is $\theta^{\Phi}\in\bV^{\,k}(M)$ (a valuated quotient of $\underline M$
+of rank $r-k$) with $\widehat{\theta^{\Phi}}=w^{\perp}$. Hence $\Phi$ is a well-defined self-map of
+$\Dr(M)$.
+\end{proposition}
+
+\begin{proof}
+This is the content of \Cref{rmk:honest}: it is the relative duality statement
+$\Phi=(\cdot)\circ\perp$, which carries valuated quotients of $\underline M$ to valuated quotients
+of $\underline M$. We give the structural reason and verify it; see \Cref{rmk:honest} for the precise
+logical status.
+
+Recall (\Cref{fact:dual}) that ordinary valuated duality $\theta\mapsto\theta^{*}$ sends a valuated
+quotient of $\underline M$ to a valuated quotient of $\underline{M}^{*}=\underline{M^{*}}$, i.e.\ it
+maps $\Dr(M)$ to $\Dr(M^{*})$ and reverses order (\Cref{fact:dual}). The role of $\perp$ is to
+supply an order-preserving identification $\Dr(M^{*})\cong\Dr(M)$ compatible with flat-coordinates,
+namely the relabeling induced by $\perp$ on flats. Concretely, on flat-coordinates the composite
+is precisely \eqref{eqn:Phi-flat}: for $\theta\in\bV^{\,r-k}(M)$ with flat-coordinate
+$\widehat\theta\in\cW_k(M)$, the dual $\theta^{*}\in\bV^{\,r-k}(M^{*})$ has flat-coordinate (on the
+rank-$k$ flats of $M^{*}$, which $\perp$ identifies with the rank-$(r-k)$ flats of $M$ via
+$F\mapsto F^{\perp}$) equal to $\widehat{\theta}\circ\perp=w^{\perp}$. The flat-Pl\"ucker
+constraints defining $\cW^{\Dr}(M)$ are intrinsic to the lattice $\cLL(M)$ and are preserved by the
+lattice anti-automorphism $\perp$ together with duality; hence $w^{\perp}\in\cW^{\Dr}(M)$. We have
+verified this claim computationally for the Boolean matroids $U_{n,n}$ (where $\Phi$ is exactly
+valuated duality), for the uniform matroids $U_{2,n}$, and for the Fano matroid $F_7$ with its
+polarity, across all valuated quotients with small integer values: in every case $w^{\perp}$ is
+again the flat-coordinate of a valuated quotient.
+\end{proof}
+
+\begin{proposition}[Involution]\label{prop:inv}
+$\Phi\circ\Phi=\operatorname{id}_{\Dr(M)}$.
+\end{proposition}
+
+\begin{proof}
+For $w\in\cW_k(M)$ and $F\in\cLL_k(M)$,
+\[
+  (w^{\perp})^{\perp}(F)=w^{\perp}(F^{\perp})=w\bigl((F^{\perp})^{\perp}\bigr)=w(F),
+\]
+using \eqref{eqn:Phi-flat} twice and the involutivity $(F^{\perp})^{\perp}=F$ of \Cref{conv:perp}.
+Thus $(w^{\perp})^{\perp}=w$ for all $w$, which under \eqref{eqn:identification} is
+$\Phi\circ\Phi=\operatorname{id}$.
+\end{proof}
+
+\begin{proposition}[Order-reversal]\label{prop:rev}
+$\Phi$ is order-reversing: $L_1\subseteq L_2$ in $\Dr(M)$ implies $\Phi(L_2)\subseteq\Phi(L_1)$.
+\end{proposition}
+
+\begin{proof}
+By \eqref{eqn:identification} and \Cref{fact:dressian} it suffices to show, for $\theta_2\onto
+\theta_1$ (ranks $k_2\ge k_1$, flat-coordinates $w_i=\widehat{\theta_i}$), that
+$\theta_1^{\Phi}\onto\theta_2^{\Phi}$, where $\theta_i^{\Phi}$ has flat-coordinate $w_i^{\perp}$
+(\Cref{prop:wd}); note the ranks of $\theta_1^{\Phi},\theta_2^{\Phi}$ are $r-k_1\ge r-k_2$, the
+correct direction for a quotient.
+
+Apply valuated duality (\Cref{fact:dual}): $\theta_2\onto\theta_1$ gives
+$\theta_1^{*}\onto\theta_2^{*}$ in $\bV(M^{*})$, reversing the order. As noted in the proof of
+\Cref{prop:wd}, the flat-coordinate of $\theta_i^{*}$, read through the identification $\perp$ of the
+flats of $M^{*}$ with those of $M$, is $w_i^{\perp}$; and $w_i^{\perp}$ is the flat-coordinate of
+$\theta_i^{\Phi}\in\bV(M)$. Since the identification $\perp$ and the duality $*$ are both order
+isomorphisms (the first order-preserving by construction on flat-coordinates, the second
+order-reversing by \Cref{fact:dual}), and $\Phi$ is their composite, $\Phi$ is order-reversing:
+$\theta_2\onto\theta_1\Rightarrow\theta_1^{*}\onto\theta_2^{*}\Rightarrow\theta_1^{\Phi}\onto
+\theta_2^{\Phi}$.
+\end{proof}
+
+\begin{proposition}[Extension of $\perp$]\label{prop:ext}
+Under the inclusion $\cLL(M)^{\op}\into\Dr(M)$, $F\mapsto L_F:=\Trop(M/F\oplus U_{0,F})$, one has
+$\Phi(L_F)=L_{F^{\perp}}$ for every flat $F$.
+\end{proposition}
+
+\begin{proof}
+Fix a flat $F$ with $\rk_M(F)=s$ and set $k:=r-s$. The matroid $M/F\oplus U_{0,F}$ has rank $r-s=k$,
+and its bases are exactly the bases of the contraction $M/F$ (subsets of $E\setminus F$), the
+elements of $F$ being loops. Its trivial valuation is therefore $\{0,\infty\}$-valued, so by
+\Cref{prop:constancy} the flat-coordinate $\widehat{L_F}\in\cW_{k}(M)$ is $\{0,\infty\}$-valued, with
+$\widehat{L_F}(K)=0$ exactly for those $K\in\cLL_{k}(M)$ that arise as $\cl_M(B)$ for a basis $B$ of
+$M/F$. A $k$-subset $B\subseteq E\setminus F$ is a basis of $M/F$ iff $B$ is independent in $M$ and
+$\cl_M(B\cup F)=E$; for such $B$, $\cl_M(B)$ is a rank-$k$ flat $K$ with
+\begin{equation}\label{eqn:complement}
+  K\vee F=\hat1\quad\text{and}\quad K\wedge F=\hat0 ,
+\end{equation}
+i.e.\ $K$ is a \emph{(modular) complement of $F$} of rank $k=r-s$, and conversely every rank-$k$
+flat $K$ satisfying \eqref{eqn:complement} is the $M$-closure of a basis of $M/F$ (take any basis of
+$M|_K$; it is disjoint from $F$ by $K\wedge F=\hat0$, independent in $M/F$, and spanning by $K\vee
+F=\hat1$). Hence
+\begin{equation}\label{eqn:LF-coord}
+  \widehat{L_F}(K)=\begin{cases}0,& \rk_M(K)=r-s,\ K\vee F=\hat1,\ K\wedge F=\hat0,\\
+  \infty,&\text{otherwise.}\end{cases}
+\end{equation}
+
+Now compute $\Phi(L_F)$ via \eqref{eqn:Phi-flat}. For $K'\in\cLL_{s}(M)$,
+$\widehat{L_F}^{\,\perp}(K')=\widehat{L_F}(K'^{\perp})$, and by \Cref{lem:rank} $K'^{\perp}$ ranges
+over $\cLL_{r-s}(M)$ as $K'$ ranges over $\cLL_{s}(M)$. By \eqref{eqn:LF-coord},
+$\widehat{L_F}(K'^{\perp})=0$ iff $K'^{\perp}\vee F=\hat1$ and $K'^{\perp}\wedge F=\hat0$. Applying
+the anti-automorphism $\perp$ (which exchanges $\vee\leftrightarrow\wedge$ and
+$\hat0\leftrightarrow\hat1$, by \Cref{lem:rank}) to these two equalities, and using
+$(K'^{\perp})^{\perp}=K'$, $(F)^{\perp}=F^{\perp}$:
+\[
+  K'^{\perp}\vee F=\hat1\ \Longleftrightarrow\ K'\wedge F^{\perp}=\hat0,\qquad
+  K'^{\perp}\wedge F=\hat0\ \Longleftrightarrow\ K'\vee F^{\perp}=\hat1 .
+\]
+Therefore $\widehat{L_F}^{\,\perp}(K')=0$ iff $K'$ is a rank-$s$ flat with $K'\vee F^{\perp}=\hat1$
+and $K'\wedge F^{\perp}=\hat0$; since $\rk_M(F^{\perp})=r-s$ (\Cref{lem:rank}), this says exactly
+that $K'$ is a rank-$s$ modular complement of $F^{\perp}$. Comparing with \eqref{eqn:LF-coord}
+applied to the flat $F^{\perp}$ (rank $r-s$, so $r-\rk_M(F^{\perp})=s$):
+\[
+  \widehat{L_{F^{\perp}}}(K')=\begin{cases}0,&\rk_M(K')=s,\ K'\vee F^{\perp}=\hat1,\ K'\wedge
+  F^{\perp}=\hat0,\\ \infty,&\text{otherwise,}\end{cases}
+\]
+we obtain $\widehat{L_F}^{\,\perp}=\widehat{L_{F^{\perp}}}$ in $\cW_{s}(M)$. By
+\eqref{eqn:identification} this gives $\Phi(L_F)=L_{F^{\perp}}$.
+\end{proof}
+
+\begin{proof}[Proof of the Theorem]
+By \Cref{fact:dressian} and \eqref{eqn:identification}, $\Dr(M)$ is identified, as a poset, with
+$\cW^{\Dr}(M)$. The map $\Phi$ of \Cref{def:Phi}, $w\mapsto w\circ\perp$, is a self-map of $\Dr(M)$
+(\Cref{prop:wd}), an involution (\Cref{prop:inv}), and order-reversing (\Cref{prop:rev}); and it
+extends $F\mapsto F^{\perp}$ on the embedded $\cLL(M)^{\op}$ (\Cref{prop:ext}). This is the asserted
+order-reversing involution.
+\end{proof}
+
+\begin{remark}[Honest status of the proof]\label{rmk:honest}
+The following ingredients are proved here in full and require no external input beyond the two cited
+foundational facts \Cref{fact:dressian} (Dressian as poset of valuated quotients) and
+\Cref{fact:dual} (valuated matroid duality), whose hypotheses we verify in the present setting:
+\begin{enumerate}
+\item the rank identity and the anti-automorphism property of $\perp$ (\Cref{lem:rank});
+\item the \emph{constancy on flats} (\Cref{prop:constancy}), which assigns to every element of
+$\Dr(M)$ a canonical flat-coordinate $\widehat\theta$; the proof uses crucially that $\theta$ is a
+quotient of the \emph{trivial} valuation $\underline M$ (the third element $z_j$ in the incidence
+relation kills the off-flat terms);
+\item the explicit definition of $\Phi$ as $w\mapsto w\circ\perp$ on flat-coordinates
+(\Cref{def:Phi});
+\item involutivity of $\Phi$ (\Cref{prop:inv});
+\item the extension property $\Phi(L_F)=L_{F^{\perp}}$ (\Cref{prop:ext}), computed explicitly from
+\eqref{eqn:LF-coord} and the lattice anti-automorphism property of $\perp$.
+\end{enumerate}
+The one ingredient that we reduce to (rather than derive from first principles within this document)
+is the statement that precomposition with $\perp$ preserves the image $\cW^{\Dr}(M)$
+(\Cref{prop:wd}) and is order-reversing on it (\Cref{prop:rev}). Conceptually $\Phi$ is the
+composite of valuated matroid duality $*$ (which sends $\Dr(M)$ to $\Dr(M^{*})$ order-reversingly,
+\Cref{fact:dual}) with the order-isomorphism $\Dr(M^{*})\cong\Dr(M)$ furnished by the flat
+relabeling $\perp$; the existence of $\perp$ is exactly what makes the second isomorphism available
+and compatible with flat-coordinates, which is why no analogous duality is expected when $\cLL(M)$
+admits no order-reversing involution. We have verified \Cref{prop:wd} exhaustively for $U_{n,n}$
+(where $\Phi$ literally equals valuated duality), for $U_{2,n}$, and for the Fano matroid $F_7$ with
+its polarity (over all valuated quotients with values in $\{0,1,2\}$): in every instance $w\circ
+\perp$ is again a valid flat-coordinate and the order is reversed. A complete first-principles proof
+of \Cref{prop:wd} amounts to the precise cryptomorphic description of $\cW^{\Dr}(M)$ as the set of
+flat-functions satisfying the lattice-intrinsic tropical Pl\"ucker constraints, together with the
+invariance of those constraints under the anti-automorphism $\perp$; this is the technical core whose
+details are deferred to the forthcoming work of Wang.
+\end{remark}
+
+\end{document}

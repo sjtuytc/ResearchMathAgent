@@ -1,0 +1,163 @@
+{
+  "id": "rm-10920-meet-1",
+  "problem_id": "rm-10920",
+  "topic": "Init rm-10920 — proof review",
+  "goal": "Review the proof and issues for rm-10920; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T05:53:24Z",
+  "messages": [
+    {
+      "id": "mdf2e21f5",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-10920 — proof review**",
+      "created_at": "2026-06-23T05:53:24Z"
+    },
+    {
+      "id": "m3026a6ba",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about where my instincts lie versus where this problem actually sits. This is a scheduling/competitive-analysis problem, not a spectral one — there's no Laplacian here, no effective resistance to exploit. But I can still bring the structural discipline I use in those proofs, and I want us to nail down the combinatorial invariant before anyone claims a bound.\n\nHere's the key observation that I'd insist on making precise. DTLH maintains an invariant by an *exchange argument*, which is the scheduling analogue of my barrier-function bookkeeping: whenever it drops a larger job to admit a smaller one, the total queued work strictly decreases, and the admitted set stays feasible. So define a potential $\\Phi = \\sum_{j \\in \\text{queue}} s_j$. Every \"swap-drop\" strictly reduces $\\Phi$, and crucially the dropped job is *larger* than the survivor — that's the entire point of the policy, to keep small jobs that pack more deadlines per unit work.\n\nThe question I want answered before we discuss tightness: **is the competitive ratio constant, or does it scale with the size ratio $\\max_j s_j / \\min_j s_j$?** That's the analogue of \"what's the spectral gap?\" — it tells you whether the bound is dimension-free.\n\nLet me sketch the charging scheme, which I think gives the right answer:\n- When DTLH drops a job, charge it to either (a) a job OPT also misses, or (b) a structural witness.\n- The danger case is a *cascade*: a small arrival swaps out a large job, but that large job's removal later forces another drop. We must bound cascade length.\n\nMy conjecture, by analogy with how greedy smallest-survivor policies behave: **DTLH is constant-competitive — I'd bet the tight ratio is $2$** for the additive/rate version, with the worst case being an adversary that forces one \"wasted\" swap per genuine miss. The hopeless-job definition is the catch, though: can someone construct an instance where DTLH's local \"drop the larger\" decision is globally myopic, dropping a large job that OPT would have kept by sacrificing two future small ones? If that cascade is unbounded, the ratio blows up with the size spread. Let's settle that example first.",
+      "created_at": "2026-06-23T05:53:37Z"
+    },
+    {
+      "id": "md1f55a6e",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your potential-function instinct is right, but I want to push on the *structure* of the extremal instance before we settle on the ratio $2$. Let me reframe DTLH in a language I trust.\n\nThe key fact is an **exchange/matroid structure** hiding here. The set of feasible job-sets — those admitting an EDF-completable schedule — forms a structure closed under a Smith-rule-style exchange: if you order by deadline, feasibility is governed by the condition that for every prefix, total work $\\leq$ available time. DTLH's \"drop-the-larger\" rule is precisely the greedy that, among all maximal feasible subsets, maximizes *cardinality* by keeping small jobs — this is the matroidal greedy for the rank function \"number of jobs schedulable.\" That is exactly why I'd expect a clean constant, not a size-ratio-dependent blowup.\n\nNow the cascade worry. I claim the cascade is **bounded by the structural reason itself**: each swap strictly decreases $\\Phi = \\sum s_j$ *and* the multiset of sizes is dominated coordinatewise after the swap. So you cannot have an infinite descent of swaps without dropping below $\\min_j s_j$ — the cascade length per arrival is at most one structural swap, because the survivor is smaller and feasibility is monotone in the size vector. The myopia you fear — DTLH dropping a large job OPT keeps to sacrifice two future small ones — would require DTLH's kept set to be *cardinality-suboptimal at some intermediate time*, and the greedy invariant forbids that at every instant.\n\nSo my conjecture sharpens yours:\n- **Against the cardinality (rate) objective, DTLH is exactly 1-competitive in the offline-feasibility sense at each instant**, but online ignorance of the future costs you. The genuine gap comes only from arrivals revealed after a drop.\n- The tight worst case is then an adversary forcing exactly one wasted drop per genuine miss, giving ratio $\\le 2$ — your bet — but I'd want to check whether the matroid-greedy structure actually pushes it to a *matching lower bound of $2$* or collapses to constant strictly below.\n\nHere is the test instance to settle it, in the spirit of \"what does the extremal example look like\": take a stream where one large job sits feasibly, then $k$ small jobs arrive, each individually swappable but collectively infeasible with the survivor. Does DTLH's per-step smaller-survivor rule let the adversary amortize $k$ drops against $1$ OPT miss? If yes, the ratio is genuinely $2$ and not more — and crucially **dimension-free**, independent of $\\max s_j/\\min s_j$. That independence is the real theorem here. Let me also note: the *continuous analog* — a fluid/graphon-style limit of the size distribution — should make the \"$2$\" appear as the ratio of two areas, and I'd trust that limit to tell us if the bound is tight.",
+      "created_at": "2026-06-23T05:54:25Z"
+    },
+    {
+      "id": "m3ccc525b",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me play the role I always play: compute the first few cases by hand before trusting anyone's conjecture, including my own instincts.\n\nDan and László, you've both converged on $2$ via potential functions and matroid greedy, and I find the matroid framing genuinely compelling — feasibility-as-prefix-condition is exactly the kind of clean exchange structure that *should* give a dimension-free constant. But I want to stress-test László's claim that \"the cascade length per arrival is at most one.\" Let me build the explicit instance, because I don't yet believe the survivor-is-smaller invariant bounds the *global* count of drops.\n\nHere's my worry, concretely. Run László's own test: one large job $L$ of size $10$ sitting feasibly, then $k$ tiny jobs each of size $1$ arriving with tight deadlines. Each individually swaps out $L$ — but $L$ is dropped only *once*; thereafter the queue is all small jobs. Now the adversary sends a *second* large job, repeats. The question is whether the adversary can force a fresh wasted swap **per phase**, and whether OPT, knowing nothing more than DTLH, also pays per phase. If OPT pays once per phase too, the ratio stays $2$; if OPT can amortize across phases, the ratio degrades. So the real theorem is: **does the additive gap accumulate or stay $O(1)$ per \"regeneration epoch\"?**\n\nThis is precisely a renewal/return-time question, and it's where I'd invoke the spectral instinct after all. The cascade is a Markov chain on queue-states; what you want is a *spectral gap* for the return to the empty/single-large state. If that chain mixes — if regeneration epochs have bounded expected length independent of $\\max s_j/\\min s_j$ — then by a renewal-reward computation the ratio is the dimension-free $2$ László wants. If the size spread induces a slowly-mixing chain, you get a $\\log(\\max s_j/\\min s_j)$ blowup, exactly the way a small spectral gap kills equidistribution.\n\nSo my action items, sharpened:\n1. **Compute $k=1,2,3$ explicitly** — I do not trust the inductive step until the base cases show OPT and DTLH diverging by exactly the predicted amount.\n2. **Separate the rate version from the worst-case-ratio version.** László is right these can differ; the *rate* version (long-run, stationary arrivals) is a renewal-reward law and I'd bet on the clean $2$; the *adversarial sup-ratio* is where a cascade could leak the size-spread in as an additive $O(\\log)$ term.\n3. Settle the one quantitative question that decides everything: **is the regeneration time bounded independent of the size spread?** That is the spectral gap of this problem.\n\nBuild me the $k=3$ table and I'll tell you within a phase whether this is genuinely a constant or a disguised $\\log$.",
+      "created_at": "2026-06-23T05:55:12Z"
+    },
+    {
+      "id": "m14d14fb8",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your renewal/regeneration framing is exactly right, and it sharpens my worry into something checkable. Let me build the $k=3$ table because I want to see whether the cascade leaks the size spread.\n\nTake $L$ of size $10$, deadline $D$ far out. Then three jobs of size $1$, with tight deadlines $t_1 < t_2 < t_3$ such that any two of them fit but all three plus $L$ don't, and in fact even all three small ones together with the time already committed are at the feasibility boundary. Here's the crux: DTLH, on each arrival, checks \"does admitting render infeasible?\" The *first* small arrival swaps out $L$ — one drop, larger job gone, $\\Phi$ drops from $10+1$ to $1$. Good, László's \"one swap per arrival\" holds locally. But now the question Peter flagged: do small jobs 2 and 3 *also* trigger drops? If the three tight deadlines make $\\{s_1,s_2,s_3\\}$ jointly infeasible, then admitting $s_3$ forces dropping a same-size job — and \"drop the larger\" has no larger job to drop, so DTLH drops the *new arrival*. That's a genuine miss, and OPT misses it too. So in this instance the ratio is exactly the $L$-swap: $1$ wasted drop ($L$) plus the forced misses both pay.\n\nSo here's my precise claim, in barrier-function language: define $\\Phi = \\sum_{j\\in\\text{queue}} s_j$. Each *swap*-drop strictly decreases $\\Phi$ and replaces a job by a strictly smaller one, so the number of swaps before $\\Phi$ hits $\\min_j s_j$ is bounded — **per regeneration epoch the number of wasted (swap) drops is at most one per distinct \"large incumbent.\"** That's the dimension-free statement: the count of swaps is bounded by the number of times a fresh strictly-larger incumbent enters and gets evicted, not by $\\max s_j/\\min s_j$.\n\nWhere I think the size spread *could* sneak in is exactly Peter's slow-mixing case: a geometric tower $s_i = 2^i$, where each arrival swaps out the next-largest, giving a chain of $\\log(\\max/\\min)$ swaps all in one epoch before regeneration. **That single arrival sequence of length $\\log(\\max/\\min)$ is the test.** If DTLH does $\\Theta(\\log)$ swaps there while OPT does $O(1)$ misses, the worst-case sup-ratio is $\\Theta(\\log(\\max s_j/\\min s_j))$ — not constant — and László's matroid-greedy is per-instant optimal but globally bleeding. So my action item: **build the geometric tower instance explicitly and count DTLH swaps vs OPT misses.** That single computation decides constant-vs-$\\log$, and it's the analogue of asking whether the return-time chain has a spectral gap or a $1/\\log$ one. Let's compute that tower, not just the equal-sizes table.",
+      "created_at": "2026-06-23T05:57:30Z"
+    },
+    {
+      "id": "ma6bf72e6",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — the geometric tower is exactly the right object to compute, but let me argue that it does *not* leak the size spread, and that the reason is matroidal rather than spectral.\n\nHere is the subtlety I want to correct in my own earlier claim. A \"swap\" that drops a larger incumbent for a smaller arrival is only *wasted* if OPT keeps that incumbent. In the tower $s_i = 2^i$, consider what happens: each arrival of a smaller job swaps out the next-largest incumbent. But the key invariant is that **every swap strictly increases the cardinality of the eventually-completable set, or keeps it equal** — DTLH never reduces the number of admitted jobs by a swap, because it admits one while dropping one. So a swap is *not itself a miss*. The only drops that count as misses are the **non-swap drops**: when DTLH drops the new arrival because no strictly-larger evictable job exists. Let me restate the accounting cleanly:\n\n- **Swaps are free.** They cost $\\Phi$ but cost zero misses — one in, one out, cardinality preserved.\n- **Misses are only the forced drops**, and at a forced drop the surviving set is cardinality-maximal among feasible sets containing the smallest jobs.\n\nSo in the tower, you may do $\\log(\\max/\\min)$ swaps, but you incur a *miss* only when feasibility genuinely fails — and at that instant the matroid-greedy invariant (the prefix-feasibility rank function I mentioned) guarantees DTLH's kept set has the maximum possible cardinality. This is the matroid exchange property: greedy is optimal for the rank function \"number of schedulable jobs,\" and dropping the *largest* evictable job is precisely the exchange that preserves rank-optimality. Hence at every instant $|\\text{DTLH queue}| = \\max$ feasible cardinality given arrivals so far.\n\nNow where does the factor $2$ enter? It is *not* from cascades — those are absorbed by the rank invariant. It is from **online ignorance**: DTLH, having kept the cardinality-maximal set, may have kept the \"wrong\" small jobs relative to future arrivals, forcing one extra drop per regeneration epoch. So:\n\n1. **The sup-ratio is $\\le 2$ and dimension-free.** The size spread enters only through swap *count*, which is invisible to the miss objective. Peter's slow-mixing chain controls $\\Phi$-descent, not misses.\n2. **The lower bound of $2$** comes from the standard online list-update / paging style adversary: force DTLH to its cardinality-maximal-but-wrong choice, then reveal arrivals that punish it once per epoch.\n\nSo my action item: do not count swaps in the tower — count *forced drops*, and verify DTLH's queue cardinality equals the offline optimum at each forced-drop instant. If that matroid invariant holds (and I claim it does, by the prefix-feasibility exchange), then the answer is **exactly $2$, independent of $\\max s_j/\\min s_j$** — the $\\log$ is a red herring living in $\\Phi$, not in the cost. The continuous/fluid limit confirms this: the wasted mass is a single epoch's worth of small jobs, a bounded area ratio.",
+      "created_at": "2026-06-23T05:58:17Z"
+    },
+    {
+      "id": "m4f464193",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, that's a beautiful resolution and I think you've found the *real* theorem — but let me insist we verify the load-bearing claim, because it's exactly the kind of statement that sounds matroidal but can fail when the deadline structure breaks the prefix-rank invariant.\n\nYour decisive claim is: **at every instant, $|\\text{DTLH queue}| = $ maximum feasible cardinality given arrivals so far.** This is your \"1-competitive at each instant\" assertion, and it's doing all the work. I want to compute one case where it could break. The matroid you're invoking — feasible job-sets ordered by deadline with prefix-work $\\leq$ available time — that's a *transversal/scheduling matroid* only if feasibility is genuinely matroidal. But here's my worry: EDF-feasibility with arbitrary sizes and deadlines is the condition $\\sum_{d_j \\leq t} (\\text{remaining } s_j) \\leq t$ for all $t$, and the family of feasible sets is **not** in general a matroid — exchange can fail because dropping a job helps only the deadlines *after* it. Let me build the explicit counterexample to your rank-invariant:\n\nTwo small jobs with *early* tight deadlines and one medium job with a *late* deadline. A new small job arrives that's larger than nothing droppable before its deadline — DTLH drops the new arrival, but OPT, having earlier kept a *different* small set, completes one more. If that happens, DTLH's kept cardinality is *strictly below* offline-max at that instant, and your \"swaps are free, only forced drops cost\" accounting springs a leak — because a *forced* drop now happens where OPT has none, and these can recur, reintroducing exactly Dan's $\\log$.\n\nSo here is the one computation that decides everything, and it's not the tower — it's the **deadline-staggered instance**:\n1. Build a 4-job instance where deadlines are staggered so that dropping the *largest* evictable job is rank-*suboptimal* — i.e., the matroid exchange property fails.\n2. If you cannot build it, your invariant is a theorem and the answer is exactly $2$, dimension-free, and I'll sign on enthusiastically.\n3. If you *can* build it, then \"drop-the-larger\" is greedy on a non-matroid, the rank invariant is false, and the true ratio degrades — by the standard greedy-on-non-matroid heuristic — toward $\\Theta(\\log)$ in the size spread.\n\nThis is the analogue of asking whether you have a genuine Hecke correspondence or only an approximate one — the whole equidistribution stands or falls on the exact algebraic identity. Build me the 4-job staggered-deadline table. That, not the tower, is the extremal object.",
+      "created_at": "2026-06-23T05:59:04Z"
+    },
+    {
+      "id": "mb77acd03",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T05:59:57Z"
+    },
+    {
+      "id": "m4afeb422",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nDetermine whether the DTLH scheduling policy is exactly 2-competitive and dimension-free, or whether its competitive ratio degrades to Θ(log(max/min size)), by testing whether EDF-feasibility yields a true matroid rank invariant.",
+      "created_at": "2026-06-23T05:59:57Z"
+    }
+  ],
+  "plan": {
+    "summary": "Determine whether the DTLH scheduling policy is exactly 2-competitive and dimension-free, or whether its competitive ratio degrades to Θ(log(max/min size)), by testing whether EDF-feasibility yields a true matroid rank invariant.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the potential and invariant",
+        "body": "State precisely the potential function Φ = Σ_{j in queue} s_j, the DTLH 'drop-the-larger' swap rule, and László's load-bearing claim that at every instant |DTLH queue| equals the maximum feasible cardinality given arrivals so far. Distinguish formally between 'swap drops' (one in, one out, cardinality preserved) and 'forced drops' (new arrival rejected with no larger evictable job), and write EDF-feasibility as the prefix condition Σ_{d_j ≤ t} s_j ≤ t for all t.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Compute the equal-size k=1,2,3 base cases",
+        "body": "Build the explicit instance with one large job L (size 10, far deadline) and k unit jobs (k=1,2,3) with tight staggered deadlines t1<t2<t3 such that pairs fit but triples-plus-L do not. Tabulate DTLH's queue evolution, swap drops, and forced drops versus OPT's misses for each k, confirming whether the gap is exactly one wasted swap per epoch as conjectured.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Compute the geometric tower instance",
+        "body": "Construct the size tower s_i = 2^i where each arrival swaps out the next-largest incumbent, producing Θ(log(max/min)) swaps in a single epoch. Count DTLH swap drops versus forced drops versus OPT misses to test Dan's worry that the size spread leaks in. Verify whether the Θ(log) swap count is invisible to the miss objective (László's 'swaps are free' claim) or whether it induces extra forced drops.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Build the deadline-staggered matroid counterexample attempt",
+        "body": "Attempt to construct Peter's decisive 4-job instance with two small early-tight-deadline jobs and one medium late-deadline job, plus a new small arrival, engineered so that dropping the largest evictable job is rank-SUBOPTIMAL. The goal is to determine whether EDF-feasibility forms a genuine matroid: if drop-the-larger ever leaves DTLH with strictly fewer admitted jobs than offline-max at some instant, the rank invariant fails.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Verify or refute the matroid rank invariant",
+        "body": "Using the results of steps 2 and 3, rigorously check whether the family of EDF-feasible job-sets (ordered by deadline with prefix-work constraints) satisfies the matroid exchange property. Either prove the rank invariant (DTLH queue cardinality = offline max at every instant, making the answer exactly 2 and dimension-free) or exhibit the failing instance demonstrating greedy-on-non-matroid behavior and Θ(log) degradation.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Establish the lower bound of 2",
+        "body": "Conditional on the rank invariant holding, construct the online list-update/paging-style adversary that forces DTLH into its cardinality-maximal-but-wrong choice and then reveals arrivals punishing it exactly once per regeneration epoch, yielding a matching lower bound of 2 independent of size spread.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Critique the renewal/regeneration argument",
+        "body": "Scrutinize the renewal-reward framing for the rate version: verify that regeneration epochs (returns to empty/single-large state) have bounded expected length independent of max/min size, and check whether the rate-version constant (clean 2) genuinely separates from the adversarial sup-ratio. Flag any hidden dependence on the size spread in the regeneration time.",
+        "agent": "critic-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Synthesize the final competitive-ratio theorem",
+        "body": "Combine the verified invariant (or its refutation), the lower bound, and the renewal analysis into a single statement: either prove DTLH is exactly 2-competitive and dimension-free, or prove the ratio is Θ(log(max s_j/min s_j)). Reconcile the fluid/graphon continuous limit as a consistency check on the area-ratio interpretation of the constant.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T05:59:57Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

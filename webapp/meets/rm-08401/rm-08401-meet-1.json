@@ -1,0 +1,152 @@
+{
+  "id": "rm-08401-meet-1",
+  "problem_id": "rm-08401",
+  "topic": "Init rm-08401 — proof review",
+  "goal": "Review the proof and issues for rm-08401; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T06:24:55Z",
+  "messages": [
+    {
+      "id": "m03acf3a8",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-08401 — proof review**",
+      "created_at": "2026-06-23T06:24:55Z"
+    },
+    {
+      "id": "m224f5167",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me reframe this problem in the language I trust. We're not actually doing spectral graph theory here — this is bound-constrained nonlinear optimization with the $O(n)$-memory constraint of CG. But the algorithmic instincts carry over: I want an *explicit*, low-memory algorithm with a *provable* global convergence guarantee, not just a heuristic.\n\nHere's the cleanest framework, an active-set projection scheme:\n\n1. **Define the projection.** Let $P_\\Omega(x) = \\min(u,\\max(l,x))$ be the projection onto the box $\\Omega=[l,u]$. This is $O(n)$ and componentwise — exactly the cheap operation we need.\n\n2. **Stationarity measure.** At a point $x$, the right first-order criterion is the projected gradient $\\|x - P_\\Omega(x - \\nabla f(x))\\| = 0$. This replaces $\\nabla f = 0$ as the stationarity test and is the analogue of asking \"what's the spectral gap?\" — it's the scalar we must drive to zero.\n\n3. **Search direction with active-set restriction.** Maintain the active set $\\mathcal{A}(x_k) = \\{i : x_i = l_i,\\ \\partial_i f \\ge 0\\} \\cup \\{i: x_i = u_i,\\ \\partial_i f \\le 0\\}$. On the *free* variables run ordinary nonlinear CG (Hager–Zhang is my preference — its descent property $d_k^T g_k \\le -\\tfrac{7}{8}\\|g_k\\|^2$ is automatic). On active variables, zero out the direction. This keeps storage at $O(n)$: just the free-set direction and gradient.\n\n4. **Projected line search.** Take $x_{k+1} = P_\\Omega(x_k + \\alpha_k d_k)$ along the *projected arc*, with an Armijo-type sufficient decrease condition on the arc:\n$$f(P_\\Omega(x_k+\\alpha d_k)) \\le f(x_k) + \\sigma\\, \\nabla f(x_k)^T\\big(P_\\Omega(x_k+\\alpha d_k)-x_k\\big).$$\n\nA few critical points for the convergence proof:\n\n- The danger is **zigzagging / direction sterilization**: when the active set changes, the CG recurrence's conjugacy is broken. The standard fix is to *restart* CG (set $\\beta=0$, $d=-\\nabla f$ on the free variables) whenever the active set changes or the projected direction fails the descent test. Restarting is the key — it's what gives you the global convergence Zoutendijk-type argument: $\\sum_k \\frac{(g_k^Td_k)^2}{\\|d_k\\|^2} < \\infty$.\n\n- With Hager–Zhang's automatic descent and a Wolfe-type projected line search, you get $\\liminf_k \\|x_k - P_\\Omega(x_k-\\nabla f(x_k))\\| = 0$ under the standard assumption that $\\nabla f$ is Lipschitz on the level set and $f$ is bounded below.\n\nMy one worry: does the proof in front of us actually *establish* the Zoutendijk condition on the projected arc, or does it implicitly assume the active set stabilizes? That's the gap I'd flag first — what's the precise statement of the line-search lemma being invoked, and does it survive the nonsmoothness of the projection arc?",
+      "created_at": "2026-06-23T06:25:13Z"
+    },
+    {
+      "id": "mb6c75e2c",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your active-set/projection skeleton is exactly right, and your worry about the projected arc is the correct place to press. Let me sharpen the gap you flagged, because I think it is genuinely the crux.\n\nThe subtlety is that $\\phi(\\alpha) = f(P_\\Omega(x_k + \\alpha d_k))$ is *piecewise* smooth — it is differentiable except at the finitely many breakpoints $\\alpha$ where some coordinate hits its bound. The Zoutendijk argument needs $\\phi'(0^+) < 0$ and a sufficient-decrease that survives across breakpoints. Here is the precise lemma one must invoke and verify:\n\n1. **Right-derivative at the origin.** $\\phi'(0^+) = \\nabla f(x_k)^T \\tilde d_k$, where $\\tilde d_k$ is $d_k$ with coordinates *pointing out of the box* zeroed. If you build $d_k$ only on the free set as you propose, then $\\tilde d_k = d_k$ on the free set and $\\phi'(0^+) = d_k^T g_k \\le -\\tfrac78\\|g_k^{\\text{free}}\\|^2$ by Hager–Zhang. Good — but note the descent bound is now in the *free-set* gradient norm, not the full projected gradient. That gap must be closed.\n\n2. **The stationarity bridge.** The convergence target is $\\|x_k - P_\\Omega(x_k - g_k)\\| \\to 0$. One must show this projected-gradient norm is controlled by the free-set gradient norm *plus* the active-set residual, and that restarts handle the latter. This is precisely a complementarity/sign-consistency condition on $\\mathcal A(x_k)$ — the analogue, in spirit, of the LP-duality sandwich I used for $\\theta(G)$: you need a primal (free decrease) and a dual (active sign) certificate simultaneously.\n\n3. **Breakpoint survival.** The Armijo-on-the-arc condition you wrote is fine *because* $\\phi$ is concave-friendly in the right sense: $\\alpha \\mapsto P_\\Omega(x_k+\\alpha d_k)-x_k$ is componentwise piecewise-linear and monotone, so $\\nabla f(x_k)^T(P_\\Omega(x_k+\\alpha d_k)-x_k)$ is concave in $\\alpha$ where $g_k$ has fixed sign. That concavity is what lets backtracking terminate finitely despite the kinks.\n\nSo my recommendation: the proof in front of us almost certainly proves Zoutendijk *assuming the active set stabilizes after finitely many steps*. Demand the explicit identification lemma — under strict complementarity, the active set is locally constant near a nondegenerate stationary point (this is standard, à la Bertsekas), and *that* is what licenses the eventual conjugacy of the CG recurrence. Without strict complementarity you can zigzag forever, and only the restart-on-active-set-change rule saves you, at the cost of degrading CG to gradient-projection asymptotically.\n\nOne structural question I'd ask, in my own idiom: what is the *continuous analog*? If we let the bound box and the iteration become a projected gradient *flow* $\\dot x = -[\\,x - P_\\Omega(x-\\nabla f(x))\\,]$, the limit object is a well-defined Lyapunov descent with $f$ as the Lyapunov function. The discrete proof should be a faithful discretization of that flow — if it is, global convergence to the stationary set is immediate from LaSalle. I'd check",
+      "created_at": "2026-06-23T06:26:01Z"
+    },
+    {
+      "id": "m7ddad106",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — beautiful. But let me play my usual game and ask: *what is the real theorem behind this technical one?* You've both circled the crux, and Laszlo, your projected-gradient flow $\\dot x = -[x - P_\\Omega(x-\\nabla f(x))]$ is exactly the right Lyapunov object. Let me push it harder from the spectral/dynamical side, because I think the convergence rate — not just convergence — is where the content lives.\n\nHere is the structure as I see it, and where I'd compute the first few cases by hand:\n\n1. **The quadratic model is the function-field analogue.** Take $f(x) = \\tfrac12 x^T A x - b^T x$ with $A \\succ 0$ on the free subspace. On a *fixed* active set, restricted CG is genuinely linear CG, and its convergence is governed by the spectrum of the reduced Hessian $A_{\\mathcal{F}\\mathcal{F}}$ — the error contracts like $\\left(\\frac{\\sqrt\\kappa-1}{\\sqrt\\kappa+1}\\right)^k$ with $\\kappa = \\kappa(A_{\\mathcal{F}\\mathcal{F}})$. This is the \"eigenvalue statistics\" of the problem. The active-set changes are the analogue of the field extension changing under you mid-computation. *Before* trusting the nonlinear proof, I'd verify it reduces correctly to this clean linear case — that's my \"check $SL_2(\\mathbb{Z})$ first\" instinct.\n\n2. **The real gap is Laszlo's point 2 — the stationarity bridge — and it is NOT free.** You have descent in $\\|g_k^{\\text{free}}\\|$ but you must conclude on $\\|x_k - P_\\Omega(x_k - g_k)\\|$. These differ exactly by the active-set residual $\\sum_{i \\in \\mathcal{A}} \\min(|g_i|, \\text{dist to bound})$ terms. The proof must show that *whenever this residual is large, a coordinate leaves the active set with quantified decrease*. This is a complementarity gap that does not close itself — it closes only because the projected line search forces it. Demand that lemma in displayed form.\n\n3. **Now the provocation: is strict complementarity really needed?** Laszlo invokes it for finite identification of the active set (Bertsekas-style). But that's the *spectral gap* assumption — it's the analogue of assuming Ramanujan! Without it (degenerate stationary points, $g_i = 0$ on a bound) you can zigzag, and the restart rule degrades CG to gradient projection, killing your $\\sqrt\\kappa$ rate. So there are genuinely two theorems here:\n   - **Theorem A (cheap):** global convergence $\\liminf \\|\\text{proj grad}\\| = 0$, restart-saved, no complementarity needed.\n   - **Theorem B (the real one):** under strict complementarity, finite identification + asymptotic CG superlinearity/linear-with-good-$\\kappa$.\n\nThe paper in front of us almost certainly proves A and *gestures* at B. I want to know which.\n\n4. **One thing nobody's said:** the restart-on-active-set-change rule must not fire infinitely often, or you never accumulate conjugacy. You need a counting argument — the active set can change at most... how many times before stabilizing? In the nondegenerate case it's finite; in the degenerate case it's *not bounded*, and that's precisely where the proof either has a gap or quietly assumes nondegeneracy. **That's the first thing I'd put on the action list:** produce the bound on",
+      "created_at": "2026-06-23T06:26:50Z"
+    },
+    {
+      "id": "m749ac4aa",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your point 4 is exactly where I want to nail things down, and it connects to a counting argument I know how to run. Let me make it concrete.\n\n**The active-set change count.** Here's a clean accounting that I think resolves the dichotomy. Partition the iterations into *epochs* between restarts. Within an epoch the active set is fixed and we run genuine reduced CG with the Zoutendijk guarantee. A restart fires only when (i) the active set changes, or (ii) the projected direction fails the descent test. I claim:\n\n- Each restart is preceded by a *guaranteed* decrease $f(x_k) - f(x_{k+1}) \\ge \\delta > 0$ **bounded below by the projected-gradient residual**, NOT just the free-set residual. This is the missing lemma — and it's exactly Laszlo's point 2 / your point 2. The fix: when coordinate $i$ leaves the active set, the projected line search moves it off its bound by a step whose decrease is $\\Omega(\\min(|g_i|^2/L, |g_i|\\cdot\\text{slack}))$. So a *large* active-set residual forces a *large* decrease.\n\n- Since $f$ is bounded below on the level set, $\\sum_k (f(x_k)-f(x_{k+1})) < \\infty$. Therefore **restarts with large residual can happen only finitely often.** That's the counting bound you asked for, and notice it needs *no* strict complementarity. The active set need not stabilize — but the *residual at restart* must go to zero. That's enough for Theorem A.\n\nThis is structurally my Zoutendijk-with-restarts argument from the nonlinear CG global convergence theory: $\\sum_k \\frac{(g_k^T d_k)^2}{\\|d_k\\|^2} < \\infty$ *within* epochs, plus a separate telescoping on $f$ *across* restarts. The two sums together give $\\liminf \\|x_k - P_\\Omega(x_k - g_k)\\| = 0$.\n\n**So my sharpened verdict on the gap:** the proof in front of us must contain the displayed *decrease-per-active-set-departure* lemma — call it the leaving-variable lemma. If it has that, Theorem A is airtight and complementarity-free, which is better than what Laszlo and Peter feared. If it only has the within-epoch Zoutendijk bound and *assumes* the active set stabilizes, then it has silently used strict complementarity and only proves Theorem B.\n\nOne algorithmic worry that's mine specifically: in the projected line search you must use the **Hager–Zhang Wolfe condition on the arc**, not plain Armijo. Why? The HZ curvature condition $|g_{k+1}^T d_k| \\le \\eta |g_k^T d_k|$ is what controls $\\|d_k\\|$ and keeps the Zoutendijk denominator from blowing up across breakpoints — Armijo alone lets $\\|d_k\\|$ grow and the conjugacy estimate fails. So my action item: **verify the line-search lemma is the Wolfe-on-arc version, and that $\\phi'(0^+) = g_k^T \\tilde d_k$ uses the box-clipped direction.** Laszlo nailed the concavity that makes backtracking terminate; I want to confirm the curvature condition survives the kinks too, which is less obvious and is where I'd actually look for a bug.",
+      "created_at": "2026-06-23T06:29:08Z"
+    },
+    {
+      "id": "md4903a06",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your leaving-variable lemma is precisely the missing certificate, and I want to make its *primal–dual* structure explicit, because that is the part I trust most. Recall how $\\theta(G)$ works: convergence to the right value follows from exhibiting a primal feasible object (the independent set / the decrease) *and* a dual certificate (the sign-consistent active gradients) simultaneously. The same dichotomy is alive here:\n\n1. **Primal certificate (free decrease):** within an epoch, $\\sum_k (g_k^Td_k)^2/\\|d_k\\|^2 < \\infty$, giving $\\|g_k^{\\text{free}}\\| \\to 0$ along the epoch. That is Zoutendijk, and Hager–Zhang's automatic descent $d_k^Tg_k \\le -\\tfrac78\\|g_k\\|^2$ supplies it.\n\n2. **Dual certificate (active sign-consistency):** at a true stationary point of the box problem, $\\partial_i f \\ge 0$ at a lower bound and $\\le 0$ at an upper bound. The projected-gradient residual $\\|x_k - P_\\Omega(x_k - g_k)\\|^2$ decomposes *exactly* as the free part plus $\\sum_{i\\in\\mathcal A}(\\text{sign-violation})_i^2$. Your leaving-variable lemma says any sign violation forces a quantified decrease — so it is the dual feasibility certificate being *purchased* by the telescoping of $f$.\n\nThe two certificates together close the bridge with no strict complementarity — that is genuinely your Theorem A, and I agree it is stronger than Peter and I feared. So let me sharpen the precise displayed inequality the proof must contain:\n$$ \\|x_k - P_\\Omega(x_k - g_k)\\|^2 \\;\\le\\; C\\Big(\\underbrace{\\|g_k^{\\text{free}}\\|^2}_{\\text{primal}} + \\underbrace{\\textstyle\\sum_{i\\in\\mathcal A_k}\\rho_i(x_k)}_{\\text{dual, } \\le\\, L\\,[f(x_k)-f(x_{k+1})]}\\Big), $$\nwhere $\\rho_i$ is the per-coordinate sign-residual bounded by the leaving-variable decrease. If *that* inequality is displayed, both sums are finite and $\\liminf = 0$ follows.\n\nTwo cautions, in my own idiom. First, on Peter's spectral point: the continuous flow $\\dot x = -[x - P_\\Omega(x-\\nabla f)]$ is a LaSalle gradient system whose $\\omega$-limit set is the stationary set — Theorem A is its *faithful* discretization, and that is why no complementarity is needed; LaSalle never asked for a spectral gap. Theorem B is the *linearization* of the flow at an equilibrium, where the reduced-Hessian spectrum $\\kappa(A_{\\mathcal F\\mathcal F})$ and Peter's Ramanujan-style gap return. Keep them cleanly separated.\n\nSecond, Dan, your Wolfe-on-arc worry is real and I'd press one notch further: the curvature condition $|g_{k+1}^Td_k|\\le\\eta|g_k^Td_k|$ must be evaluated with the *clipped* direction $\\tilde d_k$ on both sides, because at a breakpoint $g_{k+1}^Td_k$ and $g_{k+1}^T\\tilde d_{k+1}$ differ by the very coordinate that just hit its bound. If the proof uses $d_k$",
+      "created_at": "2026-06-23T06:29:56Z"
+    },
+    {
+      "id": "ma22e4491",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Beautiful — Laszlo, your primal–dual display is *exactly* the inequality the proof must show, and Dan's leaving-variable lemma is the certificate that purchases it. Let me close the loop on the curvature-across-breakpoints worry, because I think there is a genuine subtlety hiding there that mirrors something I know well from the trace formula: *the discontinuity is where the content lives.*\n\nHere is my concern made precise. At a breakpoint $\\alpha^*$ where coordinate $i$ hits its bound, the arc derivative $\\phi'(\\alpha)$ jumps — it loses the contribution $\\partial_i f \\cdot (d_k)_i$ for $\\alpha > \\alpha^*$. So the Wolfe curvature condition $|\\phi'(\\alpha_k)| \\le \\eta\\,|\\phi'(0^+)|$ is being tested on a function with downward jumps in $|\\phi'|$. The good news, and it parallels Laszlo's concavity remark: each jump *decreases* $|\\phi'|$ when the clipped coordinate was pointing out of the box, so the curvature condition becomes *easier* to satisfy across breakpoints, not harder. The dangerous case is the coordinate pointing *into* the box — there is no jump there, the projection is inactive, and you're in genuine smooth Wolfe territory. So I claim the curvature condition with $\\tilde d$ on both sides survives, but **only if you re-clip after each breakpoint** — exactly Dan's and Laszlo's $\\tilde d_{k+1}$ point. If the proof uses the un-reclipped $d_k$, there is a real bug.\n\nNow let me insist on **Theorem B**, because I refuse to let it go — it's the Ramanujan question.\n\n1. Under strict complementarity, finite identification gives you a terminal epoch with a *fixed* free set $\\mathcal F$. From that step on you are running honest nonlinear CG on $f|_{\\mathcal F}$, and the asymptotic rate is governed by $\\kappa(\\nabla^2 f|_{\\mathcal F})$ at the limit. That's the spectral gap — and I'd want the displayed $n$-step quadratic termination check on the pure quadratic $f = \\tfrac12 x^TAx - b^Tx$: restricted CG on a fixed face terminates in $\\le |\\mathcal F|$ steps. *Compute that case by hand.* If the algorithm doesn't reduce to that, something in the restart logic is over-firing.\n\n2. The provocation I still want answered: in the **degenerate** case ($g_i = 0$ on a bound — strict complementarity fails), Theorem A survives via Dan's telescoping, but does the active set change infinitely often? I believe yes in worst case, and then you asymptotically degrade to gradient projection with *no* $\\sqrt\\kappa$ acceleration. That's not a flaw — it's the truth, the analogue of losing Ramanujan and falling back to the Selberg $3/16$ bound. The honest statement of the paper should *say* this: rate is governed by complementarity exactly as L-function statistics are governed by the spectral gap.\n\nSo my action list, sharpened: **(i)** demand the re-clipped Wolfe-on-arc curvature lemma in displayed form; **(ii)** demand Laszlo's primal–dual residual inequality with $\\rho_i \\le L[f(x_k)-f(x_{k+1})]$; **(iii)** demand the explicit separation of Theorem A (complementarity-free, LaSalle discretization) from Theorem B (strict complementar",
+      "created_at": "2026-06-23T06:30:44Z"
+    },
+    {
+      "id": "m8282b9d0",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T06:31:34Z"
+    },
+    {
+      "id": "m461972cc",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nEstablish global convergence of a low-memory active-set projected nonlinear CG (Hager-Zhang) method for box-constrained optimization via a Zoutendijk-with-restarts argument, cleanly separating a complementarity-free global result (Theorem A) from a strict-complementarity asymptotic-rate result (Theorem B).",
+      "created_at": "2026-06-23T06:31:34Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish global convergence of a low-memory active-set projected nonlinear CG (Hager-Zhang) method for box-constrained optimization via a Zoutendijk-with-restarts argument, cleanly separating a complementarity-free global result (Theorem A) from a strict-complementarity asymptotic-rate result (Theorem B).",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Pin down the algorithm and line-search specification",
+        "body": "State precisely the active-set projected CG scheme: projection P_Omega, active set A(x_k), Hager-Zhang search direction restricted to free variables with box-clipped direction tilde d_k, projected-arc line search, and restart rule (fire when active set changes or projected direction fails descent). Confirm the right-derivative identity phi'(0+) = g_k^T tilde d_k and that storage is O(n).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the re-clipped Wolfe-on-arc curvature lemma",
+        "body": "Verify the line-search lemma is the Wolfe (not plain Armijo) version on the projected arc, with the curvature condition |g_{k+1}^T tilde d| <= eta |g_k^T tilde d| using the re-clipped direction tilde d_{k+1} on both sides. Show that breakpoint jumps in phi'(alpha) only decrease |phi'| for coordinates pointing out of the box (making the condition easier), and that the remaining smooth case is genuine Wolfe territory. Confirm backtracking terminates finitely via the piecewise-linear/concavity structure.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Establish the leaving-variable decrease lemma",
+        "body": "Prove the displayed per-coordinate lemma: when coordinate i leaves the active set, the projected line search yields decrease f(x_k)-f(x_{k+1}) = Omega(min(|g_i|^2/L, |g_i|*slack)). This is the dual-feasibility certificate showing that a large active-set sign-residual forces a quantified function decrease.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove the primal-dual stationarity bridge inequality",
+        "body": "Establish the displayed decomposition ||x_k - P_Omega(x_k - g_k)||^2 <= C(||g_k^free||^2 + sum_{i in A_k} rho_i(x_k)), with rho_i <= L[f(x_k)-f(x_{k+1})] supplied by the leaving-variable lemma. Combine within-epoch Zoutendijk on the free set (primal) with telescoping of f across restarts (dual) to control the full projected-gradient residual by the free-set residual plus the active-set residual.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Assemble Theorem A (complementarity-free global convergence)",
+        "body": "Combine the within-epoch Zoutendijk sum and the across-restart telescoping of f to conclude liminf_k ||x_k - P_Omega(x_k - g_k)|| = 0 under the standard assumptions (f bounded below on level set, grad f Lipschitz), with NO strict complementarity. Verify restarts with large residual occur only finitely often and that no assumption of active-set stabilization is hidden.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify the quadratic reduction and Theorem B asymptotic rate",
+        "body": "Check the algorithm reduces correctly to linear CG on a fixed active set for f = (1/2)x^T A x - b^T x: restricted CG on a fixed face terminates in <= |F| steps, and verify the restart logic does not over-fire. Under strict complementarity, establish finite identification of the active set (Bertsekas-style) and the asymptotic linear/superlinear rate governed by kappa(nabla^2 f restricted to the terminal free set).",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Audit the original proof against required lemmas and separation",
+        "body": "Determine whether the proof in front of us actually contains: (i) the re-clipped Wolfe-on-arc curvature lemma, (ii) the leaving-variable decrease lemma, (iii) the primal-dual residual inequality. Flag whether it silently assumes active-set stabilization (i.e., strict complementarity) thereby proving only Theorem B, and demand explicit separation of Theorem A from Theorem B with an honest statement that the rate degrades to gradient projection in the degenerate case.",
+        "agent": "critic-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T06:31:34Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

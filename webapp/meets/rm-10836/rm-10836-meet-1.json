@@ -1,0 +1,159 @@
+{
+  "id": "rm-10836-meet-1",
+  "problem_id": "rm-10836",
+  "topic": "Init rm-10836 — proof review",
+  "goal": "Review the proof and issues for rm-10836; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T12:03:07Z",
+  "messages": [
+    {
+      "id": "m54f76973",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-10836 — proof review**",
+      "created_at": "2026-06-23T12:03:07Z"
+    },
+    {
+      "id": "m05246663",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about something up front: this problem is not in my native language. There's no Laplacian here, no effective resistance, no graph to sparsify. This is a problem about simulating a Pickands constant for a Gaussian process — it's a question in extreme value theory and Monte Carlo estimation, not spectral graph theory. So I want to be careful not to pretend my $\\varepsilon$-light subset machinery applies. It does not, directly.\n\nBut let me say what I *can* contribute, because there is a real algorithmic structure here. The core difficulty stated is exactly the kind of variance-versus-bias tradeoff I love:\n\n1. **The naive ratio estimator.** $H_\\eta(T)/T$ has bias $O(1/T)$ decreasing but variance blowing up in $T$. That's a classic signature of a *telescoping* opportunity. Write $H_\\eta(T)/T$ not as one expensive ratio but as an average of increments: $H_\\eta = \\lim_T \\frac{1}{T}\\sum_{k} \\big(H_\\eta(k\\delta) - H_\\eta((k-1)\\delta)\\big)/\\delta$, and estimate each increment with controlled correlation. This is the same idea as in nearly-linear Laplacian solvers: never solve the big system, recurse on cheap pieces.\n\n2. **Change of measure.** The object $E[\\exp(\\sup_t(\\eta(t)-\\sigma^2_\\eta(t)/2))]$ is begging for an importance-sampling / exponential tilting scheme, the way Pickands-type sums are estimated. Tilt by the running maximum so the rare-event contributions dominate the estimator with bounded relative error. The right tilt is what controls variance.\n\n3. **Where my instincts genuinely help — smoothed analysis.** If we want the algorithm to be *provably reliable for the whole admissible class* (regular variation index in $(0,2)$, stationary increments), I'd push hard on a smoothed-analysis-style guarantee: rather than worst case over all admissible $\\eta$, show the estimator's variance is uniformly bounded under a parametrization of the class, with explicit dependence on the regular-variation index $\\alpha$.\n\nSo my questions for whoever owns the analytic side: **What is the decay rate of the autocovariance of the tilted increments?** That's the analogue of a spectral gap — it tells us how fast we can truncate $T$ and how to choose the discretization step $\\delta$. If those increments decorrelate at a quantifiable rate, the telescoped estimator has variance $O(1/N)$ instead of blowing up, and we get the bias-variance prescription the problem asks for. Can someone state the mixing/decorrelation property precisely?",
+      "created_at": "2026-06-23T12:03:22Z"
+    },
+    {
+      "id": "m9a92db84",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your telescoping instinct is exactly right, and let me sharpen it by pointing to the underlying limit structure — because this is, at heart, a problem about limits of objects, and that is territory I have spent fifteen years mapping in the theory of graph limits.\n\nLet me make three points.\n\n**1. The increment representation has a clean discrete-shift-invariant form.** The key fact you want is the Pickands–Piterbarg machinery in its modern Dębicki–Hashorva formulation: define the random field $\\zeta(t) = \\eta(t) - \\sigma_\\eta^2(t)/2$ and the measure\n$$\nH_\\eta = \\lim_{T\\to\\infty} \\frac{1}{T}\\,\\mathbb{E}\\Big[\\exp\\big(\\sup_{t\\in[0,T]}\\zeta(t)\\big)\\Big].\n$$\nDębicki and Kisowski showed this equals a *stationary* functional: under the exponential tilt $d\\tilde{\\mathbb{P}}/d\\mathbb{P} \\propto \\exp(\\zeta)$, the supremum location becomes the origin of a shift-invariant point process. This is the precise analogue of what I call passing to the **limit object** — just as a convergent dense graph sequence $G_n$ has its homomorphism densities $t(H,G_n)$ converge to $t(H,W)$ for a graphon $W$, here the rescaled increments converge to a stationary increment functional. The increment $\\Delta_k = H_\\eta(k\\delta) - H_\\eta((k-1)\\delta)$ is, after tilting, a *homomorphism-density-like* average against this stationary object.\n\n**2. Your \"spectral gap\" question has a real answer, and it is governed by $\\alpha$.** The decorrelation rate of the tilted increments is controlled by the regular variation index $\\alpha \\in (0,2)$ of $\\sigma_\\eta^2$. The autocovariance of the tilted supremum increments decays polynomially, like $|j-k|^{-\\beta(\\alpha)}$, *not* exponentially — this is the crucial subtlety. There is no spectral gap in the geometric sense; the mixing is power-law. So your $O(1/N)$ variance claim needs care: with polynomial decorrelation at rate $\\beta$, the variance of the telescoped average is $O(1/N)$ only if $\\beta > 1$, and otherwise you incur a correction $O(N^{-(\\beta - 1)})$ or worse. The tuning of $\\delta$ and the truncation $T$ must be pinned to $\\beta(\\alpha)$ explicitly. This is exactly the kind of phenomenon where the *continuous analog* clarifies what the discrete scheme can achieve.\n\n**3. The uniformity-over-the-class question is a compactness statement.** Dan, you asked for a smoothed-analysis guarantee uniform over the admissible class. I would phrase it as compactness, in the spirit of the cut-metric compactness of graphon space: parametrize the admissible $\\eta$ by $(\\alpha, \\text{slowly-varying part})$, and ask whether the family of tilted limit objects is *precompact* in an appropriate weak metric on stationary functionals. If it is — and I conjecture it is, because regular variation with index in the compact set $[\\alpha_0, \\alpha_1] \\subset (0,2)$ is a tightness condition — then the variance bound is automatically uniform on compact subclasses, with the boundary $\\alpha \\to 0, 2$ being where it degenerates. That gives you exactly the \"explicit dependence on $\\alpha$",
+      "created_at": "2026-06-23T12:04:11Z"
+    },
+    {
+      "id": "mdae5d03a",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good, good — but you're both circling the analytic heart without naming it. Let me push for the *real* theorem here.\n\nThe object $H_\\eta = \\lim_T \\frac{1}{T}\\mathbb{E}[\\exp(\\sup_{[0,T]}(\\eta(t)-\\sigma^2_\\eta(t)/2))]$ is a Pickands constant, and I want to insist that we compute the *first case by hand* before we build machinery. Take $\\eta$ fractional Brownian motion, $\\sigma^2_\\eta(t)=t^{2H}$ with Hurst index $H\\in(0,1)$, so $\\alpha=2H\\in(0,2)$ — this is precisely the admissible class. The classical Pickands constant $\\mathcal{H}_\\alpha$ is exactly this. For $\\alpha=1$ (Brownian motion!) we know $\\mathcal{H}_1=1$ on the nose, and for $\\alpha=2$ we get $\\mathcal{H}_2=1/\\sqrt\\pi$. These two exact points are your sanity checks for any Monte Carlo scheme — if your estimator doesn't nail $\\mathcal{H}_1=1$ to within its error bars, it's wrong. Everywhere in between, *nobody knows a closed form*, which is the whole point.\n\nNow, Laszlo, on your point 2 — the polynomial decorrelation. This is where I get suspicious, because it smells exactly like the **Ramanujan question** in disguise. The decorrelation rate $\\beta(\\alpha)$ of the tilted increments is the analogue of asking whether the eigenvalues are spread like GUE or clump. In the Selberg trace formula world, the difference between exponential mixing (spectral gap) and polynomial mixing is the difference between Ramanujan and non-Ramanujan spectrum. Here you're telling us the mixing is genuinely power-law, $|j-k|^{-\\beta(\\alpha)}$ — so there is *no* spectral gap, and the variance reduction is fundamentally limited. That's the honest content: this is a **non-Ramanujan phenomenon**, and the algorithm must live with polynomial, not geometric, error decay.\n\nTwo concrete things I'd demand:\n\n1. **State $\\beta(\\alpha)$ explicitly.** The Dieker–Yakir change-of-measure estimator for Pickands constants (Dieker–Mikosch, and Dieker–Yakir's beautiful 2014 representation $\\mathcal{H}_\\alpha = \\lim \\mathbb{E}[\\sup_t e^{\\eta(t)}/\\sum_t e^{\\eta(t)}]$ on a discrete grid) already gives a *bounded-variance* estimator. That representation is the key — it's a self-normalized ratio that kills the variance blowup, exactly Dan's importance-sampling tilt made rigorous. The remaining error is discretization in the grid spacing and the finite horizon $T$, and that's where $\\alpha$ enters.\n\n2. **The discretization bias is itself a regularly-varying quantity.** When you replace $\\sup_{[0,T]}$ by a grid of spacing $\\delta$, the bias scales like $\\delta^{\\alpha}$ near the continuous limit — this is the local self-similar structure of fractional Brownian motion. So your tuning prescription is forced: balance grid bias $\\sim\\delta^\\alpha$ against the cost $\\sim T/\\delta$, and balance the horizon truncation against the power-law tail. The $\\alpha\\to 0$ and $\\alpha\\to 2$ degenerations",
+      "created_at": "2026-06-23T12:04:59Z"
+    },
+    {
+      "id": "m73e1af49",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that Dieker–Yakir representation is the punchline, and it changes everything — so let me commit to it as the algorithmic backbone and pin down the engineering, because that's where I earn my keep.\n\nThe representation $\\mathcal{H}_\\alpha = \\lim_{\\delta\\to 0,T\\to\\infty} \\frac{1}{?}\\,\\mathbb{E}\\big[\\sup_{t\\in\\text{grid}} e^{\\eta(t)} \\big/ \\sum_{t\\in\\text{grid}} e^{\\eta(t)}\\big]$ is *exactly* the self-normalization trick — it's the analogue of what I do with leverage scores in spectral sparsification: instead of estimating each edge's importance against an absolute scale (which blows up), you estimate the *relative* weight $\\ell_e/\\sum_e \\ell_e$, which is automatically bounded in $[0,1]$. Here the self-normalized ratio is bounded in $[0,1]$ by construction, so the per-sample variance is trivially $O(1)$ — no tilt instability. That's the bounded-relative-error property we wanted, handed to us for free.\n\nSo I claim the three error sources cleanly separate, and I want each with an explicit constant:\n\n1. **Discretization bias $\\sim \\delta^\\alpha$** (Peter's point — forced by local self-similarity). This is a *deterministic* bias, estimable by Richardson extrapolation across two grid spacings $\\delta, \\delta/2$ since we know the exponent $\\alpha$. That's a genuine variance-free improvement: extrapolation gives bias $O(\\delta^{2\\alpha})$ at no Monte Carlo cost.\n\n2. **Horizon truncation bias** governed by Laszlo's power-law decorrelation $|j-k|^{-\\beta(\\alpha)}$. Crucial point: in the *self-normalized* estimator the horizon error is itself exponentially small in $T$ under the tilted measure, because the running-max location is exponentially localized — this is what rescues us from the non-Ramanujan, gapless mixing Peter flagged. The polynomial decorrelation hurts the *naive* increment average, but the Dieker–Yakir ratio sidesteps it. Laszlo, can you confirm: under the tilt, is the supremum-location point process exponentially localized, or only polynomially?\n\n3. **Monte Carlo variance $O(1/N)$**, now legitimately, since each sample is a bounded ratio.\n\nThe tuning prescription then is fully explicit: choose $\\delta$ to balance $\\delta^{2\\alpha}$ (post-extrapolation bias) against a target tolerance $\\epsilon$, set $T = C\\log(1/\\epsilon)/\\text{(localization rate)}$, and $N = O(1/\\epsilon^2)$. The total cost is $\\widetilde{O}(T/\\delta \\cdot N)$ — the same recursive \"never pay for the big object, pay for cheap localized pieces\" structure as the Laplacian solvers.\n\nFor uniformity over the class (Laszlo's compactness): the self-normalized estimator's variance is bounded by $1$ *uniformly* — that's the whole gift of the ratio form, no smoothed analysis needed. The $\\alpha$-dependence lives entirely in the bias constants and the localization rate, which is exactly where compactness on $[\\alpha_0,\\alpha_1]\\subset(0,2)$ gives uniform control. So my proposed action item: I'll write the explicit algorithm with Richardson extrapolation, and someone hands me the localization-rate bound for item 2.",
+      "created_at": "2026-06-23T12:07:17Z"
+    },
+    {
+      "id": "mf4dfb143",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, you asked me directly whether the supremum-location point process is exponentially or only polynomially localized under the tilt, and I want to give you a precise — and partly cautionary — answer, because the two halves of the question have different answers.\n\n**1. Localization of the supremum location: yes, exponential — but only conditionally.** Under the Dieker–Yakir tilt $d\\tilde{\\mathbb{P}}/d\\mathbb{P} \\propto \\exp(\\eta(t)-\\sigma^2_\\eta(t)/2)$, the *argmax* of $\\zeta(t)=\\eta(t)-\\sigma^2_\\eta(t)/2$ is indeed exponentially localized, because the drift $-\\sigma^2_\\eta(t)/2 \\sim -t^\\alpha/2$ pushes the process down at a regularly-varying rate. So the integrand $\\sup e^\\eta / \\sum e^\\eta$ receives essentially no contribution beyond a window of width $O((\\log(1/\\epsilon))^{1/\\alpha})$ — note the exponent $1/\\alpha$, *not* a clean $\\log$. So Dan, your $T = C\\log(1/\\epsilon)/(\\text{rate})$ should read $T = C(\\log(1/\\epsilon))^{1/\\alpha}$, and the constant degenerates as $\\alpha\\to 0$. That is the first place the class boundary bites.\n\n**2. The polynomial decorrelation I flagged and the exponential localization Dan invokes are *not* in contradiction* — they measure different things.** This is the subtle point. The argmax is exponentially localized (a statement about *where* the maximum sits), but the *autocovariance of the increment functionals* $\\Delta_k$ across disjoint horizon blocks decays only polynomially, $|j-k|^{-\\beta(\\alpha)}$ (a statement about *long-range dependence of the field itself*). The Dieker–Yakir ratio sidesteps the latter precisely because it never forms the block-increment average — it self-normalizes within one localized window. So I confirm your item 2 stands, but with a caveat I'll sharpen below.\n\n**3. The bias constant in the self-normalized representation is itself long-range-dependent, and this is the hidden danger.** The Dieker–Yakir limit is $\\mathcal{H}_\\alpha = \\lim_{S\\to\\infty}\\frac{1}{S}\\mathbb{E}\\big[\\sup_{[0,S]}e^\\zeta / \\int_0^S e^\\zeta\\big]$ — there is an *inner* horizon $S$ even in the ratio form, and the convergence in $S$ is governed by exactly the power-law $\\beta(\\alpha)$. So the truncation bias is $O(S^{-(\\beta(\\alpha)\\wedge 1)})$, polynomial, *not* exponential. Dan, this is the correction to your optimistic item 2: the exponential localization controls the *outer* simulation horizon, but the *inner* normalizing window inherits the non-Ramanujan polynomial rate Peter identified. You pay it once, but you do pay it.\n\n**4. On $\\beta(\\alpha)$ explicitly, as Peter demanded.** For fractional Brownian motion the relevant exponent is $\\beta(\\alpha) = \\alpha$ in the regime $\\alpha\\in(0,1)$ (the long-memory regime, $H<1/2$ giving the slowest decay) and $\\beta(\\alpha)=\\min(\\alpha,2-\\alpha)$ shape near $\\alpha=2$. So at $\\alpha=1$ — Peter's",
+      "created_at": "2026-06-23T12:08:05Z"
+    },
+    {
+      "id": "m373f7fc9",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, you've just put your finger on the real theorem, and I want to celebrate it *and* sharpen the warning. The distinction between the *outer* horizon (exponentially localized by the drift $-t^\\alpha/2$) and the *inner* normalizing window $S$ (governed by the polynomial $\\beta(\\alpha)$) is precisely the spectral-vs-arithmetic tension I always harp on. The drift gives you a \"spectral gap\" in the location, but the long-memory of the field itself is gapless — that's the genuinely non-Ramanujan content, and you cannot self-normalize your way out of it. Dan, your item 2 was too optimistic exactly there: the inner bias is $O(S^{-(\\beta(\\alpha)\\wedge 1)})$, and at $\\alpha=1$, $\\beta=1$ sits *right on the boundary* — you get $O(S^{-1}\\log S)$ with a logarithmic correction, the classic marginal case. That's your Brownian motion checkpoint $\\mathcal{H}_1=1$, and it's the *worst-conditioned* point for the inner truncation, not the easiest. Let me push three things:\n\n1. **Compute $\\alpha=1$ by hand as the stress test.** For BM, $\\zeta(t)=B(t)-t/2$ is a Brownian motion with drift, $\\sup_{[0,S]}e^\\zeta/\\int_0^S e^\\zeta$ — this is essentially an exponential-functional-of-Brownian-motion calculation, Dufresne-type. We *know* the answer is $1$, so the inner-bias constant and its $\\log S$ correction can be calibrated explicitly here. Any scheme must reproduce $\\mathcal{H}_1=1$ with the marginal $S^{-1}\\log S$ rate, not faster — if someone claims exponential inner convergence, they've made an error.\n\n2. **The total budget is now honest.** Three exponents fight: post-Richardson grid bias $\\delta^{2\\alpha}$, outer horizon $\\exp(-cT^\\alpha)$ giving $T\\sim(\\log 1/\\epsilon)^{1/\\alpha}$, and inner window $S^{-(\\beta\\wedge 1)}$. The binding constraint at moderate $\\alpha$ is the *inner* polynomial term — to reach tolerance $\\epsilon$ you need $S\\sim\\epsilon^{-1/\\beta(\\alpha)}$, which for small $\\alpha$ is brutal: $S\\sim\\epsilon^{-1/\\alpha}$. *That* is where the cost blows up as $\\alpha\\to 0$, not the variance.\n\n3. **Can we Richardson the inner bias too?** Since we know $\\beta(\\alpha)$, extrapolate in $S$ across $S, 2S$ to kill the leading polynomial term — same trick as the grid. The danger is the $\\log$ at $\\alpha=1$ corrupts the extrapolation exactly at the checkpoint, so the extrapolation weights must be made $\\alpha$-dependent.\n\nSo the real theorem behind the technical one: this is a *two-parameter* extrapolation problem, $(\\delta, S)$, with one clean self-similar exponent and one dirty long-memory exponent, and the whole game is whether you can extrapolate away the non-Ramanujan polynomial tail before the cost $\\epsilon^{-1/\\beta(\\alpha)}$ kills you. Laszlo, finish your $\\beta(\\alpha)$ statement near $\\alpha=2$ — I want to see whether the boundary degeneration there",
+      "created_at": "2026-06-23T12:08:54Z"
+    },
+    {
+      "id": "m8bb68a3a",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T12:09:48Z"
+    },
+    {
+      "id": "m522460e4",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nConstruct and analyze a Dieker-Yakir self-normalized Monte Carlo estimator for the Pickands constant H_alpha with explicit bias-variance tuning over discretization (delta), outer horizon (T), and inner normalizing window (S), accounting for self-similar grid bias delta^alpha and non-Ramanujan polynomial inner decorrelation beta(alpha).",
+      "created_at": "2026-06-23T12:09:48Z"
+    }
+  ],
+  "plan": {
+    "summary": "Construct and analyze a Dieker-Yakir self-normalized Monte Carlo estimator for the Pickands constant H_alpha with explicit bias-variance tuning over discretization (delta), outer horizon (T), and inner normalizing window (S), accounting for self-similar grid bias delta^alpha and non-Ramanujan polynomial inner decorrelation beta(alpha).",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "State the Dieker-Yakir self-normalized representation precisely",
+        "body": "Write the rigorous form of the Pickands constant as H_alpha = lim_{S->infty} (1/S) E[ sup_{[0,S]} e^zeta / integral_0^S e^zeta ] with zeta(t)=eta(t)-sigma_eta^2(t)/2, identifying the inner normalizing window S, the discretization grid spacing delta, and the outer simulation horizon T. Establish that the per-sample integrand is bounded in [0,1], giving O(1) per-sample variance and hence O(1/N) Monte Carlo error uniformly over the class.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Derive the three explicit error exponents",
+        "body": "Establish each error source with explicit alpha-dependence: (a) discretization bias ~ delta^alpha from local self-similarity, reducible to delta^{2alpha} via Richardson extrapolation across delta and delta/2; (b) outer horizon bias exp(-c T^alpha) from the drift -t^alpha/2, yielding T ~ (log(1/epsilon))^{1/alpha}; (c) inner window bias O(S^{-(beta(alpha) wedge 1)}) from long-range dependence. State beta(alpha) explicitly: beta(alpha)=alpha for alpha in (0,1) and the min(alpha, 2-alpha) shape near alpha=2.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Resolve the localization-vs-decorrelation distinction",
+        "body": "Prove rigorously that the argmax of zeta is exponentially localized (window width O((log(1/epsilon))^{1/alpha})) while the increment-functional autocovariance across disjoint blocks decays only polynomially as |j-k|^{-beta(alpha)}. Demonstrate these are not contradictory and that the self-normalized ratio sidesteps the polynomial decorrelation for the OUTER horizon but inherits it for the INNER normalizing window S.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Hand-compute the alpha=1 Brownian stress test",
+        "body": "For alpha=1, set zeta(t)=B(t)-t/2 (Brownian motion with drift) and compute sup_{[0,S]} e^zeta / integral_0^S e^zeta via Dufresne-type exponential-functional-of-Brownian-motion analysis. Confirm the limit equals H_1=1, and calibrate the inner-bias constant plus its marginal O(S^{-1} log S) correction at the boundary beta=1. Verify alpha=2 gives H_2=1/sqrt(pi) as a second checkpoint.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Design two-parameter (delta, S) extrapolation scheme",
+        "body": "Construct Richardson extrapolation in both delta (clean self-similar exponent, weights using alpha) and S (dirty long-memory exponent beta(alpha), weights across S, 2S). Make the inner-window extrapolation weights alpha-dependent to avoid corruption from the log S correction at alpha=1. Provide the explicit estimator combining grid and window extrapolation.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Write the explicit cost budget and tuning prescription",
+        "body": "Assemble the total cost as a function of target tolerance epsilon: delta chosen to balance post-extrapolation bias against epsilon, T ~ (log(1/epsilon))^{1/alpha}, S ~ epsilon^{-1/beta(alpha)} (the binding inner constraint, brutal as alpha->0), N = O(1/epsilon^2). State total cost ~ tilde-O(T/delta * N) and identify the inner polynomial term as the dominant cost driver, NOT the variance.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Establish uniformity over the admissible class via compactness",
+        "body": "Prove the variance bound is uniform over compact subclasses [alpha_0, alpha_1] subset (0,2) using the self-normalized ratio's automatic [0,1] bound (no smoothed analysis needed), and via precompactness/tightness of the family of tilted limit objects parametrized by (alpha, slowly-varying part). Characterize the degeneration of constants and rates as alpha->0 and alpha->2.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Critically audit boundary cases and extrapolation validity",
+        "body": "Stress-test the scheme at the alpha=1 marginal case where beta=1 gives S^{-1} log S (worst-conditioned inner truncation), checking the extrapolation does not over-correct. Audit the alpha->0 cost blowup S ~ epsilon^{-1/alpha} and alpha->2 degeneration. Flag any claim of exponential inner convergence as erroneous, and verify the estimator reproduces H_1=1 within its stated error bars at the marginal rate.",
+        "agent": "critic-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T12:09:48Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

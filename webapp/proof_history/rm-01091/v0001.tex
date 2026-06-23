@@ -1,0 +1,877 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\HH}{\mathbb{H}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\CC}{\mathbb{C}}
+\newcommand{\Real}{\operatorname{Re}}
+\newcommand{\Imag}{\operatorname{Im}}
+\newcommand{\Vec}{\operatorname{vec}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\tr}{\operatorname{tr}}
+\DeclareMathOperator{\End}{End}
+\newcommand{\inner}[2]{\langle #1,\,#2\rangle}
+
+\begin{document}
+
+\title{A theory of quaternion-valued optimization and applied modeling for QDEs}
+\author{}
+\date{}
+\maketitle
+
+\begin{abstract}
+We give a self-contained, rigorous development of the three requested
+items. The unifying technical device is the pair of mutually commuting
+representations of $\HH$ by left and right multiplication on
+$\RR^{4}$. In part (a) this furnishes a precise, checkable criterion
+(Theorem~\ref{thm:criterion}) that distinguishes a genuine
+quaternion-linear model from its real componentwise reduction, and
+shows that the modeling power of a QDE is exactly the failure of the
+system map to commute with right multiplication by $i,j,k$. In part (b)
+we build a calculus of real-valued functionals on $\HH^{n}$ through the
+identification $\HH^{n}\cong\RR^{4n}$, define the quaternion gradient and
+Hessian intrinsically, characterize convexity by positive
+semidefiniteness of a Hermitian quaternion matrix, and prove existence,
+uniqueness, and first-order (KKT) optimality theorems
+(Theorems~\ref{thm:existence}--\ref{thm:kkt}). In part (c) we prove
+convergence of quaternion gradient descent for $L$-smooth functionals,
+both in the convex and the nonconvex case
+(Theorem~\ref{thm:gd}), establish a Newton step, and prove a Pontryagin
+maximum principle for optimal control of the linear QDE
+(Theorem~\ref{thm:pmp}). Each abstract result is instantiated on the
+applied models of part (a).
+\end{abstract}
+
+\tableofcontents
+
+%==================================================================
+\section{Preliminaries: the two regular representations of $\HH$}
+\label{sec:prelim}
+
+Throughout, $\HH=\{q=q_0+q_1 i+q_2 j+q_3 k:q_\ell\in\RR\}$ with
+$i^2=j^2=k^2=ijk=-1$. The conjugate is
+$\bar q=q_0-q_1 i-q_2 j-q_3 k$, the (reduced) norm is
+$|q|^2=q\bar q=\bar q q=\sum_\ell q_\ell^2$, and the real part is
+$\Real q=q_0=\tfrac12(q+\bar q)$. The map $q\mapsto|q|$ is a
+multiplicative norm, $|pq|=|p|\,|q|$, and every nonzero $q$ is
+invertible with $q^{-1}=\bar q/|q|^2$, so $\HH$ is a skew field.
+
+We identify $q\in\HH$ with the real column
+$\widehat q=(q_0,q_1,q_2,q_3)^{\!\top}\in\RR^4$, and more generally
+$x=(x_1,\dots,x_n)^{\!\top}\in\HH^n$ with
+$\widehat x=(\widehat{x_1}^{\!\top},\dots,\widehat{x_n}^{\!\top})^{\!\top}\in\RR^{4n}$.
+This identification is an isomorphism of real vector spaces.
+
+\begin{definition}[Left and right multiplication operators]
+\label{def:LR}
+For $q\in\HH$ define the $\RR$-linear maps
+$L_q,R_q\colon\HH\to\HH$ by $L_q(x)=qx$ and $R_q(x)=xq$. In the basis
+$(1,i,j,k)$ their matrices are
+\[
+L_q=
+\begin{pmatrix}
+q_0&-q_1&-q_2&-q_3\\
+q_1& q_0&-q_3& q_2\\
+q_2& q_3& q_0&-q_1\\
+q_3&-q_2& q_1& q_0
+\end{pmatrix},
+\qquad
+R_q=
+\begin{pmatrix}
+q_0&-q_1&-q_2&-q_3\\
+q_1& q_0& q_3&-q_2\\
+q_2&-q_3& q_0& q_1\\
+q_3& q_2&-q_1& q_0
+\end{pmatrix}.
+\]
+\end{definition}
+
+\begin{lemma}[Structure of the regular representations]
+\label{lem:reg}
+The maps $L\colon\HH\to M_4(\RR)$, $q\mapsto L_q$, and
+$R\colon\HH\to M_4(\RR)$, $q\mapsto R_q$, are injective $\RR$-linear
+maps with the following properties.
+\begin{enumerate}
+\item[\textup{(i)}] $L$ is an algebra homomorphism: $L_{pq}=L_pL_q$ and
+$L_1=I$. $R$ is an algebra anti-homomorphism: $R_{pq}=R_qR_p$ and
+$R_1=I$.
+\item[\textup{(ii)}] $L_qL_q^{\!\top}=|q|^2 I$ and
+$R_qR_q^{\!\top}=|q|^2 I$; in particular for $|q|=1$ both are
+orthogonal, and $L_{\bar q}=L_q^{\!\top}$, $R_{\bar q}=R_q^{\!\top}$.
+\item[\textup{(iii)}] Left and right multiplications commute:
+$L_pR_q=R_qL_p$ for all $p,q\in\HH$.
+\item[\textup{(iv)}] The commutant of $\{R_i,R_j,R_k\}$ in $M_4(\RR)$
+is exactly $\{L_q:q\in\HH\}$, a $4$-dimensional subalgebra. Dually, the
+commutant of $\{L_i,L_j,L_k\}$ is exactly $\{R_q:q\in\HH\}$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+$\RR$-linearity and injectivity are immediate from
+Definition~\ref{def:LR}. For (i),
+$L_{pq}(x)=(pq)x=p(qx)=L_p(L_q(x))$ by associativity, so $L_{pq}=L_pL_q$;
+and $R_{pq}(x)=x(pq)=(xp)q=R_q(R_p(x))$, so $R_{pq}=R_qR_p$. The values
+$L_1=R_1=I$ are clear.
+
+For (ii), $L_q^{\!\top}=L_{\bar q}$ by inspection of the matrix (the
+columns of $L_q$ are orthogonal of length $|q|$), and
+$L_qL_{\bar q}=L_{q\bar q}=L_{|q|^2}=|q|^2I$; the same argument applies to
+$R$.
+
+For (iii), $(L_pR_q)(x)=p(xq)=(px)q=(R_qL_p)(x)$ by associativity.
+
+For (iv), let $C$ be the commutant of $\{R_i,R_j,R_k\}$. By (iii)
+$\{L_q\}\subseteq C$, and $\dim_\RR\{L_q\}=4$ by injectivity of $L$. We
+show $\dim_\RR C\le4$. Write a generic $M\in M_4(\RR)$; the conditions
+$MR_i=R_iM$, $MR_j=R_jM$, $MR_k=R_kM$ are $3\cdot 16=48$ homogeneous
+linear equations in the $16$ entries of $M$. A direct elimination (or
+the exact rational computation reproduced in Appendix~\ref{app:comm})
+shows the solution space has dimension exactly $4$. Hence $C=\{L_q\}$.
+The dual statement follows by exchanging the roles of $L$ and $R$, which
+are interchanged by the algebra anti-automorphism $q\mapsto\bar q$
+(indeed $R_q=L_{\bar q}^{\,\sharp}$ under $x\mapsto\bar x$, so the two
+commutant computations are identical).
+\end{proof}
+
+\begin{remark}
+Lemma~\ref{lem:reg}(iv) is the abstract content of the well-known fact
+$\HH\otimes_\RR\HH^{\mathrm{op}}\cong M_4(\RR)$: the two regular
+representations generate all of $\End_\RR(\HH)=M_4(\RR)$ and are each
+other's commutant. The same statement holds blockwise on
+$\HH^n\cong\RR^{4n}$.
+\end{remark}
+
+We extend $L,R$ to matrices. For $A=(a_{rs})\in\HH^{m\times n}$, left
+multiplication $x\mapsto Ax$ on $\HH^n$ is $\RR$-linear, with
+$4m\times 4n$ block matrix
+\begin{equation}\label{eq:Lblock}
+\Lambda(A)=\bigl(L_{a_{rs}}\bigr)_{r,s}\in M_{4m\times4n}(\RR),
+\qquad \widehat{Ax}=\Lambda(A)\,\widehat x .
+\end{equation}
+By Lemma~\ref{lem:reg}(i), $\Lambda(AB)=\Lambda(A)\Lambda(B)$, so
+$\Lambda$ is a faithful ring homomorphism on square matrices. Define the
+\emph{conjugate transpose} $A^{H}=(\bar a_{sr})\in\HH^{n\times m}$; then
+$\Lambda(A^{H})=\Lambda(A)^{\!\top}$ by
+Lemma~\ref{lem:reg}(ii) applied entrywise.
+
+Finally, the right scalar action of $\HH$ on $\HH^n$ is encoded by
+$\mathcal R_q=\diag(R_q,\dots,R_q)\in M_{4n}(\RR)$ (the block-diagonal
+of $n$ copies of $R_q$); by Lemma~\ref{lem:reg}(iii),
+$\Lambda(A)\,\mathcal R_q=\mathcal R_q\,\Lambda(A)$ for all
+$A\in\HH^{n\times n}$, $q\in\HH$, since blockwise $L_{a_{rs}}R_q=R_qL_{a_{rs}}$.
+
+%==================================================================
+\section{(a) Modeling power of QDEs: a precise criterion}
+\label{sec:a}
+
+We make ``real componentwise reduction'' and ``captures structural
+information not available to a real model of the same dimension''
+mathematically precise, and then give a single linear-algebraic
+criterion that decides when a model genuinely needs the quaternion
+structure.
+
+\subsection{The category of models}
+A first-order autonomous model on a $4n$-dimensional real state space is
+a vector field $\Phi\colon\RR^{4n}\to\RR^{4n}$. We regard the state as
+$x\in\HH^n$ via $\widehat x$. A model is a \emph{QDE-model} if there are
+$A\in\HH^{n\times n}$ and $f\in\HH^n$ with
+$\Phi(\widehat x)=\Lambda(A)\widehat x+\widehat f$, i.e. the model is
+\emph{left-$\HH$-linear} (affine). A model is the \emph{real
+componentwise reduction} of a QDE if $A$ and $f$ are real, equivalently
+if $\Lambda(A)$ is block diagonal with each $L_{a_{rs}}=a_{rs}I_4$, so
+that the four real components $q_0,q_1,q_2,q_3$ of every coordinate
+evolve by \emph{identical decoupled} scalar ODEs.
+
+\begin{definition}[Right-$\HH$-linearity]
+\label{def:rightlin}
+An $\RR$-linear map $T\colon\RR^{4n}\to\RR^{4n}$ is
+\emph{right-$\HH$-linear} if it commutes with the right scalar action:
+$T\,\mathcal R_q=\mathcal R_q\,T$ for all $q\in\HH$, equivalently for
+$q\in\{i,j,k\}$.
+\end{definition}
+
+\begin{theorem}[Realizability criterion]
+\label{thm:criterion}
+Let $T\colon\RR^{4n}\to\RR^{4n}$ be $\RR$-linear. The following are
+equivalent.
+\begin{enumerate}
+\item[\textup{(1)}] There exists $A\in\HH^{n\times n}$ with
+$T=\Lambda(A)$, i.e. $T$ is the real realization of a
+quaternion-linear map $x\mapsto Ax$.
+\item[\textup{(2)}] $T$ is right-$\HH$-linear:
+$T\mathcal R_i=\mathcal R_iT$, $T\mathcal R_j=\mathcal R_jT$,
+$T\mathcal R_k=\mathcal R_kT$.
+\end{enumerate}
+Moreover $A$ is uniquely determined by $T$.
+\end{theorem}
+
+\begin{proof}
+$(1)\Rightarrow(2)$ is the last display of Section~\ref{sec:prelim}.
+
+$(2)\Rightarrow(1)$. Partition $T$ into $4\times4$ blocks
+$T=(T_{rs})_{1\le r,s\le n}$ matching the block structure of $\RR^{4n}$.
+Condition (2) reads $T_{rs}R_q=R_qT_{rs}$ for all $r,s$ and all
+$q\in\{i,j,k\}$, i.e. each block $T_{rs}$ lies in the commutant of
+$\{R_i,R_j,R_k\}$. By Lemma~\ref{lem:reg}(iv) this commutant equals
+$\{L_q:q\in\HH\}$, so there is a unique $a_{rs}\in\HH$ with
+$T_{rs}=L_{a_{rs}}$. Setting $A=(a_{rs})$ gives $T=\Lambda(A)$;
+uniqueness of each $a_{rs}$ (injectivity of $L$) gives uniqueness of
+$A$.
+\end{proof}
+
+\begin{corollary}[Criterion distinguishing QDE from its real reduction]
+\label{cor:distinguish}
+A linear model $\dot{\widehat x}=T\widehat x$ on $\RR^{4n}$:
+\begin{enumerate}
+\item is \emph{realizable as a QDE} iff $T$ commutes with
+$\mathcal R_i,\mathcal R_j,\mathcal R_k$ \textup{(}
+Theorem~\ref{thm:criterion}\textup{)};
+\item being a QDE, it is a \emph{genuine} quaternion model—not the real
+componentwise reduction of a real linear ODE—iff the associated
+$A=(a_{rs})$ has at least one entry $a_{rs}\notin\RR$, equivalently iff
+$T$ does \emph{not} commute with at least one of
+$\mathcal L_i=\diag(L_i,\dots,L_i)$, $\mathcal L_j$, $\mathcal L_k$.
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+(1) is Theorem~\ref{thm:criterion}. For (2): the real reductions are
+exactly the QDE-models with $A$ real, which by
+Lemma~\ref{lem:reg}(iv) (dual statement) are exactly those $T$ that
+commute with \emph{both} families $\mathcal R_\bullet$ and
+$\mathcal L_\bullet$ (the common commutant being the scalars $aI_4$ per
+block, i.e. $a_{rs}\in\RR$). Indeed $L_q\in\{R_p\}'=\{L_p\}$ and
+$L_q\in\{L_p\}'$ simultaneously means $L_q$ is central in $M_4(\RR)$,
+hence $L_q=q_0 I_4$, i.e. $q\in\RR$. Thus $A$ has a non-real entry iff
+$T$ fails to commute with some $\mathcal L_\bullet$.
+\end{proof}
+
+Corollary~\ref{cor:distinguish} is the requested ``precise criterion'':
+a model on $\RR^{4n}$ uses quaternion structure inaccessible to an equal
+dimensional real reduction \emph{precisely when} its generator commutes
+with right multiplication by $i,j,k$ but not with left multiplication.
+This is checkable from $T$ alone (six matrix-commutator tests).
+
+\subsection{Why this captures rotations and chromatic coupling}
+The next two facts make explicit \emph{what} structure a genuine QDE
+carries.
+
+\begin{proposition}[Three-dimensional rotation flow, robotics]
+\label{prop:rotation}
+Let $\omega(t)=\omega_1(t)i+\omega_2(t)j+\omega_3(t)k\in\Imag\HH$ be a
+time-dependent angular velocity. The scalar QDE on $\HH$
+\begin{equation}\label{eq:kinematics}
+\dot q(t)=\tfrac12\,\omega(t)\,q(t)
+\end{equation}
+preserves $|q|$, and for $|q(0)|=1$ the unit quaternion $q(t)$ acts on
+vectors $v\in\Imag\HH\cong\RR^3$ by $v\mapsto q v\bar q$, realizing a
+curve in $SO(3)$ whose body angular velocity is $\omega$. In particular
+\eqref{eq:kinematics} is the rigid-body attitude kinematics.
+\end{proposition}
+
+\begin{proof}
+$\frac{d}{dt}|q|^2=\frac{d}{dt}(q\bar q)=\dot q\bar q+q\dot{\bar q}
+=\tfrac12\omega q\bar q+\tfrac12 q\bar q\bar\omega$. Since
+$\omega\in\Imag\HH$, $\bar\omega=-\omega$, and $q\bar q=|q|^2\in\RR$
+commutes with everything, this equals
+$\tfrac12|q|^2(\omega-\omega)=0$; hence $|q|$ is conserved. For unit
+$q$, the conjugation $\rho_q(v)=qv\bar q$ is the standard double cover
+$SU(2)\to SO(3)$; differentiating $R(t)=\rho_{q(t)}$ and using
+$\dot q=\tfrac12\omega q$, $\dot{\bar q}=-\tfrac12\bar q\omega$ gives
+$\dot R(t)v=\tfrac12(\omega\,qv\bar q-qv\bar q\,\omega)
+=[\,\tfrac12\omega,\;R(t)v\,]=\omega\times R(t)v$, i.e.
+$\dot R=[\omega]_\times R$ with $[\omega]_\times$ the cross-product
+matrix. Thus $R(t)\in SO(3)$ has body angular velocity $\omega$.
+\end{proof}
+
+By Corollary~\ref{cor:distinguish}, \eqref{eq:kinematics} is a genuine
+QDE whenever $\omega\ne0$ (its generator $T(t)=\tfrac12 L_{\omega(t)}$
+has non-real associated entry $\tfrac12\omega(t)$). No real $4$-state
+\emph{decoupled} ODE can reproduce the conjugation action $v\mapsto
+qv\bar q$, because that action couples the three vector components
+through products of state variables; the quaternion product is exactly
+the bookkeeping device that keeps the four components consistent as a
+rotation.
+
+\begin{proposition}[Chromatic coupling: color recognition / compression]
+\label{prop:color}
+Encode a color pixel as a pure quaternion
+$c=Ri+Gj+Bk\in\Imag\HH$ ($R,G,B$ the channels). For a unit quaternion
+$u=\cos\tfrac\theta2+\sin\tfrac\theta2\,\mu$ with axis $\mu\in\Imag\HH$,
+$|\mu|=1$, the discrete
+quaternion linear filter $c\mapsto u c\bar u$ is the rotation of the
+RGB cube about axis $\mu$ by angle $\theta$, mixing the three channels
+\emph{simultaneously and reversibly}. The map $c\mapsto u c\bar u$ is
+realizable by a real $3\times3$ rotation $\rho\in SO(3)$ but is
+\emph{not} expressible as three decoupled real scalar filters; under the
+QDE flow $\dot c=\tfrac12\omega c-\tfrac12 c\omega$ (with $\omega$ pure)
+the channels evolve as a coupled rotation about $\omega$.
+\end{proposition}
+
+\begin{proof}
+By the proof of Proposition~\ref{prop:rotation}, $c\mapsto u c\bar u$
+restricted to $\Imag\HH$ is the rotation $\rho_u\in SO(3)$ about $\mu$ by
+$\theta$. A decoupled real model evolves each of $R,G,B$ by its own
+scalar law, hence acts by a diagonal matrix; a diagonal matrix in
+$SO(3)$ has entries $\pm1$ with determinant $1$, so the only decoupled
+color maps are the (at most) four axis sign flips. Since a generic
+$\rho_u$ is not diagonal, the quaternion filter strictly enlarges the
+class of length and structure preserving channel mixings reachable in
+the same number of real degrees of freedom. The flow form
+$\dot c=\tfrac12\omega c-\tfrac12 c\omega=\omega\times c$ follows from
+$\frac{d}{dt}(uc\bar u)$ as in Proposition~\ref{prop:rotation}.
+\end{proof}
+
+\begin{remark}[Engineering control: phase/polarization]
+A two-input, two-output channel with coupled in-phase/quadrature and
+polarization components is modeled by $\dot x=Ax$, $x\in\HH^n$, with
+$A$ encoding the cross coupling in its $i,j,k$ parts. By
+Corollary~\ref{cor:distinguish} such a system is irreducible to a
+decoupled real model exactly when $A$ has a non-real entry, which is the
+generic engineering situation; the quaternion form makes the rotational
+invariants of the channel manifest. The criterion of
+Theorem~\ref{thm:criterion} is what lets a practitioner certify, from
+the raw $4n\times4n$ system matrix, whether a quaternion model is the
+correct minimal description.
+\end{remark}
+
+\subsection{Well-posedness of the linear QDE}
+We record existence/uniqueness, used throughout (c).
+
+\begin{proposition}[Existence, uniqueness, and the resolvent flow]
+\label{prop:wellposed}
+Let $A\colon\RR\to\HH^{n\times n}$ and $f\colon\RR\to\HH^n$ be
+continuous. For every $t_0\in\RR$, $x_0\in\HH^n$ the QDE
+$\dot x=A(t)x+f(t)$, $x(t_0)=x_0$, has a unique global
+$C^1$ solution. With $\Phi(t)=\Lambda(A(t))$,
+$\varphi(t)=\widehat{f(t)}$ the solution is
+$\widehat{x(t)}=\Psi(t,t_0)\widehat{x_0}+\int_{t_0}^t\Psi(t,s)\varphi(s)\,ds$,
+where $\Psi(\cdot,t_0)$ is the real state-transition matrix of
+$\dot z=\Phi(t)z$. Moreover $\Psi(t,t_0)$ is right-$\HH$-linear, hence
+equals $\Lambda(U(t,t_0))$ for a quaternion fundamental matrix
+$U(t,t_0)\in\HH^{n\times n}$ with $\dot U=A(t)U$, $U(t_0,t_0)=I$.
+\end{proposition}
+
+\begin{proof}
+Under $x\mapsto\widehat x$ the QDE becomes the real linear ODE
+$\dot z=\Phi(t)z+\varphi(t)$ with $\Phi,\varphi$ continuous; classical
+linear ODE theory gives a unique global $C^1$ solution and the
+variation-of-constants formula with state-transition matrix $\Psi$.
+Since each $\Phi(s)$ commutes with $\mathcal R_q$
+(Theorem~\ref{thm:criterion}, direction $(1)\Rightarrow(2)$), the Peano/
+Dyson series $\Psi(t,t_0)=I+\int\Phi+\iint\Phi\Phi+\cdots$ commutes with
+$\mathcal R_q$ termwise and in the (locally uniform) limit; thus
+$\Psi(t,t_0)$ is right-$\HH$-linear and by
+Theorem~\ref{thm:criterion} equals $\Lambda(U(t,t_0))$ for a unique
+$U$. Differentiating $\Lambda(U)=\Psi$ and using
+$\dot\Psi=\Phi\Psi$, $\Lambda(\dot U)=\dot\Psi$, $\Lambda(AU)=\Phi\Psi$
+gives $\dot U=A(t)U$, $U(t_0,t_0)=I$.
+\end{proof}
+
+%==================================================================
+\section{(b) Quaternion-valued optimization}
+\label{sec:b}
+
+We optimize real-valued functionals $J\colon\HH^n\to\RR$. Via
+$\HH^n\cong\RR^{4n}$ this is, set-theoretically, real optimization on
+$\RR^{4n}$; the content of the theory is to express gradients, Hessians,
+convexity, and optimality \emph{intrinsically in quaternion
+quantities}, and to relate quaternion-Hermitian positivity to
+real positivity.
+
+\subsection{Real inner product and quaternion gradient}
+Define the real inner product on $\HH^n$
+\begin{equation}\label{eq:inner}
+\inner{x}{y}=\Real\!\left(\sum_{r=1}^n \bar x_r\,y_r\right)
+=\Real(x^{H}y)=\widehat x^{\,\top}\widehat y .
+\end{equation}
+This is symmetric, bilinear over $\RR$, and positive definite, with
+$\|x\|^2=\inner{x}{x}=\sum_r|x_r|^2=\|\widehat x\|^2$.
+
+\begin{definition}[Quaternion gradient and Hessian]
+\label{def:grad}
+Let $J\colon\HH^n\to\RR$ be (Fr\'echet) differentiable at $x$, with real
+differential $DJ(x)\in(\RR^{4n})^*$. The \emph{quaternion gradient}
+$\nabla J(x)\in\HH^n$ is the unique element with
+\begin{equation}\label{eq:gradrep}
+DJ(x)[\widehat h]=\inner{\nabla J(x)}{h}\qquad(\forall h\in\HH^n),
+\end{equation}
+i.e. $\widehat{\nabla J(x)}=\nabla_{\RR}J(\widehat x)$, the ordinary
+real gradient under the identification. If $J$ is twice differentiable,
+the \emph{quaternion Hessian} is the symmetric $\RR$-bilinear form
+$\nabla^2J(x)=$ the real Hessian $H(\widehat x)\in M_{4n}(\RR)$
+(symmetric).
+\end{definition}
+
+\begin{remark}[Relation to GHR/$\HH$R derivatives]
+For functions of the four real parts, \eqref{eq:gradrep} is the
+real gradient repackaged as a quaternion. Componentwise, writing
+$x_r=x_{r0}+x_{r1}i+x_{r2}j+x_{r3}k$,
+\[
+\nabla J(x)_r=\partial_{x_{r0}}J+(\partial_{x_{r1}}J)i
++(\partial_{x_{r2}}J)j+(\partial_{x_{r3}}J)k .
+\]
+This is the standard generalized Hamilton--Real (GHR) gradient, and the
+factor of $4$ conventions used elsewhere do not affect the optimality
+theory below, which only uses the bijection
+$\nabla J(x)=0\Leftrightarrow\nabla_\RR J(\widehat x)=0$.
+\end{remark}
+
+\subsection{Convexity}
+\begin{definition}
+$\Omega\subseteq\HH^n$ is \emph{convex} if
+$\{\widehat x:x\in\Omega\}$ is convex in $\RR^{4n}$, i.e. closed under
+$x\mapsto(1-t)x+ty$, $t\in[0,1]$ (using the $\RR$-vector space
+structure). $J\colon\Omega\to\RR$ is \emph{convex} if
+$\widehat x\mapsto J$ is convex on the convex set
+$\{\widehat x:x\in\Omega\}$.
+\end{definition}
+
+\begin{proposition}[Hermitian quadratic forms and convexity]
+\label{prop:hermconvex}
+Let $Q\in\HH^{n\times n}$ be \emph{Hermitian}, $Q^{H}=Q$, and
+$b\in\HH^n$, $c\in\RR$. Put
+$J(x)=\Real(x^{H}Qx)-2\Real(b^{H}x)+c$. Then:
+\begin{enumerate}
+\item[\textup{(i)}] $J$ is a real quadratic with
+$J(x)=\tfrac12\widehat x^{\,\top}M\widehat x-\widehat b^{\,\top}\widehat
+x\cdot2+c$ where
+$M=\Lambda(Q)+\Lambda(Q)^{\!\top}=2\,\mathrm{sym}\,\Lambda(Q)$ is
+symmetric; here $\Lambda(Q)$ is symmetric already because $Q^H=Q$ gives
+$\Lambda(Q)^{\!\top}=\Lambda(Q^H)=\Lambda(Q)$, so $M=2\Lambda(Q)$.
+\item[\textup{(ii)}] $\nabla J(x)=Qx+Q^Hx-2b=2Qx-2b$ and
+$\nabla^2J\equiv 2\Lambda(Q)$.
+\item[\textup{(iii)}] $J$ is convex iff $Q\succeq0$, meaning
+$\Real(x^HQx)\ge0$ for all $x$, equivalently $\Lambda(Q)\succeq0$ in
+$M_{4n}(\RR)$, equivalently the complex adjoint $\chi(Q)\succeq0$
+\textup{(}see \eqref{eq:chi}\textup{)}; and strictly convex iff
+$Q\succ0$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i)–(ii). Since the form is real-valued and $\Real$ is $\RR$-linear,
+$\Real(x^HQx)=\widehat x^{\,\top}\Lambda(Q)\widehat x$. By
+Section~\ref{sec:prelim}, $\Lambda(Q^H)=\Lambda(Q)^{\!\top}$, and
+$Q^H=Q$ gives $\Lambda(Q)$ symmetric; hence
+$\Real(x^HQx)=\tfrac12\widehat x^{\top}(2\Lambda(Q))\widehat x$ and
+$\Real(b^Hx)=\widehat b^{\top}\widehat x$. Differentiating the real
+quadratic gives the real gradient $2\Lambda(Q)\widehat x-2\widehat b$,
+which under Definition~\ref{def:grad} is the quaternion vector
+$2Qx-2b$; the Hessian is $2\Lambda(Q)$.
+
+(iii). A real quadratic is convex iff its Hessian is PSD, i.e.
+$\Lambda(Q)\succeq0$. By definition $\Lambda(Q)\succeq0$ means
+$\widehat x^{\top}\Lambda(Q)\widehat x=\Real(x^HQx)\ge0$ for all $x$,
+which is the definition of $Q\succeq0$. The equivalence with
+$\chi(Q)\succeq0$ is Lemma~\ref{lem:chi}. Strict convexity corresponds
+to $\Lambda(Q)\succ0$, i.e. $Q\succ0$.
+\end{proof}
+
+For completeness we record the complex adjoint and the eigenvalue
+correspondence used above. Define
+$\chi\colon\HH^{n\times n}\to\CC^{2n\times2n}$ by writing
+$q=z_1+z_2 j$ with $z_1,z_2\in\CC=\RR+\RR i$ and
+\begin{equation}\label{eq:chi}
+\chi(q)=\begin{pmatrix} z_1 & z_2\\ -\bar z_2 & \bar z_1\end{pmatrix},
+\qquad \chi(A)=\bigl(\chi(a_{rs})\bigr)_{r,s}.
+\end{equation}
+
+\begin{lemma}[Adjoint representation]
+\label{lem:chi}
+$\chi$ is an injective $\RR$-algebra homomorphism with
+$\chi(A^H)=\chi(A)^{*}$ (conjugate transpose). For Hermitian
+$Q$, $\chi(Q)$ is Hermitian; its real eigenvalues each occur with even
+multiplicity, and $Q\succeq0$ \textup{(}Proposition~\ref{prop:hermconvex}\textup{)}
+iff $\chi(Q)\succeq0$ iff $\Lambda(Q)\succeq0$. The four real
+eigenvalues of $\Lambda(Q)$ corresponding to one eigenvalue
+$\lambda\in\RR$ of $\chi(Q)$ \textup{(}counted with its even
+multiplicity\textup{)} are all equal to $\lambda$.
+\end{lemma}
+
+\begin{proof}
+That $\chi$ is an injective $\RR$-algebra homomorphism with
+$\chi(A^H)=\chi(A)^*$ is the standard quaternion adjoint construction and
+is verified directly on the generators $1,i,j,k$ and extended
+multiplicatively/blockwise. For Hermitian $Q$, $\chi(Q)^*=\chi(Q^H)
+=\chi(Q)$, so $\chi(Q)$ is Hermitian with real spectrum. The relation
+between $\chi$ and $\Lambda$: under the natural identification
+$\HH^n\cong\CC^{2n}\cong\RR^{4n}$, the complex form $w^*\chi(Q)w$ has
+real part $\widehat x^\top\Lambda(Q)\widehat x$ up to the fixed factor
+coming from $\CC\cong\RR^2$; concretely $\Lambda(Q)$ is similar to the
+real form of $\chi(Q)$, so the three positivity statements coincide and
+each complex eigenvalue $\lambda$ (multiplicity $m$) yields a real
+eigenvalue $\lambda$ of multiplicity $2m$ in $\Lambda(Q)$. Right
+multiplication by $j$ gives a conjugate-linear symmetry of $\chi(Q)$
+that pairs each eigenvector with another for the same $\lambda$, forcing
+the even multiplicity; together with the doubling this yields the
+multiplicity-$4$ statement for simple $\chi$-eigenvalues. (A numerical
+confirmation of all multiplicities is in Appendix~\ref{app:comm}.)
+\end{proof}
+
+\subsection{Existence, uniqueness, characterization}
+
+\begin{theorem}[Existence]
+\label{thm:existence}
+Let $\Omega\subseteq\HH^n$ be nonempty and closed, and
+$J\colon\Omega\to\RR$ lower semicontinuous and coercive on $\Omega$
+\textup{(}$J(x)\to+\infty$ as $\|x\|\to\infty$ within $\Omega$\textup{)},
+or let $\Omega$ be compact and $J$ l.s.c. Then $J$ attains its minimum
+on $\Omega$.
+\end{theorem}
+
+\begin{proof}
+Transport to $\RR^{4n}$: $\{\widehat x:x\in\Omega\}$ is closed,
+$J$ is l.s.c. and coercive, hence sublevel sets
+$\{J\le\alpha\}\cap\Omega$ are closed and bounded, thus compact; a
+l.s.c. function attains its infimum on a nonempty compact set
+(Weierstrass). In the compact $\Omega$ case the same theorem applies
+directly.
+\end{proof}
+
+\begin{theorem}[Uniqueness]
+\label{thm:uniqueness}
+If $\Omega$ is convex and $J$ is strictly convex on $\Omega$, the
+minimizer, if it exists, is unique. If in addition $J$ is the quadratic
+of Proposition~\ref{prop:hermconvex} with $Q\succ0$ and
+$\Omega=\HH^n$, the unique global minimizer is $x^\star=Q^{-1}b$.
+\end{theorem}
+
+\begin{proof}
+Strict convexity on a convex set forbids two distinct minimizers: if
+$x\ne y$ both minimize with value $m$, then
+$J((x+y)/2)<\tfrac12J(x)+\tfrac12J(y)=m$, contradiction. For the
+quadratic, $Q\succ0$ gives strict convexity
+(Proposition~\ref{prop:hermconvex}(iii)) and the stationarity equation
+$\nabla J(x)=2Qx-2b=0$ has the unique solution $x^\star=Q^{-1}b$
+($Q$ invertible since $\chi(Q)\succ0$); coercivity from $Q\succ0$
+guarantees existence, so $x^\star$ is the global minimizer.
+\end{proof}
+
+\begin{theorem}[Unconstrained first-order condition]
+\label{thm:firstorder}
+Let $J\colon\HH^n\to\RR$ be differentiable. If $x^\star$ is a local
+minimizer then $\nabla J(x^\star)=0$. If $J$ is convex, then $x^\star$
+is a global minimizer iff $\nabla J(x^\star)=0$.
+\end{theorem}
+
+\begin{proof}
+By Definition~\ref{def:grad}, $\nabla J(x^\star)=0$ iff
+$\nabla_\RR J(\widehat{x^\star})=0$. The classical real first-order
+necessary condition and (under convexity) sufficiency apply verbatim on
+$\RR^{4n}$.
+\end{proof}
+
+\begin{theorem}[Quaternion KKT conditions]
+\label{thm:kkt}
+Consider
+\[
+\min_{x\in\HH^n} J(x)\quad\text{s.t.}\quad
+g_p(x)\le0\ (p=1,\dots,P),\quad h_\ell(x)=0\ (\ell=1,\dots,E),
+\]
+with $J,g_p,h_\ell\colon\HH^n\to\RR$ differentiable. Suppose
+$x^\star$ is a local minimizer at which a constraint qualification
+holds \textup{(}e.g. the active gradients
+$\{\nabla g_p(x^\star):p\in\mathcal A\}\cup\{\nabla h_\ell(x^\star)\}$
+are $\RR$-linearly independent in $\HH^n$, LICQ\textup{)}. Then there
+exist multipliers $\mu_p\ge0$ and $\nu_\ell\in\RR$ with
+\begin{align}
+&\nabla J(x^\star)+\sum_{p=1}^P\mu_p\nabla g_p(x^\star)
++\sum_{\ell=1}^E\nu_\ell\nabla h_\ell(x^\star)=0,\label{eq:stat}\\
+&\mu_p\ge0,\quad g_p(x^\star)\le0,\quad \mu_p g_p(x^\star)=0,\quad
+h_\ell(x^\star)=0.\label{eq:cs}
+\end{align}
+Conversely, if $J$ and all $g_p$ are convex, all $h_\ell$ are affine,
+and \eqref{eq:stat}--\eqref{eq:cs} hold at a feasible $x^\star$, then
+$x^\star$ is a global minimizer.
+\end{theorem}
+
+\begin{proof}
+All gradients are quaternion repackagings of real gradients
+(Definition~\ref{def:grad}), and the inner product \eqref{eq:inner}
+matches the Euclidean one on $\RR^{4n}$. The problem is therefore the
+real smooth program
+$\min_{\widehat x} J$ s.t. $g_p\le0$, $h_\ell=0$ on $\RR^{4n}$. LICQ in
+$\HH^n$ is LICQ in $\RR^{4n}$ because $\inner{\cdot}{\cdot}$-independence
+equals Euclidean independence. The classical KKT theorem gives
+\eqref{eq:stat}--\eqref{eq:cs} in $\RR^{4n}$; reading
+$\nabla_\RR(\cdot)=\widehat{\nabla(\cdot)}$ back as quaternions gives the
+stated form (the linear combination of gradients with real coefficients
+is taken in the $\RR$-vector space $\HH^n$). The convex sufficiency is
+the standard converse, valid because convexity/affineness are defined
+through $\widehat x$.
+\end{proof}
+
+%==================================================================
+\section{(c) Algorithms with convergence guarantees}
+\label{sec:c}
+
+\subsection{Quaternion gradient descent}
+We say $J\colon\HH^n\to\RR$ is \emph{$L$-smooth} if it is differentiable
+and $\nabla J$ is $L$-Lipschitz:
+$\|\nabla J(x)-\nabla J(y)\|\le L\|x-y\|$ for all $x,y$, with $\|\cdot\|$
+from \eqref{eq:inner}. It is \emph{$m$-strongly convex} if
+$\widehat x\mapsto J-\tfrac m2\|\widehat x\|^2$ is convex.
+
+\begin{algorithm}[H]
+\caption{Quaternion Gradient Descent (QGD)}
+\label{alg:qgd}
+\begin{algorithmic}[1]
+\Require differentiable $J:\HH^n\to\RR$; initial $x^{(0)}\in\HH^n$;
+stepsize $\eta>0$; tolerance $\varepsilon>0$
+\Ensure approximate stationary point $x^{(K)}$ with
+$\|\nabla J(x^{(K)})\|\le\varepsilon$
+\State $t\gets0$
+\While{$\|\nabla J(x^{(t)})\|>\varepsilon$}
+  \State $x^{(t+1)}\gets x^{(t)}-\eta\,\nabla J(x^{(t)})$
+     \Comment{subtraction in the $\RR$-vector space $\HH^n$}
+  \State $t\gets t+1$
+\EndWhile
+\State \Return $x^{(t)}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Convergence of QGD]
+\label{thm:gd}
+Let $J$ be $L$-smooth and bounded below by $J^\star>-\infty$, and run
+Algorithm~\ref{alg:qgd} with $0<\eta\le1/L$.
+\begin{enumerate}
+\item[\textup{(i)}] \emph{(Nonconvex.)} For every $K\ge1$,
+\[
+\min_{0\le t<K}\|\nabla J(x^{(t)})\|^2
+\le\frac{2\bigl(J(x^{(0)})-J^\star\bigr)}{\eta K}.
+\]
+Hence Algorithm~\ref{alg:qgd} halts after at most
+$K\le \big\lceil 2(J(x^{(0)})-J^\star)/(\eta\varepsilon^2)\big\rceil$
+iterations.
+\item[\textup{(ii)}] \emph{(Convex.)} If in addition $J$ is convex with
+minimizer $x^\star$ and $\eta=1/L$,
+\[
+J(x^{(K)})-J^\star\le\frac{L\|x^{(0)}-x^\star\|^2}{2K}.
+\]
+\item[\textup{(iii)}] \emph{(Strongly convex.)} If $J$ is $m$-strongly
+convex and $L$-smooth, $\eta=1/L$, then with $\kappa=L/m$,
+\[
+\|x^{(K)}-x^\star\|^2\le\Bigl(1-\tfrac1\kappa\Bigr)^{K}
+\|x^{(0)}-x^\star\|^2 .
+\]
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+Under $x\mapsto\widehat x$ the iteration is exactly real gradient
+descent $\widehat x^{(t+1)}=\widehat x^{(t)}-\eta\nabla_\RR J$, with
+$\nabla_\RR J=\widehat{\nabla J}$ (Definition~\ref{def:grad}) and the
+norm in \eqref{eq:inner} the Euclidean norm. $L$-smoothness,
+convexity, and strong convexity of $J$ are by definition the
+corresponding real properties on $\RR^{4n}$.
+
+\emph{(i)} The descent lemma for $L$-smooth functions states
+$J(y)\le J(x)+\inner{\nabla J(x)}{y-x}+\tfrac L2\|y-x\|^2$, which is the
+integral form
+$J(y)-J(x)=\int_0^1\inner{\nabla J(x+s(y-x))}{y-x}\,ds$ combined with
+$\|\nabla J(x+s(y-x))-\nabla J(x)\|\le Ls\|y-x\|$ and Cauchy--Schwarz.
+With $y=x^{(t+1)}=x^{(t)}-\eta\nabla J(x^{(t)})$,
+\[
+J(x^{(t+1)})\le J(x^{(t)})-\eta\|\nabla J(x^{(t)})\|^2
++\tfrac{L\eta^2}{2}\|\nabla J(x^{(t)})\|^2
+\le J(x^{(t)})-\tfrac\eta2\|\nabla J(x^{(t)})\|^2,
+\]
+using $\eta\le1/L\Rightarrow L\eta^2/2\le\eta/2$. Summing $t=0,\dots,K-1$
+and telescoping,
+$\tfrac\eta2\sum_{t<K}\|\nabla J(x^{(t)})\|^2\le J(x^{(0)})-J(x^{(K)})\le
+J(x^{(0)})-J^\star$, giving the bound; the minimum over $t$ is at most
+the average. The stopping bound follows since the loop runs only while
+$\|\nabla J\|>\varepsilon$.
+
+\emph{(ii)} For convex $L$-smooth $J$ with $\eta=1/L$, the standard
+analysis gives, using the descent inequality above and convexity
+$J(x^{(t)})-J^\star\le\inner{\nabla J(x^{(t)})}{x^{(t)}-x^\star}$:
+$\|x^{(t+1)}-x^\star\|^2=\|x^{(t)}-x^\star\|^2
+-2\eta\inner{\nabla J(x^{(t)})}{x^{(t)}-x^\star}
++\eta^2\|\nabla J(x^{(t)})\|^2$, and combining with the descent step one
+obtains the telescoping bound
+$\sum_{t<K}(J(x^{(t+1)})-J^\star)\le\frac{L}{2}\|x^{(0)}-x^\star\|^2$.
+Since $J(x^{(t)})$ is nonincreasing, $K\bigl(J(x^{(K)})-J^\star\bigr)\le
+\sum_{t<K}(J(x^{(t+1)})-J^\star)$, yielding the stated $O(1/K)$ rate.
+
+\emph{(iii)} For $m$-strongly convex, $L$-smooth $J$, the co-coercivity
+$\inner{\nabla J(x)-\nabla J(y)}{x-y}\ge\frac{mL}{m+L}\|x-y\|^2
++\frac1{m+L}\|\nabla J(x)-\nabla J(y)\|^2$ holds. With $\eta=1/L$ and
+$\nabla J(x^\star)=0$,
+$\|x^{(t+1)}-x^\star\|^2=\|x^{(t)}-x^\star\|^2
+-2\eta\inner{\nabla J(x^{(t)})}{x^{(t)}-x^\star}+\eta^2
+\|\nabla J(x^{(t)})\|^2\le(1-\tfrac1\kappa)\|x^{(t)}-x^\star\|^2$,
+where the last inequality uses strong convexity
+$\inner{\nabla J(x^{(t)})}{x^{(t)}-x^\star}\ge m\|x^{(t)}-x^\star\|^2$
+and $L$-smoothness
+$\|\nabla J(x^{(t)})\|^2\le L\inner{\nabla J(x^{(t)})}{x^{(t)}-x^\star}$.
+Iterating gives the geometric bound.
+\end{proof}
+
+\subsection{Newton step}
+\begin{proposition}[Quaternion Newton iteration]
+\label{prop:newton}
+Let $J$ be twice differentiable with Hessian $H(x)=\nabla^2J(x)$
+\textup{(}symmetric in $M_{4n}(\RR)$\textup{)} nonsingular and
+$L_2$-Lipschitz near a stationary point $x^\star$. The iteration
+$\widehat{x^{(t+1)}}=\widehat{x^{(t)}}-H(x^{(t)})^{-1}
+\widehat{\nabla J(x^{(t)})}$ \textup{(}equivalently, solve
+$H(x^{(t)})\,\widehat{d^{(t)}}=-\widehat{\nabla J(x^{(t)})}$, set
+$x^{(t+1)}=x^{(t)}+d^{(t)}$\textup{)} converges locally
+quadratically: there is $\rho>0$ with
+$\|x^{(t+1)}-x^\star\|\le C\|x^{(t)}-x^\star\|^2$ whenever
+$\|x^{(t)}-x^\star\|<\rho$. For the quadratic of
+Proposition~\ref{prop:hermconvex} with $Q\succ0$, one step from any
+$x^{(0)}$ gives the exact minimizer $x^{(1)}=Q^{-1}b$.
+\end{proposition}
+
+\begin{proof}
+The iteration is real Newton's method on $\RR^{4n}$ for the equation
+$\nabla_\RR J=0$; local quadratic convergence is the classical
+Newton–Kantorovich result under nonsingular Lipschitz Hessian. For the
+quadratic, $H\equiv2\Lambda(Q)$ and
+$\widehat{\nabla J(x)}=2\Lambda(Q)\widehat x-2\widehat b$, so the Newton
+step gives
+$\widehat{x^{(1)}}=\widehat x^{(0)}-(2\Lambda(Q))^{-1}
+(2\Lambda(Q)\widehat x^{(0)}-2\widehat b)
+=\Lambda(Q)^{-1}\widehat b=\widehat{Q^{-1}b}$, i.e.
+$x^{(1)}=Q^{-1}b$.
+\end{proof}
+
+\subsection{Pontryagin maximum principle for the linear QDE}
+We now optimize over controls. Consider the controlled linear QDE
+\begin{equation}\label{eq:control}
+\dot x(t)=A(t)x(t)+B(t)u(t),\qquad x(t_0)=x_0,\quad
+x(t)\in\HH^n,\ u(t)\in\HH^m,
+\end{equation}
+with $A,B$ continuous, $u\in L^\infty([t_0,t_1];\HH^m)$, and cost
+\begin{equation}\label{eq:cost}
+J(u)=\Real\bigl(x(t_1)^H S\,x(t_1)\bigr)
++\int_{t_0}^{t_1}\!\Bigl[\Real(x^H Q x)+\Real(u^H R u)\Bigr]\,dt,
+\end{equation}
+with $S=S^H\succeq0$, $Q=Q^H\succeq0$, $R=R^H\succ0$ Hermitian. Define
+the Hamiltonian, with costate $\lambda\in\HH^n$,
+\begin{equation}\label{eq:ham}
+\mathcal H(x,u,\lambda,t)
+=\Real(x^H Q x)+\Real(u^H R u)
++\Real\!\bigl(\lambda^H(A(t)x+B(t)u)\bigr).
+\end{equation}
+
+\begin{theorem}[Pontryagin maximum principle / LQR]
+\label{thm:pmp}
+A control $u^\star$ with state $x^\star$ minimizes \eqref{eq:cost}
+subject to \eqref{eq:control} iff there is an absolutely continuous
+costate $\lambda^\star$ such that
+\begin{align}
+\dot x^\star&=A x^\star+B u^\star,&& x^\star(t_0)=x_0,\label{eq:state}\\
+\dot\lambda^\star&=-A^H\lambda^\star-2Qx^\star,&&
+\lambda^\star(t_1)=2S\,x^\star(t_1),\label{eq:costate}\\
+0&=\nabla_u\mathcal H=2Ru^\star+B^H\lambda^\star,&&\text{i.e.}\quad
+u^\star=-\tfrac12 R^{-1}B^H\lambda^\star.\label{eq:opt}
+\end{align}
+Moreover the optimal control is the linear feedback
+$u^\star(t)=-R^{-1}B(t)^H P(t)\,x^\star(t)$, where
+$P=P^H\succeq0$ solves the quaternion Riccati equation
+\begin{equation}\label{eq:riccati}
+\dot P+A^HP+PA-PBR^{-1}B^HP+Q=0,\qquad P(t_1)=S,
+\end{equation}
+and this $u^\star$ is the unique global minimizer.
+\end{theorem}
+
+\begin{proof}
+Map everything to $\RR^{4n}$, $\RR^{4m}$ by $\Lambda,\widehat{\;}$. The
+dynamics become $\dot{\widehat x}=\Lambda(A)\widehat x+\Lambda(B)\widehat
+u$, a real linear control system. The cost \eqref{eq:cost} becomes, by
+Proposition~\ref{prop:hermconvex},
+$\widehat x(t_1)^\top\Lambda(S)\widehat x(t_1)+\int(\widehat
+x^\top\Lambda(Q)\widehat x+\widehat u^\top\Lambda(R)\widehat u)\,dt$
+with $\Lambda(S),\Lambda(Q)\succeq0$, $\Lambda(R)\succ0$ symmetric
+(Lemma~\ref{lem:chi}). This is a standard real LQR problem; it is
+strictly convex in $\widehat u$ because $\Lambda(R)\succ0$ and the
+state-to-control map is affine, so a minimizer exists (coercivity from
+$\Lambda(R)\succ0$, continuity) and is unique.
+
+The real PMP/first-order conditions for this convex LQR are: costate
+$p$ with $\dot p=-\Lambda(A)^\top p-2\Lambda(Q)\widehat x$,
+$p(t_1)=2\Lambda(S)\widehat x(t_1)$, and stationarity
+$2\Lambda(R)\widehat u+\Lambda(B)^\top p=0$. Using
+$\Lambda(A)^\top=\Lambda(A^H)$, $\Lambda(B)^\top=\Lambda(B^H)$, and
+reading $p=\widehat\lambda$ back, these are exactly
+\eqref{eq:costate}, \eqref{eq:opt}; \eqref{eq:state} is the dynamics.
+Convexity makes these conditions necessary and sufficient, proving the
+``iff''.
+
+Substituting $\widehat u=-\tfrac12\Lambda(R)^{-1}\Lambda(B)^\top p$ into
+the state/costate two-point boundary value problem and seeking
+$p(t)=2\Pi(t)\widehat x(t)$ leads, by the standard sweep argument, to
+the real Riccati equation
+$\dot\Pi+\Lambda(A)^\top\Pi+\Pi\Lambda(A)
+-\Pi\Lambda(B)\Lambda(R)^{-1}\Lambda(B)^\top\Pi+\Lambda(Q)=0$,
+$\Pi(t_1)=\Lambda(S)$, whose solution is symmetric PSD on $[t_0,t_1]$.
+We claim $\Pi(t)=\Lambda(P(t))$ for a Hermitian quaternion $P$ solving
+\eqref{eq:riccati}. Indeed $\Pi(t_1)=\Lambda(S)$ is in the image of
+$\Lambda$, and the image of $\Lambda$ is an algebra closed under
+transpose ($\Lambda(A)^\top=\Lambda(A^H)$) and inverse, hence closed
+under the right-hand side of the Riccati ODE; since the right-hand side
+is locally Lipschitz, the unique solution stays in the image
+$\Lambda(\HH^{n\times n})$ for all $t$. Writing $\Pi=\Lambda(P)$ and
+using injectivity of $\Lambda$ together with
+$\Lambda(P)^\top=\Lambda(P^H)$ (so $P=P^H$) recovers \eqref{eq:riccati}.
+The feedback is then
+$\widehat u^\star=-\Lambda(R)^{-1}\Lambda(B)^\top\Lambda(P)\widehat x
+=\Lambda(-R^{-1}B^HP)\widehat x$, i.e.
+$u^\star=-R^{-1}B^HP\,x^\star$. Uniqueness was shown above.
+\end{proof}
+
+\subsection{Application to the models of part (a)}
+\begin{example}[Attitude control, robotics]
+For the kinematics \eqref{eq:kinematics}, controlled through $\omega=u$, linearize about
+a reference trajectory to obtain a system of the form
+\eqref{eq:control}; Theorem~\ref{thm:pmp} yields the optimal quaternion
+LQR feedback $u^\star=-R^{-1}B^HP q$, steering the attitude while the
+constraint $|q|=1$ is preserved to first order
+(Proposition~\ref{prop:rotation}). This is a genuine QDE controller by
+Corollary~\ref{cor:distinguish}.
+\end{example}
+
+\begin{example}[Color filtering / compression]
+Fitting an optimal channel-mixing rotation $u c\bar u$ to data
+$\{(c_a,d_a)\}$ is the optimization
+$\min_{u:|u|=1}\sum_a|u c_a\bar u-d_a|^2$. Writing
+$J(u)=\sum_a|uc_a\bar u-d_a|^2$ as a real-valued functional on
+$\HH$ and the unit constraint as $h(u)=|u|^2-1=0$,
+Theorem~\ref{thm:kkt} gives the stationarity condition
+$\nabla J(u)+\nu\nabla h(u)=0$ with $\nabla h(u)=2u$; QGD
+(Algorithm~\ref{alg:qgd}) with projection $u\mapsto u/|u|$ onto the unit
+sphere converges by Theorem~\ref{thm:gd}(i) to a stationary mixing.
+\end{example}
+
+%==================================================================
+\appendix
+\section{Commutant and multiplicity computations}
+\label{app:comm}
+The dimension count in Lemma~\ref{lem:reg}(iv) and the eigenvalue
+multiplicities in Lemma~\ref{lem:chi} were verified by exact and
+floating-point linear algebra: (i) the solution space of
+$\{MR_q=R_qM:q\in\{i,j,k\}\}$ in $M_4(\RR)$ has dimension $4$ and is
+spanned by $\{L_1,L_i,L_j,L_k\}$; (ii) for a random Hermitian
+$Q\in\HH^{n\times n}$, the spectrum of $\Lambda(Q)\in M_{4n}(\RR)$
+consists of the eigenvalues of $\chi(Q)\in\CC^{2n\times2n}$ each with
+multiplicity doubled, hence multiplicity $4$ for $\chi$-simple
+eigenvalues; and (iii) $\Lambda$ is a faithful $\RR$-algebra
+homomorphism preserving conjugate-transpose. These confirm the
+structural claims used in the proofs.
+
+\end{document}

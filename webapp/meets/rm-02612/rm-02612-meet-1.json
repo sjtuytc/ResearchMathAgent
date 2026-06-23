@@ -1,0 +1,162 @@
+{
+  "id": "rm-02612-meet-1",
+  "problem_id": "rm-02612",
+  "topic": "Init rm-02612 — proof review",
+  "goal": "Review the proof and issues for rm-02612; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T11:40:48Z",
+  "messages": [
+    {
+      "id": "md13c02e4",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-02612 — proof review**",
+      "created_at": "2026-06-23T11:40:48Z"
+    },
+    {
+      "id": "m50576e62",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about where my expertise meets this problem and where it doesn't. This is a KPZ universality question about longest increasing subsequences under Mallows-type measures — that's quite far from my $\\varepsilon$-light subset and Laplacian world. But let me say something constructive, because there's an algorithmic/combinatorial backbone here I can actually grab onto.\n\nThe key object is the Mallows measure $\\mu_{n,q}(\\pi) \\propto q^{\\mathrm{inv}(\\pi)}$, and the right question is: **what's the scaling regime of $q=q_n$?** That's the analogue of \"what's the spectral gap?\" here. The literature (Mueller–Starr, Bhatnagar–Peled, Basu–Bhatnagar) tells us:\n\n1. **$q_n \\to 1$ at rate $1-q_n \\sim \\beta/n$** (the \"scaling regime\"): $L(\\pi)/\\sqrt{n}$ converges to a deterministic constant depending on $\\beta$, and one expects $n^{1/6}$-fluctuations in TW$_2$. This is the regime where KPZ should survive.\n2. **$1-q_n \\gg 1/\\sqrt n$**: the permutation is too \"frozen\" — strong localization — and you cross over to Gaussian or degenerate limits.\n3. **$1-q_n \\ll 1/n$**: you're essentially uniform, BDJ applies.\n\nSo before reviewing any proof, I want the action plan pinned to **identifying the precise crossover window** — the boundary between regimes 1 and 2. That's the real content.\n\nHere's where my instinct is genuinely useful: the LIS under Mallows has an RSK / last-passage-percolation representation, and the Mallows weighting deforms the underlying point process into a **determinantal or near-determinantal ensemble**. If we can exhibit a determinantal structure (a correlation kernel $K_n$), then the TW$_2$ limit reduces to a kernel convergence statement — exactly the kind of thing where I'd ask: *can we control the relevant operator's spectrum?* The TW$_2$ law is itself a Fredholm determinant $\\det(I-K_{\\mathrm{Ai}})$ of the Airy kernel. So the proof gap, concretely, is:\n\n- **Gap A:** Establish the determinantal/Pfaffian structure (or a suitable last-passage coupling) for the Mallows-LIS in regime $1-q_n \\sim \\beta/n$.\n- **Gap B:** Prove operator-norm convergence of the rescaled kernel to the Airy kernel, with tail bounds for tightness.\n- **Gap C:** Nail the constants $a_n, b_n$ and the crossover threshold exactly.\n\nWhat did the proof under review actually claim — does it assert TW$_2$ across all of regime 1, or only a sub-window? And does it go through RSK/LPP, or through a direct moment/transfer-operator argument? Tell me which, and I can push on whether the spectral convergence step is airtight.",
+      "created_at": "2026-06-23T11:41:05Z"
+    },
+    {
+      "id": "m903d2e38",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your three-regime decomposition is exactly right, and I want to sharpen the picture from the side of *limit objects* — because the Mallows measure is one of the cleanest examples I know where a graph-limit-style philosophy applies to permutations.\n\nLet me make this precise. There is a theory of **permutons** — limits of permutation sequences — entirely parallel to my graphon theory with Borgs, Chayes, and Szegedy. A permuton is a probability measure $\\nu$ on $[0,1]^2$ with uniform marginals, and $\\pi_n \\to \\nu$ iff all pattern densities converge, just as $t(H,G_n) \\to t(H,W)$. Starr proved that in the scaling regime $1-q_n \\sim \\beta/n$, the Mallows permutation converges to an explicit permuton $\\nu_\\beta$ with density concentrated near the diagonal — a hyperbolic-tangent profile. **This is the analogue of the extremal graphon**, and it tells us immediately why the constant in $L(\\pi)/\\sqrt n$ is what it is: the LIS is a *first-order, deterministic* quantity governed by $\\nu_\\beta$, exactly as the homomorphism density is read off the graphon.\n\nNow here is the crucial conceptual point that bears on your Gaps A–C:\n\n1. **The permuton governs the law of large numbers, NOT the fluctuations.** The cut-metric / weak topology is too coarse to see $n^{1/3}$ scales — just as $d_\\square$-convergence sees $t(H,\\cdot)$ but not the $O(1/\\sqrt n)$ spectral fluctuations of $G_n$. So the permuton tells you $a_n \\sim 2c(\\beta)\\sqrt n$, but TW$_2$ lives in the *local* structure that the permuton washes out. This is precisely why Gap B is the hard one: you must descend below the limit object.\n\n2. **The crossover threshold (Gap C) is a tilting question.** In the diagonal-concentrated permuton, the LIS is computed along a band of width $\\sim 1/\\sqrt\\beta$. KPZ survives as long as that band remains *macroscopic and the LPP is genuinely two-dimensional*. When $1-q_n \\gg n^{-1/2}$ the band collapses to a near-deterministic path and you get Gaussian fluctuations — the LPP degenerates to a near-1D sum. So the threshold $1-q_n \\sim n^{-1/2}$ is exactly where the permuton's diagonal band shrinks to the fluctuation scale itself. That gives you a *clean structural criterion* for the crossover, not just a computation.\n\n3. **On Gap A — determinantal structure.** I'd caution that the Mallows-LPP is generally *not* exactly determinantal away from $q=1$; the $q$-deformation breaks the Schur/RSK exactness. I suspect the honest route is a coupling to a $q$-deformed last-passage model (the $q$-TASEP / Macdonald-process world of Borodin–Corwin) where the determinantal structure is replaced by a *Fredholm-determinant-via-Macdonald-operators* identity. That is the right home for $\\det(I - K_{\\mathrm{Ai}})$ here.\n\nSo my proposed action plan: (a) confirm the permuton $\\nu_\\beta$ pins $a_n,b_n$ to leading order; (b) state the crossover as \"diagonal band width vs. $n^{1/3}$\"; (c) seek the Airy kernel through Macdonald processes rather than naive RSK.",
+      "created_at": "2026-06-23T11:41:53Z"
+    },
+    {
+      "id": "me9bbce79",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have set the table well, and László is right to invoke the permuton as the law-of-large-numbers object. But let me push on what the *real* theorem is, because I think we're circling the right phenomenon without naming it.\n\nThe deep fact behind BDJ is the **discrete-to-Airy** mechanism: $L(\\pi)$ is the bottom eigenvalue of a determinantal point process (the Poissonized Plancherel measure), and the Tracy–Widom law is $\\det(I - K_{\\mathrm{Ai}})$ on $L^2(s,\\infty)$. The question for Mallows is whether the $q$-deformation preserves the *integrable* skeleton or destroys it. I agree with László against Dan here: away from $q=1$ you lose exact determinantal structure. But the right home is not just Macdonald processes — it's the observation that in the scaling window $1-q_n = \\beta/n$, Mallows-RSK limits to a **last-passage problem with explicit weight density given by the permuton kernel**. That's the integrable object.\n\nNow, the question I always ask: **is this really a Ramanujan phenomenon?** Here the analogue of Ramanujan is *the universality of the Airy kernel* — the statement that the local spacing statistics are GUE/TW$_2$ regardless of the precise microscopic weights, exactly as the GUE law for $\\zeta$-zeros is insensitive to the arithmetic of any single prime. So I'd reformulate Gap B sharply:\n\n- **The real theorem:** in regime $1-q_n=\\beta/n$, the rescaled LIS point process converges to the Airy$_2$ process, with $b_n = c(\\beta)\\, n^{1/6}$ and $a_n = 2\\sqrt{n}\\,\\ell(\\beta)$ where $\\ell(\\beta) = \\int$ along the geodesic in the permuton metric.\n\nLet me compute the first case to ground this. At $\\beta \\to 0$ we must recover BDJ: $\\ell(0)=1$, $c(0)=1$. The permuton density near the diagonal is $\\sim \\tanh$-type with concentration scale $1/\\sqrt\\beta$; the LPP geodesic lives in a band of width $\\beta^{-1/2}\\sqrt n$, and KPZ scaling forces fluctuations $(\\text{band length})^{1/3}$. **This is precisely László's crossover criterion**: KPZ survives iff $\\beta = o(\\sqrt n)$, i.e. $1-q_n \\gg n^{-3/2}$... no — iff the band width $\\beta^{-1/2}\\sqrt n \\gg n^{1/3}$, giving $\\beta \\ll n^{1/3}$, i.e. $1-q_n \\ll n^{-2/3}$. That sharpens the threshold to a *power-law* statement we should check against Basu–Bhatnagar.\n\nOne caution on Dan's Gap A: don't expect a Pfaffian — the symmetry class here is $\\beta=2$ (unitary), so TW$_2$ is right, and a Fredholm determinant, not Pfaffian, is the target. The action item I'd add: prove a **transfer-operator / explicit-formula analogue** — write $L(\\pi)$ via a contour integral over the Macdonald kernel and show the saddle point lands on the Airy function. That's the integrable backbone, and it will hand us $a_n, b_n$ and the crossover constant in one stroke.",
+      "created_at": "2026-06-23T11:42:42Z"
+    },
+    {
+      "id": "m3c5f9c13",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your saddle-point reformulation is the right target, but I want to flag a tension in the threshold arithmetic, because that's exactly the kind of thing that needs to be nailed, not waved at. You wrote two different thresholds in one breath — $1-q_n \\ll n^{-2/3}$ from \"band width $\\gg n^{1/3}$\" — but László's structural criterion said the crossover is at $1-q_n \\sim n^{-1/2}$. Those disagree, and the disagreement is the whole problem. Let me try to reconcile them with a clean dimensional analysis.\n\nIn the scaling window $1-q_n = \\beta/n$ the permuton band has width $\\sim \\sqrt{n}/\\sqrt{\\beta}$ along the anti-diagonal and length $\\sim \\sqrt{n}$. The LIS is a last-passage time across a roughly rectangular region of dimensions $\\ell \\times w$ with $\\ell \\sim \\sqrt n$, $w \\sim \\sqrt{n/\\beta}$. KPZ fluctuations for LPP on an $\\ell \\times w$ box scale like $\\ell^{1/3}$ **provided the box is not too elongated** — the standard condition is $w \\gg \\ell^{1/3}$ (you need enough transverse room for the geodesic to wander on its characteristic $\\ell^{2/3}$ scale). So:\n\n- Plug in: $\\sqrt{n/\\beta} \\gg n^{1/6} \\iff \\beta \\ll n^{2/3} \\iff 1-q_n \\ll n^{-1/3}$.\n\nThat's a *third* number. So we have three candidate thresholds floating — $n^{-1/3}$, $n^{-1/2}$, $n^{-2/3}$ — depending on whether the binding constraint is transverse wandering room, band-width-vs-fluctuation, or band-width-vs-correlation-length. **This is Gap C, and right now it's genuinely open in this room.** The action item is to write down the LPP geometry precisely and identify which constraint binds first as $\\beta$ grows.\n\nOn Gap A, I now fully concede the point to you and László: no Pfaffian, $\\beta=2$ class, Fredholm determinant of the Airy kernel via Macdonald. But here's where I can still be useful constructively. The transverse-wandering criterion above is *exactly* an effective-resistance statement in disguise: the geodesic's freedom to wander is the spectral gap of the LPP transfer operator restricted to the band. So I'd propose we make Gap C quantitative by computing the *second eigenvalue* of the Macdonald/transfer operator in the band — when its gap closes (band too thin), the saddle point degenerates and you cross to Gaussian. Peter, does your contour-integral saddle have a control parameter that I can read as a spectral gap? If so, the crossover is precisely where the saddle coalesces with a nearby critical point — a degenerate-saddle (Pearcey-type) transition — and *that* will pin the exponent unambiguously.",
+      "created_at": "2026-06-23T11:44:57Z"
+    },
+    {
+      "id": "mccd22c58",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your three-threshold confusion is real but I think it resolves cleanly once we are careful about *which* quantity scales as a power of $\\beta$ and which as a power of $n$ — and here the permuton picture pays off concretely. Let me do the bookkeeping properly.\n\nIn the window $1-q_n = \\beta/n$ with $\\beta$ allowed to grow, Starr's permuton $\\nu_\\beta$ has a diagonal band whose *intrinsic* width — measured in the rescaled $[0,1]^2$ coordinates — is $\\sim \\beta^{-1/2}$. Translate to the discrete $n\\times n$ array: transverse width $w \\sim n\\,\\beta^{-1/2}$, **not** $\\sqrt{n/\\beta}$. That is the slip in your dimensional analysis, Dan — the band is a fraction $\\beta^{-1/2}$ of the *full* side $n$, not of $\\sqrt n$. The longitudinal extent of the relevant LPP region is the full $\\sim n$. So the box is $\\ell \\times w$ with $\\ell \\sim n$, $w \\sim n\\beta^{-1/2}$.\n\nNow apply the standard LPP elongation criterion you stated, $w \\gg \\ell^{1/3}$:\n$$ n\\,\\beta^{-1/2} \\gg n^{1/3} \\iff \\beta^{1/2} \\ll n^{2/3} \\iff \\beta \\ll n^{4/3} \\iff 1-q_n \\ll n^{1/3}. $$\nThat is vacuous in the scaling window, which is the correct sanity check: throughout the entire window $1-q_n = \\beta/n$ with $\\beta = O(1)$, KPZ must survive — and it does. The interesting crossover is therefore **not** inside the window but at its *edge*, when we leave $1-q_n \\asymp 1/n$ and push to $1-q_n \\asymp n^{-\\gamma}$ for $\\gamma < 1$. Reparametrize: set $1-q_n = n^{-\\gamma}$, so $\\beta = n^{1-\\gamma}$. Then $w \\sim n\\,\\beta^{-1/2} = n^{(1+\\gamma)/2}$, and $w \\gg \\ell^{1/3} = n^{1/3}$ requires $(1+\\gamma)/2 > 1/3$, i.e. $\\gamma > -1/3$ — again always true. So the *transverse-wandering* constraint alone never bites. This tells me, Peter, that your $n^{-2/3}$ and László-the-earlier-me's $n^{-1/2}$ cannot both come from band geometry; one of them must come from a different mechanism.\n\nHere is the mechanism I now believe is binding. The crossover to Gaussian is not about the geodesic running out of transverse room — it is about the *weights becoming effectively deterministic*. In the strongly localized regime the permutation freezes into near-blocks, and the LIS becomes a sum of $\\sim 1/(1-q_n)$ weakly dependent contributions — a genuine 1D sum, hence CLT. The KPZ/Gaussian boundary is then where the number of effectively independent \"renewal blocks\" along the geodesic transitions from $O(1)$-correlated to summable. By the Mueller–Starr–Bhatnagar–Peled localization length $\\xi \\sim 1/(1-q_n)$, the geodesic sees $\\sim n/\\xi = n(1-q_n)$ blocks. KPZ requires this to diverge fast enough to support TW$_2$ fluctuations, Gauss",
+      "created_at": "2026-06-23T11:45:44Z"
+    },
+    {
+      "id": "m44428a46",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, you cut off right at the punchline, but I think you've actually steered us to the correct mechanism — and it's worth saying precisely because it changes the *symmetry class*, not just the threshold.\n\nLet me reconcile the three numbers, because I think the answer is that there are genuinely *two* transitions, not one, and we've been conflating them:\n\n1. **The KPZ-to-Gaussian crossover** is exactly your renewal-block count, László. The localization length is $\\xi \\sim 1/(1-q_n)$, the geodesic sees $N \\sim n(1-q_n)$ effectively independent blocks. TW$_2$ fluctuations of size $\\ell^{1/3}$ require the block sum to remain genuinely 2D — and the honest criterion is $N \\to \\infty$ while each block still contributes a *non-Gaussian* increment. When $N \\to \\infty$ but the per-block fluctuation is summable, you get a CLT: Gaussian. This is the *same* phenomenon as the loss of GUE statistics when an L-function's symmetry type degenerates — the local law is robust until the underlying ensemble changes class.\n\n2. So I now retract my $n^{-2/3}$ — that came from band geometry, and László has correctly shown band geometry never binds inside the window. **The real threshold is $1-q_n \\sim n^{-1/3}$**, and here's the clean way to see it. Set $1-q_n = n^{-\\gamma}$. The standard deviation of the LIS in the KPZ phase is $b_n \\sim n^{1/6}$ (times slowly varying). The Gaussian contribution from $N \\sim n^{1-\\gamma}$ blocks, each of $O(1)$ fluctuation, is $\\sqrt{N} \\sim n^{(1-\\gamma)/2}$. **The crossover is where these two balance:**\n$$ n^{(1-\\gamma)/2} \\asymp n^{1/6} \\iff (1-\\gamma)/2 = 1/6 \\iff \\gamma = 2/3. $$\nSo KPZ dominates for $\\gamma > 2/3$, i.e. $1-q_n \\ll n^{-2/3}$, and Gaussian takes over for $1-q_n \\gg n^{-2/3}$. There's my $2/3$ — but now it's the *fluctuation-balance* threshold, not band geometry. Dan, this is exactly your \"which constraint binds first,\" and it's the variance comparison that binds.\n\n3. **The action item, sharpened.** Dan's degenerate-saddle idea is the right diagnostic. In my contour-integral picture the TW$_2$ comes from a simple Airy saddle; the Gaussian phase comes from a *Gaussian* saddle (a non-degenerate quadratic critical point dominating). The crossover is the *coalescence point* where the cubic Airy term and the linear renewal drift exchange dominance — and at $\\gamma = 2/3$ exactly you should see a one-parameter crossover family interpolating TW$_2 \\to$ Gaussian, the analogue of the Pearcey/Baik-Ben Arous-Péché phase transition in spiked ensembles.\n\nSo my proposed clean statement: **at the critical scaling $1-q_n = c\\,n^{-2/3}$ there is a one-parameter family of limit laws crossing over from $F_{\\mathrm{TW}_2}$ ($c\\to 0$) to Gaussian ($c\\to\\infty$).** That BBP-type transition is the real theorem hiding here — let's prove *that*, not just the two endpoints.",
+      "created_at": "2026-06-23T11:46:32Z"
+    },
+    {
+      "id": "mbad53b06",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T11:47:30Z"
+    },
+    {
+      "id": "ma9103e76",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve that the longest increasing subsequence under Mallows measure exhibits a BBP-type phase transition from Tracy-Widom (TW2) to Gaussian fluctuations at the critical scaling 1-q_n ~ c·n^(-2/3), via an integrable saddle-point analysis of the Mallows-LPP problem.",
+      "created_at": "2026-06-23T11:47:30Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that the longest increasing subsequence under Mallows measure exhibits a BBP-type phase transition from Tracy-Widom (TW2) to Gaussian fluctuations at the critical scaling 1-q_n ~ c·n^(-2/3), via an integrable saddle-point analysis of the Mallows-LPP problem.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Pin down the permuton and leading-order constants",
+        "body": "Confirm that in the scaling window 1-q_n ~ β/n, Starr's Mallows permuton ν_β governs the law of large numbers for the LIS. Derive the centering constant a_n = 2√n·ℓ(β) (geodesic length in the permuton metric) and the band geometry (diagonal band of intrinsic width β^(-1/2) in rescaled [0,1]^2 coordinates, hence transverse width w ~ n·β^(-1/2) and longitudinal extent ~ n in the discrete array). Verify the β→0 limit recovers BDJ with ℓ(0)=1, c(0)=1.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Establish the integrable last-passage representation",
+        "body": "Construct the explicit coupling of Mallows-RSK to a q-deformed last-passage percolation model in the Macdonald-process framework (Borodin-Corwin), since exact determinantal structure is lost away from q=1. Produce a Fredholm-determinant identity (det(I-K) via Macdonald operators) and a contour-integral formula for the LIS distribution that specializes to the Airy kernel at q→1. Confirm the symmetry class is β=2 (unitary), targeting TW2 / Fredholm determinant, NOT a Pfaffian.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Resolve the crossover threshold via variance balance",
+        "body": "Settle the disputed crossover exponent among the candidates n^(-1/3), n^(-1/2), n^(-2/3). Set 1-q_n = n^(-γ). Show the transverse-wandering/band-geometry constraint (w >> ℓ^(1/3)) never binds inside the scaling window. Establish that the binding mechanism is the renewal-block / variance comparison: localization length ξ ~ 1/(1-q_n), number of effectively independent blocks N ~ n(1-q_n) = n^(1-γ), Gaussian contribution √N ~ n^((1-γ)/2) balanced against KPZ fluctuation b_n ~ n^(1/6), yielding the critical exponent γ = 2/3, i.e. 1-q_n ~ c·n^(-2/3).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Cross-check threshold arithmetic and dimensional analysis",
+        "body": "Independently verify the dimensional analysis in step 2, paying particular attention to the band-width correction (w ~ n·β^(-1/2) measured against the full side n, NOT √(n/β)). Audit each of the three candidate thresholds, confirm which constraint genuinely binds, and check the resulting γ=2/3 statement against the Basu-Bhatnagar and Mueller-Starr-Bhatnagar-Peled literature on localization length and fluctuation regimes.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Prove operator/kernel convergence to the Airy kernel",
+        "body": "For the KPZ phase (γ > 2/3), prove operator-norm convergence of the rescaled Macdonald/LPP correlation kernel to the Airy kernel K_Ai on L^2(s,∞), together with tail bounds ensuring tightness. Conclude convergence of the rescaled LIS point process to the Airy_2 process with b_n = c(β)·n^(1/6). This closes the spectral-convergence gap (Gap B) at the KPZ endpoint.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Analyze the degenerate-saddle / BBP crossover family",
+        "body": "At the critical scaling 1-q_n = c·n^(-2/3), perform the saddle-point analysis of the contour-integral formula from step 1. Show the TW2 phase arises from a simple Airy saddle and the Gaussian phase from a non-degenerate quadratic critical point, with crossover occurring at the coalescence of the cubic Airy term and the linear renewal drift. Derive the explicit one-parameter family of limit laws interpolating F_{TW2} (c→0) to Gaussian (c→∞), establishing the BBP/Pearcey-type transition as the main theorem.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Adversarial review of the integrable backbone and transition claim",
+        "body": "Critically stress-test the central claims: (a) that the Macdonald-process coupling genuinely yields the asserted Fredholm determinant for finite q away from 1; (b) that the saddle coalescence at γ=2/3 truly produces a non-degenerate one-parameter crossover family rather than a sharper or trivial transition; (c) whether per-block increments are genuinely non-Gaussian in the KPZ phase and summable in the Gaussian phase. Identify any hidden assumptions or gaps in the variance-balance heuristic that need rigorous justification.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble and sequence the final proof",
+        "body": "Integrate the permuton LLN (step 0), integrable representation (step 1), verified threshold (steps 2-3), Airy-kernel convergence (step 4), and BBP crossover analysis (step 5), addressing critic feedback (step 6) into a coherent proof of the main theorem: characterization of Mallows-LIS fluctuations across all three regimes with the explicit TW2-to-Gaussian transition at 1-q_n ~ c·n^(-2/3).",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T11:47:30Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

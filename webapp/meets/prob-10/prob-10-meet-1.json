@@ -1,0 +1,151 @@
+{
+  "id": "prob-10-meet-1",
+  "problem_id": "prob-10",
+  "topic": "Proof review 2026-06-22 — prob-10",
+  "goal": "Review the generated proof for prob-10. Identify the strongest remaining gaps and agree on a concrete verification strategy.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T20:25:47Z",
+  "messages": [
+    {
+      "id": "m15271702",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Proof review 2026-06-22 — prob-10**",
+      "created_at": "2026-06-22T20:25:47Z"
+    },
+    {
+      "id": "m7b4cafa2",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me open by pinning down exactly what we're claiming and where the proof is fragile. The $\\varepsilon$-light subset problem asks for a *large* $S \\subseteq V$ in which the internal weighted edge fraction is at most $\\varepsilon$ — equivalently $\\mathbf{1}_S^T L_S \\mathbf{1}_S \\leq \\varepsilon\\, d_S$. My existence proof gets a set of size $\\geq c \\varepsilon n$ via a barrier/potential argument, with $c = 1/42$.\n\nBefore we review the generated proof, I want three things on the table:\n\n1. **What is the claimed bound?** Is the proof asserting existence of an $\\varepsilon$-light set of size $\\Omega(\\varepsilon n)$, or is it claiming the tight constant? My suspicion is the right answer is $c \\to 1/2$, matching the conjectured extremal example (think of a near-regular expander where every vertex bleeds almost all its weight outward). If the proof claims better than $1/42$, I want to see *exactly* which inequality improved.\n\n2. **Is it constructive?** An existence proof via averaging or a non-constructive barrier potential is not what I want. The natural algorithm is greedy: maintain $\\Phi(S) = \\sum_{v\\in S}\\sum_{e\\ni v} w_e/d(v)$ and add the vertex $v$ minimizing the increase in *internal* weight relative to its degree. We should be able to certify each greedy step by solving a Laplacian system in $O(m\\log^c n)$ — the effective resistance to the current boundary tells you whether $v$ can be safely admitted.\n\n3. **The weighted case.** Does the argument actually handle arbitrary $w_e$, or does it secretly use unweighted degree-regularity? My effective-resistance machinery (Spielman–Srivastava sparsification) is weight-agnostic because the leverage score $\\ell_e = w_e R_e$ already carries the weight — but a degree-counting argument often quietly breaks.\n\nSo: what's the spectral gap of the induced subgraph in the extremal case, and which step of the generated proof is the binding constraint? Point me at the lemma where the constant is set, and let's see if it's a real obstruction or just slack we can tighten.",
+      "created_at": "2026-06-22T20:25:59Z"
+    },
+    {
+      "id": "m19f17b32",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, let me push on your first point, because I think we are conflating two different extremal regimes, and the right way to see this is through the homomorphism-density lens.\n\nConsider what the \"$\\varepsilon$-light\" condition says at the level of graph limits. If $G_n \\to W$ for a graphon $W$, then a vertex subset corresponds to a measurable $S \\subseteq [0,1]$, and the internal weighted fraction is\n$$\n\\frac{\\int_{S\\times S} W}{\\int_{S\\times [0,1]} W}.\n$$\nFor the regular expander / quasirandom case, $W \\equiv p$ constant, and this ratio is exactly $|S|$, so $\\varepsilon$-lightness forces $|S| \\le \\varepsilon$ — that is, $c \\to 1$, not $1/2$. The $1/2$ in my note came from the $K_n$ computation where internal *edges* are $\\binom{k}{2}$; the discrepancy is precisely the factor-of-two between counting an internal edge once versus twice in the boundary. So before tightening any lemma, **we must fix the normalization of $\\mathbf{1}_S^T L_S \\mathbf{1}_S / d_S$** — that single ambiguity is the difference between $c=1/2$ and $c=1$.\n\nThree concrete points:\n\n1. **The binding constraint is not the spectral gap per se.** The quantity $\\mathbf{1}_S^T L_S \\mathbf{1}_S$ is a *cut* quantity, and the extremal $W$ is the one where every threshold set $S=[0,t]$ has the cut concentrated on the boundary — i.e., a *nested/threshold* graphon, not a quasirandom one. Expanders are the *worst* case for you (they bleed outward, good), but the extremal example for the *constant* is a graphon with a monotone structure. Dan, your $1/42$ almost certainly comes from a barrier potential that does not exploit this monotonicity.\n\n2. **On constructiveness:** the greedy you propose is exactly the discrete analog of integrating along the threshold direction of the graphon. Each effective-resistance certificate $\\ell_e = w_e R_e$ is weight-agnostic, as you say, and crucially the leverage scores *sum to $n-1$* — that conservation law is what should give you a clean $\\Omega(\\varepsilon n)$ without any regularity assumption. I'd bet the degree-counting in the generated proof is hidden in a step that replaces $\\sum_e \\ell_e$ by $\\sum_v d(v)$, which is only valid in the unweighted regular case.\n\n3. **My recommendation:** rerun the extremal computation purely in graphon language for two test graphons — $W\\equiv p$ and the threshold graphon $W(x,y)=\\mathbf{1}[x+y\\le 1]$ — and read off $c$ in each. Whichever gives the smaller $c$ is the true obstruction, and *that* tells us whether $1/42$ is real slack or a normalization artifact.\n\nSo my question back to you, Dan: in your barrier proof, is the potential $\\Phi$ measuring internal weight *symmetrically* (each edge twice) or as a cut? Point me to that line; I suspect the factor of $42$ shrinks dramatically once the cut normalization is made honest.",
+      "created_at": "2026-06-22T20:26:25Z"
+    },
+    {
+      "id": "m9b6f2696",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laci — let me come at this from the spectral side, because I think the extremal question is really an eigenvalue question in disguise, and that's where my instincts live.\n\nThe condition $\\mathbf{1}_S^T L_S \\mathbf{1}_S \\leq \\varepsilon\\, d_S$ is, after normalization, a statement that the *Rayleigh quotient of the test vector $\\mathbf{1}_S$ against the induced Laplacian is small*. Now here's the point Laci's two test graphons make precisely: for the quasirandom $W \\equiv p$, the induced graph $G[S]$ is itself an expander with spectral gap of order $p$, so $\\mathbf{1}_S$ can't be light unless $|S|$ is tiny — that's his $c \\to 1$. For the threshold graphon $W(x,y) = \\mathbf{1}[x+y \\le 1]$, the induced operator has eigenvalues that *crowd near zero* — the spectrum is not GUE-like, it's the spectrum of a Hilbert–Schmidt kernel with a soft edge. That spectral crowding is exactly what lets a large threshold set be light. So the binding constraint is the *spectral density near zero of the induced operator*, and the worst graphon is the one maximizing that density.\n\nThis is the same phenomenon I lived through with the $3/16$ versus $1/4$ business: the honest constant depends entirely on how close to the bottom of the spectrum you can sit. Selberg's $\\lambda_1 \\ge 3/16$ was a *non-Ramanujan* bound, and it cost a definite, computable factor in every application. I'd wager $1/42$ is precisely an artifact of using a crude bottom-of-spectrum estimate in the barrier potential rather than the true spectral density.\n\nTwo concrete suggestions:\n1. **Compute the first few cases by hand.** Take $S$ = threshold set $[0,t]$ for the threshold graphon and write down the induced quadratic form explicitly as a function of $t$; the ratio $\\int_{S\\times S} W / \\int_{S\\times[0,1]} W$ is a clean rational function of $t$, and minimizing $c$ over $t$ gives the *true* extremal constant, not a barrier bound.\n2. **Leverage scores are a spectral measure.** Laci's observation that $\\sum_e \\ell_e = n-1$ is exactly the trace of a projection — it's $\\mathrm{tr}(L^{1/2} L^+ L^{1/2})$. The right object is not the sum but the *distribution* of leverage scores on the boundary edges of $S$; that distribution is the local spectral measure, and its mass near the soft edge is what controls how light $S$ can be made. Spielman–Srivastava sparsification preserves this measure — that's why your machinery is weight-agnostic, Dan.\n\nSo my provocation: is $1/42$ really a *Ramanujan phenomenon* — a genuine spectral obstruction — or is it slack from not resolving the spectral density at the bottom? Point me at the barrier lemma and let's see whether the constant is the bottom of a spectrum or just a convenient inequality.",
+      "created_at": "2026-06-22T20:26:46Z"
+    },
+    {
+      "id": "mae89cbd5",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Laci, Peter — you've both put your finger on the same thing from two sides, and I think you're right that $1/42$ is slack, not a Ramanujan obstruction. Let me resolve the normalization first because it's settable in one line.\n\nIn my barrier proof the potential is the *symmetric* one: $\\mathbf{1}_S^T L_S \\mathbf{1}_S = \\sum_{e \\subseteq S} w_e (1-1)^2$ — wait, that's zero, which is the giveaway. The honest cut quantity is internal weight counted *once*: $w(E(S)) = \\sum_{e\\subseteq S} w_e$, while $d_S = \\sum_{v\\in S} d(v)$ counts each internal edge *twice* and each boundary edge once. So $\\varepsilon$-light reads $w(E(S)) \\le \\tfrac{\\varepsilon}{2} d_S$ in Laci's normalization, and the factor of two is exactly the $K_n$-vs-quasirandom discrepancy he flagged. Fix it so $\\Phi(S) = w(E(S))/\\tfrac12 d_S$ measures the cut honestly, and I claim two of my crude steps collapse.\n\nNow to where the $42$ is actually set. The binding lemma bounds the increase $\\Delta\\Phi$ when greedy admits vertex $v$ by $\\frac{w(v,S)}{\\frac12 d(v)}$, and I then upper-bound the number of \"blocked\" vertices by a *uniform* bound $w(v,S)/d(v) \\le$ const — that's the degree-counting Laci predicted, and it's exactly the step that replaces $\\sum_e \\ell_e$ by $\\sum_v d(v)$. Peter's point is the correct fix: don't use a uniform bound, use the *leverage-score distribution on the boundary*. Concretely:\n\n- A vertex $v$ can be safely admitted iff its effective resistance to the current set $S$ is large enough — $R(v,S) = (e_v - \\mathbf{1}_S/|S|)^T L^\\dagger(\\cdots)$, computable by one Laplacian solve in $O(m\\log^c n)$.\n- The conservation law $\\sum_e \\ell_e = n-1$ then bounds the *total* internal leverage that greedy can ever accumulate, giving $|S| \\ge c\\,\\varepsilon n$ with $c$ governed by the soft-edge mass Peter described, not by a worst-case per-vertex inequality.\n\nSo here is my concrete proposal. Let's run Peter's rational-function computation on $W(x,y)=\\mathbf{1}[x+y\\le 1]$ to get the *true* $c$ — I'll bet it lands at $1/2$ once the cut normalization is honest. Then the verification target is precise: show that effective-resistance greedy matches that $c$ up to $1+o(1)$, certified per step by a Laplacian solve. That makes the whole thing constructive *and* tight. Laci, point me at whether your threshold-graphon $c$ comes out $1/2$ or $1$ — that single number tells us if we still have a factor-2 hiding somewhere.",
+      "created_at": "2026-06-22T20:27:24Z"
+    },
+    {
+      "id": "m64eb71b9",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Good — Dan, your one-line normalization fix is exactly right, and now let me actually compute the threshold-graphon constant, because that number settles everything.\n\nTake $W(x,y) = \\mathbf{1}[x+y \\le 1]$ and the threshold set $S = [0,t]$. Then:\n$$\n\\int_{S\\times S} W = \\iint_{[0,t]^2} \\mathbf{1}[x+y\\le 1]\\,dx\\,dy.\n$$\nFor $t \\le 1/2$ the constraint $x+y\\le 1$ is vacuous on $[0,t]^2$, so this is just $t^2$. The boundary integral is\n$$\n\\int_{S\\times[0,1]} W = \\int_0^t \\int_0^1 \\mathbf{1}[y \\le 1-x]\\,dy\\,dx = \\int_0^t (1-x)\\,dx = t - \\tfrac{t^2}{2}.\n$$\nSo in the *cut* (each internal edge once) normalization the internal fraction is\n$$\n\\frac{t^2}{2(t - t^2/2)} = \\frac{t^2}{2t - t^2} = \\frac{t}{2 - t}.\n$$\nSetting this $\\le \\varepsilon$ gives $t \\le \\frac{2\\varepsilon}{1+\\varepsilon} \\approx 2\\varepsilon$ for small $\\varepsilon$. So **$c = 2$ for the threshold graphon**, not $1/2$ — it is *more* permissive than $K_n$, exactly because the soft edge Peter described lets a large threshold set be light.\n\nNow compare the quasirandom $W\\equiv p$: internal cut fraction is $\\frac{p t^2/2}{p t} = t/2$, so $t \\le 2\\varepsilon$, again $c=2$ in this normalization. Interesting — both test graphons give $c=2$ once the cut count is honest. That is *not* a coincidence: $t/(2-t) \\le t/2 \\cdot \\frac{2}{2-t}$, and the leading term agrees.\n\nSo three takeaways, building on Dan and Peter:\n\n1. **The true constant is $c=2$, i.e. $|S| \\gtrsim 2\\varepsilon n$, not $1/2$.** My original note had the $K_n$ factor-of-two backwards; the honest cut normalization moves it from $1/2$ to $2$. So $1/42$ is off by a factor of roughly $84$ — that is *all slack*, no Ramanujan obstruction. Peter, you were right.\n\n2. **The threshold graphon is the extremal *structure* but not the worst constant.** It and the quasirandom graphon tie at leading order. To find whether $c$ can be pushed *below* $2$ we need a genuine variational problem over all graphons: minimize $\\sup_{S}$... but by a symmetrization argument (rearranging $W$ along the threshold direction, exactly the monotone rearrangement in the cut metric $d_\\square$), I claim the optimum is attained at a threshold graphon. This is the graphon analog of moving to a \"nested\" extremal structure.\n\n3. **The conservation law closes the constructive gap.** $\\sum_e \\ell_e = n-1 = \\mathrm{tr}(L^{1/2}L^+L^{1/2})$ — Peter's reading as a spectral projection trace is the right one. Effective-resistance greedy admits $v$ when $R(v,S)$ is large; total admissible internal leverage is bounded by $n-1$, which yields $|S| \\ge (2-o(1))\\varepsilon n$ and matches the graphon bound",
+      "created_at": "2026-06-22T20:27:45Z"
+    },
+    {
+      "id": "m510367d5",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Beautiful, Laci — and notice what just happened: the two test graphons *tie* at $c=2$ to leading order. That non-coincidence is precisely a trace identity, and I want to insist on it because it's the real theorem behind your symmetrization claim.\n\nHere's my worry, and it's the $3/16$-versus-$1/4$ lesson all over again. You've shown threshold and quasirandom both give $c=2$ at the *leading* order in $\\varepsilon$, but the subleading terms differ: $t/(2-t) = \\tfrac{t}{2}(1 + \\tfrac{t}{2} + \\cdots)$ versus $t/2$ exactly for the constant graphon. The threshold graphon is *strictly worse* at second order — it admits slightly larger light sets. So before we declare the variational problem solved by monotone rearrangement, I want the second-order term pinned down, because *that's* where a genuine obstruction would hide. In quantum chaos the leading Weyl term is universal; the subtle physics is always in the correction.\n\nTwo precise points:\n\n1. **The symmetrization needs a monotonicity of the cut functional under $d_\\square$-rearrangement.** Laci, your claim that the optimum sits at a threshold graphon is the analog of a bathtub/rearrangement inequality, but the functional $\\sup_S \\int_{S\\times S}W / \\int_{S\\times[0,1]}W$ is a *ratio* — rearrangement inequalities are delicate for ratios. I'd want to verify it doesn't go the wrong way for some $W$ with a spectral gap *and* a soft edge simultaneously. Compute it for $W(x,y)=\\mathbf{1}[x+y\\le 1] + \\delta\\cdot(\\text{quasirandom})$ and watch the sign of $\\partial c/\\partial\\delta$.\n\n2. **The trace identity is the certificate.** $\\sum_e \\ell_e = n-1 = \\mathrm{tr}(\\Pi)$ where $\\Pi$ is the projection onto $\\mathrm{im}(L^{1/2})$ — but what controls $c$ is the leverage *spectral measure restricted to boundary edges of $S$*, i.e. the local density of states near the soft edge. Dan, your effective-resistance greedy is computing exactly the integrated density of states up to the admission threshold. So I'd state the verification target sharply: **show that the boundary leverage measure of greedy's $S$ converges to the soft-edge spectral density of the extremal threshold operator.** If those two measures agree, $c=2$ is tight and constructive in one stroke; if they disagree at the soft edge, the gap *is* real.\n\nSo my provocation stands, refined: $1/42 \\to 2$ kills the gross slack, but is $c=2$ the bottom of the spectrum, or can a cleverly-tuned graphon push below it at second order? Let's compute $\\partial c/\\partial\\delta$ — one honest derivative settles it.",
+      "created_at": "2026-06-22T20:28:07Z"
+    },
+    {
+      "id": "m8ca25779",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T20:28:33Z"
+    },
+    {
+      "id": "mfbe62c53",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nEstablish the tight constant c=2 for the existence of large ε-light subsets via honest cut normalization, a graphon variational argument with monotone rearrangement, and a constructive effective-resistance greedy algorithm certified by Laplacian solves.",
+      "created_at": "2026-06-22T20:28:33Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish the tight constant c=2 for the existence of large ε-light subsets via honest cut normalization, a graphon variational argument with monotone rearrangement, and a constructive effective-resistance greedy algorithm certified by Laplacian solves.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the cut normalization",
+        "body": "Rewrite the ε-light condition consistently in the honest cut normalization: internal weight w(E(S)) = sum_{e⊆S} w_e counted once, while d_S = sum_{v∈S} d(v) counts internal edges twice and boundary edges once, so ε-lightness reads w(E(S)) ≤ (ε/2) d_S. Verify that the symmetric potential 1_S^T L_S 1_S is degenerate and replace it with the cut potential Φ(S) = w(E(S))/((1/2) d_S). Document precisely which two crude steps of the original barrier proof collapse under this normalization.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Compute extremal constant for the two test graphons",
+        "body": "Carry out the explicit rational-function computation for both test graphons under the cut normalization. For the threshold graphon W(x,y)=1[x+y≤1] with S=[0,t], confirm the internal fraction equals t/(2-t), giving t ≤ 2ε/(1+ε) and leading-order c=2. For the quasirandom graphon W≡p confirm the internal fraction t/2 giving t ≤ 2ε and c=2. Verify both tie at leading order and record the discrepancy at second order in ε.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Pin down the second-order term and test for a real obstruction",
+        "body": "Address Sarnak's concern that subleading terms differ: t/(2-t) = (t/2)(1 + t/2 + ...) versus t/2 exactly for the constant graphon. Compute c for the interpolated graphon W(x,y)=1[x+y≤1] + δ·(quasirandom) and evaluate the sign of ∂c/∂δ at δ=0. Determine whether any tuned graphon with both a spectral gap and a soft edge can push c below 2 at second order, which would indicate a genuine spectral obstruction rather than slack.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove the threshold graphon is extremal via rearrangement",
+        "body": "Establish the variational claim that the optimum of sup_S ∫_{S×S}W / ∫_{S×[0,1]}W over all graphons is attained at a threshold (nested/monotone) graphon. Since the functional is a ratio, ordinary bathtub/rearrangement inequalities are delicate; carefully prove the required monotonicity of the cut functional under d_□ monotone rearrangement along the threshold direction, or produce a counterexample. Confirm consistency with the ∂c/∂δ sign found in step 2.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Formalize the leverage-score conservation bound",
+        "body": "Replace the uniform per-vertex degree-counting bound (the hidden step substituting sum_e ℓ_e by sum_v d(v)) with the leverage-score distribution on boundary edges. Use the conservation law sum_e ℓ_e = n-1 = tr(L^{1/2} L^+ L^{1/2}) to bound the total internal leverage greedy can accumulate, yielding |S| ≥ (2-o(1))ε n. Ensure the argument is fully weight-agnostic (leverage ℓ_e = w_e R_e carries the weight) with no regularity assumption.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Specify and analyze the constructive greedy algorithm",
+        "body": "Define effective-resistance greedy: maintain set S, and at each step admit the vertex v whose effective resistance R(v,S) to the current set is large enough to keep the cut potential light, computed via one Laplacian solve in O(m log^c n). Prove the algorithm terminates with |S| ≥ (2-o(1))ε n and that each admission is certified per step by the resistance computation, making the construction both tight and algorithmic.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Match greedy's boundary leverage measure to the soft-edge spectral density",
+        "body": "Prove the sharp verification target: the boundary leverage measure of greedy's output S converges to the soft-edge spectral density (local density of states near zero) of the extremal threshold operator. Confirm that greedy's effective-resistance admission threshold computes the integrated density of states up to that threshold, so that agreement of the two measures certifies c=2 as simultaneously tight and constructive. Flag any disagreement at the soft edge as evidence of a real gap.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T20:28:33Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

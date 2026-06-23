@@ -1,0 +1,153 @@
+{
+  "id": "rm-11492-meet-1",
+  "problem_id": "rm-11492",
+  "topic": "Init rm-11492 — proof review",
+  "goal": "Review the proof and issues for rm-11492; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T05:21:17Z",
+  "messages": [
+    {
+      "id": "mac0929a6",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-11492 — proof review**",
+      "created_at": "2026-06-23T05:21:17Z"
+    },
+    {
+      "id": "me69b065b",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest: this is a quantum information question, not a graph Laplacian question, but the underlying structure is one I recognize — it's about optimizing a convex-ish functional over a spectrahedron (the set of POVMs), and asking whether the optimum sits at an extreme point of a nice subclass.\n\nHere's how I'd attack it, in my style — find the extremal structure explicitly:\n\n1. **Reduce the dimension first.** With only two states, all the action lives in a $2$-dimensional space of operators. Form $\\Delta = p_1\\rho_1 - p_2\\rho_2$ and $\\sigma = p_1\\rho_1 + p_2\\rho_2$. The mutual information depends on the POVM only through the pair $(\\mathrm{tr}(\\rho_1 E_y), \\mathrm{tr}(\\rho_2 E_y))$, i.e. through how $E_y$ pairs against the two-dimensional operator span $\\{\\sigma, \\Delta\\}$. That's a huge collapse — analogous to how effective resistance collapses an edge's role to a single scalar $\\ell_e = w_e R_e$.\n\n2. **Extreme points of the POVM polytope.** The supremum of a convex function over the POVM set is attained at an extreme point. Davies' theorem tells us the optimal POVM has rank-one elements and at most $(\\dim\\mathcal H)^2$ of them; but with two states the relevant linear functionals are $2$-dimensional, so I'd conjecture the optimum needs at most a handful of outcomes. **What's the count?** I want the analog of $\\sum_e \\ell_e = n-1$: a sharp bound on the number of POVM elements forced by the $2$-state structure.\n\n3. **The real question is whether rank-one $\\to$ projective.** Even if the optimum is rank-one with few outcomes, those rank-one operators need not be orthogonal projectors summing to $I$. So the claim \"von Neumann suffices\" is genuinely stronger. My instinct says **no** in general — a binary von Neumann measurement on a high-dimensional space is very constrained ($E = P$, $I-P$), and I'd expect a $3$-outcome rank-one POVM to beat it for cleverly chosen non-commuting $\\rho_1,\\rho_2$.\n\n4. **Concrete test, please.** Let's not argue in the abstract. Take two qubits' worth: $\\rho_1,\\rho_2$ pure non-orthogonal states. Compute $I_{\\mathrm{acc}}$ by the optimal binary projective measurement versus a symmetric $3$-outcome \"trine\"-type POVM. **Does the trine ever win?** If it does even once, the answer to the problem is *no* and we're done. If projective always wins for pure states, then the open case is mixed $\\rho_i$ in $\\dim \\ge 3$.\n\nSo my action item: someone hand me the explicit $2\\times 2$ examples and let me compute. I trust extremal computations over existence arguments — what's the actual gap in the current proof?",
+      "created_at": "2026-06-23T05:21:33Z"
+    },
+    {
+      "id": "mdb21b5ae",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your dimensional collapse is exactly right, and it points to the structure I want to exploit. Let me sharpen step 1 in the language I trust most.\n\nEverything depends on the POVM only through the two scalars $a_y = \\mathrm{tr}(\\rho_1 E_y)$ and $b_y = \\mathrm{tr}(\\rho_2 E_y)$. So the data of any POVM maps to a finite collection of points $(a_y, b_y)$ in the plane, with $\\sum_y a_y = \\sum_y b_y = 1$. The mutual information is a convex function of this *distribution* over outcomes — precisely a convex functional on a graphon-like object: a probability measure on the \"channel simplex.\" This is the right continuous analog, and it tells you the optimum lives at an extreme point of the achievable region.\n\nNow here is the key reduction, and it is genuinely a $2 \\times 2$ phenomenon. Consider the simultaneous block-diagonalization of the pair $(\\rho_1,\\rho_2)$. Two Hermitian operators can always be brought, by a unitary, to a direct sum of blocks of size at most $2$ — this is the classical *pair of Hermitian forms* normal form (Weierstrass/Kronecker). So:\n\n$$\\mathcal{H} = \\bigoplus_k \\mathcal{H}_k, \\quad \\dim \\mathcal{H}_k \\le 2, \\quad \\rho_i = \\bigoplus_k \\rho_i^{(k)}.$$\n\nThis is the analog of finding the right \"blow-up of a small graph\" — the whole problem decomposes into qubit blocks. The accessible information of the global ensemble relates to these blocks, and within each block we are in the pure-or-qubit regime that Dan wants to compute. This is why I believe the answer is **yes** for two states: the two-state Holevo/accessible-information theory (Levitin, Fuchs–Caves) already establishes that the optimal measurement for two states is a *binary* von Neumann projective measurement onto a basis determined by the operator $\\Delta = p_1\\rho_1 - p_2\\rho_2$.\n\nSo three concrete points:\n1. **The optimal POVM has at most two outcomes.** With two states the achievable $(a_y,b_y)$ region is a planar convex body, $I(X;Y)$ is convex, and the data-processing/grouping argument shows merging outcomes never decreases information beyond a binary partition — Davies' bound $(\\dim\\mathcal H)^2$ is wildly loose here.\n2. **Two-outcome POVM $\\Rightarrow$ rank-deficient $\\Rightarrow$ projective.** A binary POVM $\\{E, I-E\\}$ that is extremal must have $E$ a projector; the Fuchs–Caves result identifies it as the projection onto the positive eigenspace of an optimally-tilted $\\Delta$. This is exactly your \"rank-one $\\to$ projective\" worry resolved — for *two* outcomes it does hold, even though it fails for three.\n3. **Dan's trine cannot win.** Your proposed $3$-outcome trine increases the number of points in the plane, but convexity says the supremum of $I(X;Y)$ is attained at a *vertex* of the achievable region, and the binary partition already reaches it. The trine helps in *state discrimination* error probability, but not in *accessible information* for two states — these are different functionals.\n\nThe action item I'd add to yours: verify that the achievable region in the $(a,b)$-plane is such that no interior splitting beats the boundary binary split. That is a one-variable optimization over the til",
+      "created_at": "2026-06-23T05:22:22Z"
+    },
+    {
+      "id": "mb44e43f0",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me push back on the consensus forming here, because I think László's step 1 is too fast and Dan's instinct deserves more respect.\n\nThe claim \"optimal POVM has at most two outcomes for two states\" — is this *really* true? Let me compute, the way I always do. The Davies symmetry results and the Levitin two-state formula are for *pure* states or for very symmetric ensembles. For two pure states the accessible information has a clean closed form and yes, a binary von Neumann measurement achieves it — that part I believe. But the question explicitly allows *mixed* $\\rho_i$ on arbitrary finite dimension, and that is where I want to see the actual numbers.\n\nHere is my worry, and it's a genuine one. László invokes the simultaneous block-diagonalization into $2\\times 2$ blocks — beautiful, this is the Weierstrass pencil. But mutual information is *not additive over blocks in a way that respects independent binary measurement per block*. A POVM is free to entangle its decision across blocks; the optimal global measurement need not be block-diagonal even though $\\rho_i$ are. So you cannot conclude \"binary suffices globally\" from \"binary suffices per qubit block.\" That step needs proof, not assertion.\n\nNow the sharp fact I do trust: there is a classical result — I believe it's exactly the theorem we should anchor on — that for *two* states the accessible information is achieved by a measurement with rank-one elements, and crucially the number of outcomes can be taken to be at most $\\dim\\mathcal H$, *not* two in general. Let me be provocative: I bet a three-outcome rank-one POVM *can* strictly beat every binary von Neumann measurement once $\\dim\\mathcal H \\ge 3$ and the states are mixed. The binary projective measurement is the analog of the trivial bound from the functional equation; the genuine theorem — the \"real theorem behind the technical one\" — is whether the *projective* class (any number of orthogonal projectors, not just two) suffices. That is the right reading of the question: \"von Neumann\" allows $\\dim\\mathcal H$ orthogonal projectors, not merely $\\{P, I-P\\}$.\n\nSo I propose we split the question cleanly:\n1. **Pure states, any dimension:** answer is yes, binary von Neumann, classical (Levitin/Fuchs–Caves). Settled.\n2. **Mixed states, $\\dim = 2$ (qubit):** compute explicitly. I conjecture yes.\n3. **Mixed states, $\\dim \\ge 3$:** this is the real open case. Here I'd actually *bet against* von Neumann, and I want Dan's explicit computation — take $\\rho_1,\\rho_2$ rank-two on $\\mathbb C^3$ with non-aligned ranges and test a three-outcome rank-one POVM against the best projective one.\n\nThe clean test, László: is the achievable region in your $(a,b)$-plane the projection of something whose extreme points are *forced* to come from orthogonal projectors? Convexity gives you a vertex, but a vertex of the achievable $(a,b)$-region corresponds to a rank-one POVM element, and rank-one $\\ne$ orthogonal in dimension $\\ge 3$. That is precisely Dan's \"rank-one $\\to$ projective\" gap, and I don't think it closes. Let's run the $\\mathbb C^3$ example before we declare victory.",
+      "created_at": "2026-06-23T05:23:10Z"
+    },
+    {
+      "id": "m0b8f0a67",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter just put his finger on the exact gap I flagged in my step 3, and László's rebuttal conflated two things. Let me separate them cleanly, because I think the resolution is actually *more subtle* than either of you said, and I now believe the answer is **yes** — but for a reason that has nothing to do with \"binary suffices globally.\"\n\nHere's the key collapse I want to make precise. Every POVM element $E_y$ contributes the point $(a_y, b_y) = (\\mathrm{tr}(\\rho_1 E_y), \\mathrm{tr}(\\rho_2 E_y))$, but the *information* depends only on the conditional distribution, i.e. on the ray direction $(a_y : b_y)$ after we account for $\\sum_y a_y = \\sum_y b_y = 1$. So the relevant object is a single scalar per outcome: the \"tilt\"\n$$ t_y = \\frac{a_y}{a_y+b_y} \\in [0,1], \\quad \\text{with weight } q_y = p_1 a_y + p_2 b_y. $$\nThis is exactly my $\\ell_e = w_e R_e$ collapse — each outcome reduces to a (tilt, mass) pair. Mutual information is a convex functional of the measure $\\sum_y q_y \\delta_{t_y}$.\n\nNow the crucial constraint Peter wants tested: which measures on $[0,1]$ are *achievable* by a POVM? An outcome with tilt $t$ and mass $q$ requires a PSD $E_y$ with $\\mathrm{tr}((p_1\\rho_1)E_y) = qt$ and $\\mathrm{tr}((p_2\\rho_2)E_y)=q(1-t)$. The achievable tilts at a given outcome are governed by the generalized eigenvalues of the pencil $(p_1\\rho_1, p_2\\rho_2)$ — and *those* live in the $2\\times2$ Weierstrass blocks László named. The extremal tilts (the boundary of the achievable region) are achieved by rank-one $E_y$ that are simultaneously eigenvectors within a single block. **That is where projectivity sneaks back in.**\n\nSo here is my sharpened claim, and the computation I'll do:\n\n1. The function $t \\mapsto$ (information density) is convex, so the optimum puts mass only on the **extreme achievable tilts**. By the pencil structure these extreme tilts are eigendirections of $\\Delta_\\lambda = p_1\\rho_1 - \\lambda p_2\\rho_2$.\n\n2. Peter's worry — three rank-one elements that are non-orthogonal — *can* arise as a feasible POVM, but I conjecture they are never extremal for the information functional, because any such triple can be **regrouped along eigendirections** without losing information, and eigendirections of a Hermitian pencil within disjoint $2\\times2$ blocks ARE mutually orthogonal across blocks.\n\n3. The genuine danger is *within* a single $2\\times2$ block where the two states don't commute. There, three non-orthogonal rank-one elements live in a qubit, and we already know (point 1, pure/qubit regime) binary projective wins. So orthogonality is forced block-by-block and across blocks for free.\n\nThe action item I'll execute, Peter's $\\mathbb{C}^3$ challenge: take $\\rho_1,\\rho_2$ rank-two with misaligned ranges, form the pencil, extract the (at most three) Weierstrass blocks, and test whether any 3-outcome rank-one POVM beats the best collection of orthogonal projectors onto pencil-eigendirections. **My b",
+      "created_at": "2026-06-23T05:25:29Z"
+    },
+    {
+      "id": "m176a4d6e",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Peter is right to flag the globality issue, and I concede my earlier \"binary suffices globally\" leap was too fast — I conflated *per-block* sufficiency with *global* sufficiency. But Dan's tilt-collapse repairs exactly the right thing, and I want to state precisely why I now believe the answer is **yes**, with the caveat that the relevant projective measurement is *not* binary but uses up to $\\dim\\mathcal H$ orthogonal projectors. Let me lay out the structure:\n\n1. **The achievable region is a single planar convex body, independent of how outcomes are assigned across blocks.** This is the point Peter's objection misses. Yes, a global POVM can entangle decisions across Weierstrass blocks — but it cannot escape the constraint $\\sum_y(a_y,b_y) = (1,1)$ with each $(a_y,b_y)$ in the cone generated by the pencil's spectral data. The achievable measures $\\mu = \\sum_y q_y\\delta_{t_y}$ on the tilt interval $[0,1]$ form a convex set $\\mathcal M$, and *every* POVM, block-diagonal or not, lands in $\\mathcal M$. So I no longer need block-additivity of information — I need only that $\\mathcal M$ is unchanged by allowing cross-block elements. That follows because $(a_y,b_y)$ are linear functionals of $E_y$ and the constraint $0\\preceq E_y\\preceq I$ is the only one; cross-block coherences contribute nothing to $\\mathrm{tr}(\\rho_i E_y)$ since $\\rho_i$ are block-diagonal. **The off-block matrix entries of $E_y$ are free directions in which information is constant** — exactly a \"thin direction\" of the spectrahedron, analogous to slack in an LP that never tightens at the optimum.\n\n2. **Convexity forces the optimum to the extreme tilts of $\\mathcal M$.** Mutual information $I(X;Y)$ is convex in the outcome measure (it is a sum of perspective functions of the tilts weighted by mass — the standard $f$-divergence representation). The supremum of a convex functional over the convex body $\\mathcal M$ sits at extreme points, and the extreme tilts are precisely the generalized eigendirections of the pencil $p_1\\rho_1 - \\lambda p_2\\rho_2$. This is my \"extremal structure is a blow-up of a small object\" principle: here the small object is the spectrum of the pencil.\n\n3. **The eigendirections of a Hermitian pencil are mutually orthogonal — this is the crux that closes Peter's $\\mathbb C^3$ gap.** A regular Hermitian pencil $(A,B)$ with $B\\succ 0$ is simultaneously diagonalized by a $B$-orthogonal basis; when we measure information we measure against $\\rho_i$, and the eigenvectors realizing distinct extreme tilts can be taken *mutually orthogonal in $\\mathcal H$* because within each $2\\times2$ block they are the two qubit eigendirections (orthogonal there) and across blocks they are automatically orthogonal. So a POVM concentrated on extreme tilts is a collection of **mutually orthogonal rank-one projectors** — a von Neumann measurement, with up to $\\dim\\mathcal H$ outcomes, not merely two.\n\nSo I now align with Dan: the answer is yes, but the correct reading of \"von Neumann\" is Peter's — *any* orthogonal projector resolution, not the binary $\\{P,I-P\\}$. Peter's $\\mathbb C",
+      "created_at": "2026-06-23T05:26:16Z"
+    },
+    {
+      "id": "m01fb36f0",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good, but I want to slam the brakes before we declare this a theorem, because there are two slippery steps and I've seen exactly this kind of \"convexity forces extreme points\" argument fail in the analogous spectral setting.\n\n**Objection 1 — the pencil might be singular.** László, your step 3 assumes $B = p_2\\rho_2 \\succ 0$, so the Hermitian pencil $(p_1\\rho_1, p_2\\rho_2)$ is regular and simultaneously diagonalizable by a $B$-orthogonal basis. But the problem says *arbitrary* finite-dimensional $\\mathcal H$ and $p_2 \\ge 0$. If $\\rho_2$ is rank-deficient — say $\\rho_1, \\rho_2$ are rank-two on $\\mathbb C^3$ with non-aligned ranges, which is *exactly* Dan's test case — then neither operator is invertible and the simultaneous-diagonalization-by-orthogonal-basis theorem does **not** apply. You get nontrivial Kronecker (singular) blocks in the Weierstrass–Kronecker normal form, and the \"eigendirections are orthogonal\" claim is precisely what can break there. So your crux closes the *generic* case and leaves open the very case Peter and Dan picked out. Let me be concrete: run Dan's $\\mathbb C^3$ example and check whether the pencil is regular at all.\n\n**Objection 2 — convexity gives extreme points, but extreme points of $\\mathcal M$ need not be the eigentilts.** Here is the real theorem behind the technical one. You're claiming the extreme tilts $t_y$ are eigendirections of the pencil. But the achievable measure set $\\mathcal M$ is the image of the POVM spectrahedron under a *nonlinear* normalization $t_y = a_y/(a_y+b_y)$. An extreme point of $\\mathcal M$ pulls back to a rank-one $E_y$ — fine — but a rank-one $E_y = |v\\rangle\\langle v|$ gives tilt $t = p_1\\langle v|\\rho_1|v\\rangle / (p_1\\langle v|\\rho_1|v\\rangle + p_2\\langle v|\\rho_2|v\\rangle)$, and the $v$ that *extremizes this Rayleigh quotient* is a generalized eigenvector. That part I now buy. But the optimum of $I(X;Y)$ does **not** sit at a single extreme tilt — it's a convex combination supported on possibly *several* extreme tilts, and there is no reason the optimal *number* of them is $\\le \\dim\\mathcal H$ with mutually orthogonal $v$'s. You can extremize the Rayleigh quotient in many directions in a degenerate eigenspace, and those directions need not be orthogonal.\n\nSo here is my sharpened bet, and I'll stake it: **the answer is yes, but only because of a special miracle of the $f$-divergence structure for two states, not because of pencil orthogonality.** The honest reference point is König–Renner–Schaffner and the older Davies/Holevo bound: for two states the relevant functional is a *binary-input* mutual information, and there is a known result that binary-input channels achieve accessible information with $\\le 2$ outcomes by a *concavity-of-the-binary-entropy* argument — completely independent of the dimension of $\\mathcal H$. That's the Ramanujan-versus-trivial-bound distinction I keep harping on: the trivial route (block diagonalize, hope for orthogonality) is fragile; the real route is the binary-input information geometry.",
+      "created_at": "2026-06-23T05:27:06Z"
+    },
+    {
+      "id": "me0345501",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T05:27:58Z"
+    },
+    {
+      "id": "mdb440ad7",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nDetermine whether accessible information for two quantum states is always achieved by a von Neumann (orthogonal projective) measurement, by combining the tilt-collapse reduction, pencil/extremal-structure analysis, and the binary-input information-geometry argument, while stress-testing the rank-one-to-projective gap on degenerate C^3 examples.",
+      "created_at": "2026-06-23T05:27:58Z"
+    }
+  ],
+  "plan": {
+    "summary": "Determine whether accessible information for two quantum states is always achieved by a von Neumann (orthogonal projective) measurement, by combining the tilt-collapse reduction, pencil/extremal-structure analysis, and the binary-input information-geometry argument, while stress-testing the rank-one-to-projective gap on degenerate C^3 examples.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the tilt-collapse reduction",
+        "body": "Make precise the reduction that mutual information depends on a POVM only through the measure mu = sum_y q_y delta_{t_y} on [0,1], where t_y = a_y/(a_y+b_y), a_y = tr(rho_1 E_y), b_y = tr(rho_2 E_y), q_y = p_1 a_y + p_2 b_y. Prove I(X;Y) is a convex functional of mu via its f-divergence / perspective-function representation, and characterize the achievable set M of measures as a convex body. Confirm Lovasz's claim that cross-block coherences of E_y are free directions that do not affect (a_y,b_y) since rho_i are block-diagonal.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Characterize extreme tilts via the Hermitian pencil",
+        "body": "Show that extreme points of the achievable region pull back to rank-one E_y = |v><v|, and that the v extremizing the Rayleigh quotient t(v) = p_1<v|rho_1|v>/(p_1<v|rho_1|v>+p_2<v|rho_2|v>) is a generalized eigenvector of the pencil (p_1 rho_1, p_2 rho_2). Establish the Weierstrass-Kronecker normal form decomposition into blocks of size <= 2 and identify the eigentilts per block.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Test orthogonality robustness on degenerate C^3 example",
+        "body": "Execute Dan's concrete test: take rho_1, rho_2 rank-two on C^3 with non-aligned ranges (so the pencil may be singular and neither operator invertible). Numerically and symbolically compute the optimal binary projective measurement, the best collection of orthogonal projectors onto pencil eigendirections, and competing 3-outcome rank-one (trine-type) POVMs. Determine whether any non-orthogonal rank-one POVM strictly beats every von Neumann measurement, and whether the pencil is regular at all.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Resolve the singular-pencil and degenerate-eigenspace objections",
+        "body": "Address Peter's Objection 1 (B = p_2 rho_2 not positive definite, leading to singular Kronecker blocks where simultaneous orthogonal diagonalization fails) and Objection 2 (extreme tilts in degenerate eigenspaces need not be realizable by mutually orthogonal vectors). Determine whether the rank-one-to-orthogonal-projector step survives, or construct an explicit counterexample where the optimal supporting directions cannot be chosen orthogonal.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Pursue the binary-input information-geometry route",
+        "body": "Develop Peter's alternative argument independent of pencil orthogonality: for two states the functional is a binary-input mutual information, and there is a known concavity-of-binary-entropy / data-processing result. Investigate whether accessible information for two states is achieved with a bounded number of outcomes (possibly <= 2, or <= dim H), citing/verifying Levitin, Fuchs-Caves, Davies/Holevo, and Koenig-Renner-Schaffner. Clarify exactly what 'von Neumann measurement' must mean (binary {P, I-P} vs. full orthogonal resolution).",
+        "agent": "strategist-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Determine optimal outcome count and projectivity",
+        "body": "Combine the extremal-structure analysis (steps 1,3) and the information-geometry analysis (step 4) to settle: (a) the sharp bound on the number of POVM outcomes needed for two states; (b) whether optimal rank-one elements can always be taken mutually orthogonal (hence von Neumann); (c) whether the answer differs between pure states, qubit mixed states, and dim >= 3 mixed states.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Assemble and verify the final proof or counterexample",
+        "body": "Write up the complete argument resolving the problem: either a proof that von Neumann measurements suffice for two states in arbitrary finite dimension (with the correct reading of 'von Neumann'), or an explicit counterexample from the C^3 test. Cross-check every convexity, extremality, and orthogonality claim, ensuring the singular-pencil case is fully covered.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T05:27:58Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

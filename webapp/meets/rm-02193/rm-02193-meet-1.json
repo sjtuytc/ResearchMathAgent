@@ -1,0 +1,152 @@
+{
+  "id": "rm-02193-meet-1",
+  "problem_id": "rm-02193",
+  "topic": "Init rm-02193 — proof review",
+  "goal": "Review the proof and issues for rm-02193; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T23:41:11Z",
+  "messages": [
+    {
+      "id": "maee43419",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-02193 — proof review**",
+      "created_at": "2026-06-22T23:41:11Z"
+    },
+    {
+      "id": "m2f0f1cc3",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about scope: this problem is not really in my wheelhouse of spectral methods — there's no Laplacian here, and \"path-mergeable\" is a structural digraph condition, not a spectral one. So let me engage with it the way I'd engage with any algorithmic question: what's the *constructive* algorithm?\n\nThe merging property is the key, and it's essentially a local-augmentation rule. Here's why I think this is polynomial. The defining property says: given two internally disjoint $(x,y)$-paths $P, P'$, I can *merge* them into a single path $P^*$ on $V(P)\\cup V(P')$. This is exactly the kind of augmentation invariant that makes greedy path-growing work.\n\nMy proposed algorithm, in the spirit of how I'd attack a connectivity problem:\n1. Maintain a single directed path $P$ covering a vertex subset $S$.\n2. To extend, take any vertex $v\\notin S$. If $v$ has an arc into or out of an endpoint, append it trivially.\n3. If $v$'s arcs go into the *interior* of $P$, then $v$ together with a sub-path of $P$ gives a second $(x,y)$-route, and path-mergeability lets us absorb $v$ into a longer path on $S\\cup\\{v\\}$.\n\nThe claim to verify is that mergeability guarantees this absorption always succeeds when the digraph is connected enough — i.e., that we never get stuck with $v$ \"danglingly\" attached. This is the analogue of the augmenting-path argument, and I'd bet it runs in $O(|V|\\cdot|A|)$ time, no spectral machinery needed.\n\nTwo questions for the room: (a) Is the class known to be closed under the operations my greedy step requires — taking subpaths and re-merging? Bang-Jensen's work on path-mergeable and locally-in/out-semicomplete digraphs is the right reference here. (b) Do we have a candidate hard instance at all? If nobody can even sketch a reduction from 3-SAT, that's strong evidence the answer is **polynomial**, and we should just nail down the augmentation invariant rigorously.",
+      "created_at": "2026-06-22T23:41:23Z"
+    },
+    {
+      "id": "m1711127f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your instinct toward a constructive augmentation argument is the right reflex, but I want to sharpen the structural picture, because path-mergeability is a beautifully rigid class and we should exploit that rigidity directly rather than betting on a greedy heuristic.\n\nA few precise points:\n\n1. **The closure question (a) is essentially settled.** Bang-Jensen showed that a digraph is path-mergeable iff for every vertex $z$ and every pair of in-neighbors (resp. out-neighbors), the relevant local domination holds — and crucially, *path-mergeability is preserved under taking subdigraphs that arise as unions of internally disjoint paths between a fixed pair*. So your subpath-and-re-merge step stays in the class. Locally in/out-semicomplete and semicomplete digraphs are all special cases.\n\n2. **Why I believe the answer is polynomial — and even more.** The decisive structural fact is the one Bang-Jensen and Gutin record: *every path-mergeable digraph with a Hamiltonian path can have one constructed by an inductive merging procedure*, and more strongly, in path-mergeable digraphs the existence of a spanning $(x,y)$-path reduces to a connectivity/ear-type condition. The merging property is exactly an exchange axiom — it behaves like the augmenting structure in matroid theory or in my matching/ellipsoid work, where a local exchange guarantees a global optimum.\n\n3. **The augmentation invariant must be stated carefully.** Your step 3 has a gap: when $v$'s arcs hit the *interior* of $P$, you do not automatically get two internally disjoint $(x,y)$-paths covering $V(P)\\cup\\{v\\}$ — you get a detour, and you must verify $v$ has both an in-arc *and* a suitably placed out-arc so that splicing yields a genuine second path. This is precisely where path-mergeability is invoked: it guarantees that whenever you have the two routes, the merge into a spanning path exists. So the invariant should be: *maintain a directed Hamiltonian path of the subdigraph induced on $S$, and absorb $v$ only when $v$ forms a valid alternative route with $S$.*\n\n4. **My recommendation.** The cleanest proof is not a 3-SAT non-reduction hand-wave but a clean induction: order the vertices, add one at a time, and prove that path-mergeability lets you re-merge to maintain a Hamiltonian path of the current induced subdigraph *whenever one exists*. This is $O(|V|^2)$ or $O(|V|\\cdot|A|)$ and structurally exact. The answer is **polynomial**.\n\nSo Dan and I agree on the verdict; I am only insisting we ground it in the exchange axiom rather than a connectivity bet. Shall we write the induction explicitly, with the merge lemma as the engine?",
+      "created_at": "2026-06-22T23:42:08Z"
+    },
+    {
+      "id": "m739f746c",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, László — let me play the role I always play and ask: *what is the real theorem here, and is there a Ramanujan-type subtlety hiding in it?* Here, happily, I think there is not — and let me say why, with explicit small cases, because that's how I always check these things.\n\nLet me build intuition the way I'd check $SL_2(\\mathbb{Z})$ before the general group. The defining axiom — given two internally disjoint $(x,y)$-paths you can merge into a spanning $(x,y)$-path — is a *zig-zag splicing* statement. The cleanest proof of the merge lemma, due essentially to Bang-Jensen, is by induction on $|V(P)| + |V(P')|$: walk along $P$ until the first vertex $u_i$ whose *successor* on $P$ differs from where $P'$ leaves the common prefix; mergeability of the two out-neighbors gives an arc that lets you splice, reducing the total length. So the merge is *constructive* and runs in linear time per merge — this is not a bet, it's an algorithm.\n\nNow the key point I want to add, which sharpens László's point 4. The right statement is **monotone**: a path-mergeable digraph has a Hamiltonian path *if and only if it is connected in the strong-enough sense that no \"1-cut\" separates the path-orderable pieces*. More precisely, I claim:\n\n- Maintain a directed path $P_S$ spanning $S$, with endpoints $x, y$.\n- Take $v \\notin S$. Because of mergeability, the obstruction to absorbing $v$ is purely local: either $v$ has an arc to $x$ or from $y$ (trivial extension), **or** $v$ has both an in-arc from some $a \\in S$ and an out-arc to some $b \\in S$ with $a$ before $b$ on $P_S$ — and *then* the detour $\\,x \\cdots a \\to v \\to b \\cdots y\\,$ is a second $(x,y)$-route internally disjoint from $P_S$ on the relevant segment, and the merge lemma absorbs $v$.\n\nThis is exactly where László's point 3 is right that Dan's step 3 was incomplete: you need the in-arc *and* the correctly-placed out-arc. But here's the clean fact — **in a path-mergeable digraph this is the only obstruction**, and it's checkable in $O(\\deg v)$. So the algorithm is genuinely $O(|V|\\cdot|A|)$.\n\nLet me give the smallest nontrivial case so we're honest. Take the semicomplete digraph on 3 vertices — these are path-mergeable. A tournament always has a Hamiltonian path (Rédei), and the merge procedure *reconstructs* Rédei's theorem: it's the insertion-sort proof. That's the \"real theorem\" behind this one — **path-mergeable Hamiltonicity is Rédei's theorem generalized via the exchange axiom**, and it's polynomial for the same reason insertion sort is polynomial.\n\nSo I agree with the verdict: **polynomial**, and not just polynomial — strongly polynomial with an explicit $O(|V|\\cdot|A|)$ algorithm. My one demand: state and prove the merge lemma *constructively* (the zig-zag splice), then the induction is automatic. Let's write it that way, with the 3-vertex tournament as the worked example. Shall I sketch the splice lemma on the board?",
+      "created_at": "2026-06-22T23:42:56Z"
+    },
+    {
+      "id": "m830d4581",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your insertion-sort framing is exactly right, and it resolves the gap László and you flagged in my step 3. Let me just make the complexity claim sharp, because I always want the algorithm pinned down, not hand-waved.\n\nThe merge lemma's zig-zag splice is $O(|V|)$ per merge — it walks both paths once. But notice the absorption step has a subtlety I want to record: when $v$ has an in-arc from $a$ and out-arc to $b$ with $a$ *before* $b$ on $P_S$, the detour $x\\cdots a\\to v\\to b\\cdots y$ is a route, but $P_S$ restricted to the segment $a\\cdots b$ is the *other* route, and these two are internally disjoint on $[a,b]$ only — so the merge lemma is applied to the subpath, then re-spliced. This is exactly why László's closure point 1 matters: the induced subdigraph on $S\\cup\\{v\\}$ stays path-mergeable, so the lemma is legal at each step.\n\nCounting: $|V|$ insertions, each scanning $v$'s arcs ($O(\\deg v)$) to find the placement, plus one splice ($O(|V|)$). Total $O(|V|^2 + |A|) = O(|V|^2)$ — which beats my earlier $O(|V|\\cdot|A|)$ guess. So the verdict is **polynomial**, in fact $O(n^2)$.\n\nOne thing I'll push on, in my constructive spirit: we should prove the contrapositive cleanly — *if* the greedy gets stuck at some $v$ (no trivial extension, no valid $a\\prec b$ detour), then no Hamiltonian path exists on $S\\cup\\{v\\}$ extending $P_S$. That's the part that makes it a decision procedure and not just a heuristic, and it's where path-mergeability does real work: the exchange axiom says the local obstruction is the *global* obstruction, just like leverage scores tell you a single edge's importance is determined locally by its effective resistance. Peter, sketch the splice; I'll write the stuck-implies-infeasible lemma to close the loop.",
+      "created_at": "2026-06-22T23:45:07Z"
+    },
+    {
+      "id": "m21984a13",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your $O(n^2)$ count is right, but I must flag a genuine logical hole in your final paragraph — the \"stuck-implies-infeasible\" lemma as stated is *false* as a greedy invariant, and we should not paper over it.\n\nHere is the danger. The contrapositive you want says: if greedy gets stuck at $v$ relative to the *current* path $P_S$, then no Hamiltonian path of $D[S\\cup\\{v\\}]$ exists. But that is the wrong quantifier order. The obstruction might depend on *which* Hamiltonian path of $S$ you happen to be holding. A different spanning $(x',y')$-path of $S$ might admit $v$. So the naive greedy is not obviously correct — you need the absorption to work against *some* spanning path of $S$, and you must prove the merge lets you re-route.\n\nThis is exactly where the matroid-exchange intuition I raised becomes load-bearing. The correct invariant is not \"maintain a fixed Hamiltonian path of $S$\" but rather:\n\n- **Lemma (the real engine).** If $D[S]$ has a Hamiltonian path *and* $D[S\\cup\\{v\\}]$ has a Hamiltonian path, then path-mergeability lets you transform *any* Hamiltonian path of $D[S]$ into one of $D[S\\cup\\{v\\}]$ by a single merge.\n\nThat is a much stronger statement than Peter's local-obstruction claim, and it is precisely the exchange axiom doing its work — analogous to the augmenting-path theorem in matching theory, where every non-maximum matching admits an augmentation regardless of its shape. Without this \"for any current path\" strengthening, the induction in my point 4 does not close.\n\nPeter, the zig-zag splice you sketched proves the merge lemma for two given internally disjoint paths. But it does *not* by itself prove the absorption lemma above, because the second route through $v$ may not exist for the particular $P_S$ in hand — even when a global Hamiltonian path of $S\\cup\\{v\\}$ does. So the honest proof has two layers: (i) the splice (your constructive merge), and (ii) a re-routing argument showing the second route can always be *manufactured* when global feasibility holds. Bang-Jensen and Gutin handle (ii) via strong connectivity of components; I suspect the clean statement is that within each strong component path-mergeability forces a *unique* path-order up to the exchange, much as Rédei's theorem gives the order in a tournament.\n\nSo the verdict stands — **polynomial, $O(n^2)$** — but our action plan should be: Peter writes the splice (i); I will write the absorption/re-routing lemma (ii) with the exchange formulation; Dan, your stuck-implies-infeasible argument is then a *corollary* of (ii), not an independent lemma. Let us not skip (ii) — it is where the actual theorem lives.",
+      "created_at": "2026-06-22T23:45:54Z"
+    },
+    {
+      "id": "m5ea4bd34",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, you've put your finger on exactly the right gap — and it's the same quantifier subtlety I always insist on when separating the *spectral* statement from the *arithmetic* one. The merge lemma (i) is the local fact; the re-routing lemma (ii) is the global one, and they must be made to agree, just as in the trace formula. Let me sharpen (ii), because I think there's a clean structural truth here, and it *is* a Rédei phenomenon.\n\nHere is the right invariant — and notice it's stronger than \"maintain a fixed path,\" exactly as you demand:\n\n- **Claim.** In a path-mergeable digraph, fix $S$ and a vertex $v$. If $D[S\\cup\\{v\\}]$ has a Hamiltonian path, then for *any* Hamiltonian $(x,y)$-path $P_S$ of $D[S]$, $v$ can be absorbed by a single merge.\n\nThe proof of (ii) goes through the splice, but you apply it to the *whole* paths, not just a segment — this is the point I want to correct in Dan's segment-only application. Let $Q$ be a Hamiltonian path of $D[S\\cup\\{v\\}]$. Delete $v$ from $Q$; you get one or two paths covering $S$. Now $P_S$ and these fragments give you two internally disjoint route-systems between common endpoints, and the splice merges them — but the merge must be performed on the *reattachment of $v$*, which is where strong connectivity of the component enters, precisely as Bang-Jensen-Gutin handle it.\n\nBut here's the worked example that convinces me, and I always check the smallest case: take the transitive tournament on $\\{1,2,3\\}$ with $P_S = 1\\to 2$ and $v=3$ with arcs $1\\to3$, $3\\to 2$ only — *no* arc to/from an endpoint in the right direction! Naive greedy on $P_S=1\\to2$ is stuck. Yet $1\\to 3\\to 2$ is Hamiltonian. This is *exactly* László's counterexample to the naive invariant — and it's resolved only because the re-routing manufactures the second route. So Dan's stuck-implies-infeasible is indeed a corollary of (ii), not a standalone lemma.\n\nSo: **polynomial, $O(n^2)$**, with the labor in (ii). The real theorem is Rédei generalized by an exchange axiom — and the exchange, like in matroids, holds *independent of the current path*. László writes (ii) with the exchange formulation; I'll write the splice and supply the transitive-tournament example as the honest stress test. Let me put that $3$-vertex case on the board first — it's the whole subtlety in miniature.",
+      "created_at": "2026-06-22T23:46:39Z"
+    },
+    {
+      "id": "m12765684",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T23:47:27Z"
+    },
+    {
+      "id": "mc599e5b8",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nProve that deciding/constructing a Hamiltonian path in a path-mergeable digraph is polynomial (O(n^2)) by grounding an inductive vertex-absorption algorithm in a constructive merge lemma plus a path-independent exchange/re-routing lemma.",
+      "created_at": "2026-06-22T23:47:27Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that deciding/constructing a Hamiltonian path in a path-mergeable digraph is polynomial (O(n^2)) by grounding an inductive vertex-absorption algorithm in a constructive merge lemma plus a path-independent exchange/re-routing lemma.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish closure under the required operations",
+        "body": "Prove that path-mergeability is preserved under the subdigraphs used by the algorithm: induced subdigraphs on S and S∪{v}, and unions of internally disjoint paths between a fixed endpoint pair. Cite/reprove Bang-Jensen's local-domination characterization so each merge step is provably legal within the class.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "State and prove the constructive merge lemma (zig-zag splice)",
+        "body": "Given two internally disjoint (x,y)-paths P, P', prove by induction on |V(P)|+|V(P')| that they merge into a spanning (x,y)-path on V(P)∪V(P'). Walk along P to the first divergence vertex, use mergeability of the out-neighbors to splice, reducing total length. Establish the merge runs in O(|V|) time per application.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove the path-independent absorption/re-routing lemma (the real engine)",
+        "body": "Prove the strengthened exchange lemma: if D[S] and D[S∪{v}] both have Hamiltonian paths, then ANY Hamiltonian (x,y)-path P_S of D[S] can be transformed into a Hamiltonian path of D[S∪{v}] by a single merge. Take a Hamiltonian path Q of D[S∪{v}], delete v to get fragments covering S, pair these route-systems with P_S, and apply the merge lemma at v's reattachment using strong-connectivity of components. This fixes the quantifier-order gap in the naive greedy.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Derive stuck-implies-infeasible as a corollary",
+        "body": "Show that if the absorption step fails for vertex v against the current path P_S, then D[S∪{v}] has no Hamiltonian path. Present this strictly as a corollary of the path-independent absorption lemma (step 2), not as a standalone greedy invariant, making the procedure a correct decision algorithm.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Assemble the inductive algorithm and complexity analysis",
+        "body": "Combine the lemmas into the full algorithm: order vertices, add one at a time, maintain a Hamiltonian path of the current induced subdigraph, absorbing via merge whenever globally feasible. Count: |V| insertions, each O(deg v) to locate placement plus one O(|V|) splice, yielding O(|V|^2 + |A|) = O(n^2) strongly polynomial time.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Validate against the transitive-tournament stress test",
+        "body": "Verify the proof on the worked example: transitive tournament on {1,2,3} with P_S = 1→2 and v=3 having only arcs 1→3, 3→2. Confirm naive greedy is stuck but the re-routing lemma manufactures 1→3→2, and confirm consistency with Rédei's theorem on tournaments as the generalized base case.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Audit quantifier order and closure dependencies",
+        "body": "Critically review the final write-up for the specific failure modes raised: ensure the absorption lemma is genuinely path-independent (not fixed-path), that every merge application stays inside the path-mergeable class via the closure step, and that strong-connectivity assumptions used in step 2 are explicitly justified rather than assumed.",
+        "agent": "critic-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T23:47:27Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

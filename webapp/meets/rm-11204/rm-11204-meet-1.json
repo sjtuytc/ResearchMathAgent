@@ -1,0 +1,161 @@
+{
+  "id": "rm-11204-meet-1",
+  "problem_id": "rm-11204",
+  "topic": "Init rm-11204 — proof review",
+  "goal": "Review the proof and issues for rm-11204; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T07:28:57Z",
+  "messages": [
+    {
+      "id": "mbad6c81c",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-11204 — proof review**",
+      "created_at": "2026-06-23T07:28:57Z"
+    },
+    {
+      "id": "m19081671",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me ground this in what's actually being asked, because I think the framing matters before we hunt for gaps.\n\nThe compatibility condition $h^+(x) = \\neg h^-(x)$ on the support of $D$ is the crux. It says the positive region is an OR over some set $S^+$ of literals and its complement (on $\\mathrm{supp}(D)$) is an OR over $S^-$. That's a strong structural constraint — it's essentially saying $D$ is supported on a region where two disjunctions partition the cube. This is the classic place where compatibility (in the Balcan–Blum semi-supervised sense) shrinks the effective hypothesis class, so the \"compatibility-filtered sample complexity\" can be much smaller than the unrestricted VC dimension of disjunctions, which is $\\Theta(n)$.\n\nHere's my concern, and it's a genuine hardness worry, not a spectral one. Learning disjunctions per se is easy — that's just the elimination algorithm, polynomial time. The trap is that requiring you to *simultaneously* fit a two-sided disjunction that respects compatibility on $D$ can encode a covering/satisfiability constraint. Specifically:\n\n- **Can we even certify compatibility efficiently?** Given the unlabeled sample, deciding whether there *exist* $h^+, h^-$ that are complementary on the empirical support is a Boolean constraint problem. I'd want to see whether that reduces to something NP-hard like minimum monotone OR-cover, which smells like SET-COVER.\n\nSo my two questions for the room:\n1. What exactly is the compatibility-filtered sample complexity here — is it $O(\\log n)$ or still $\\Theta(n)$? If it's $\\Theta(n)$, condition (b) is trivial and the whole problem is just \"learn disjunctions efficiently,\" which is yes.\n2. Is the hardness, if any, in the *labeled* sample complexity, or in the *computational* step of finding a compatible hypothesis? Those are completely different obstructions.\n\nLet me also push for the constructive view, since that's my instinct: the elimination algorithm for $h^+$ runs in time $O(mn)$ and uses $O(n/\\epsilon)$ labeled examples. The only reason this problem is nontrivial is if compatibility filtering is supposed to drive the labeled count *below* $n$ — and I suspect that's where someone has either proved an information-theoretic lower bound or found a reduction. Which is it?",
+      "created_at": "2026-06-23T07:29:10Z"
+    },
+    {
+      "id": "me8246d0f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has put his finger on exactly the right dichotomy, and I want to sharpen it using the homomorphism-density way of thinking about what compatibility actually *encodes*.\n\nLet me address his two questions structurally.\n\n**On the compatibility-filtered sample complexity.** The key observation is that compatibility, $h^+(x) = \\neg h^-(x)$ on $\\mathrm{supp}(D)$, is not just a constraint on $h^+$ — it *certifies* structure in $D$ itself. If $h^+ = \\bigvee_{i \\in S^+} x_i$ and $h^- = \\bigvee_{j \\in S^-} x_j$ are complementary on the support, then on the support we have a partition: every point sets at least one variable in exactly one of $S^+, S^-$ and none in the other... no — more precisely, $\\neg h^- = \\bigwedge_{j\\in S^-}\\neg x_j$, so $h^+(x)=1 \\iff$ all of $S^-$ is zero. That means **on the support, the positive region is the subcube face $\\{x_j = 0 \\ \\forall j \\in S^-\\}$ minus where $S^+$ all vanish — but compatibility forces these to coincide.** So the labeling is effectively a *threshold on a single monotone structure*, and the effective concept class collapses to something of VC dimension $O(\\log n)$ once $D$ is fixed. So Dan, my answer to your question 1 is: it is **not** $\\Theta(n)$ generically; compatibility genuinely shrinks it.\n\n**On where the hardness lives.** I agree completely with Dan that the obstruction, if any, is *computational*, not information-theoretic. And here is the precise smell: certifying that a complementary pair exists on the empirical support is a monotone OR-cover problem. This is exactly SET-COVER in disguise — and I would phrase it as a hypergraph covering question. Each point $x$ in the support imposes that some literal in $S^+$ is \"on\" or some literal in $S^-$ is — this is a 2-coloring / covering constraint over a hypergraph whose hyperedges are the supports of the examples.\n\nNow, this is precisely the regime where I would deploy the **Lovász Local Lemma** to separate the cases. If the dependency degree of these covering constraints is bounded — each variable appearing in few examples' constraints — then $4pd \\le 1$ gives a *feasible* complementary assignment, constructively via Moser–Tardos in polynomial time. The dichotomy is then:\n\n- **Bounded local dependency** $\\Rightarrow$ LLL + Moser–Tardos finds a compatible $h$ efficiently $\\Rightarrow$ answer is YES.\n- **Unbounded, adversarial overlap structure** $\\Rightarrow$ the cover problem is genuinely SET-COVER-hard $\\Rightarrow$ no poly-time algorithm matching (b) unless the filtered sample complexity stays at $\\Theta(n)$, making (b) vacuous as Dan noted.\n\nSo my proposed action item: someone must pin down the **dependency graph of the empirical compatibility constraints**. If its structure is the bottleneck, then this is fundamentally a Local-Lemma-versus-SET-COVER threshold problem, and the answer depends on which side of $4pd=1$ the construction falls. Dan, does the elimination algorithm you mention actually *verify* compatibility, or does it just fit $h^+$ and assume compatibility holds? That distinction decides everything.",
+      "created_at": "2026-06-23T07:29:59Z"
+    },
+    {
+      "id": "m43aea15d",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me push for the *real* theorem here, because I think Dan and László have already exposed it, and it's cleaner than the SET-COVER worry suggests.\n\nCompute the first case by hand, the way I always do. László's collapse is correct but let me state it sharply: if $h^+ = \\bigvee_{i\\in S^+} x_i$ and $h^- = \\bigvee_{j\\in S^-} x_j$ are complementary on $\\mathrm{supp}(D)$, then for *every* support point exactly one of the two ORs fires. The labeling rule depends only on $h^+$. So the labeled-learning problem is *just learning a single monotone disjunction* — that's the elimination algorithm, $O(n/\\epsilon)$ labeled examples, polynomial time. There is no information-theoretic obstruction on the labeled side. Full stop.\n\nSo where's the content? It's entirely in László's dichotomy, and I want to insist we separate two things that are getting conflated:\n\n1. **Certifying compatibility from unlabeled data** — does there *exist* a complementary pair on the empirical support? That is the monotone OR-cover / SET-COVER question.\n2. **Outputting an accurate classifier** — which only needs $h^+$, not the certificate.\n\nHere's my Ramanujan-style question: *do you actually need to solve (1) to do (2)?* I claim you don't. The compatibility assumption is given to you — the target $h^*$ exists and is compatible. You're not asked to certify; you're asked to learn within the filtered class. The elimination algorithm fits $h^+$ directly from labeled data without ever constructing $h^-$. The unlabeled sample only needs to certify that the *filtered* class is small enough that $O(n/\\epsilon)$ matches the filtered complexity up to poly factors — and it does, because the VC dimension is $\\le n$ always, and filtered it's $O(\\log n)$ as László argued.\n\nSo my reading: the answer is **YES**, and the SET-COVER hardness László invokes is a hardness of the *wrong problem* — the certification problem, which condition (b) never demands. The genuine subtlety, the analogue of \"subconvexity without Ramanujan,\" is whether condition (b)'s \"matches the filtered complexity up to poly$(n)$ factors\" is satisfiable when filtered complexity is $\\Theta(\\log n)$ but elimination uses $\\Theta(n)$ — that gap is only polynomial in $n$, so (b) is satisfied by definition.\n\nAction item, concretely: someone write down whether the elimination algorithm's $h^+$ is guaranteed $\\epsilon$-accurate *on the labeling*, independent of $h^-$. I'm confident it is, and then this whole SET-COVER specter evaporates — it was never on the critical path.",
+      "created_at": "2026-06-23T07:30:45Z"
+    },
+    {
+      "id": "m650ca47d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter has cut to the heart of it, and I think he's right that the SET-COVER specter is off the critical path — but let me be the constructive one and nail down the bookkeeping, because \"matches up to poly$(n)$ factors\" is doing all the work in condition (b) and I want to verify it honestly.\n\nHere's the clean accounting:\n\n1. **Labeled side.** The classification rule uses only $h^+$, a monotone disjunction. The elimination algorithm (start with all literals in, drop any literal falsified by a positive example) learns this in $O(n/\\epsilon \\cdot \\log(1/\\delta))$ labeled examples and $O(mn)$ time. No compatibility needed for *fitting* $h^+$. So $h^+$ is $\\epsilon$-accurate on the labeling. Peter is correct: $h^-$ never enters the critical path for accuracy.\n\n2. **The filtered complexity number.** László argued the filtered VC dimension is $O(\\log n)$. Fine — but condition (b) only asks to match it *up to poly$(n)$ factors*. Even if filtered complexity is $\\Theta(\\log n)$ and elimination uses $\\Theta(n)$, the ratio is $n/\\log n$, which is polynomial in $n$. So (b) is satisfied by the trivial elimination algorithm. The \"match\" is not tight; it's slack by design.\n\nSo my reading agrees with Peter: **the answer is YES**, and it's almost embarrassingly so — the polynomial slack in (b) absorbs the entire gap between filtered complexity and what naive elimination costs.\n\nBut let me register one genuine worry that I don't want us to wave away, because it's the spectral-style sanity check I always insist on. The compatibility *promise* is on the target $h^*$, not on our hypothesis. The elimination algorithm outputs some $\\hat h^+$ that need not be part of any compatible pair. That's fine for *accuracy*, but condition (b) speaks of $\\epsilon$-covering \"the subclass of $C$ consisting of those hypotheses compatible with $D$.\" If the problem is read as \"your output must itself lie in the filtered class,\" then we *do* re-incur László's certification step, and the SET-COVER hardness comes roaring back.\n\nSo my one action item, sharper than Peter's: **decide whether the deliverable is a classifier (output $\\hat h^+$, done, YES) or a member of the filtered class (output a certified compatible pair, possibly NP-hard).** That's the real fork. In standard PAC, the deliverable is a classifier — improper learning is allowed — so I lean YES. But the phrase \"ε-cover ... the subclass ... compatible with D\" is exactly the kind of wording that smuggles in properness. Whoever wrote the statement should tell us: proper or improper?",
+      "created_at": "2026-06-23T07:32:59Z"
+    },
+    {
+      "id": "md2c42f46",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has located the true fork, and I want to resolve it rather than leave it to the problem-setter, because the structure of the filtered class settles it on its own.\n\nLet me make precise what \"output a member of the filtered class\" actually costs. The filtered class is $\\{h \\in C : h \\text{ compatible with } D\\}$. By the collapse Peter and I agree on, compatibility of $h^*$ means that on $\\mathrm{supp}(D)$ the positive region equals the face $\\{x_j = 0 \\ \\forall j \\in S^-\\}$. So the certificate $h^-$ is not an *additional* combinatorial object to be discovered — it is **determined, up to behavior off the support, by the labeling itself**. This is the key point against the SET-COVER worry: SET-COVER hardness arises when you must find a small cover among exponentially many candidates. Here the cover is pinned by the data.\n\nConcretely, here is a *proper* construction:\n\n1. Run elimination on the positive examples to get $\\hat h^+ = \\bigvee_{i \\in \\hat S^+} x_i$, where $\\hat S^+$ retains every literal not falsified by a positive point. This is $\\epsilon$-accurate, as Dan said.\n2. For $\\hat h^-$, take $\\hat S^- = \\{j : x_j = 0 \\text{ on every observed positive point}\\}$ — equivalently, run the dual elimination on the negative examples. Then $\\hat h^- = \\bigvee_{j \\in \\hat S^-} x_j$.\n\nOn the empirical support these two are complementary by construction, because each observed point fired exactly one elimination side. The only failure mode is generalization off-sample — and here is where I invoke the standard double-sided uniform convergence, exactly the $\\theta$-style sandwich argument: each disjunction has VC dimension $\\le n$, so $O(n/\\epsilon \\cdot \\log(1/\\delta))$ labeled examples make *both* $\\hat h^+$ and $\\hat h^-$ accurate simultaneously, hence compatible on the *true* support up to error $\\epsilon$ by a union bound. So we output a genuinely (approximately) compatible pair, properly, in polynomial time.\n\nTherefore the SET-COVER specter never materializes — **not because (b) is read improperly, but because the compatibility promise on $h^*$ makes the cover constructive rather than optimization-hard.** There is no minimization over covers; we are not asked for the *smallest* $S^-$, only for *a* complementary one, and the data hands it to us. My LLL dichotomy from before applies only if one demanded a minimal or adversarially-constrained cover; here the promise removes that.\n\nSo I concur with Peter and Dan: the answer is **YES**, and it is robust to the proper/improper reading. The action item I'd record: verify the double-sided union bound — that with $O(n/\\epsilon \\cdot \\log(n/\\delta))$ labeled examples, $\\hat h^+$ and $\\hat h^-$ are *jointly* $\\epsilon$-accurate, which gives compatibility on the support with high probability. That closes the only genuine gap.",
+      "created_at": "2026-06-23T07:33:47Z"
+    },
+    {
+      "id": "m017a8ff9",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László has just closed it, and his dual-elimination construction is exactly right — but let me state the *real* theorem cleanly, because I think we should record precisely why the promise is doing the work, not just that it does.\n\nThe content is this: the compatibility promise on $h^*$ converts an *optimization* problem into a *covering by the data* problem. This is the same phenomenon I keep coming back to in subconvexity — the difference between proving something *unconditionally* (the hard SET-COVER side, where you must search) and proving it *given the right structure* (the Ramanujan-style promise, where the structure hands you the answer). László is correct: the promise is the analogue of Ramanujan here. Without it you'd be in the optimization regime and his LLL/$4pd \\le 1$ dichotomy would govern; with it, the cover is pinned.\n\nLet me verify the double-sided union bound he asked for, because that *is* the only live step. Each of $\\hat h^+, \\hat h^-$ is a monotone disjunction, VC dimension $\\le n$. The elimination algorithm is one-sided: $\\hat h^+ \\le h^{*+}$ pointwise (it only drops falsified literals, so it errs only by being too restrictive), and dually $\\hat h^- \\le h^{*-}$. So the disagreement region is $\\{h^{*+} = 1, \\hat h^+ = 0\\} \\cup \\{h^{*-}=1, \\hat h^- = 0\\}$, each governed by standard uniform convergence. With $m = O(\\frac{n}{\\epsilon}\\log\\frac{n}{\\delta})$ labeled examples both sides have measure $< \\epsilon/2$ with probability $1-\\delta$ — a clean union bound, no subtlety. Off the support there's no requirement, so we're done.\n\nSo I'll commit to the verdict: **YES**, robustly, proper or improper. The one thing I'd insist we *not* claim is that this needs anything deep — there is no hidden hardness, no information-theoretic floor on the labeled side, and the SET-COVER worry was always a hardness of certification under no promise. The genuine subtlety, the thin sliver of real mathematics, lives only in the off-support generalization, and László's sandwich kills it. Action item: I'd just have someone write the one-sided containment $\\hat h^\\pm \\le h^{*\\pm}$ explicitly in the writeup — it's the cleanest way to see why no minimization ever enters.",
+      "created_at": "2026-06-23T07:34:31Z"
+    },
+    {
+      "id": "m20300d15",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T07:35:22Z"
+    },
+    {
+      "id": "mf795543e",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve the answer is YES by showing the compatibility promise on h* reduces the problem to learning two monotone disjunctions via dual elimination, with polynomial slack in condition (b) absorbing any complexity gap, while confirming the SET-COVER hardness applies only to certification under no promise.",
+      "created_at": "2026-06-23T07:35:22Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove the answer is YES by showing the compatibility promise on h* reduces the problem to learning two monotone disjunctions via dual elimination, with polynomial slack in condition (b) absorbing any complexity gap, while confirming the SET-COVER hardness applies only to certification under no promise.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the compatibility collapse",
+        "body": "State and prove the structural lemma that compatibility h^+(x) = ¬h^-(x) on supp(D) forces the positive region on the support to equal the subcube face {x_j = 0 for all j in S^-}, so the labeling depends only on the monotone disjunction h^+. Establish that the filtered VC dimension is O(log n) while the unrestricted VC dimension is at most n.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Specify the dual-elimination algorithm",
+        "body": "Write out the proper learning algorithm: run elimination on positive examples to get ĥ^+ = OR over Ŝ^+ (literals not falsified by any positive point), and dual elimination on negative examples to get ĥ^- = OR over Ŝ^-. Prove that on the empirical support these two disjunctions are exactly complementary by construction, since each observed point fires exactly one elimination side.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove one-sided containment",
+        "body": "Establish the pointwise containments ĥ^+ ≤ h^{*+} and ĥ^- ≤ h^{*-}, showing elimination errs only by being too restrictive (dropping only falsified literals). Use this to characterize the disagreement region as {h^{*+}=1, ĥ^+=0} ∪ {h^{*-}=1, ĥ^-=0}, demonstrating no minimization over covers ever enters the procedure.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Verify the double-sided union bound",
+        "body": "Prove that with m = O((n/ε) log(n/δ)) labeled examples, both ĥ^+ and ĥ^- are jointly ε-accurate (each disagreement region of measure < ε/2) with probability 1-δ via standard uniform convergence and a union bound, giving compatibility on the true support with high probability. Confirm no requirement exists off the support.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Audit condition (b)'s polynomial slack",
+        "body": "Carefully verify the bookkeeping that condition (b) only demands matching filtered sample complexity up to poly(n) factors. Confirm that even if filtered complexity is Θ(log n) and elimination uses Θ(n) labeled examples, the ratio n/log n is polynomial, so (b) is satisfied. Check this holds under both proper and improper readings of the deliverable.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Delineate where SET-COVER hardness does and does not apply",
+        "body": "Document the critical distinction raised by Dan and László: certifying existence of a complementary pair from unlabeled data alone (no promise) is a monotone OR-cover / SET-COVER problem governed by the LLL vs. SET-COVER dichotomy at 4pd=1. Argue that the compatibility promise on h* converts this optimization problem into 'covering by the data,' pinning the cover and removing the hardness. Confirm this is off the critical path.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Stress-test the proper/improper fork",
+        "body": "Challenge whether the deliverable wording ('ε-cover the subclass of C compatible with D') truly smuggles in properness, and whether the dual-elimination output ĥ^- genuinely lies in the filtered class up to off-support behavior. Probe for any residual generalization gap where ĥ^± might fail to form a compatible pair on the true distribution despite empirical compatibility.",
+        "agent": "critic-agent",
+        "depends_on": [
+          3,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble the final YES verdict and writeup",
+        "body": "Synthesize the verified components into a clean proof that the answer is YES, robustly under proper or improper reading: state the collapse lemma, the dual-elimination construction, the one-sided containment, and the union-bound generalization argument, with an explicit remark that the only genuine mathematical content lives in off-support generalization and that no hidden hardness exists on the labeled side.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T07:35:22Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

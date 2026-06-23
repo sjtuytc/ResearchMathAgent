@@ -1,0 +1,151 @@
+{
+  "id": "prob-08-meet-1",
+  "problem_id": "prob-08",
+  "topic": "Proof review 2026-06-22 — prob-08",
+  "goal": "Review the generated proof for prob-08. Identify the strongest remaining gaps and agree on a concrete verification strategy.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T20:18:39Z",
+  "messages": [
+    {
+      "id": "m84554c85",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Proof review 2026-06-22 — prob-08**",
+      "created_at": "2026-06-22T20:18:39Z"
+    },
+    {
+      "id": "m19f0ecc7",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me open by pinning down what we're actually proving, because I want to be sure we're reviewing the right statement. The $\\varepsilon$-light subset problem asks for a large set $S$ — say $|S| \\geq c\\varepsilon n$ — such that the internal edge weight is at most an $\\varepsilon$ fraction of the boundary weight touching $S$. In Laplacian terms, $\\mathbf{1}_S^T L_S \\mathbf{1}_S \\leq \\varepsilon\\, d_S$, where $d_S = \\sum_{v \\in S} d(v)$.\n\nBefore we critique the generated proof, I want to know which route it takes:\n\n1. **Existence via barrier/potential function** — the route I used to get the (non-optimal) constant $c = 1/42$. If that's the path, the gap I'd scrutinize is whether the potential $\\Phi(S) = \\sum_{v\\in S}\\sum_{e\\ni v} w_e/d(v)$ actually increases monotonically under greedy vertex addition, *and* whether the bound survives in the weighted case. My original argument is delicate exactly there — a high-degree vertex with one heavy internal edge can blow up the internal fraction in a single step.\n\n2. **Spectral / Cheeger route** — relating $S$ to a small eigenvalue of the normalized Laplacian.\n\nSo my first concrete question: **what is the claimed constant $c$, and does the proof handle weighted graphs?** If it only does the unweighted case, that's a real gap, not a typo. And second: is it an existence proof or a construction? If existence, I'll push hard — can we find $S$ by solving a single Laplacian system $Lx = b$ and thresholding, the way effective-resistance sampling localizes importance? An explicit $O(m\\log^c n)$ algorithm would be far more convincing than a counting argument, and it would force us to confront exactly where the bound is tight.",
+      "created_at": "2026-06-22T20:18:49Z"
+    },
+    {
+      "id": "m147be8d9",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your two questions are exactly the right ones, and let me sharpen the dichotomy before we even open the generated text. The definition you wrote — $\\mathbf{1}_S^T L_S \\mathbf{1}_S \\leq \\varepsilon d_S$ — is precisely a *homomorphism-density* statement in disguise. If I write the graphon $W$ of the (weighted, normalized) graph and let $f = \\mathbf{1}_S$ be the indicator scaled by degree, then $\\mathbf{1}_S^T L_S \\mathbf{1}_S / d_S$ is the limit of $t(K_2, W)$ restricted to the set against its total degree mass. So my first demand of the proof is: **does it state the constant $c$ as the value of a limit object, or as an artifact of a finite greedy bound?** These give different answers, and I suspect the generated proof conflates them.\n\nOn your specific worry about monotonicity of $\\Phi(S)=\\sum_{v\\in S}\\sum_{e\\ni v} w_e/d(v)$ under greedy addition — you are right to be nervous, and I want to name *why*. The barrier argument is fundamentally a *first-moment* argument, and a single heavy internal edge at a high-degree vertex is exactly the kind of rare-but-catastrophic event that first moments cannot control. This is the textbook situation where the **Lovász Local Lemma** earns its keep: define $A_v$ = \"vertex $v$ violates $\\varepsilon$-lightness,\" note $\\mathbb{P}(A_v)\\leq p/\\varepsilon$ by Markov on the random subset with inclusion probability $p=c\\varepsilon$, and observe that $A_v$ depends only on the $A_u$ for $u$ within distance $2$. If the dependency degree $d$ satisfies $e\\cdot(p/\\varepsilon)(d+1)\\le 1$, we get a *positive-probability* existence — and crucially it survives weights verbatim, because Markov doesn't care whether $w_e$ is integral.\n\nSo here is my concrete position on your two questions:\n\n1. **Weighted case:** if the proof's bound is Markov/LLL-based it is automatically weighted; if it is the barrier potential, I bet the weighted case is the genuine gap, precisely at the heavy-edge step you flagged.\n2. **Existence vs. construction:** I would not accept LLL existence as the final word here. The **Moser–Tardos** resampling algorithm makes the Local Lemma constructive, and in this dependency structure it should run in near-linear time — that is your $O(m\\log^c n)$ algorithm, and it would localize importance just as your effective-resistance sampling does.\n\nTwo things I want to verify against the constant $c$: my graphon analysis of $K_n$ gives the inward fraction $\\tfrac{k-1}{2(n-1)}\\approx \\varepsilon/2$, so the *true* extremal constant is $c=1/2$, not $1/42$. **Does the generated proof claim $1/2$, and if so, does it actually exhibit a matching upper-bound family, or merely assert tightness?** A claimed optimal constant without the extremal graphon is, in my experience, where these arguments quietly break.",
+      "created_at": "2026-06-22T20:19:12Z"
+    },
+    {
+      "id": "m359d262d",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me push on something both of you are circling but haven't named precisely. Dan, you want to find $S$ by solving $Lx=b$ and thresholding — and László, your graphon computation of $K_n$ giving $c=1/2$ is the key sanity check. But before we argue about $1/42$ versus $1/2$, I want to ask: **what is the spectral content of the extremal $S$?**\n\nHere's my instinct. The condition $\\mathbf{1}_S^T L_S \\mathbf{1}_S \\leq \\varepsilon\\, d_S$ is, up to the boundary correction, a *small Rayleigh quotient* statement. Write the normalized Laplacian $\\mathcal{L} = D^{-1/2} L D^{-1/2}$ and $g = D^{1/2}\\mathbf{1}_S$. Then $\\frac{\\mathbf{1}_S^T L \\mathbf{1}_S}{d_S} = \\frac{g^T \\mathcal{L} g}{\\|g\\|^2}$, and the internal-vs-boundary split is precisely the Cheeger gap. So the *real theorem behind the technical one* is a localized Cheeger inequality: you are asking for a vertex set whose indicator is nearly an eigenvector of small eigenvalue. This is exactly the Lindenstrauss–Sarnak QUE picture in disguise — does mass concentrate (heavy internal edge, the bad event László named) or equidistribute (the $\\varepsilon$-light regime)?\n\nNow the explicit example. Compute $K_n$ by hand: for $|S|=k$, internal weight $\\binom{k}{2}$, $d_S = k(n-1)$, so the fraction is $\\frac{k-1}{2(n-1)}$ — László's $\\varepsilon/2$, giving $c=1/2$. Good. But check the *cycle* $C_n$: take $S$ an arc of length $k$, internal edges $k-1$, $d_S=2k$, fraction $\\frac{k-1}{2k}\\to 1/2$ — that's *bad*, you cannot make it $\\varepsilon$-light at all for large $S$! So the constant $c$ **cannot be universal** without a spectral hypothesis; on an expander the bound is easy, on a path it fails. This is my central worry: does the generated proof's $c$ secretly depend on the spectral gap $\\lambda_1$, the way Selberg's $3/16$ controls everything in the modular setting? If the proof claims a graph-independent $c$, it is wrong, and the cycle is your counterexample.\n\nSo my concrete demands, sharpening yours:\n1. **Spectral honesty.** Does $c$ depend on $\\lambda_1(\\mathcal{L})$? The Markov/LLL route, László, is robust to weights — but the cycle has bounded degree and LLL would falsely \"succeed,\" so I suspect the LLL bound is proving a *different, weaker* statement than the eigenvalue-localized one Dan wants.\n2. **Is this a Ramanujan phenomenon?** On a Ramanujan graph (eigenvalues $\\leq 2\\sqrt{d-1}$), the thresholding-of-$Lx=b$ construction should give the optimal $c$ cleanly, because there are no rogue eigenvectors to localize mass. I'd verify the proof on an explicit Ramanujan graph — say $\\mathrm{PSL}_2(\\mathbb{F}_p)$ Cayley graphs from my work with Bourgain–Gamburd — before trusting any general claim.\n\nSo: which is it — a universal $c$,",
+      "created_at": "2026-06-22T20:19:35Z"
+    },
+    {
+      "id": "ma6c51ed4",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your cycle example is decisive and I should have caught it before invoking my own barrier argument — let me reconcile it with what I actually proved, because I think it exposes exactly what the generated proof must be getting wrong.\n\nHere's the resolution: the cycle does *not* refute the theorem, because the theorem as I proved it asks for a set of size $|S| \\geq c\\varepsilon n$, and on $C_n$ you simply **don't take a single arc** — you take $\\varepsilon n$ vertices *spread out*, every third vertex say, so that $S$ has essentially no internal edges. That set is trivially $\\varepsilon$-light. So the cycle is not a counterexample to existence of a *large light set*; it's a counterexample to the *contiguous/sweep-cut* construction. And that is precisely my worry about the generated proof: if it builds $S$ by thresholding a single $Lx=b$ solution, the sweep cut produces *contiguous* sets, and on the cycle those are exactly the bad arcs Peter found. So **the spectral thresholding construction I proposed is wrong as stated** — it conflates \"small Rayleigh quotient eigenvector\" with \"light set,\" and these come apart precisely on low-gap graphs.\n\nThis vindicates László's LLL framing over my barrier function. The honest statement is: $\\varepsilon$-lightness is a *local sparsity* condition, not a global spectral one. It is genuinely the bad-event structure $A_v = \\{v$ has $>\\varepsilon$ internal fraction$\\}$ with distance-2 dependency, and Markov gives $\\mathbb{P}(A_v) \\leq p/\\varepsilon$ with $p = c\\varepsilon$ regardless of $\\lambda_1$. The constant $c$ should be **universal** — and the cycle confirms it, because the spread-out set works there too. Peter, your spectral picture is the right diagnosis of *why a particular construction fails*, but the existence statement itself shouldn't depend on $\\lambda_1$.\n\nSo my revised concrete position:\n1. The generated proof is suspect **if and only if** it uses a sweep cut / eigenvector threshold. Check whether its $S$ is contiguous in any geometric sense — if so, the cycle kills it.\n2. The right algorithm is **Moser–Tardos resampling**, not a Laplacian solve. Start with the random subset at rate $p = c\\varepsilon$, resample the neighborhood of any violated vertex. The dependency degree is $\\Delta^2$, so the LLL condition $e \\cdot (p/\\varepsilon)(\\Delta^2+1) \\leq 1$ forces $c \\leq 1/(e\\Delta^2)$ in the worst case — and *that* degree dependence is the real cost, which is exactly where $1/42$ versus $1/2$ lives.\n3. So my sharpened demand: **does the claimed $c$ depend on the max degree $\\Delta$?** If the proof claims a degree-free $c=1/2$ via LLL, it's wrong, because vanilla LLL pays $\\Delta^2$. Getting degree-free likely needs the Moser–Tardos *entropy compression* refinement or a clever potential — and that is the genuine remaining gap to verify.",
+      "created_at": "2026-06-22T20:20:13Z"
+    },
+    {
+      "id": "m10bb9c7f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, you have just talked yourself into the central tension, and I want to resolve it cleanly, because I think we are now conflating *three* different constants and pretending they are one.\n\nLet me separate them:\n\n1. **The extremal constant $c=1/2$** from the $K_n$ graphon. This is an *upper bound on what is achievable* — it says no theorem can promise $|S| \\ge c\\varepsilon n$ with $c > 1/2$, because in $K_n$ every set is forced to have inward fraction $\\frac{k-1}{2(n-1)}$. This is a statement about the limit object, and it is degree-free *by construction* because $K_n$ is dense and the graphon is constant.\n\n2. **The vanilla-LLL constant $c \\sim 1/(e\\Delta^2)$.** This is what symmetric LLL ($4pd \\le 1$ in my 1975 correction with Erdős) gives you when you charge $d = \\Delta^2$ for the distance-2 dependency. Dan is exactly right that this pays $\\Delta^2$, and so it cannot be the truth in the dense regime — on $K_n$, $\\Delta = n-1$ and the bound becomes vacuous, yet the graphon says light sets of size $\\varepsilon n/2$ exist! So **vanilla LLL is the wrong tool in precisely the regime where the extremal example lives.** That is a sharp internal contradiction, and any generated proof that uses LLL to claim a degree-free $c$ is wrong on its face.\n\n3. **The honest universal constant.** Here is the reconciliation, and it vindicates Peter's instinct more than Dan's last remark admits. The reason the cycle is fine is *not* that LLL succeeds there — it is that you may choose $S$ to be an *independent-ish* set, a spread. But that choice is global, not local. The correct formulation is therefore a **fractional relaxation**: replace $\\mathbf{1}_S$ by a fractional weighting and ask for $x \\in [0,1]^V$ with $\\sum_v d(v) x_v \\ge c\\varepsilon n$ and $x^T L x \\le \\varepsilon \\sum_v d(v) x_v$. This is an LP/SDP, and its value is governed by exactly the $\\theta$-type sandwich I built in *On the Shannon capacity of a graph*: the obstruction to a large light set is a small clique-like cluster, and the certificate is a PSD matrix. The right $c$ is the value of this program, and it is **degree-free but graph-dependent only through the fractional structure**, not through $\\lambda_1$ and not through $\\Delta$.\n\nSo my concrete demands of the generated proof, refining yours:\n\n- **Is the proof's $S$ obtained by rounding a fractional/SDP solution, or by raw LLL on integral indicators?** If the latter, it carries a spurious $\\Delta^2$ and cannot reach $c=1/2$; the gap is real and structural.\n- **Does the proof exhibit the dual certificate?** A claimed optimal $c$ with no matching $K_n$-blow-up *and* no dual PSD witness is, in my experience, where these arguments quietly die. The graphon of $K_n$ is the primal extremal object; I want to see the dual.\n- On Moser–Tardos: yes, it is constructive, but Dan, in the *dense* regime the entropy-compression bookkeeping does not save the $\\Delta^2$ — that is a genuinely open refinement, and we should not let the proof assert near-linear time without confronting it.\n\nIn short: the cycle and $K_n$ together tell us this is **not** a C",
+      "created_at": "2026-06-22T20:20:37Z"
+    },
+    {
+      "id": "m04ee5e93",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, your three-constant separation is the right surgery, and I want to seize on point 3 because it's where the spectral picture and the LP picture actually meet — they are not competitors. Let me push the cycle example one more step, because I think it tells us *exactly* what the extremal constant is and resolves the $1/42$-vs-$1/2$ fight.\n\nOn $C_n$, the spread-out set \"every third vertex\" gives an *independent set* of size $n/3$ with zero internal edges — so it is $0$-light, not just $\\varepsilon$-light, and it is huge. So the cycle, far from being the enemy, is the *friendliest* case: low spectral gap means lots of room to spread. The genuinely *constrained* case is $K_n$, where you cannot escape the inward fraction $\\frac{k-1}{2(n-1)}$. This is the inversion I want on the table: **the extremal constant is governed by the dense, high-gap regime, not the low-gap one.** That's why my \"is this a Ramanujan phenomenon?\" instinct was half-right but pointed the wrong way — on an expander/Ramanujan graph you have *both* small $\\lambda_1$-gaps absent *and* near-clique local density, so the obstruction is maximal, and it should saturate László's SDP value.\n\nNow the precise claim, and I'll bet on it: the right $c$ is the value of László's fractional program, and on $K_n$ that program's optimum is *exactly* the constant weighting $x_v \\equiv \\varepsilon$. Compute it by hand: $x^T L x = \\varepsilon^2 \\binom{n}{2}$ roughly, and $\\sum d(v)x_v = \\varepsilon n(n-1)$, ratio $\\sim \\varepsilon/2$ — so the fractional optimum reproduces $c=1/2$ *without any rounding loss*, because the extremal $x$ is already $[0,1]$-valued and uniform. That is the dual certificate László is demanding: the PSD witness is just $\\mathcal{L}$ itself against the constant vector.\n\nSo my concrete addition to the demands:\n1. **The proof must produce a fractional/SDP $S$, then round.** Any integral-LLL route carries the spurious $\\Delta^2$ and *provably* fails on $K_n$ — that's not a gap, it's a refutation. Check first whether the generated proof's object is fractional.\n2. **The constant is degree-free precisely because the extremal object is dense and uniform.** The cycle gives $0$-lightness for free; $K_n$ gives the binding $1/2$. So if the proof claims any $c < 1/2$, ask whether it is rounding-lossy or genuinely sub-extremal — $1/42$ smells like a rounding artifact of exactly the integral approach we should reject.\n3. **Verify on the Ramanujan Cayley graphs** of $\\mathrm{PSL}_2(\\mathbb{F}_p)$ — they interpolate between cycle and clique locally, and the fractional optimum there should land strictly between $0$ and $1/2$, pinned by the local degree, not $\\lambda_1$. If the SDP value there matches a hand computation, we trust the program; if not, the formulation is wrong.",
+      "created_at": "2026-06-22T20:21:02Z"
+    },
+    {
+      "id": "m4276793e",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T20:21:33Z"
+    },
+    {
+      "id": "m6b71b4d5",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nReformulate the ε-light subset problem as a fractional/SDP program whose optimum gives the universal constant c, verify the extremal value c=1/2 via the K_n graphon and dual certificate, and reject any integral-LLL or sweep-cut construction that carries a spurious Δ^2 or fails on the cycle.",
+      "created_at": "2026-06-22T20:21:33Z"
+    }
+  ],
+  "plan": {
+    "summary": "Reformulate the ε-light subset problem as a fractional/SDP program whose optimum gives the universal constant c, verify the extremal value c=1/2 via the K_n graphon and dual certificate, and reject any integral-LLL or sweep-cut construction that carries a spurious Δ^2 or fails on the cycle.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Diagnose the generated proof's construction type",
+        "body": "Examine the generated proof and classify its object S: is it (a) obtained by sweep-cut/eigenvector thresholding of a single Laplacian solve Lx=b, (b) raw LLL on integral indicators, or (c) rounding of a fractional/SDP solution? Record the claimed constant c and whether the argument explicitly handles weighted graphs. This classification determines which refutation or verification path applies.",
+        "agent": "critic-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Apply the cycle and K_n refutation tests",
+        "body": "If the proof uses a contiguous sweep-cut construction, confirm it is refuted by C_n where contiguous arcs of length k have inward fraction (k-1)/(2k) -> 1/2 (not light), while a spread-out 'every third vertex' set gives a 0-light independent set of size n/3. If the proof uses vanilla LLL claiming degree-free c, confirm it is refuted on K_n where Δ=n-1 makes the bound e·(p/ε)(Δ^2+1)≤1 vacuous, yet light sets of size εn/2 provably exist. Document which test, if any, kills the proof.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "State the fractional/SDP relaxation",
+        "body": "Formalize the relaxation proposed by Lovasz: seek x in [0,1]^V with sum_v d(v) x_v >= cεn and x^T L x <= ε sum_v d(v) x_v. Express this as an LP/SDP and connect it to the theta-type sandwich (PSD certificate). Establish that this formulation is degree-free and depends on the graph only through fractional structure, not through λ_1 or Δ. This is the candidate 'honest universal constant' formulation.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Compute the extremal constant on K_n and exhibit the dual certificate",
+        "body": "Verify by hand that on K_n the fractional optimum is the constant uniform weighting x_v ≡ ε: compute x^T L x = ε^2 binom(n,2) approx and sum d(v)x_v = ε n(n-1), giving ratio ~ε/2 and hence c=1/2 with no rounding loss. Exhibit the dual PSD witness (the normalized Laplacian L against the constant vector) certifying optimality. Confirm K_n is the binding extremal object and the graphon value matches.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Determine whether the rounding step loses a factor",
+        "body": "Analyze the rounding of the fractional solution back to an integral set S. Determine whether any integral rounding introduces a spurious Δ^2 (as in vanilla LLL) or other loss that degrades c below 1/2. Investigate whether Moser–Tardos resampling with distance-2 dependency, or an entropy-compression refinement, can achieve degree-free c in the dense regime — flagging that the dense-regime bookkeeping may be genuinely open. Assess whether the claimed c=1/42 is merely a rounding artifact of an integral approach.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify on Ramanujan PSL_2(F_p) Cayley graphs",
+        "body": "Compute the fractional/SDP optimum on explicit Ramanujan Cayley graphs of PSL_2(F_p) (Bourgain–Gamburd construction). Confirm the optimum lands strictly between 0 (cycle) and 1/2 (clique), pinned by local degree rather than λ_1. Compare the SDP value against a direct hand computation: agreement validates the formulation, disagreement indicates the relaxation is mis-stated.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Synthesize corrected proof and final verdict on c",
+        "body": "Assemble the verified components into a corrected proof: the fractional/SDP existence statement, the K_n extremal upper bound c=1/2 with dual certificate, the constructive rounding (Moser–Tardos or fractional rounding) with its honest constant, and the resolution of whether c is universal/degree-free. Deliver a final verdict reconciling 1/42 vs 1/2: state the best provable c, whether near-linear-time construction is justified, and explicitly note any remaining open gap in the dense-regime resampling analysis.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T20:21:33Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

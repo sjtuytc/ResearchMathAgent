@@ -1,0 +1,155 @@
+{
+  "id": "rm-00899-meet-1",
+  "problem_id": "rm-00899",
+  "topic": "Init rm-00899 — proof review",
+  "goal": "Review the proof and issues for rm-00899; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T02:58:06Z",
+  "messages": [
+    {
+      "id": "m160f99eb",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-00899 — proof review**",
+      "created_at": "2026-06-23T02:58:06Z"
+    },
+    {
+      "id": "m4f429d8f",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me cut to what's actually mathematical here, because the problem statement is dressed up in systems language but part (c) is the real theorem we should chase.\n\nThe clean abstraction: we have true completion-time data $C(t,m_i)$ defining an objective $F(\\sigma) = \\max_i \\sum_{t \\mapsto m_i} C(t,m_i)$ over assignments $\\sigma$, and estimated data $\\widehat{C}$ defining $\\widehat F$. Part (c) is a *perturbation* question: if $\\|\\widehat C - C\\| \\le \\varepsilon$ in some norm, how far is $\\arg\\min \\widehat F$ from $\\arg\\min F$ in objective value? That's exactly the kind of question I attacked in smoothed analysis — the condition number of the optimization controls sensitivity to input perturbation.\n\nA few sharp points:\n\n1. **The easy direction is multiplicative robustness.** If the estimator satisfies $(1-\\varepsilon)C(t,m_i) \\le \\widehat C(t,m_i) \\le (1+\\varepsilon)C(t,m_i)$ entrywise, then for *any* assignment $\\sigma$, $(1-\\varepsilon)F(\\sigma)\\le \\widehat F(\\sigma)\\le (1+\\varepsilon)F(\\sigma)$, since makespan is monotone in the entries. So $F(\\widehat\\sigma^*) \\le \\frac{1+\\varepsilon}{1-\\varepsilon}F(\\sigma^*)$. That's a clean $\\frac{1+\\varepsilon}{1-\\varepsilon}$ approximation ratio — *no* condition number needed because makespan is $1$-Lipschitz and positively homogeneous. I'd want this stated as the baseline theorem.\n\n2. **The hard part is honest, not just worst-case multiplicative error.** Real estimators have *expected relative error* (part b), so we need the bound to survive when a few entries are badly mis-estimated. This is where I'd import the matrix-Bernstein style concentration from my sparsification work: if $\\widehat C(t,m_i)$ are unbiased with bounded variance, $\\widehat F$ concentrates around $F$, and the bad-tail entries contribute negligibly to the max.\n\n3. **What is the right norm?** Entrywise multiplicative is the natural one because makespan only sums positive quantities. Don't use $\\ell_2$ on the raw completion times — it doesn't respect the combinatorial structure.\n\nMy questions for the group: what does the current proof actually claim for part (c) — is it the multiplicative $\\frac{1+\\varepsilon}{1-\\varepsilon}$ bound, or something purportedly stronger? And what statistical model is assumed for the estimator error in (b)? Without a generative model for $L_i(\\tau), N_{ij}(\\tau)$ we cannot get a rigorous accuracy guarantee — we'd just be asserting it. Tell me the error model and I can tell you whether the bound is tight.",
+      "created_at": "2026-06-23T02:58:22Z"
+    },
+    {
+      "id": "m40ce2be2",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your multiplicative baseline is exactly right, and I want to sharpen one point and then push back on another.\n\nThe sharpening: your $\\frac{1+\\varepsilon}{1-\\varepsilon}$ bound for makespan is clean precisely because makespan is monotone and positively homogeneous — it is, in fact, a *graph homomorphism density* in disguise if we model the assignment structure correctly. But weighted average completion time, the other objective in (b), is *not* a max — it is a sum over a precedence DAG, and there the perturbation does not pass through so innocently. Precedence chains compound errors: a $(1\\pm\\varepsilon)$ entrywise error on a critical path of length $\\ell$ becomes $(1\\pm\\varepsilon)^\\ell \\approx e^{\\pm\\varepsilon\\ell}$. So part (c) genuinely splits into two regimes, and the constant depends on the *combinatorial depth* of the dependency structure, not just $\\varepsilon$.\n\nThe pushback: you say no condition number is needed. That is true for the *objective value*, but the problem also asks (implicitly) about *which mapping* you get. Here the relevant quantity is the spectral gap of the assignment polytope's LP/SDP relaxation. This is precisely the setting where my $\\theta$-function philosophy applies: the integrality gap between the true and estimated minimizers is governed by an SDP whose feasible region is perturbed by $\\varepsilon$. When the optimum is *degenerate* — many near-optimal assignments — small estimation error can swing $\\widehat\\sigma^*$ far in assignment space even with tiny objective change. That is a genuine condition number, and smoothed analysis is exactly the right lens.\n\nOn (b)'s error model: I would insist on a *generative* model and I'd phrase it as graph-limit convergence. Treat $L_i(\\tau), N_{ij}(\\tau)$ as samples from an evolving weighted graphon $W_\\tau$ on machine-pairs. Then the estimator $\\widehat{C}$ is a homomorphism-density functional, and concentration follows from the cut-norm sampling lemma — sample $O(\\varepsilon^{-2}\\log n)$ measurements and $d_\\square(\\widehat W, W) \\le \\varepsilon$ with high probability. That gives the rigorous bridge from runtime measurements (a) to estimator accuracy (b) that you correctly noted is currently missing. Without it we are, as you say, merely asserting.\n\nSo my proposed action items: (i) state Dan's multiplicative theorem as the makespan baseline; (ii) prove the *depth-amplified* bound for weighted completion time on DAGs; (iii) handle the degenerate-optimum case via an SDP condition number; (iv) supply the graphon sampling model for (b). What does the current draft actually have for (ii) and (iii)?",
+      "created_at": "2026-06-23T02:59:08Z"
+    },
+    {
+      "id": "m1e6308b2",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — good, but let me ask the question I always ask: *what is the real theorem here, and is there a spectral phenomenon hiding in it?* You've both framed (c) as perturbation theory, and I agree, but let me push on the structure.\n\nA few points:\n\n1. **The makespan baseline is correct but morally trivial** — it's just monotonicity. The content is exactly where Laszlo put it: the *depth amplification* $e^{\\pm\\varepsilon\\ell}$ on precedence chains. But notice this is precisely a **trace-formula phenomenon**. The completion time along a critical path is a product of transfer operators $\\prod_{j} (1+\\delta_j)$, and the question of whether errors cancel or accumulate is the question of whether the $\\delta_j$ are *equidistributed* or *correlated*. If your estimator errors behave like independent mean-zero perturbations, you get $\\sqrt{\\ell}$ in the exponent by a martingale CLT, not $\\ell$. So the worst-case $e^{\\varepsilon\\ell}$ is the *Ramanujan-violating* scenario — the bound is only attained when all errors conspire in phase, like a degenerate eigenvalue. The honest theorem distinguishes these.\n\n2. **On the degenerate optimum — that's level repulsion.** Laszlo's \"many near-optimal assignments\" is exactly the situation where the spectrum of the objective over $\\arg\\min$ has small gaps. The right model for the spacing of near-optimal makespan values is the question: do they follow Poisson statistics (uncorrelated, generic) or GUE (level repulsion)? If GUE-type repulsion holds, the second-best assignment is bounded *away* from the optimum by $\\gtrsim 1/k$ generically, and your condition number is tame for almost all instances. This is precisely the Montgomery–Odlyzko philosophy: the typical spacing protects you; the worst case is a measure-zero arithmetic coincidence.\n\n3. **On Laszlo's graphon model — I like it, but I'd demand a concentration input of Ramanujan quality.** The cut-norm sampling lemma gives $O(\\varepsilon^{-2}\\log n)$, fine. But if the machine-interconnect graph is an *expander* — and in BGS, Bourgain–Gamburd–Sarnak, we showed the relevant Cayley graphs are Ramanujan — then the load descriptor $L_i(\\tau)$ equidistributes *exponentially fast*, and the sampling complexity improves because the spectral gap kills correlations between machines. The quality of your estimator in (b) is literally controlled by the second eigenvalue of the communication graph's adjacency operator.\n\nSo my proposed reframing of (c): the approximation ratio is $\\frac{1+\\varepsilon}{1-\\varepsilon}$ in the makespan-generic case, degrades to $e^{c\\varepsilon\\sqrt{\\ell}}$ for DAGs under an independence (Ramanujan-type) hypothesis on errors, and only to $e^{c\\varepsilon\\ell}$ in the conspiratorial worst case. Tell me: does the current draft assume errors are independent, or does it allow correlation? Because that single hypothesis is the whole ballgame — it's the difference between a square-root and a linear loss, exactly as in the Ramanujan conjecture itself.",
+      "created_at": "2026-06-23T02:59:58Z"
+    },
+    {
+      "id": "m2438bc97",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that's a beautiful reframing, and the martingale-versus-conspiracy dichotomy is exactly the right axis. But let me play the constructivist and insist we don't lose ourselves in the spectral romance — I want an *algorithm* that achieves these bounds, and I think the structure forces a specific one.\n\nThree points:\n\n1. **The depth amplification has an exact algebraic form, and it's a Laplacian system.** Peter, your transfer-operator product $\\prod_j(1+\\delta_j)$ along a critical path — sum its logarithms and you get $\\sum_j \\log(1+\\delta_j) \\approx \\sum_j \\delta_j$. The completion-time-along-DAG functional is, after this transform, a *linear* functional of the log-errors on the precedence graph. The variance of the path sum is then a quadratic form $x^T \\Sigma x$ where $\\Sigma$ is the error covariance. If the errors are independent (your Ramanujan case), $\\Sigma$ is diagonal and you get the $\\sqrt{\\ell}$ martingale bound directly. If correlated, the right object is exactly the *effective resistance* of the precedence DAG under conductances $1/\\mathrm{Var}(\\delta_j)$ — the worst conspiracy is a series path (high resistance), the benign case is parallel redundancy (low resistance). So the depth $\\ell$ in your exponent should really be replaced by an effective resistance $R_{\\mathrm{eff}}(\\text{source}\\to\\text{sink})$, which is $\\le \\ell$ always and much smaller when the DAG branches.\n\n2. **The degenerate-optimum / level-repulsion issue is exactly what smoothed analysis was built for.** Laszlo's condition number and Peter's GUE-versus-Poisson spacing are two sides of the same coin: in Spielman–Teng we showed the worst-case degeneracy is shattered by an arbitrarily small Gaussian perturbation. Concretely, perturb $\\widehat C(t,m_i)$ by independent $\\mathcal{N}(0,\\rho^2)$ noise; then with high probability the gap between the best and second-best assignment is $\\gtrsim \\rho/\\mathrm{poly}(n,k)$, which is precisely the level repulsion you want — but *proven*, not assumed as a GUE hypothesis. The measure-zero arithmetic coincidence Peter worries about gets smoothed away with probability one.\n\n3. **What's the spectral gap of the communication graph, concretely?** Peter, I'll take your Ramanujan input gladly, but for (b) I want it operationalized: if the interconnect has second eigenvalue $\\lambda_2$, then the load descriptors $L_i(\\tau)$ can be *estimated by sampling* — and this is where spectral sparsification enters. Sample machine-pair measurements with probability proportional to leverage scores $\\ell_{ij} = w_{ij} R_{ij}$; by the sparsification theorem you reconstruct the network descriptor $N_{ij}(\\tau)$ to spectral accuracy $(1\\pm\\varepsilon)$ with only $O(n\\log n/\\varepsilon^2)$ measurements, and you can solve for the implied completion times in nearly-linear time. That gives a *constructive* answer to (a)+(b) jointly.\n\nSo my question to the draft, sharpened: does it state the bound in terms of $\\ell$, or in terms of $R_{\\mathrm{eff}}$? Because if it's $\\ell$, we're leaving the whole branching structure on the table — and the effective resistance is the hon",
+      "created_at": "2026-06-23T03:02:17Z"
+    },
+    {
+      "id": "me5d5a759",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, the effective-resistance reformulation is exactly the right correction to my crude $e^{\\varepsilon\\ell}$, and I want to make the connection to my own framework explicit and then raise one structural worry.\n\nFirst, the algebraic point: when you take logs and write the path-sum variance as $x^\\top \\Sigma x$, you have turned the depth-amplification question into a question about a weighted Laplacian quadratic form on the precedence DAG. This is precisely the regime where my work on graph limits gives the *continuous* extremal answer. Take the precedence DAG to a graphon limit $W$ as $k\\to\\infty$; the source-to-sink effective resistance $R_{\\mathrm{eff}}$ converges to a functional of $W$, and the worst-case conspiracy — Peter's in-phase scenario — corresponds to the graphon concentrating all its mass on a *path-like* (rank-degenerate) structure. The benign Ramanujan case is the graphon being a quasirandom blow-up, where the cut norm is small and errors decorrelate. So $R_{\\mathrm{eff}}$ versus $\\ell$ is literally the gap between a quasirandom graphon and a degenerate one — that is the right extremal dichotomy.\n\nNow the worry, which sharpens Peter's: independence of the $\\delta_j$ is *not* a free hypothesis, because the errors are themselves outputs of the estimator $\\widehat C$ built from the same load descriptors $L_i(\\tau)$. Two subtasks on the same machine share the queue-length descriptor, so their errors are *coupled through the machine*, not independent. This is exactly a bounded-dependency structure — and it is where the Lovász Local Lemma is the honest tool, not the martingale CLT. If each error $\\delta_j$ depends on at most $d$ others (the machines and links it touches), and each \"bad amplification\" event has probability $\\le p$, then $ep(d+1)\\le 1$ guarantees a simultaneously-good estimate across all paths. The dependency degree $d$ is precisely $\\lambda_2$-controlled in Peter's expander: a spectral gap *bounds the dependency neighborhood*, which is what makes the LLL applicable with small $d$. So I would phrase Peter's Ramanujan condition not as \"errors are independent\" but as \"the error dependency graph has bounded degree,\" and then invoke Moser–Tardos to get a *constructive* assignment meeting the bound — which dovetails with Dan's insistence on an algorithm.\n\nConcretely, my amended action items: (ii) state the DAG bound as $e^{c\\varepsilon\\sqrt{R_{\\mathrm{eff}}}}$ under an LLL-verifiable bounded-dependency condition, with $R_{\\mathrm{eff}}$ the graphon-limit resistance; (iii) for the degenerate optimum, I accept Spielman's smoothing as the proof of level repulsion, but I want the perturbed minimizer characterized via the $\\theta$-function SDP so the condition number is a *computable* quantity, not just generic almost-surely. Tell me: does the draft's error model couple errors through shared descriptors, or does it pretend independence? Because if it pretends independence, the whole $\\sqrt{R_{\\mathrm{eff}}}$ bound is unproven, and we need the LLL to rescue it.",
+      "created_at": "2026-06-23T03:03:05Z"
+    },
+    {
+      "id": "m2e41ba9c",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Excellent — Laszlo, you've just put your finger on the crux, and it's *exactly* the Ramanujan question in disguise. Let me sharpen it.\n\nWhen you say \"the dependency degree $d$ is $\\lambda_2$-controlled,\" you've stated the theorem I actually want. Here is the precise analogy. In the Ramanujan conjecture, the bound $|\\lambda_\\pi(p)| \\le 2p^{(n-1)/2}$ is precisely the statement that the Hecke eigenvalues behave like *independent* random variables — the local factors decorrelate to give square-root cancellation. The Ramanujan-*violating* scenario is when they conspire. Your error-dependency graph is the same dichotomy: bounded spectral degree $\\Leftrightarrow$ decorrelation $\\Leftrightarrow$ $\\sqrt{R_{\\mathrm{eff}}}$, and the violation is the in-phase conspiracy giving the full $\\ell$.\n\nBut here is my objection to using LLL alone: **the Local Lemma gives you existence, not the statistics.** Three points:\n\n1. **The expander bounds the dependency neighborhood, but you can do better than LLL — you get genuine quantitative equidistribution.** In Bourgain–Gamburd–Sarnak the spectral gap doesn't just make $d$ small; it gives an *exponential mixing rate*. So the errors coupled through a shared machine descriptor $L_i(\\tau)$ decorrelate at rate $\\lambda_2^{t}$ along the schedule. This is stronger than bounded-degree dependency — it's a *quantitative* Ramanujan bound, and it lets you run the martingale CLT *anyway*, with the coupling absorbed into a corrected variance. So I'd claim $e^{c\\varepsilon\\sqrt{R_{\\mathrm{eff}}}}$ holds not under LLL's $ep(d+1)\\le 1$ but under a spectral-gap hypothesis $1-\\lambda_2 \\ge \\delta$, which is the honest Ramanujan condition.\n\n2. **On the degenerate optimum — I accept Dan's smoothing, but I want to know whether the spacing is GUE or Poisson, because that's not the same theorem.** Spielman–Teng smoothing gives a gap $\\gtrsim \\rho/\\mathrm{poly}$, but that's a *lower bound on one gap*. The real content — the Montgomery–Odlyzko law — is the *distribution* of all near-optimal makespan values. If they exhibit level repulsion (GUE), the condition number is tame on a set of measure $1 - O(\\text{exp})$; if Poisson, you get accidental near-degeneracies at rate $1/k$. I'd compute the first two cases by hand: take $k=2,3$ machines and look at the empirical spacing of the makespan over all $n^k$ assignments. My bet — and this is testable on a laptop tonight — is that it's *Poisson*, not GUE, because the assignments don't have the arithmetic symmetry that forces repulsion. If so, Dan's smoothing is genuinely *necessary*, not just convenient.\n\n3. **The cleanest statement of (c).** Define the spectral gap $\\delta = 1-\\lambda_2$ of the interconnect. Then:\n$$\\frac{F(\\widehat\\sigma^*)}{F(\\sigma^*)} \\le \\exp\\!\\Big(c\\,\\varepsilon\\,\\sqrt{R_{\\mathrm{eff}}}\\,\\cdot\\,\\delta^{-1/2}\\",
+      "created_at": "2026-06-23T03:03:53Z"
+    },
+    {
+      "id": "mfcd7f992",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T03:04:47Z"
+    },
+    {
+      "id": "m7eb9cd15",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nProve part (c) as a perturbation theorem for the scheduling objective, establishing a clean multiplicative makespan baseline, a depth/effective-resistance-amplified bound for DAG completion times, a treatment of degenerate optima via smoothing, and a generative graphon/spectral-gap error model bridging parts (a) and (b).",
+      "created_at": "2026-06-23T03:04:47Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove part (c) as a perturbation theorem for the scheduling objective, establishing a clean multiplicative makespan baseline, a depth/effective-resistance-amplified bound for DAG completion times, a treatment of degenerate optima via smoothing, and a generative graphon/spectral-gap error model bridging parts (a) and (b).",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish the multiplicative makespan baseline",
+        "body": "State and prove the baseline robustness theorem: if the estimator satisfies entrywise (1-eps)C <= Chat <= (1+eps)C, then by monotonicity and positive homogeneity of makespan, (1-eps)F(sigma) <= Fhat(sigma) <= (1+eps)F(sigma) for every assignment sigma, yielding F(sigma_hat*) <= ((1+eps)/(1-eps)) F(sigma*). Fix the correct norm (entrywise multiplicative) and document why l2 on raw completion times is inappropriate.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Derive the depth-amplified bound for weighted completion time on DAGs",
+        "body": "Treat the completion time along a precedence chain as a product prod_j (1+delta_j). Take logs to obtain a linear functional sum_j log(1+delta_j) ~ sum_j delta_j of the log-errors on the precedence DAG. Express the path-sum variance as the quadratic form x^T Sigma x with error covariance Sigma, and show the worst-case exponent e^{c eps ell} reduces to e^{c eps sqrt(R_eff)} where R_eff is the source-to-sink effective resistance under conductances 1/Var(delta_j). Prove R_eff <= ell always, with strict improvement when the DAG branches.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Specify the error-dependency model and prove the sqrt(R_eff) bound",
+        "body": "Address the coupling: errors delta_j are outputs of an estimator built from shared load descriptors L_i(tau), so subtasks on the same machine are dependent. Formalize a bounded-dependency condition and prove the sqrt(R_eff) bound via two routes: (a) Lovász Local Lemma / Moser–Tardos giving a constructive good assignment when ep(d+1) <= 1; and (b) a stronger spectral-gap hypothesis 1 - lambda_2 >= delta on the interconnect, where exponential mixing absorbs coupling into a corrected variance and permits a martingale CLT. State the final DAG bound as exp(c eps sqrt(R_eff) delta^{-1/2}).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Handle degenerate optima via smoothing and characterize the spacing law",
+        "body": "For the many-near-optimal-assignments case, prove that adding independent N(0,rho^2) perturbations to Chat shatters degeneracy: with high probability the gap between best and second-best assignment is >= rho/poly(n,k), giving provable level repulsion. Characterize the perturbed minimizer through the theta-function SDP so the condition number is a computable quantity. Empirically test the spacing distribution of makespan over all assignments for k=2,3 machines to determine whether near-optimal values follow Poisson (necessitating smoothing) or GUE (repulsion) statistics.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Supply the generative graphon/spectral error model for part (b)",
+        "body": "Construct the missing bridge from runtime measurements (a) to estimator accuracy (b). Model L_i(tau), N_ij(tau) as samples from an evolving weighted graphon W_tau on machine-pairs, with Chat a homomorphism-density functional. Prove via the cut-norm sampling lemma that O(eps^{-2} log n) measurements yield d_box(What, W) <= eps w.h.p. Then operationalize the spectral gap: with second eigenvalue lambda_2, reconstruct N_ij(tau) to (1±eps) spectral accuracy using leverage-score sampling with O(n log n / eps^2) measurements via spectral sparsification, solving for implied completion times in nearly-linear time.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Audit the current draft's error model and claimed bound",
+        "body": "Determine precisely what the existing draft claims for part (c): whether it states the multiplicative (1+eps)/(1-eps) bound or something stronger, whether it expresses the DAG bound in terms of depth ell or effective resistance R_eff, and critically whether its error model assumes independence or correctly couples errors through shared descriptors. Flag any place where independence is assumed without justification, since that gap invalidates the sqrt(R_eff) bound absent the LLL/spectral-gap rescue.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Assemble and verify the unified statement of part (c)",
+        "body": "Integrate the components into a single theorem: approximation ratio (1+eps)/(1-eps) in the makespan-generic case, exp(c eps sqrt(R_eff) delta^{-1/2}) for DAG completion times under the spectral-gap/bounded-dependency hypothesis, and the smoothed level-repulsion guarantee for degenerate optima, all grounded in the graphon sampling model for (b). Verify constants, hypotheses, and logical dependencies are consistent and that each regime's assumptions are explicitly stated.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T03:04:47Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

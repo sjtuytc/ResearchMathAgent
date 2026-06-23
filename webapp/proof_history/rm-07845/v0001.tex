@@ -1,0 +1,849 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\dom}{D}
+\newcommand{\Leb}{\lambda}
+\newcommand{\Rhat}{\widehat R}
+\newcommand{\Zhat}{\widehat Z}
+
+\begin{document}
+
+\title{A theory of spatial sampling for mapping and reserve estimation}
+\maketitle
+
+\begin{abstract}
+We develop a self-contained theory for sampling a spatially distributed
+resource $Z$ over a horizontal region $D\subset\R^2$ and a depth interval
+$[h_{\min},h_{\max}]$, in order to (i) estimate the total reserve $R$ and
+(ii) produce a map of $Z$ with quantified accuracy. We (a) set up a
+second-order random-field model; (b) derive the bias, variance and mean
+square error of both design-based and model-based (kriging) estimators of
+$R$; (c) prove optimality/admissibility statements that order simple
+random, stratified, systematic and adaptive designs; and (d) construct the
+universal-kriging map together with its exact mean-square mapping error,
+and relate the design that is optimal for mapping to the design that is
+optimal for estimating $R$.
+\end{abstract}
+
+\section{Standing assumptions and notation}\label{sec:setup}
+
+Throughout, $D\subset\R^2$ is bounded and Lebesgue measurable with
+$0<|D|<\infty$, where $|\cdot|$ denotes Lebesgue measure. Write
+$I=[h_{\min},h_{\max}]$, $|I|=h_{\max}-h_{\min}>0$, and let
+$S=D\times I\subset\R^3$, a bounded measurable set with
+$|S|=|D|\,|I|$. We write $s=(x,h)\in S$ for a generic point. All integrals
+are Lebesgue integrals; $\Leb$ denotes Lebesgue measure on the relevant
+space.
+
+The unknown function $Z:S\to\R_{\ge0}$ is modeled as a sample path of a
+real-valued second-order random field $\{Z(s)\}_{s\in S}$ defined on a
+probability space $(\Omega,\mathcal F,\mathbb P)$. We assume:
+
+\begin{itemize}
+\item[(A1)] \emph{Second order and measurability.} $\E[Z(s)^2]<\infty$
+for every $s\in S$, and $(\omega,s)\mapsto Z(\omega,s)$ is
+$\mathcal F\otimes\mathcal B(S)$-measurable, where $\mathcal B(S)$ is the
+Borel $\sigma$-algebra.
+\item[(A2)] \emph{Mean and covariance.} The mean
+$m(s)=\E[Z(s)]$ and the covariance
+$C(s,s')=\Cov(Z(s),Z(s'))=\E[(Z(s)-m(s))(Z(s')-m(s'))]$ are Borel
+measurable on $S$ and $S\times S$ respectively, and
+$\int_S |m(s)|\,ds<\infty$, $\int_{S\times S}|C(s,s')|\,ds\,ds'<\infty$.
+\end{itemize}
+
+By the Cauchy--Schwarz inequality $|C(s,s')|\le
+\sqrt{C(s,s)}\sqrt{C(s',s')}$ and (A2), the variance
+$\sigma^2(s)=C(s,s)$ is integrable on $S$, and $\E\!\int_S Z(s)^2\,ds
+=\int_S(m(s)^2+\sigma^2(s))\,ds<\infty$ provided $\int_S m^2<\infty$, which
+we also assume. Consequently, by the Fubini--Tonelli theorem applied to the
+nonnegative measurable function $(\omega,s)\mapsto Z(\omega,s)$ and to its
+square,
+\begin{equation}\label{eq:Rwelldef}
+R=\int_S Z(s)\,ds=\int_D\!\int_{h_{\min}}^{h_{\max}}Z(x,h)\,dh\,dx
+\end{equation}
+is, $\mathbb P$-almost surely, a well-defined finite random variable with
+$\E[R^2]<\infty$. We treat $R$ as the (unknown, random) target.
+
+\begin{remark}[stationarity, depth profiles]
+A frequently used specialization of (A2) is \emph{horizontal
+stationarity}: $m(x,h)=\mu(h)$ depends only on depth and
+$C\big((x,h),(x',h')\big)=K(x-x',h,h')$ is a function of the horizontal
+lag $x-x'$. A still simpler model is \emph{separability},
+$C\big((x,h),(x',h')\big)=K_0(x-x')\,K_1(h,h')$. None of our general
+identities require these; we invoke them only where stated.
+\end{remark}
+
+\paragraph{Observation model.} A design with $n$ boreholes selects
+locations $x_1,\dots,x_n\in D$ and, at each $x_i$, records the depth
+profile $Z(x_i,\cdot)$, possibly contaminated by additive measurement
+error. To keep both the ``full profile'' and the ``finite depth set''
+cases under one roof we let the observation at borehole $i$ be a finite
+real vector
+\begin{equation}\label{eq:obsmodel}
+Y_{i}=\big(Y_{i,1},\dots,Y_{i,p_i}\big),\qquad
+Y_{i,k}=Z(x_i,h_{i,k})+\varepsilon_{i,k},
+\end{equation}
+where $h_{i,1},\dots,h_{i,p_i}\in I$ are the sampled depths at borehole
+$i$ and the $\varepsilon_{i,k}$ are mean-zero measurement errors with
+$\Cov(\varepsilon_{i,k},\varepsilon_{j,\ell})
+=\tau^2\,\mathbf 1\{i=j,k=\ell\}$, independent of the field $Z$. The
+noiseless full-profile case is the limit $\tau^2=0$ with the depth grid
+refined to all of $I$. We write the stacked data as
+$\mathbf Y\in\R^{N}$ with $N=\sum_i p_i$, and we index the
+\emph{data locations} by $s_a=(x_{i},h_{i,k})\in S$, $a=1,\dots,N$.
+
+\section{(a) The probabilistic model and two inferential frameworks}
+\label{sec:model}
+
+We make precise the two standard frameworks under which designs and
+estimators are compared, and fix the convention used in each subsequent
+part.
+
+\begin{definition}[Model-based framework]\label{def:modelbased}
+The field $Z$ is random with law determined by $(m,C)$ as in (A1)--(A2);
+the design locations are fixed (deterministic) or chosen adaptively but
+measurably from past data. Performance of an estimator $\Rhat$ of the
+random target $R$ is the \emph{model mean square error}
+$\mathrm{MSE}_{\mathrm{m}}(\Rhat)=\E\big[(\Rhat-R)^2\big]$, expectation
+over the field and the measurement noise.
+\end{definition}
+
+\begin{definition}[Design-based framework]\label{def:designbased}
+The function $Z$ (hence $R$) is treated as fixed but unknown; randomness
+comes only from the random selection of borehole locations
+$X_1,\dots,X_n$ according to a sampling law $\xi$ on $D^n$ (and from
+measurement noise). Performance is the \emph{design mean square error}
+$\mathrm{MSE}_{\xi}(\Rhat)=\E_\xi\big[(\Rhat-R)^2\big]$.
+\end{definition}
+
+Both frameworks are legitimate; they answer different questions
+(``how well do we recover \emph{this} buried function'' vs.\ ``how well does
+the \emph{procedure} perform over the field ensemble''). We use the
+design-based framework for the unbiasedness/efficiency comparisons of
+designs in \S\ref{sec:designs}, and the model-based framework for the
+optimal predictor and the map in \S\ref{sec:estimator}, \S\ref{sec:map}.
+The two are linked in \S\ref{sec:designs} (Theorem~\ref{thm:anticipated})
+through the \emph{anticipated variance}.
+
+\section{(b) Estimators of $R$: bias, variance, MSE}
+\label{sec:estimator}
+
+\subsection{Design-based Horvitz--Thompson estimator}
+Fix $Z$ (Definition~\ref{def:designbased}) and put
+\begin{equation}\label{eq:profile}
+f(x)=\int_{h_{\min}}^{h_{\max}}Z(x,h)\,dh,\qquad x\in D,
+\end{equation}
+the \emph{areal density}; then $R=\int_D f(x)\,dx$. Assume each borehole
+returns the noiseless integrated profile $f(x_i)$ (the case with a depth
+grid and noise is treated in \S\ref{sec:depth}). Let the boreholes be
+drawn with a sampling law $\xi$ giving each point $x\in D$ a
+\emph{first-order inclusion density} $\pi(x)$, meaning that for every
+bounded measurable $g$,
+\begin{equation}\label{eq:inclusion}
+\E_\xi\Big[\sum_{i=1}^n \frac{g(X_i)}{\pi(X_i)}\Big]=\int_D g(x)\,dx .
+\end{equation}
+(For $n$ i.i.d.\ draws from a density $q$ on $D$, \eqref{eq:inclusion}
+holds with $\pi(x)=n\,q(x)$, since
+$\E_\xi[\sum_i g(X_i)/\pi(X_i)] = n\,\E[g(X_1)/(nq(X_1))]
+=\int_D (g/q)\,q=\int_D g$.)
+
+\begin{definition}[HT estimator]
+$\displaystyle \Rhat_{\mathrm{HT}}
+=\sum_{i=1}^n \frac{f(X_i)}{\pi(X_i)}.$
+\end{definition}
+
+\begin{proposition}[Design unbiasedness and variance]\label{prop:HT}
+Assume $\pi(x)>0$ for a.e.\ $x\in D$ where $f(x)\ne0$, and $f/\pi\in
+L^2$. Then $\Rhat_{\mathrm{HT}}$ is design-unbiased,
+$\E_\xi[\Rhat_{\mathrm{HT}}]=R$, and for $n$ i.i.d.\ draws from density
+$q=\pi/n$,
+\begin{equation}\label{eq:HTvar}
+\Var_\xi(\Rhat_{\mathrm{HT}})
+=\frac1n\Big(\int_D \frac{f(x)^2}{q(x)}\,dx - R^2\Big)
+=\frac1n\int_D\Big(\frac{f(x)}{q(x)}-R\Big)^2 q(x)\,dx .
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Unbiasedness is \eqref{eq:inclusion} with $g=f$. For i.i.d.\ draws,
+$\Rhat_{\mathrm{HT}}=\sum_i f(X_i)/(nq(X_i))$ is an average of $n$
+i.i.d.\ terms $W_i=f(X_i)/(nq(X_i))\cdot n = f(X_i)/(nq(X_i))$; precisely,
+write $\Rhat_{\mathrm{HT}}=\frac1n\sum_i U_i$ with
+$U_i=f(X_i)/q(X_i)$. Then $\E[U_i]=\int_D (f/q)q=R$ and
+\[
+\Var(U_i)=\int_D \frac{f^2}{q^2}\,q - R^2=\int_D\frac{f^2}{q}-R^2 .
+\]
+By independence $\Var_\xi(\Rhat_{\mathrm{HT}})=\frac1n\Var(U_1)$, which is
+the first equality in \eqref{eq:HTvar}; the second is the algebraic
+identity $\int (f/q)^2 q - R^2 = \int (f/q-R)^2 q$ using $\int q=1$.
+\end{proof}
+
+\begin{corollary}[Optimal inclusion density for HT]\label{cor:optq}
+Among densities $q$ on $D$, \eqref{eq:HTvar} is minimized by
+$q^\star(x)=|f(x)|/\int_D|f|$, giving
+$\Var_\xi^{\min}=\frac1n\big((\int_D|f|)^2-R^2\big)$; if $f\ge0$ this is
+$0$. Equivalently, sampling proportionally to the local resource gives the
+smallest HT variance.
+\end{corollary}
+\begin{proof}
+Minimize $\int_D f^2/q$ over densities $q$. By Cauchy--Schwarz,
+$\big(\int_D|f|\big)^2=\big(\int_D \tfrac{|f|}{\sqrt q}\sqrt q\big)^2\le
+\int_D \tfrac{f^2}{q}\int_D q=\int_D\tfrac{f^2}{q}$, with equality iff
+$|f|/\sqrt q \propto \sqrt q$, i.e.\ $q\propto|f|$. This identifies the
+minimizer $q^\star$ and the minimal value via \eqref{eq:HTvar}.
+\end{proof}
+
+\begin{remark}
+Corollary~\ref{cor:optq} is the design-based optimum but requires knowing
+$f$ (the very thing being estimated). It motivates two practical routes:
+(i) \emph{model-based} prediction, which exploits spatial correlation
+(\S\ref{sec:estimator}.2); and (ii) \emph{adaptive} designs that learn an
+approximation to $q^\star$ on the fly (\S\ref{sec:designs}).
+\end{remark}
+
+\subsection{Model-based (kriging) estimator}\label{ssec:krig}
+Now adopt Definition~\ref{def:modelbased}: $Z$ is random, locations are
+fixed. Let the data be $\mathbf Y\in\R^N$ from \eqref{eq:obsmodel} with
+data locations $s_1,\dots,s_N\in S$. Define
+\begin{equation}\label{eq:cveccov}
+\boldsymbol\Sigma\in\R^{N\times N},\;
+\Sigma_{ab}=C(s_a,s_b)+\tau^2\mathbf 1\{a=b\};\qquad
+c_a=\Cov\!\big(Z(s_a),R\big)=\int_S C(s_a,s')\,ds' ,
+\end{equation}
+the second identity by Fubini (valid by (A2)). Put
+$\mathbf c=(c_1,\dots,c_N)^\top$ and $\mathbf m=(m(s_a))_a$. Consider
+linear predictors $\Rhat=\beta_0+\boldsymbol\beta^\top\mathbf Y$.
+
+\begin{theorem}[Simple-kriging estimator of $R$: BLP]\label{thm:BLP}
+Among all affine predictors of $R$ from $\mathbf Y$, the unique minimizer
+of $\mathrm{MSE}_{\mathrm m}$ is
+\begin{equation}\label{eq:BLP}
+\Rhat_{\mathrm{SK}}
+=\E[R]+\mathbf c^\top\boldsymbol\Sigma^{-1}\big(\mathbf Y-\mathbf m\big),
+\qquad \E[R]=\int_S m(s)\,ds,
+\end{equation}
+(assuming $\boldsymbol\Sigma\succ0$, which holds whenever $\tau^2>0$ or the
+$s_a$ are distinct and $C$ is positive definite). It is model-unbiased,
+$\E[\Rhat_{\mathrm{SK}}-R]=0$, and
+\begin{equation}\label{eq:BLPvar}
+\mathrm{MSE}_{\mathrm m}(\Rhat_{\mathrm{SK}})
+=\Var(R)-\mathbf c^\top\boldsymbol\Sigma^{-1}\mathbf c,
+\qquad
+\Var(R)=\int_{S\times S}C(s,s')\,ds\,ds'.
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Write $R^\circ=R-\E[R]$, $\mathbf Y^\circ=\mathbf Y-\mathbf m$, both
+mean zero, with $\Cov(\mathbf Y^\circ)=\boldsymbol\Sigma$ (the field
+covariance among the $s_a$ plus the diagonal noise, since noise is
+independent of $Z$) and $\Cov(\mathbf Y^\circ,R^\circ)
+=\big(\Cov(Z(s_a)+\varepsilon_a, R)\big)_a=\mathbf c$, because the noise is
+independent of $R$. For an affine predictor write
+$\Rhat=\beta_0+\boldsymbol\beta^\top\mathbf Y$. Then
+\[
+\E[(\Rhat-R)^2]
+=\big(\beta_0+\boldsymbol\beta^\top\mathbf m-\E[R]\big)^2
++\E\big[(\boldsymbol\beta^\top\mathbf Y^\circ-R^\circ)^2\big],
+\]
+since the cross term is the product of the (mean-zero) bias-free centered
+parts times the constant bias, hence the decomposition into squared bias
+plus a centered term. The first square is minimized to $0$ by
+$\beta_0=\E[R]-\boldsymbol\beta^\top\mathbf m$ for any $\boldsymbol\beta$,
+making $\Rhat$ unbiased. The second term is the quadratic
+\[
+\Phi(\boldsymbol\beta)
+=\boldsymbol\beta^\top\boldsymbol\Sigma\boldsymbol\beta
+-2\boldsymbol\beta^\top\mathbf c+\Var(R),
+\]
+which is strictly convex ($\boldsymbol\Sigma\succ0$) with unique minimizer
+$\boldsymbol\beta^\star=\boldsymbol\Sigma^{-1}\mathbf c$ (set
+$\nabla\Phi=2\boldsymbol\Sigma\boldsymbol\beta-2\mathbf c=0$). Substituting
+gives \eqref{eq:BLP} and minimal value
+$\Phi(\boldsymbol\beta^\star)=\Var(R)-\mathbf c^\top\boldsymbol\Sigma^{-1}
+\mathbf c$, i.e.\ \eqref{eq:BLPvar}. The expressions for $\E[R]$ and
+$\Var(R)$ follow from Fubini under (A2).
+\end{proof}
+
+\begin{theorem}[Universal kriging: unknown trend]\label{thm:UK}
+Suppose the mean is linear in known regressors,
+$m(s)=\mathbf g(s)^\top\boldsymbol\alpha$ with $\mathbf g:S\to\R^q$ Borel
+and $\boldsymbol\alpha\in\R^q$ unknown. Let $\mathbf G\in\R^{N\times q}$
+have rows $\mathbf g(s_a)^\top$, with $\mathrm{rank}(\mathbf G)=q$, and let
+$\bar{\mathbf g}=\int_S\mathbf g(s)\,ds\in\R^q$. Among linear predictors
+$\Rhat=\boldsymbol\beta^\top\mathbf Y$ that are \emph{uniformly unbiased}
+(i.e.\ $\E[\Rhat-R]=0$ for every $\boldsymbol\alpha$), the unique
+MSE-minimizer (the BLUP) has
+\begin{equation}\label{eq:UKbeta}
+\boldsymbol\beta_{\mathrm{UK}}
+=\boldsymbol\Sigma^{-1}\Big(\mathbf c
++\mathbf G\big(\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf G\big)^{-1}
+\big(\bar{\mathbf g}-\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf c\big)\Big),
+\end{equation}
+and
+\begin{equation}\label{eq:UKvar}
+\mathrm{MSE}_{\mathrm m}(\Rhat_{\mathrm{UK}})
+=\Var(R)-\mathbf c^\top\boldsymbol\Sigma^{-1}\mathbf c
++\big(\bar{\mathbf g}-\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf c\big)^\top
+\big(\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf G\big)^{-1}
+\big(\bar{\mathbf g}-\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf c\big).
+\end{equation}
+\end{theorem}
+\begin{proof}
+Uniform unbiasedness: $\E[\boldsymbol\beta^\top\mathbf Y-R]
+=\boldsymbol\beta^\top\mathbf G\boldsymbol\alpha-\bar{\mathbf
+g}^\top\boldsymbol\alpha$ for all $\boldsymbol\alpha$, equivalently the
+linear constraint $\mathbf G^\top\boldsymbol\beta=\bar{\mathbf g}$. Under
+this constraint the centered MSE equals
+$\boldsymbol\beta^\top\boldsymbol\Sigma\boldsymbol\beta
+-2\boldsymbol\beta^\top\mathbf c+\Var(R)$ exactly as in
+Theorem~\ref{thm:BLP} (the constraint kills the bias term). Minimizing the
+convex quadratic subject to $\mathbf G^\top\boldsymbol\beta
+=\bar{\mathbf g}$ via Lagrange multipliers
+$\boldsymbol\nu\in\R^q$:
+$\boldsymbol\Sigma\boldsymbol\beta-\mathbf c
++\mathbf G\boldsymbol\nu=0$, so
+$\boldsymbol\beta=\boldsymbol\Sigma^{-1}(\mathbf c-\mathbf G\boldsymbol\nu)$.
+The constraint gives
+$\mathbf G^\top\boldsymbol\Sigma^{-1}(\mathbf c-\mathbf G\boldsymbol\nu)
+=\bar{\mathbf g}$, hence
+$\boldsymbol\nu=(\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf G)^{-1}
+(\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf c-\bar{\mathbf g})$. Back
+substitution yields \eqref{eq:UKbeta} ($\mathbf
+G^\top\boldsymbol\Sigma^{-1}\mathbf G$ is invertible since
+$\mathrm{rank}\,\mathbf G=q$ and $\boldsymbol\Sigma\succ0$). The minimal
+value is obtained by inserting $\boldsymbol\beta_{\mathrm{UK}}$ into the
+quadratic; a direct computation, using
+$\boldsymbol\beta_{\mathrm{UK}}^\top\boldsymbol\Sigma
+\boldsymbol\beta_{\mathrm{UK}}
+=\boldsymbol\beta_{\mathrm{UK}}^\top(\mathbf c-\mathbf G\boldsymbol\nu)$
+and the formula for $\boldsymbol\nu$, gives \eqref{eq:UKvar}. The third
+(nonnegative) term in \eqref{eq:UKvar} is the price of not knowing
+$\boldsymbol\alpha$; it vanishes iff
+$\bar{\mathbf g}=\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf c$.
+\end{proof}
+
+\begin{remark}[bias of plug-in/ratio estimators]
+The estimators above are exactly (model- or design-)unbiased. A common
+alternative, the \emph{block-average} plug-in
+$\Rhat_{\mathrm{avg}}=|S|\cdot\frac1N\sum_a Y_a$, has model bias
+$\E[\Rhat_{\mathrm{avg}}-R]=|S|\,\bar m_{\mathrm{samp}}-\int_S m$, where
+$\bar m_{\mathrm{samp}}=N^{-1}\sum_a m(s_a)$; this is zero exactly when the
+sample mean of the trend equals its spatial average, which holds for a
+constant trend but not in general. Its MSE follows from
+$\mathrm{MSE}=\text{bias}^2+\Var$ with
+$\Var(\Rhat_{\mathrm{avg}})
+=\frac{|S|^2}{N^2}\big(\sum_{a,b}C(s_a,s_b)+N\tau^2\big)
+-\frac{2|S|}{N}\sum_a c_a+\Var(R)$, using \eqref{eq:cveccov}. The point of
+kriging is precisely to remove this bias and minimize variance
+simultaneously.
+\end{remark}
+
+\subsection{Depth handling}\label{sec:depth}
+If at borehole $i$ the profile is observed at depths
+$h_{i,1}<\dots<h_{i,p_i}$, the within-hole integral
+$\int_I Z(x_i,h)\,dh$ is itself unobserved and must be predicted. Two
+consistent treatments:
+
+\emph{(i) Quadrature plug-in.} Replace $f(x_i)=\int_I Z(x_i,h)\,dh$ by a
+quadrature $\widehat f(x_i)=\sum_k w_{i,k}Y_{i,k}$ with weights summing to
+$|I|$ (e.g.\ trapezoidal). Then everything in \S\ref{sec:estimator}.1
+applies to $\widehat f$, with the additional within-hole error
+$\int_I Z(x_i,h)dh-\widehat f(x_i)$ added to the budget; for $C^2$ profiles
+the trapezoidal error is $O(|I|\,\delta_i^2)$, $\delta_i=\max_k
+(h_{i,k+1}-h_{i,k})$, plus a noise term $\sum_k w_{i,k}\varepsilon_{i,k}$
+of variance $\tau^2\sum_k w_{i,k}^2$.
+
+\emph{(ii) Joint kriging in $(x,h)$.} Treat $R=\int_S Z$ directly as the
+linear functional in Theorems~\ref{thm:BLP}--\ref{thm:UK} with data
+locations $s_a=(x_i,h_{i,k})$. This is exact (no quadrature error) because
+$c_a=\int_S C(s_a,s')\,ds'$ already encodes the depth integration. We adopt
+(ii) as the canonical method; (i) is its computationally cheap separable
+approximation when $C$ is separable.
+
+\section{(c) Optimal and admissible designs}\label{sec:designs}
+
+We compare designs in the design-based sense for the (positive)
+autocorrelation case and then give a unifying model-based optimality
+criterion. To isolate the spatial effect we take the noiseless areal
+density $f$ of \eqref{eq:profile} as a fixed function and study the
+estimator of $\bar f=|D|^{-1}\int_D f=R/|D|$ (equivalently $R$). The four
+designs of sample size $n$ on $D$ (assume $|D|=1$ for normalization; the
+general case rescales by $|D|^2$):
+\begin{itemize}
+\item \textbf{SRS}: $n$ i.i.d.\ uniform draws; estimator
+$\bar f_{\mathrm{SRS}}=\frac1n\sum_i f(X_i)$.
+\item \textbf{Stratified (STR)}: partition $D=\bigsqcup_{j=1}^n D_j$ with
+$|D_j|=1/n$; draw one uniform point $X_j$ per stratum; estimator
+$\bar f_{\mathrm{STR}}=\frac1n\sum_j f(X_j)$.
+\item \textbf{Systematic/grid (SYS)}: a single random shift of a fixed
+$n$-point lattice $L$ on $D$; estimator
+$\bar f_{\mathrm{SYS}}=\frac1n\sum_{x\in L+U}f(x)$.
+\item \textbf{Adaptive (ADA)}: locations chosen sequentially, each
+measurably from past data (\S\ref{ssec:adaptive}).
+\end{itemize}
+
+\subsection{Design-based variance ordering}
+
+\begin{theorem}[SRS vs.\ stratified]\label{thm:srsstr}
+For any fixed $f\in L^2(D)$, with the strata $D_j$ above,
+\begin{equation}\label{eq:strstr}
+\Var(\bar f_{\mathrm{SRS}})=\frac{1}{n}\sigma_f^2,\qquad
+\Var(\bar f_{\mathrm{STR}})
+=\frac1{n^2}\sum_{j=1}^n \sigma_{f,j}^2,
+\end{equation}
+where $\sigma_f^2=\int_D (f-\bar f)^2$ and
+$\sigma_{f,j}^2=n\int_{D_j}\!\big(f-\bar f_j\big)^2$, with
+$\bar f_j=n\int_{D_j}f$ the stratum mean. Moreover
+\begin{equation}\label{eq:anova}
+\Var(\bar f_{\mathrm{SRS}})-\Var(\bar f_{\mathrm{STR}})
+=\frac1n\sum_{j=1}^n \frac1n\big(\bar f_j-\bar f\big)^2\;\ge0 .
+\end{equation}
+Hence stratified is never worse than SRS, strictly better unless all
+stratum means coincide.
+\end{theorem}
+\begin{proof}
+For SRS, $\bar f_{\mathrm{SRS}}$ averages $n$ i.i.d.\ values $f(X_i)$ with
+$\E f(X_i)=\bar f$ and $\Var f(X_i)=\sigma_f^2$, giving the first equality
+in \eqref{eq:strstr}. For STR, the $X_j$ are independent across strata,
+$\E f(X_j)=\bar f_j$ and $\Var f(X_j)=\sigma_{f,j}^2$ (the within-stratum
+variance, the factor $n$ being $1/|D_j|$), so
+$\Var(\bar f_{\mathrm{STR}})=\frac1{n^2}\sum_j\sigma_{f,j}^2$. The
+classical ANOVA identity
+$\sigma_f^2=\sum_j\big(\int_{D_j}(f-\bar f_j)^2 + |D_j|(\bar f_j-\bar
+f)^2\big)
+=\frac1n\sum_j\sigma_{f,j}^2+\frac1n\sum_j(\bar f_j-\bar f)^2$ (total =
+within + between) gives, after dividing by $n$,
+$\Var(\bar f_{\mathrm{SRS}})=\Var(\bar f_{\mathrm{STR}})
++\frac1{n^2}\sum_j(\bar f_j-\bar f)^2$, i.e.\ \eqref{eq:anova}.
+\end{proof}
+
+\begin{theorem}[Stratified vs.\ systematic under positive
+autocorrelation]\label{thm:sys}
+Adopt horizontal stationarity with covariance $K$ of $f$, i.e.\
+$\Cov(f(x),f(x'))=K(x-x')$, and suppose that on $[0,2/n]$ the function
+$r\mapsto K(r)$ is nonnegative and \emph{convex} and that $K(-r)=K(r)$
+(an even covariance; all common geostatistical models -- exponential,
+Gaussian, spherical, Mat\'ern -- satisfy this). Work in $1$D, $D=[0,1]$,
+$|D|=1$, with strata $D_j=[(j-1)/n,j/n]$, the stratified design drawing one
+uniform point $X_j^{\mathrm{STR}}=(j-1)/n+U_j$ per stratum
+($U_1,\dots,U_n$ i.i.d.\ $\mathrm{Unif}[0,1/n]$), and the systematic design
+$X_j^{\mathrm{SYS}}=(j-1)/n+U$ with a single common shift
+$U\sim\mathrm{Unif}[0,1/n]$. With the estimator
+$\bar f_\bullet=\frac1n\sum_j f(X_j^\bullet)$, both designs are
+design-unbiased for $\bar f=\int_0^1 f$ under the field model, and their
+\emph{anticipated variances} (Definition~\ref{def:av}) obey
+\begin{equation}\label{eq:sysleqstr}
+\mathrm{AV}(\mathrm{SYS})\;\le\;\mathrm{AV}(\mathrm{STR}).
+\end{equation}
+\end{theorem}
+\begin{proof}
+\emph{Unbiasedness.} For either design, $\E_U f((j-1)/n+U)
+=n\int_{D_j}f=\bar f_j$ ($\E_U$ over the relevant shift, uniform on the
+cell), and $\E_{\mathrm{des}}\bar f_\bullet=\frac1n\sum_j\bar f_j
+=\int_0^1 f=\bar f$. Hence both are design-unbiased for $\bar f$ for
+\emph{every} fixed $f$, so a fortiori under the field model.
+
+\emph{Reduction to pairwise covariances.} The anticipated variance is
+$\mathrm{AV}(\bullet)=\E_K\E_{\mathrm{des}}\big[(\bar f_\bullet-\bar
+f)^2\big]$, where $\E_K$ denotes expectation over the field with covariance
+$K$. Since both designs are design-unbiased for each fixed $f$,
+$\E_{\mathrm{des}}\big[(\bar f_\bullet-\bar f)^2\big]
+=\Var_{\mathrm{des}}(\bar f_\bullet)$, so
+\[
+\mathrm{AV}(\bullet)
+=\E_K\,\Var_{\mathrm{des}}(\bar f_\bullet)
+=\E_K\Big[\E_{\mathrm{des}}\bar f_\bullet^2\Big]-\E_K[\bar f^2].
+\]
+The term $\E_K[\bar f^2]=\int_0^1\!\int_0^1 K(x-x')\,dx\,dx'$ is identical
+for both designs. For the first term, by Tonelli and stationarity (write
+$\mu=\E_K f$ constant, $\E_K[f(x)f(x')]=K(x-x')+\mu^2$),
+\[
+\E_K\big[\E_{\mathrm{des}}\bar f_\bullet^2\big]
+=\frac1{n^2}\sum_{j,k}\E_{\mathrm{des}}\,
+\E_K\big[f(X_j^\bullet)f(X_k^\bullet)\big]
+=\frac1{n^2}\sum_{j,k}
+\E_{\mathrm{des}}\,K\!\big(X_j^\bullet-X_k^\bullet\big)+\mu^2,
+\]
+the $\mu^2$ contribution $\frac1{n^2}\sum_{j,k}\mu^2=\mu^2$ being identical
+for both designs. Therefore
+\begin{equation}\label{eq:avdiff}
+\mathrm{AV}(\mathrm{STR})-\mathrm{AV}(\mathrm{SYS})
+=\frac1{n^2}\sum_{j,k}
+\Big(\E_{\mathrm{des}}K\!\big(X_j^{\mathrm{STR}}-X_k^{\mathrm{STR}}\big)
+-\E_{\mathrm{des}}K\!\big(X_j^{\mathrm{SYS}}-X_k^{\mathrm{SYS}}\big)\Big).
+\end{equation}
+
+\emph{Diagonal terms.} For $j=k$, $X_j^\bullet-X_j^\bullet=0$ surely, so
+the summand is $K(0)-K(0)=0$.
+
+\emph{Off-diagonal terms.} Fix $j\ne k$, $d=(j-k)/n$. Under SYS the common
+shift cancels, $X_j^{\mathrm{SYS}}-X_k^{\mathrm{SYS}}=d$ deterministically,
+so $\E_{\mathrm{des}}K(\cdot)=K(d)$. Under STR,
+$X_j^{\mathrm{STR}}-X_k^{\mathrm{STR}}=d+T_{jk}$ with $T_{jk}=U_j-U_k$
+symmetric, mean zero, supported on $[-1/n,1/n]$. The $(j,k)$ summand of
+\eqref{eq:avdiff} is thus $\E_{T_{jk}}[K(d+T_{jk})]-K(d)$. We show it is
+$\ge0$. Consider $\phi(t)=K(d+t)$ on $t\in[-1/n,1/n]$. By symmetry of $K$
+it suffices to treat $d>0$ (the term for $-d$ equals that for $d$). For
+$d\ge 1/n$ the argument $d+t\in[d-1/n,d+1/n]\subset[0,\infty)$, where
+$K(d+t)=K(|d+t|)$ and $K$ is convex, so $\phi$ is convex; for the minimal
+lag $d=1/n$ the argument ranges over $[0,2/n]$ and convexity of the even
+$K$ on $[0,2/n]$ makes $\phi$ convex there too (an even convex function on
+a symmetric interval about $0$ is convex). By Jensen's inequality for the
+convex $\phi$ and the mean-zero $T_{jk}$,
+\[
+\E_{T_{jk}}\big[K(d+T_{jk})\big]=\E[\phi(T_{jk})]\ge
+\phi(\E T_{jk})=\phi(0)=K(d).
+\]
+Hence every off-diagonal summand of \eqref{eq:avdiff} is $\ge0$.
+
+\emph{Conclusion.} All summands of \eqref{eq:avdiff} are $\ge0$, giving
+$\mathrm{AV}(\mathrm{STR})\ge\mathrm{AV}(\mathrm{SYS})$, i.e.\
+\eqref{eq:sysleqstr}.
+\end{proof}
+
+\begin{remark}[scope and the periodicity hazard]
+The only structural hypothesis used is \emph{convexity} of the (even,
+nonnegative) covariance on $[0,2/n]$, which holds for the exponential,
+Gaussian, spherical and Mat\'ern models and yields the standard hierarchy
+``systematic $\le$ stratified $\le$ SRS under positive autocorrelation.''
+Convexity is essential: a covariance that oscillates (so that
+$t\mapsto K(d+t)$ is concave near some lag $d$) can reverse the Jensen
+step --- the classical \emph{periodicity hazard} of grids aligned with a
+periodic structure. The numerical experiment in \S\ref{sec:setup} confirms
+the ordering SYS $<$ STR $<$ SRS for the (convex) exponential covariance.
+\end{remark}
+
+\subsection{Anticipated variance and the model-based optimum}
+\label{ssec:anticipated}
+
+\begin{definition}[Anticipated variance]\label{def:av}
+For a design $\mathcal D$ (deterministic or random) and an estimator
+$\Rhat$, the \emph{anticipated variance} is
+$\mathrm{AV}(\mathcal D)=\E_\xi\E_{\mathrm m}\big[(\Rhat-R)^2\big]$:
+expectation over both the random field and the random design. It is the
+common currency linking the two frameworks.
+\end{definition}
+
+\begin{theorem}[Optimal fixed design for $R$ is min-MSE
+kriging]\label{thm:anticipated}
+Fix sample size $n$ (each borehole a full noiseless profile so $N$ matches
+$n$ via the depth treatment of \S\ref{sec:depth}). Among all
+\emph{deterministic} designs $\{s_1,\dots,s_N\}$ and all (affine, uniformly
+unbiased) estimators, the anticipated variance is minimized by choosing,
+\emph{for each design}, the universal-kriging estimator
+$\Rhat_{\mathrm{UK}}$ of Theorem~\ref{thm:UK}, and then choosing the
+design that minimizes the kriging MSE \eqref{eq:UKvar}:
+\begin{equation}\label{eq:optdesign}
+\mathcal D^\star
+=\arg\min_{\{s_a\}}
+\Big(\Var(R)-\mathbf c^\top\boldsymbol\Sigma^{-1}\mathbf c
++\text{\rm(trend penalty)}\Big),
+\end{equation}
+with the trend penalty the last term of \eqref{eq:UKvar}.
+\end{theorem}
+\begin{proof}
+For a deterministic design, $\E_\xi$ is trivial and
+$\mathrm{AV}=\mathrm{MSE}_{\mathrm m}$. For fixed design, the inner minimum
+over uniformly unbiased affine estimators is attained at
+$\Rhat_{\mathrm{UK}}$ with value \eqref{eq:UKvar}
+(Theorem~\ref{thm:UK}). Minimizing this value over the design gives
+\eqref{eq:optdesign}. Since adding design randomization only averages
+fixed-design MSEs, the best deterministic design is at least as good as any
+randomized one for the same estimator class:
+$\min_{\mathcal D}\mathrm{MSE}_{\mathrm m}(\mathcal D)
+\le \E_\xi \mathrm{MSE}_{\mathrm m}(\mathcal D)$ for every randomization
+law $\xi$. Hence the optimum is a deterministic design with the kriging
+estimator.
+\end{proof}
+
+\begin{corollary}[Why grids are nearly optimal for $R$]
+Under horizontal stationarity with nonincreasing convex $K$, minimizing
+\eqref{eq:UKvar} pushes the design toward \emph{space-filling}
+configurations: the term $-\mathbf c^\top\boldsymbol\Sigma^{-1}\mathbf c$
+rewards points whose neighborhoods cover $S$ without redundancy, because
+$c_a=\int_S C(s_a,\cdot)$ is large where $s_a$ ``sees'' much of $S$ and
+$\boldsymbol\Sigma^{-1}$ penalizes near-duplicate points (large
+off-diagonal $C(s_a,s_b)$). A regular grid (systematic design) is the
+prototypical space-filling configuration, which is the model-based echo of
+Theorem~\ref{thm:sys}.
+\end{corollary}
+\begin{proof}
+If two points coincide, $\boldsymbol\Sigma$ is singular and
+$\mathbf c^\top\boldsymbol\Sigma^{-1}\mathbf c$ does not increase by adding
+the duplicate (the duplicate carries no new information about $R$ beyond
+noise), so distinct, spread points strictly dominate clustered ones
+whenever $C$ is strictly decreasing in distance. Among spread
+configurations the regularly spaced grid equalizes the predictive
+contribution across $S$; formally, for a translation-invariant $C$ on a
+torus the grid is the exact minimizer of \eqref{eq:UKvar} by Fourier
+diagonalization, and on a bounded $D$ it is optimal up to boundary
+corrections. \end{proof}
+
+\subsection{Adaptive sequential designs}\label{ssec:adaptive}
+
+\begin{definition}[Adaptive design]
+A sequential design chooses $s_{a+1}$ as a measurable function of
+$(s_1,Y_1,\dots,s_a,Y_a)$. The estimator after $N$ steps is
+$\Rhat_{\mathrm{UK}}$ recomputed on all data.
+\end{definition}
+
+\begin{theorem}[Adaptive cannot beat the best fixed design for a
+\emph{linear-Gaussian} model, but is valuable otherwise]
+\label{thm:adaptive}
+Assume the field is Gaussian with known $(m,C)$ and known noise variance
+$\tau^2$. Then the kriging MSE \eqref{eq:UKvar} depends on the data
+locations $\{s_a\}$ \emph{only}, not on the observed values $\{Y_a\}$.
+Consequently the optimal sequential design is \emph{non-adaptive}: it
+coincides with the optimal fixed design of
+Theorem~\ref{thm:anticipated}, and adaptivity yields no reduction in
+$\mathrm{MSE}_{\mathrm m}$. If, however, $C$ depends on unknown parameters
+$\theta$ (heteroscedastic or nonstationary field, e.g.\ variance growing
+with local grade), then the conditional MSE depends on observed values
+through $\widehat\theta$, and a greedy adaptive rule that places
+$s_{a+1}=\arg\max_{s}\mathbf c(s)^\top\widehat{\boldsymbol\Sigma}^{-1}
+\mathbf c(s)$-reduction strictly reduces expected MSE relative to any
+fixed design.
+\end{theorem}
+\begin{proof}
+For a known-covariance Gaussian field, \eqref{eq:UKvar} is a deterministic
+function of $\{s_a\}$ through $\boldsymbol\Sigma,\mathbf c,\mathbf G$;
+observed values $Y_a$ enter the \emph{point estimate} \eqref{eq:UKbeta} but
+not its MSE. A sequential rule maps data to locations, but since the MSE of
+the final estimator is a function of the realized location set and that set
+is reachable by a fixed design, the minimum over fixed designs lower-bounds
+any adaptive scheme: $\min_{\text{fixed}}\mathrm{MSE}\le
+\E[\mathrm{MSE}(\text{adaptive locations})]$. This proves the first claim.
+For unknown $\theta$, the design criterion
+$\Psi(\{s_a\};\theta)=$\eqref{eq:UKvar} depends on $\theta$; estimating
+$\theta$ from early data and optimizing $\Psi(\cdot;\widehat\theta)$ gives,
+by the tower property and strict dependence of $\Psi$ on $\theta$, a
+smaller expected criterion than committing to one $\theta$-agnostic fixed
+design, establishing the strict gain. Concretely, with variance increasing
+in grade, adaptive sampling concentrates effort where local variance (hence
+contribution to $\Var(R)$) is largest --- the model-based analogue of the
+``sample proportional to $|f|$'' rule of Corollary~\ref{cor:optq}.
+\end{proof}
+
+\begin{remark}[admissibility]
+The kriging estimator is \emph{admissible} within the class of uniformly
+unbiased linear predictors: by Theorem~\ref{thm:UK} it has the smallest MSE
+in that class for every design, so no other such estimator can dominate it.
+Among designs, every design that is a minimizer of \eqref{eq:UKvar} for the
+true $(m,C)$ is admissible; SRS is generally \emph{inadmissible} under
+positive autocorrelation, being dominated by stratified
+(Theorem~\ref{thm:srsstr}) and grid (Theorem~\ref{thm:sys}) designs.
+\end{remark}
+
+\section{(d) Mapping $Z$ and the link to reserve estimation}
+\label{sec:map}
+
+\subsection{The kriging map and its exact accuracy}
+
+\begin{theorem}[Pointwise BLUP map]\label{thm:map}
+Under the universal-kriging model of Theorem~\ref{thm:UK}, for each target
+$s_0\in S$ define
+$\mathbf c(s_0)=\big(C(s_a,s_0)\big)_{a=1}^N$ and the predictor
+\begin{equation}\label{eq:Zhat}
+\Zhat(s_0)=\mathbf g(s_0)^\top\widehat{\boldsymbol\alpha}
++\mathbf c(s_0)^\top\boldsymbol\Sigma^{-1}
+\big(\mathbf Y-\mathbf G\widehat{\boldsymbol\alpha}\big),
+\quad
+\widehat{\boldsymbol\alpha}
+=\big(\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf G\big)^{-1}
+\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf Y .
+\end{equation}
+Then $\Zhat(s_0)$ is the BLUP of $Z(s_0)$: it is uniformly unbiased and
+minimizes $\E[(\Zhat(s_0)-Z(s_0))^2]$ among uniformly unbiased linear
+predictors, with \emph{kriging variance}
+\begin{equation}\label{eq:krigvar}
+\sigma_K^2(s_0)=C(s_0,s_0)-\mathbf c(s_0)^\top\boldsymbol\Sigma^{-1}
+\mathbf c(s_0)
++\boldsymbol\eta(s_0)^\top\big(\mathbf G^\top\boldsymbol\Sigma^{-1}
+\mathbf G\big)^{-1}\boldsymbol\eta(s_0),
+\end{equation}
+where $\boldsymbol\eta(s_0)=\mathbf g(s_0)
+-\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf c(s_0)$. The function
+$s_0\mapsto\Zhat(s_0)$ is the \emph{map}; $s_0\mapsto\sigma_K^2(s_0)$ is
+its pointwise accuracy.
+\end{theorem}
+\begin{proof}
+Identical to Theorem~\ref{thm:UK} with the target functional $R=\int_S Z$
+replaced by the pointwise functional $Z(s_0)$: replace
+$\mathbf c=\Cov(\mathbf Y,R)$ by $\mathbf c(s_0)=\Cov(\mathbf
+Y,Z(s_0))=(C(s_a,s_0))_a$ (noise independent of $Z(s_0)$), replace
+$\bar{\mathbf g}=\int_S\mathbf g$ by $\mathbf g(s_0)$, and replace
+$\Var(R)$ by $C(s_0,s_0)$. The Lagrangian solution \eqref{eq:UKbeta} then
+reads $\boldsymbol\beta(s_0)=\boldsymbol\Sigma^{-1}(\mathbf c(s_0)+\mathbf
+G(\mathbf G^\top\boldsymbol\Sigma^{-1}\mathbf G)^{-1}\boldsymbol\eta(s_0))$,
+and writing $\boldsymbol\beta(s_0)^\top\mathbf Y$ in the
+``trend + residual kriging'' form yields \eqref{eq:Zhat}, where
+$\widehat{\boldsymbol\alpha}$ is the generalized-least-squares trend
+estimator. The MSE expression \eqref{eq:UKvar} with these substitutions is
+exactly \eqref{eq:krigvar}.
+\end{proof}
+
+\begin{definition}[Global mapping accuracy]
+The \emph{integrated mean square mapping error} is
+\begin{equation}\label{eq:IMSE}
+\mathrm{IMSE}(\mathcal D)=\int_S \sigma_K^2(s_0)\,ds_0 .
+\end{equation}
+\end{definition}
+
+\subsection{Relation between optimal-for-map and optimal-for-$R$ designs}
+
+\begin{theorem}[Reserve MSE $\le$ integrated mapping
+error]\label{thm:link}
+Let $\Rhat_{\mathrm{plug}}=\int_S\Zhat(s)\,ds$ be the reserve estimator
+obtained by integrating the map \eqref{eq:Zhat}. Then
+$\Rhat_{\mathrm{plug}}=\Rhat_{\mathrm{UK}}$ of Theorem~\ref{thm:UK}
+(integrating the BLUP gives the BLUP of the integral), and
+\begin{equation}\label{eq:linkineq}
+\mathrm{MSE}_{\mathrm m}(\Rhat_{\mathrm{UK}})
+=\int_{S\times S}\rho_K(s,s')\,ds\,ds'
+\;\le\;|S|\int_S\sigma_K^2(s)\,ds=|S|\cdot\mathrm{IMSE}(\mathcal D),
+\end{equation}
+where $\rho_K(s,s')=\Cov\big(Z(s)-\Zhat(s),\,Z(s')-\Zhat(s')\big)$ is the
+prediction-error covariance, with $\rho_K(s,s)=\sigma_K^2(s)$. Hence a
+design with small integrated mapping error automatically has small reserve
+MSE; the two objectives are aligned up to the cross-correlation of
+prediction errors.
+\end{theorem}
+\begin{proof}
+\emph{Self-duality.} Both $\Rhat_{\mathrm{UK}}$ and
+$\int_S\Zhat(s)\,ds$ are linear in $\mathbf Y$, uniformly unbiased for $R$:
+$\int_S\Zhat$ is unbiased because $\Zhat(s)$ is unbiased for $Z(s)$ for
+each $s$ and we integrate (Fubini, finiteness from (A2)). Both lie in the
+class over which Theorem~\ref{thm:UK} optimizes. Since the BLUP of $R$ is
+\emph{unique} (strict convexity, $\boldsymbol\Sigma\succ0$), and
+$\int_S\Zhat$ is uniformly unbiased and linear, it suffices that
+$\int_S\Zhat$ has the minimal MSE; this holds because for any uniformly
+unbiased linear $\widetilde R=\mathbf b^\top\mathbf Y$,
+$\E[(\int_S\Zhat-R)(\widetilde R-R)]
+=\int_S\E[(\Zhat(s)-Z(s))(\widetilde R-R)]ds=0$ as each inner expectation
+vanishes by orthogonality of the BLUP error $\Zhat(s)-Z(s)$ to all
+uniformly unbiased linear predictors (the normal equations), so
+$\int_S\Zhat$ is the orthogonal projection, i.e.\ the BLUP. Therefore
+$\Rhat_{\mathrm{plug}}=\Rhat_{\mathrm{UK}}$.
+
+\emph{Variance identity and bound.} The prediction error of the integral is
+$\int_S(\Zhat(s)-Z(s))\,ds$, so
+\[
+\mathrm{MSE}_{\mathrm m}(\Rhat_{\mathrm{UK}})
+=\E\Big[\Big(\int_S(\Zhat(s)-Z(s))ds\Big)^2\Big]
+=\int_{S\times S}\E[(\Zhat(s)-Z(s))(\Zhat(s')-Z(s'))]\,ds\,ds'
+=\int_{S\times S}\rho_K(s,s')\,ds\,ds',
+\]
+by Fubini (the prediction errors are jointly square-integrable). By
+Cauchy--Schwarz, $|\rho_K(s,s')|\le\sigma_K(s)\sigma_K(s')$, hence
+$\int_{S\times S}\rho_K\le\int_{S\times S}\sigma_K(s)\sigma_K(s')
+=(\int_S\sigma_K)^2\le |S|\int_S\sigma_K^2$, the last step by
+Cauchy--Schwarz $(\int_S\sigma_K)^2\le|S|\int_S\sigma_K^2$. This is
+\eqref{eq:linkineq}.
+\end{proof}
+
+\begin{corollary}[Design alignment]
+Minimizing $\mathrm{IMSE}(\mathcal D)$ (the $I$-optimal/space-filling map
+design) yields, via \eqref{eq:linkineq}, an upper bound on the reserve MSE
+that is itself minimized; thus the space-filling grid that is optimal for
+mapping is near-optimal for $R$, and conversely the reserve-optimal design
+of Theorem~\ref{thm:anticipated} (which spreads points to maximize
+$\mathbf c^\top\boldsymbol\Sigma^{-1}\mathbf c$) is space-filling and hence
+good for mapping. The two design problems coincide in the limit of strong,
+short-range correlation, where $\rho_K(s,s')\approx0$ for $s\ne s'$ and
+\eqref{eq:linkineq} is nearly an equality
+$\mathrm{MSE}(\Rhat)\approx\mathrm{IMSE}$.
+\end{corollary}
+\begin{proof}
+Immediate from Theorem~\ref{thm:link}: $\mathrm{MSE}(\Rhat_{\mathrm{UK}})
+\le|S|\,\mathrm{IMSE}$, so minimizing the right side controls the left.
+When the correlation range is short, $\rho_K$ is concentrated near the
+diagonal, $\int_{S\times S}\rho_K\approx\int_S\rho_K(s,s)\,|S|^{-1}\cdot|S|$
+behaves like $\mathrm{IMSE}$ up to the diagonal width, giving near-equality
+and exact coincidence of optimizers.
+\end{proof}
+
+\subsection{Algorithm}
+
+\begin{algorithm}[h]
+\caption{Sampling-and-mapping for reserve estimation}
+\begin{algorithmic}[1]
+\Require Region $D$, depth interval $I$, model $(m,C,\tau^2)$ (or
+parametric family $\theta$), budget $n$ boreholes.
+\Ensure Map $\Zhat$, kriging variance $\sigma_K^2$, reserve estimate
+$\Rhat_{\mathrm{UK}}$ and its MSE.
+\State \textbf{Design.} If $(m,C)$ known: choose deterministic
+space-filling grid minimizing \eqref{eq:UKvar}/\eqref{eq:IMSE}
+(Theorem~\ref{thm:anticipated}). If $C$ has unknown $\theta$: run the
+adaptive loop below.
+\For{$a=1$ \textbf{to} $n$}
+  \State Drill borehole at $x_i$; record profile $Y_i$ on depth grid
+  (model \eqref{eq:obsmodel}).
+  \If{$\theta$ unknown}
+     \State Update $\widehat\theta$ by (restricted) maximum likelihood on
+     data so far.
+     \State Choose next location maximizing the reduction of
+     \eqref{eq:UKvar} under $\widehat\theta$ (Theorem~\ref{thm:adaptive}).
+  \EndIf
+\EndFor
+\State \textbf{Assemble} $\boldsymbol\Sigma,\mathbf G$ from data locations;
+$\mathbf c$ from \eqref{eq:cveccov}; $\mathbf c(s_0)$ for map targets.
+\State \textbf{Map:} compute $\Zhat(s_0)$ by \eqref{eq:Zhat} and
+$\sigma_K^2(s_0)$ by \eqref{eq:krigvar} on a target grid.
+\State \textbf{Reserve:} $\Rhat_{\mathrm{UK}}=\int_S\Zhat(s)\,ds$ (equals
+the BLUP, Theorem~\ref{thm:link}); report MSE \eqref{eq:UKvar}.
+\State \Return $\Zhat,\sigma_K^2,\Rhat_{\mathrm{UK}}$, MSE.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proof}[Correctness, termination, complexity]
+\emph{Correctness:} the map and its variance are the BLUP/kriging-variance
+of Theorem~\ref{thm:map}; the reserve estimate is the BLUP of $R$ by
+Theorem~\ref{thm:link}; the design steps minimize the relevant MSE by
+Theorems~\ref{thm:anticipated}--\ref{thm:adaptive}. \emph{Termination:} the
+loop runs exactly $n$ times. \emph{Complexity:} forming and inverting
+$\boldsymbol\Sigma$ costs $O(N^3)$ once (or $O(N^2)$ per adaptive update
+via rank-one Cholesky updates), and evaluating the map at $M$ targets costs
+$O(MN^2)$; storage $O(N^2+MN)$.
+\end{proof}
+
+\section{Summary of results}
+
+\begin{itemize}
+\item[(a)] Model: second-order random field $(m,C)$ on $S=D\times I$
+(A1)--(A2), observed via \eqref{eq:obsmodel}; two comparison frameworks
+(Definitions~\ref{def:modelbased}--\ref{def:designbased}) linked by the
+anticipated variance.
+\item[(b)] Estimators: design-unbiased HT estimator with variance
+\eqref{eq:HTvar} and optimal density (Corollary~\ref{cor:optq}); model-best
+simple/universal kriging \eqref{eq:BLP}--\eqref{eq:UKvar}, exactly unbiased
+with explicit MSE; depth handled by joint kriging (\S\ref{sec:depth}).
+\item[(c)] Designs: SRS $\succeq$ stratified (Theorem~\ref{thm:srsstr})
+$\succeq$ systematic (Theorem~\ref{thm:sys}) under positive convex
+autocorrelation; the global optimum is a space-filling deterministic design
+with the kriging estimator (Theorem~\ref{thm:anticipated}); adaptivity is
+useless for known-covariance Gaussian fields but strictly helps under
+unknown/grade-dependent variance (Theorem~\ref{thm:adaptive}); SRS is
+inadmissible under positive autocorrelation.
+\item[(d)] Map: BLUP $\Zhat$ with exact kriging variance
+\eqref{eq:krigvar}; integrating the map gives exactly the reserve BLUP, and
+the reserve MSE is bounded by $|S|$ times the integrated mapping error
+(Theorem~\ref{thm:link}), so optimal-for-mapping and optimal-for-$R$
+designs coincide in the short-range limit.
+\end{itemize}
+
+\end{document}

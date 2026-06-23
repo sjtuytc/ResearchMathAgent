@@ -1,0 +1,151 @@
+{
+  "id": "rm-10475-meet-1",
+  "problem_id": "rm-10475",
+  "topic": "Init rm-10475 — proof review",
+  "goal": "Review the proof and issues for rm-10475; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T06:49:07Z",
+  "messages": [
+    {
+      "id": "m8b8afce4",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-10475 — proof review**",
+      "created_at": "2026-06-23T06:49:07Z"
+    },
+    {
+      "id": "mbea09787",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest at the outset: this problem is somewhat outside my home territory — I think of graphs as Laplacians, not of BFGS line searches — but the linear-algebraic core is exactly the kind of thing I care about, so let me frame it that way.\n\nThe whole convergence question lives or dies on the **spectrum of $B_k$**. Powell-type analysis controls the trace and determinant of $B_k$ via the BFGS update; the failure in the nonconvex case is that $y_k^T s_k$ can go nonpositive, which destroys positive-definiteness and lets the condition number $\\kappa(B_k)$ blow up. So my first question is the analogue of \"what's the spectral gap?\": **what mechanism keeps $\\lambda_{\\min}(B_k)$ bounded away from $0$ and $\\lambda_{\\max}(B_k)$ bounded above?** Without uniform control on these two eigenvalues, the search direction $d_k = -B_k^{-1}g(x_k)$ can become nearly orthogonal to $-g(x_k)$, and the angle condition $\\cos\\theta_k = \\frac{-g_k^Td_k}{\\|g_k\\|\\,\\|d_k\\|}$ degrades to zero. The Zoutendijk condition then gives you nothing.\n\nSo here is what I'd want pinned down, in barrier-function spirit. Track the potential\n$$\\Phi_k = \\operatorname{tr}(B_k) - \\ln\\det(B_k),$$\nwhich is exactly the Byrd–Nocedal device. The BFGS update gives a clean recurrence for $\\Phi_{k+1}$ in terms of $\\frac{y_k^Ts_k}{s_k^Ts_k}$ and $\\frac{\\|y_k\\|^2}{y_k^Ts_k}$. The **cautious/modified update** approach (skip or damp the update when $y_k^Ts_k$ is too small relative to $\\|s_k\\|^2$) is precisely a barrier that keeps $\\Phi_k$ from diverging — that's the right answer to the nonconvex case, and yes, it gives $\\liminf\\|g_k\\|=0$.\n\nTwo concrete points for the action plan:\n1. **Damping vs. cautious update.** A Powell-damped $y_k$, replacing $y_k$ by $\\theta_k y_k + (1-\\theta_k)B_k s_k$ to force $y_k^Ts_k \\ge c\\, s_k^TB_ks_k$, is the cleanest fix — it guarantees the eigenvalue control *explicitly*, not just existentially. I'd push hard for the constructive version over any pure existence argument.\n2. **Which convergence is claimed?** $\\liminf\\|g_k\\|=0$ is reachable under the modified update + WWP. The *strong* $\\lim\\|g_k\\|=0$ generally needs more (e.g., convexity or a stronger line search), so we should be careful not to overclaim.\n\nCan someone state precisely which modification the current proof uses, and write down the exact recurrence for $\\operatorname{tr}(B_k)$ and $\\ln\\det(B_k)$? That's where any gap will be hiding.",
+      "created_at": "2026-06-23T06:49:23Z"
+    },
+    {
+      "id": "md0a5f853",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your barrier-function framing is exactly right, and I want to reinforce it from a slightly different angle while sharpening the constructive point. The potential $\\Phi_k = \\operatorname{tr}(B_k) - \\ln\\det(B_k)$ is the discrete analog of what I'd call a Lyapunov functional, and the entire analysis reduces to controlling its drift. Let me write the recurrence precisely so we can see where the nonconvexity bites.\n\nSet $m_k = \\frac{y_k^T s_k}{s_k^T s_k}$ and $M_k = \\frac{\\|y_k\\|^2}{y_k^T s_k}$. The Byrd–Nocedal identity gives\n$$\n\\Phi_{k+1} = \\Phi_k + \\big(M_k - \\ln m_k - 1\\big) + \\Big[1 - \\frac{s_k^T B_k s_k}{\\|s_k\\|^2 \\cos^2\\theta_k}\\cdot(\\cdots) + \\ln\\big(\\tfrac{\\cos^2\\theta_k\\, q_k}{\\,\\cdots}\\big)\\Big],\n$$\nwhere the bracketed term is $\\le 0$ and the genuine driver is $M_k - \\ln m_k - 1$. So **everything hinges on a two-sided bound $0 < c_1 \\le m_k$ and $M_k \\le c_2$.** Under convexity, Lipschitz $g$ delivers both for free; without convexity, $y_k^T s_k$ can vanish or go negative and the bound is lost.\n\nHere is my view on the three proposed fixes, ranked by structural cleanliness:\n\n1. **Powell damping** — replace $y_k$ by $\\tilde y_k = \\theta_k y_k + (1-\\theta_k)B_k s_k$ with $\\theta_k$ chosen so $\\tilde y_k^T s_k \\ge c\\, s_k^T B_k s_k$. This *forces* $m_k$ and $M_k$ into a compact interval explicitly. I strongly agree with Dan: this is constructive, not existential, and it yields $\\liminf_k \\|g_k\\| = 0$ cleanly.\n\n2. **Cautious update** (skip when $y_k^T s_k < \\epsilon \\|s_k\\|^2 \\|g_k\\|^\\nu$) — this keeps $B_k$ frozen on bad steps, so $\\Phi_k$ simply doesn't increase. Li–Fukushima proved exactly this gives $\\liminf \\|g_k\\| = 0$ under WWP. Elegant, but the skipped steps make the rate analysis murkier.\n\n3. **Projection-type modification** of iterates — I'd resist this unless there's a specific constraint set; it adds machinery without addressing the spectral mechanism, which is the real obstruction.\n\nNow the point I most want on the record, which connects to my extremal-structure instinct: the *known counterexamples* (Dai, and Mascarenhas) are not pathological noise — they are the analog of an extremal graph family. The iterates spiral so that $\\cos\\theta_k \\to 0$ at a precise geometric rate, and $y_k^T s_k$ oscillates in sign in lockstep. Any honest convergence proof must show its modification **destroys that specific extremal configuration**, not merely that it bounds eigenvalues in the average case. I'd ask whoever owns the current proof: does the damping/caution threshold provably exclude the Mascarenhas spiral, with constants? That is where the gap will hide.\n\nFinally, on Dan's caution about $\\liminf$ versus $\\lim$: I f",
+      "created_at": "2026-06-23T06:50:10Z"
+    },
+    {
+      "id": "mdbeebf3e",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — this is beautifully framed, and I want to add the spectral-statistics instinct that I always bring, because I think it sharpens *why* the Mascarenhas spiral is the enemy.\n\nLet me first do what I always do: compute the simplest case by hand. Take $f$ quadratic, $B_0 = I$. Then $y_k = A s_k$, so $y_k^T s_k = s_k^T A s_k > 0$ automatically, and BFGS terminates in $n$ steps — the textbook miracle. The entire difficulty is the *failure of self-adjointness of the secant relation*: in the nonconvex regime $y_k = \\int_0^1 \\nabla^2 f(x_k + t s_k)\\, dt\\, s_k$, and that averaged Hessian has negative eigenvalues. So $m_k = \\frac{y_k^T s_k}{s_k^T s_k}$ is a **Rayleigh quotient of an indefinite operator** — that's the whole story. The question is exactly: what keeps this Rayleigh quotient off the negative spectrum?\n\nNow here is my real point, and it's the analog of \"is this a Ramanujan phenomenon?\" In my work on QUE and the Selberg trace formula the hard cases are always where the spectral measure *concentrates* — escape of mass onto a closed geodesic. The Mascarenhas spiral is precisely an *escape of mass* phenomenon: the search direction's energy concentrates into the dangerous subspace where $\\cos\\theta_k \\to 0$, and $\\Phi_k$'s drift term $M_k - \\ln m_k - 1$ blows up logarithmically. Laszlo is exactly right that you must *destroy that extremal configuration with constants*. Powell damping does this by a soft thresholding — it is literally a regularization that prevents concentration, the optimization analog of the entropy lower bound Lindenstrauss and I used to forbid mass escaping onto a single geodesic.\n\nBut let me push on the real theorem behind the technical one. I claim there are **two genuinely different mechanisms** being conflated:\n\n1. **Cautious update (Li–Fukushima)** — this freezes $B_k$, so $\\Phi_k$ is *monotone* on bad steps. That's a pure barrier; you get $\\liminf \\|g_k\\| = 0$ but the proof is essentially a soft compactness argument. The constants are not effective against the spiral — they just outlast it.\n\n2. **Powell damping** — this is *active*: it forces $\\tilde y_k^T s_k \\ge c\\, s_k^T B_k s_k$, pinning $m_k, M_k$ into a compact interval $[c_1, c_2]$ with *explicit* $c_1, c_2$ depending only on $c$ and the Lipschitz constant. This is the one that provably excludes the Mascarenhas spiral with constants — answering Laszlo's challenge.\n\nSo my vote, for the record: take the **damped** variant, prove $\\liminf\\|g_k\\|=0$ cleanly, and resist the projection machinery as Laszlo says. On $\\liminf$ vs. $\\lim$ — Dan is right to be cautious. The strong limit is genuinely harder; in the absence of convexity you can have a subsequence of \"good\" steps driving $\\liminf$ to zero while a complementary subsequence wanders, much like how $\\liminf$ over a sparse spectral sequence can vanish without the full sequence equidistributing. To get $\\lim\\|g_k\\|=0$ you need to rule out *recurrence to high-gradient regions*, which requires either conv",
+      "created_at": "2026-06-23T06:50:59Z"
+    },
+    {
+      "id": "m0c2aaaa7",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your \"escape of mass\" framing is the right picture, and it lets me make the constructive demand precise. Let me write the exact recurrence so we stop hiding the gap in Laszlo's $(\\cdots)$.\n\nWith $m_k = \\frac{y_k^Ts_k}{s_k^Ts_k}$, $M_k = \\frac{\\|y_k\\|^2}{y_k^Ts_k}$, and $q_k = \\frac{s_k^TB_ks_k}{s_k^Ts_k}$, the Byrd–Nocedal identity is exactly\n$$\n\\Phi_{k+1} = \\Phi_k + (M_k - \\ln m_k - 1) + \\left[\\Big(1 - \\frac{q_k}{\\cos^2\\theta_k}\\Big) + \\ln\\frac{q_k}{\\cos^2\\theta_k}\\right],\n$$\nand the bracket is $\\le 0$ since $1 - x + \\ln x \\le 0$ for $x = q_k/\\cos^2\\theta_k > 0$. So $\\Phi$ has a *driver* $M_k - \\ln m_k - 1$ and a *sink* term that is at least $\\ln\\cos^2\\theta_k - $ (the positive part). Summing and using $\\Phi_k \\ge \\Phi_0 > 0$:\n$$\n\\sum_{k} \\left(\\ln\\frac{1}{\\cos^2\\theta_k} + \\text{(damping waste)}\\right) \\le \\Phi_0 + \\sum_k (M_k - \\ln m_k - 1).\n$$\n**This is precisely my sparsifier bookkeeping.** The whole point of Powell damping is to make the right-hand sum *finite with explicit constant*: forcing $\\tilde y_k^Ts_k \\ge c\\,s_k^TB_ks_k$ pins $m_k \\ge c_1$ and $M_k \\le c_2$ where $c_1,c_2$ depend only on $c$ and the Lipschitz constant $L$. Then $\\sum_k \\ln(1/\\cos^2\\theta_k) < \\infty$, so $\\cos\\theta_k \\to 1$ along a subsequence — that is the Zoutendijk-with-teeth conclusion, and it kills the Mascarenhas spiral because the spiral *requires* $\\sum \\ln(1/\\cos^2\\theta_k) = \\infty$.\n\nSo here is my concrete challenge to whoever owns the proof: write down $c_1, c_2$ as explicit functions of $(c, L)$. If you can't, the \"constructive\" claim is hollow. I want $c_1 = c_1(c,L)$ on the page, not behind an existential quantifier — the same way I insisted on $p_e = C w_e R_e \\log n/\\varepsilon^2$ with an *explicit* $C$ in the effective-resistance sparsifier rather than just \"some sampling probability works.\"\n\nOne genuine subtlety, and it's where I'd look hardest for a hole: Powell damping replaces $y_k$ by $\\tilde y_k$, so the secant equation $B_{k+1}s_k = \\tilde y_k \\ne y_k$ no longer reflects the true gradient change. The damped update controls $\\Phi_k$ but you must re-verify that $\\cos\\theta_k \\to 1$ still implies $\\|g_k\\| \\to 0$ — i.e., that the *distorted* curvature information hasn't decoupled the direction from the true gradient. I'd want that lemma stated separately. And I agree with all of you: claim $\\liminf\\|g_k\\|=0$, not $\\lim$. The strong limit",
+      "created_at": "2026-06-23T06:53:17Z"
+    },
+    {
+      "id": "m0fb3992e",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your demand for explicit $c_1(c,L), c_2(c,L)$ is exactly the right discipline, and let me close the loop you opened on the *decoupling* worry, because that is where the genuine gap lives — and it is structural, not bookkeeping.\n\nHere is the precise lemma we need. With Powell damping, $\\cos\\theta_k \\to 1$ along a subsequence is a statement about the *damped* geometry: $d_k = -B_k^{-1}g_k$ and $\\cos\\theta_k = \\frac{-g_k^T d_k}{\\|g_k\\|\\|d_k\\|}$. The implication $\\cos\\theta_k \\to 1 \\Rightarrow \\|g_k\\|\\to 0$ comes from Zoutendijk, $\\sum_k \\cos^2\\theta_k \\|g_k\\|^2 < \\infty$, which is a statement about the *true* gradient through the WWP sufficient-decrease condition. The damping never touched $g_k$ in the line search — it only touched the curvature pair $(y_k,s_k)$. So the two halves are coupled through $f$, not through $\\tilde y_k$, and the implication survives. I'd state it as: WWP gives Zoutendijk unconditionally given $\\cos\\theta_k$ bounded below; damping gives $\\cos\\theta_k$ bounded below via $\\Phi_k$. The damping distortion is *quarantined* inside the metric $B_k$ and cannot leak into the descent accounting. That is the lemma to write separately, and it is clean.\n\nNow the two-sided bound, explicitly, to satisfy Dan's \"on the page\" requirement. Choose $\\theta_k \\in (0,1]$ so that $\\tilde y_k^T s_k = \\theta_k\\, y_k^T s_k + (1-\\theta_k)\\, s_k^T B_k s_k \\ge c\\, s_k^T B_k s_k$. Then\n$$\nm_k = \\frac{\\tilde y_k^T s_k}{s_k^T s_k} \\ge c\\, q_k \\ge c\\,\\lambda_{\\min}(B_k),\n$$\nand the upper bound $M_k = \\frac{\\|\\tilde y_k\\|^2}{\\tilde y_k^T s_k} \\le c_2$ follows from $\\|\\tilde y_k\\| \\le \\theta_k L\\|s_k\\| + (1-\\theta_k)\\|B_k s_k\\|$ together with the curvature floor — giving $c_2 = c_2(L, c, \\lambda_{\\max}(B_k))$. The honest catch: these are *not* a priori constants; they reference $\\lambda_{\\min}, \\lambda_{\\max}$ of $B_k$, which is exactly what $\\Phi_k$ is supposed to control. So the argument is a *self-consistent bootstrap*: $\\Phi_k$ bounded $\\Rightarrow$ spectrum bounded $\\Rightarrow$ $m_k, M_k$ bounded $\\Rightarrow$ $\\Phi_k$ drift controlled. This circularity is benign — it's the standard Byrd–Nocedal fixed-point — but it must be unrolled inductively, and *that* is where the spiral could re-enter if the induction base or the threshold constant is mis-set.\n\nSo my proposed division of labor, sharpening Peter's escape-of-mass picture into a checkable statement:\n\n1. **Decoupling Lemma**: WWP $+$ $\\cos\\theta_k \\ge \\delta_0 > 0$ $\\Rightarrow$ $\\liminf\\|g_k\\|=0$, with $g",
+      "created_at": "2026-06-23T06:54:03Z"
+    },
+    {
+      "id": "m105c3d12",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, your decoupling lemma is exactly right, and the bootstrap is benign — but I want to interrogate the *base case* of that induction, because that is precisely where, in my experience, the escape of mass sneaks back in. Let me make the worry sharp.\n\nThe bootstrap reads $\\Phi_k \\le \\Phi_0 + \\sum_{j<k}(M_j - \\ln m_j - 1)$, and you bound $m_j \\ge c\\, q_j \\ge c\\,\\lambda_{\\min}(B_j)$. But notice: the lower bound on $m_j$ *references $\\lambda_{\\min}(B_j)$*, which is itself controlled only through $\\Phi_j$. If $\\lambda_{\\min}(B_j)$ is allowed to drift toward $0$, then $m_j \\to 0$, $-\\ln m_j \\to +\\infty$, and the driver term diverges — even with damping. So the damping floor $\\tilde y_k^T s_k \\ge c\\,s_k^T B_k s_k$ is **relative**, not absolute. This is exactly the subtlety I worried about in QUE: a lower bound that is conditional on the very spectral object you are trying to control is only as good as your ability to forbid the measure from concentrating. The entropy bound Lindenstrauss and I used was *absolute* — it didn't reference the limit measure. You want the analog here.\n\nSo my concrete demand, sharpening Dan's \"on the page\" challenge: **prove $\\lambda_{\\min}(B_k) \\ge \\mu > 0$ with $\\mu$ depending only on $(c, L, \\Phi_0)$**, an a priori constant, not a self-referential one. The clean way is the trace–determinant pincer. From $\\Phi_k = \\operatorname{tr}(B_k) - \\ln\\det(B_k) \\le \\Phi_{\\max}$, you get $\\operatorname{tr}(B_k) \\le \\Phi_{\\max} + \\ln\\det(B_k) \\le \\Phi_{\\max} + n\\ln(\\operatorname{tr}(B_k)/n)$, which bounds $\\lambda_{\\max} \\le \\operatorname{tr}(B_k) \\le T(\\Phi_{\\max}, n)$ absolutely; and then $\\ln\\det(B_k) = \\operatorname{tr}(B_k) - \\Phi_k \\ge -\\Phi_{\\max}$ forces $\\det(B_k) \\ge e^{-\\Phi_{\\max}}$, so $\\lambda_{\\min} \\ge \\det(B_k)/\\lambda_{\\max}^{n-1} \\ge e^{-\\Phi_{\\max}}/T^{n-1} =: \\mu > 0$. *That* is the absolute floor, and it closes the circularity Laszlo flagged — it is the optimization analog of getting positive entropy without knowing the limit.\n\nTwo final points. First — the $n$-dependence in $\\mu$ is real and ugly ($T^{n-1}$), so this is genuinely a *finite-dimensional* phenomenon; in my world that would be a red flag, but here it's honest, BFGS is intrinsically $\\mathbb{R}^n$. Second, on $\\liminf$ versus $\\lim$: I remain convinced the strong limit is a different beast. The Mascarenhas spiral is the analog of a sparse subsequence escaping to a closed geodesic — $\\liminf$ vanishes while the full sequence recurs to high-gradient regions. Killing $\\liminf$ is a barrier argument; killing $\\lim$ requires ruling out *recurrence*, which is dynamics,",
+      "created_at": "2026-06-23T06:54:52Z"
+    },
+    {
+      "id": "m706ce6a6",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T06:55:44Z"
+    },
+    {
+      "id": "mf45ebfc8",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nProve liminf ||g_k||=0 for nonconvex BFGS with Powell damping by controlling the potential Phi_k = tr(B_k) - ln det(B_k) and establishing absolute two-sided eigenvalue bounds that exclude the Mascarenhas spiral.",
+      "created_at": "2026-06-23T06:55:44Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove liminf ||g_k||=0 for nonconvex BFGS with Powell damping by controlling the potential Phi_k = tr(B_k) - ln det(B_k) and establishing absolute two-sided eigenvalue bounds that exclude the Mascarenhas spiral.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the modified update and state recurrence",
+        "body": "State precisely the Powell-damped BFGS update: replace y_k by tilde y_k = theta_k y_k + (1-theta_k) B_k s_k with theta_k chosen so tilde y_k^T s_k >= c s_k^T B_k s_k. Write down the exact Byrd-Nocedal recurrence Phi_{k+1} = Phi_k + (M_k - ln m_k - 1) + [(1 - q_k/cos^2 theta_k) + ln(q_k/cos^2 theta_k)], with m_k, M_k, q_k defined, and verify the bracket term is <= 0.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Derive explicit two-sided bounds c_1(c,L), c_2(c,L)",
+        "body": "Using the damping condition and Lipschitz constant L of the gradient, derive the lower bound m_k >= c q_k and upper bound M_k <= c_2 in terms of ||tilde y_k|| <= theta_k L ||s_k|| + (1-theta_k)||B_k s_k||. Express c_1 and c_2 as explicit functions of (c, L) and the spectrum of B_k, making clear which dependencies are self-referential.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove absolute eigenvalue floor via trace-determinant pincer",
+        "body": "Close the bootstrap circularity by proving lambda_min(B_k) >= mu > 0 with mu depending only on (c, L, Phi_0), not on B_k itself. Use Phi_k <= Phi_max to bound tr(B_k) <= T(Phi_max, n) absolutely (hence lambda_max), then ln det(B_k) >= -Phi_max to get det(B_k) >= e^{-Phi_max}, yielding lambda_min >= e^{-Phi_max}/T^{n-1}. Document the n-dependence honestly.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "State and prove the Decoupling Lemma",
+        "body": "Prove separately that the damping distortion is quarantined inside the metric B_k and does not leak into descent accounting: show WWP line search gives the Zoutendijk condition sum_k cos^2 theta_k ||g_k||^2 < infinity unconditionally, and that cos theta_k >= delta_0 > 0 (from the eigenvalue bounds) implies liminf ||g_k|| = 0. Verify that cos theta_k -> 1 in damped geometry still implies ||g_k|| -> 0 through the true gradient, not tilde y_k.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Assemble bootstrap induction and verify base case",
+        "body": "Unroll the self-consistent bootstrap inductively: Phi_k bounded => spectrum bounded => m_k, M_k bounded => Phi drift controlled. Pay particular attention to the induction base case and the precise setting of the damping threshold constant c, where the Mascarenhas spiral could re-enter. Show sum_k ln(1/cos^2 theta_k) < infinity with explicit constant.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify exclusion of the Mascarenhas spiral",
+        "body": "Confirm with explicit constants that the damping/caution threshold provably excludes the known counterexamples (Dai, Mascarenhas). Check that the spiral requires sum ln(1/cos^2 theta_k) = infinity and that the finite-sum conclusion from step 4 contradicts it. Verify the constants are absolute (a priori), not merely existential or asymptotic.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Audit convergence claim strength and scope",
+        "body": "Critically review that only liminf ||g_k|| = 0 is claimed and not the stronger lim ||g_k|| = 0, ensuring no overclaiming. Confirm the strong limit would require ruling out recurrence to high-gradient regions (dynamics), which is out of scope without convexity or a stronger line search. Flag any place where the proof implicitly assumes more.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T06:55:44Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

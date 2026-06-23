@@ -1,0 +1,225 @@
+\input{preamble}
+\usepackage{amsthm}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{remark}{Remark}
+
+\title{Problem 10 (Lemma L1): The normal-equation operator is symmetric positive (semi)definite}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent
+This note proves the spectral properties of the mode-$k$ normal-equation
+operator that are the prerequisite for using the conjugate gradient (CG)
+method. Throughout, with the notation of the problem statement, set
+\begin{equation}\label{eq:Adef}
+  \aA \;=\; (Z\otimes K)^{T} S\, S^{T} (Z\otimes K)\;+\;\lambda\,(I_r\otimes K)
+  \;\in\;\bR^{nr\times nr},
+\end{equation}
+and let
+\begin{equation}\label{eq:rhs}
+  b \;=\; (I_r\otimes K)\,\vecop(B),\qquad B = TZ,
+\end{equation}
+so that the subproblem is $\aA\,\vecop(W)=b$. We always assume, as in the
+problem statement, that $K=K^{T}\in\bR^{n\times n}$ is positive semidefinite
+($K\succeq0$, the RKHS kernel matrix), that $S\in\bR^{N\times q}$ is a column
+subset of $I_N$ (hence $S^{T}S=I_q$ and $SS^{T}$ is an orthogonal projector),
+and that $\lambda\ge0$.
+
+\bigskip
+
+\begin{lemma}[Symmetry and positive semidefiniteness]\label{lem:psd}
+For every $K\succeq0$ and every $\lambda\ge0$ the operator $\aA$ in
+\eqref{eq:Adef} is symmetric and positive semidefinite, i.e.
+$\aA=\aA^{T}$ and $x^{T}\aA\,x\ge0$ for all $x\in\bR^{nr}$.
+\end{lemma}
+
+\begin{proof}
+\emph{Symmetry.} Write $G:=(Z\otimes K)^{T} S\,S^{T} (Z\otimes K)$ and
+$R:=\lambda(I_r\otimes K)$, so $\aA=G+R$.
+For any matrix $M:=S^{T}(Z\otimes K)\in\bR^{q\times nr}$ we have
+$G=M^{T}M$, which is symmetric because $(M^{T}M)^{T}=M^{T}M$.
+For $R$, the transpose of a Kronecker product satisfies
+$(I_r\otimes K)^{T}=I_r^{T}\otimes K^{T}=I_r\otimes K$ because $I_r$ and $K$
+are symmetric; multiplying by the scalar $\lambda$ preserves symmetry, so
+$R^{T}=R$. Hence $\aA^{T}=G^{T}+R^{T}=G+R=\aA$.
+
+\smallskip
+\emph{Positive semidefiniteness.} Fix $x\in\bR^{nr}$. Then
+\begin{equation}\label{eq:quadform}
+  x^{T}\aA\,x
+  = x^{T}M^{T}M x + \lambda\, x^{T}(I_r\otimes K)x
+  = \underbrace{\|Mx\|_2^{2}}_{\ge0}
+   \;+\; \lambda\, x^{T}(I_r\otimes K)x .
+\end{equation}
+The first term is a squared Euclidean norm, hence $\ge0$. For the second term,
+since $K\succeq0$ there is a factorization $K=L L^{T}$ (e.g.\ a Cholesky or
+symmetric square-root factor $L\in\bR^{n\times n}$). Using the Kronecker
+identity $I_r\otimes K=I_r\otimes(LL^{T})=(I_r\otimes L)(I_r\otimes L)^{T}$,
+\[
+  x^{T}(I_r\otimes K)x
+  = x^{T}(I_r\otimes L)(I_r\otimes L)^{T}x
+  = \bigl\|(I_r\otimes L)^{T}x\bigr\|_2^{2}\;\ge\;0 .
+\]
+Because $\lambda\ge0$, the second term in \eqref{eq:quadform} is $\ge0$, and
+therefore $x^{T}\aA x\ge0$. Thus $\aA\succeq0$.
+\end{proof}
+
+\begin{lemma}[Strict positive definiteness]\label{lem:spd}
+Assume in addition that $K\succ0$ (i.e.\ $K$ is nonsingular) and $\lambda>0$.
+Then $\aA$ is symmetric \emph{positive definite}: $x^{T}\aA x>0$ for all
+$x\neq0$, equivalently $\aA$ is nonsingular. These two conditions are also
+\emph{necessary} in general: if $\lambda=0$ then $\aA$ is singular, and if
+$K$ is singular then $\aA$ is singular.
+\end{lemma}
+
+\begin{proof}
+\emph{Sufficiency.} Symmetry holds by Lemma~\ref{lem:psd}. Let $x\neq0$.
+By \eqref{eq:quadform},
+$x^{T}\aA x \ge \lambda\,x^{T}(I_r\otimes K)x$. Since $K\succ0$, its
+eigenvalues are bounded below by $\mu_{\min}(K)>0$, and the eigenvalues of the
+Kronecker product $I_r\otimes K$ are exactly the eigenvalues of $K$, each with
+multiplicity $r$ (a standard fact: if $K v=\mu v$ then
+$(I_r\otimes K)(e_j\otimes v)=\mu\,(e_j\otimes v)$ for each standard basis
+vector $e_j$, giving $nr$ orthonormal eigenpairs in total). Hence
+$I_r\otimes K\succeq \mu_{\min}(K)\,I_{nr}$ and
+\[
+  x^{T}\aA x \;\ge\; \lambda\,\mu_{\min}(K)\,\|x\|_2^{2} \;>\;0 ,
+\]
+because $\lambda>0$, $\mu_{\min}(K)>0$, and $x\neq0$. A symmetric operator
+with strictly positive quadratic form on all nonzero vectors is positive
+definite and in particular nonsingular.
+
+\smallskip
+\emph{Necessity of $\lambda>0$.} If $\lambda=0$, then
+$\aA = (Z\otimes K)^{T}SS^{T}(Z\otimes K) = M^{T}M$ with
+$M=S^{T}(Z\otimes K)\in\bR^{q\times nr}$. Since $M$ has only $q$ rows and
+$\aA$ has order $nr$, whenever $q<nr$ the rank of $\aA$ is at most $q<nr$, so
+$\aA$ is singular. (Under the standing assumption $n,r<q\ll N$ one typically
+has $q\ge n,r$ individually, but not $q\ge nr$; in the regime of interest
+$q\ll N=nM$ and $nr$ can exceed $q$, so the $\lambda=0$ operator is singular.)
+Thus $\lambda>0$ is required for guaranteed nonsingularity.
+
+\smallskip
+\emph{Necessity of $K\succ0$.} Suppose $K$ is singular, so there is
+$v\neq0$ with $Kv=0$. Pick any $e_j$ ($j\in\{1,\dots,r\}$) and set
+$x:=e_j\otimes v\neq0$. Using the mixed-product rule
+$(A\otimes B)(C\otimes D)=(AC)\otimes(BD)$,
+\[
+  (Z\otimes K)x=(Z\otimes K)(e_j\otimes v)=(Ze_j)\otimes(Kv)=(Ze_j)\otimes 0=0,
+  \qquad
+  (I_r\otimes K)x=(I_r e_j)\otimes(Kv)=e_j\otimes 0=0 .
+\]
+Hence $\aA x=(Z\otimes K)^{T}SS^{T}\cdot 0+\lambda(I_r\otimes K)x=0$ for
+\emph{any} $\lambda$, so $x\in\ker\aA$ and $\aA$ is singular.
+\end{proof}
+
+\begin{remark}[Why this matters for CG]\label{rem:cg}
+The (unpreconditioned) CG method is guaranteed to converge to the unique
+solution when applied to a symmetric positive definite system. By
+Lemma~\ref{lem:spd}, the hypotheses
+\[
+  \boxed{\;K\succ0\quad\text{and}\quad\lambda>0\;}
+\]
+are exactly what guarantees $\aA\succ0$, hence the well-posedness of CG.
+Many RKHS kernel matrices are strictly positive definite (e.g.\ the Gaussian
+kernel on distinct sample points), in which case this hypothesis holds
+verbatim. The remaining (boundary) case $K\succeq0$ singular is treated next.
+\end{remark}
+
+\begin{lemma}[Consistency and CG in the singular--$K$ boundary case]
+\label{lem:singular}
+Let $K\succeq0$ be (possibly) singular and $\lambda>0$. Then:
+\begin{enumerate}[label=\textup{(\roman*)}]
+\item $\ker\aA=\ker(I_r\otimes K)$ and hence
+      $\operatorname{range}(\aA)=\operatorname{range}(I_r\otimes K)$;
+\item the right-hand side satisfies
+      $b=(I_r\otimes K)\vecop(B)\in\operatorname{range}(I_r\otimes K)
+      =\operatorname{range}(\aA)$, so the system $\aA\,w=b$ is
+      \emph{consistent} (solvable);
+\item CG started from $w_0=0$ produces iterates $w_m\in\operatorname{range}(\aA)$
+      and converges, in exact arithmetic, to the unique minimum-norm solution
+      $w_\star\in\operatorname{range}(\aA)$ in at most $\operatorname{rank}(\aA)$
+      iterations.
+\end{enumerate}
+In particular CG remains applicable even when $K$ is only semidefinite, with
+the convention that it solves the system on $\operatorname{range}(\aA)$.
+\end{lemma}
+
+\begin{proof}
+(i) Write $\aA=M^{T}M+\lambda(I_r\otimes K)$ as in
+Lemma~\ref{lem:psd} with $M=S^{T}(Z\otimes K)$, and note both summands are
+PSD. For any PSD matrices $P,Q$ one has
+$\ker(P+Q)=\ker P\cap\ker Q$: indeed if $(P+Q)x=0$ then
+$0=x^{T}(P+Q)x=x^{T}Px+x^{T}Qx$ with both terms $\ge0$, forcing
+$x^{T}Px=x^{T}Qx=0$, and PSD-ness gives $Px=Qx=0$; the reverse inclusion is
+immediate. Applying this with $P=M^{T}M$, $Q=\lambda(I_r\otimes K)$,
+\[
+  \ker\aA=\ker(M^{T}M)\cap\ker\!\bigl(\lambda(I_r\otimes K)\bigr)
+        =\ker M\cap\ker(I_r\otimes K).
+\]
+But $\ker(I_r\otimes K)\subseteq\ker M$: using
+$(Z\otimes K)=(Z\otimes I_n)(I_r\otimes K)$ via the mixed-product rule, any
+$x$ with $(I_r\otimes K)x=0$ satisfies $(Z\otimes K)x=0$ and hence
+$Mx=S^{T}(Z\otimes K)x=0$. Therefore
+$\ker\aA=\ker(I_r\otimes K)$. Since $\aA$ and $I_r\otimes K$ are symmetric,
+their ranges are the orthogonal complements of their kernels, so equal kernels
+give equal ranges:
+$\operatorname{range}(\aA)=\ker(\aA)^{\perp}=\ker(I_r\otimes K)^{\perp}
+=\operatorname{range}(I_r\otimes K)$.
+
+\smallskip
+(ii) By definition $b=(I_r\otimes K)\vecop(B)$ is in the column space of
+$I_r\otimes K$, i.e.\ $b\in\operatorname{range}(I_r\otimes K)$. By (i) this
+equals $\operatorname{range}(\aA)$, so there exists $w$ with $\aA w=b$; the
+system is consistent. (This consistency is structural: the right-hand side is
+itself produced by the operator $I_r\otimes K$ that defines the kernel of
+$\aA$, so no component of $b$ ever falls in $\ker\aA$.)
+
+\smallskip
+(iii) Since $\aA$ is symmetric PSD and the system is consistent, CG is the
+minimization of the convex quadratic
+$\phi(w)=\tfrac12 w^{T}\aA w-b^{T}w$ over Krylov subspaces. With $w_0=0$ the
+initial residual is $r_0=b\in\operatorname{range}(\aA)$, and the Krylov
+subspace $\operatorname{span}\{r_0,\aA r_0,\dots,\aA^{m-1}r_0\}\subseteq
+\operatorname{range}(\aA)$ because $\operatorname{range}(\aA)$ is
+$\aA$-invariant. Hence every iterate $w_m$ lies in
+$\operatorname{range}(\aA)$, the iteration never ``sees'' $\ker\aA$, and CG
+behaves exactly as it would on the invertible restriction
+$\aA|_{\operatorname{range}(\aA)}$, which is symmetric positive definite of
+order $\operatorname{rank}(\aA)$. Therefore the residuals decrease and, in
+exact arithmetic, $r_m=0$ after at most $\operatorname{rank}(\aA)$ distinct
+eigenvalues' worth of iterations, with limit the unique solution in
+$\operatorname{range}(\aA)$, namely the minimum-norm solution $w_\star$.
+\end{proof}
+
+\begin{remark}[Practical safeguard]\label{rem:reg}
+When $K\succeq0$ is (numerically) singular and one prefers a strictly SPD
+system, replace $K$ by $K_\varepsilon:=K+\varepsilon I_n$ with a small
+$\varepsilon>0$. Then $K_\varepsilon\succ0$, so Lemma~\ref{lem:spd} applies and
+$\aA_\varepsilon=(Z\otimes K_\varepsilon)^{T}SS^{T}(Z\otimes K_\varepsilon)
++\lambda(I_r\otimes K_\varepsilon)\succ0$ for every $\lambda>0$; CG then
+converges to the unique solution of $\aA_\varepsilon w=b_\varepsilon$, where
+$b_\varepsilon=(I_r\otimes K_\varepsilon)\vecop(B)$. As $\varepsilon\to0^{+}$
+this regularized solution converges to the minimum-norm solution
+$w_\star$ of the original consistent system of Lemma~\ref{lem:singular},
+recovering the boundary case continuously. Crucially, both the matrix--vector
+products and the preconditioner used elsewhere in the algorithm depend only on
+the factor/kernel data, so this shift adds no asymptotic cost.
+\end{remark}
+
+\begin{remark}[The limit $\lambda\to0$]\label{rem:lam0}
+For $\lambda=0$ the operator reduces to $\aA=M^{T}M$ with $M\in\bR^{q\times nr}$,
+which is singular whenever $q<nr$ (as in the regime $q\ll N$ of interest), and
+the consistency argument of Lemma~\ref{lem:singular}(ii) no longer applies
+because the right-hand side $b=(I_r\otimes K)\vecop(B)$ need not lie in
+$\operatorname{range}(M^{T}M)=\operatorname{range}(M^{T})$. Hence $\lambda>0$ is
+an essential well-posedness hypothesis, not merely a convenience: it both
+provides strict positive definiteness (with $K\succ0$) and, in the singular-$K$
+case, aligns $\operatorname{range}(\aA)$ with $\operatorname{range}(I_r\otimes K)$
+so that the system stays consistent.
+\end{remark}
+
+\end{document}

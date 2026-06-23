@@ -1,0 +1,152 @@
+{
+  "id": "rm-09364-meet-1",
+  "problem_id": "rm-09364",
+  "topic": "Init rm-09364 — proof review",
+  "goal": "Review the proof and issues for rm-09364; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T16:03:50Z",
+  "messages": [
+    {
+      "id": "m8d43e0e8",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-09364 — proof review**",
+      "created_at": "2026-06-23T16:03:50Z"
+    },
+    {
+      "id": "m74262944",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Hold on — I need to register some confusion before we dive into proof review. The problem statement I'm looking at is about *work teams*, *team efficacy*, and *learning behavior as a mediator of team performance*. This is an organizational-psychology mediation model, not the $\\varepsilon$-light subset problem I came prepared to discuss. So either the problem ID got crossed, or someone is asking me to import spectral intuition into a social-science setting.\n\nLet me say what I *can* contribute honestly. A mediation claim — \"team efficacy $\\to$ learning behavior $\\to$ performance\" — is structurally a claim about a directed graphical model with a path decomposition:\n$$\\text{Performance} = c'\\cdot\\text{Efficacy} + b\\cdot\\text{Learning} + \\varepsilon,\\qquad \\text{Learning} = a\\cdot\\text{Efficacy}+\\eta.$$\nPartial mediation means the indirect effect $a\\cdot b$ is nonzero while the direct effect $c'$ is also nonzero. That's a *statistical* identification question, and the honest analogue of \"What's the spectral gap?\" here is: **what conditions identify $a$ and $b$?** You need no unmeasured confounding of the Learning–Performance edge, which is a strong assumption nobody can verify from cross-sectional survey data.\n\nSo before I review any \"proof,\" two questions for the room:\n1. Is rm-09364 actually the team-efficacy problem, or did my brief get mismatched? I don't want to apply effective resistances to something that has no Laplacian.\n2. If it *is* the mediation problem, then there is no theorem to prove in my sense — there's a causal model to specify and conditions (ignorability, temporal ordering, linearity or a stated functional form) to state. I can be constructive about *that*, but let's not dress up a regression as an existence proof.",
+      "created_at": "2026-06-23T16:04:01Z"
+    },
+    {
+      "id": "m6adab1a1",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right that this is not the $\\varepsilon$-light subset problem — my prepared notes on graphons and the LLL don't transfer literally. But let me push back on the despair in his point 2. There *is* structure here, and it is precisely the structure I have spent my life studying: a directed graphical model is a graph, and mediation is a statement about path products in that graph. Let me state it cleanly.\n\nWe have a path diagram on three vertices $E$ (efficacy), $L$ (learning), $P$ (performance), with edges $E \\to L$ (coefficient $a$), $L \\to P$ (coefficient $b$), and $E \\to P$ (coefficient $c'$). The total effect decomposes as $c = c' + ab$ — this is just Wright's path-tracing rule, which is nothing but counting homomorphisms of the path $E\\to L\\to P$ into the weighted dependency graph. Partial mediation is the claim $ab \\neq 0$ **and** $c' \\neq 0$.\n\nNow, the genuine mathematical content — and where I'd insist on rigor — is **identifiability**, exactly as Dan says. Let me list the conditions precisely:\n\n1. **Temporal/causal ordering**: $E$ measured before $L$ before $P$. Without this the edges are not orientable and the \"mediation\" is a correlational artifact.\n2. **No unmeasured confounding** of $L \\to P$ (and of $E\\to L$, $E\\to P$). This is the back-door criterion; it is the assumption that makes the regression coefficients equal the structural path coefficients.\n3. **Linearity / additivity** of the functional form, or a stated nonlinear analog. Mediation as a *product* $ab$ only makes sense in the linear regime; otherwise one needs the controlled-direct-effect formalism.\n\nWhere I genuinely add value: I would not test $ab \\neq 0$ by the naive Sobel normal approximation, because the distribution of a *product* of two estimators is non-normal — its asymmetry is the same phenomenon I exploited in the LLL where products of dependent quantities have heavy tails. Use the bootstrap on $\\hat a \\hat b$, or a Bayesian posterior on the product. That is the honest \"spectral gap\" question here: the sampling geometry of the indirect effect.\n\nSo my answer to the substantive problem: **yes, learning behavior can partially mediate**, the model is the two-equation system Dan wrote, and the mediation *holds* precisely under (1)–(3) plus $a,b,c'$ all nonzero. Let us not pretend there is a theorem, but let us also not pretend there is no mathematics.",
+      "created_at": "2026-06-23T16:04:45Z"
+    },
+    {
+      "id": "m9c5cf78c",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, László — yes, the brief is mismatched relative to what we each prepared, but I want to resist the framing that there's \"no theorem.\" There's a genuine *spectral* question hiding in the mediation model, and I've seen exactly this structure before.\n\nLook at László's two-equation system. Stack it as a linear operator: the path matrix\n$$\nM = \\begin{pmatrix} 0 & 0 & 0 \\\\ a & 0 & 0 \\\\ c' & b & 0 \\end{pmatrix}, \\qquad (I-M)^{-1} = I + M + M^2,\n$$\nnilpotent because the DAG has no cycles. The total effect $c = c' + ab$ is just the $(E,P)$ entry of $I+M+M^2$ — it's a *trace-formula-style* sum over paths, the social-science analogue of $\\sum_\\rho x^\\rho = -\\sum_p \\Lambda(p)\\hat f(\\log p)$: you sum over the \"geometric\" objects, here directed paths instead of closed geodesics. So the mathematics genuinely *is* path counting, exactly as László says.\n\nBut here's my Ramanujan-style question — **is the partial mediation a robust phenomenon or an anomalously large fluctuation?** László is right that the product $\\hat a\\hat b$ is non-normal; its sampling distribution is precisely a product of correlated Gaussians, whose law is a Bessel-$K_0$ profile — heavy-tailed, *not* GUE-like. The honest question is whether $\\hat a\\hat b$ at the observed value is genuinely above the noise floor, the same way subconvexity asks whether $L(1/2,\\pi\\times\\pi')$ is anomalously large. The bootstrap László wants is the right instrument, but I'd add: condition number. If $\\mathrm{Cov}(\\hat a,\\hat b)$ is near-degenerate — which happens when $E$ and $L$ are nearly collinear — then identifiability collapses, and that's a *spectral gap* statement: the design matrix has a small eigenvalue.\n\nSo let me sharpen the action plan to one clean condition: mediation holds iff (i) László's (1)–(3) ignorability/ordering/linearity assumptions, **and** (ii) the smallest singular value of the predictor Gram matrix is bounded below, $\\sigma_{\\min} \\geq \\delta$ — otherwise $a$ and $b$ are not separately estimable and the \"indirect effect\" is an artifact of ill-conditioning. That second condition is the real theorem behind the technical one. Compute it on the first dataset by hand before anyone runs a regression.",
+      "created_at": "2026-06-23T16:05:29Z"
+    },
+    {
+      "id": "m39298905",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that's exactly the right move — and your $\\sigma_{\\min}$ condition is the one I want to operationalize, because it's where I can be genuinely constructive rather than just nodding at assumptions.\n\nLet me make your condition (ii) precise and tie it to leverage scores, which is my native language. The OLS estimates of $a,b,c'$ are governed by the predictor Gram matrix $G = X^TX$ where the columns of $X$ are (standardized) $E$ and $L$. The variance of $\\hat b$ is $\\sigma^2 [G^{-1}]_{LL} = \\sigma^2/(\\sigma_{\\min}\\text{-controlled denominator})$, and the relevant quantity is exactly the *partial correlation* — the leverage of $L$ after projecting out $E$. So your collinearity-kills-identifiability statement is literally: the effective resistance between $E$ and $L$ in the predictor graph is too small. When $E$ and $L$ are nearly collinear, the edge between them has tiny effective resistance and including or excluding it barely changes the fit — that's my Spielman–Srivastava intuition transported intact.\n\nTwo things I'd add to sharpen the plan:\n\n1. **State the condition as a leverage bound, not just $\\sigma_{\\min}$.** Require $1 - r_{EL}^2 \\geq \\delta$, where $r_{EL}$ is the sample correlation of efficacy and learning. This is dimensionless, interpretable, and is exactly $\\sigma_{\\min}(G)$ after standardization. It tells you *a priori*, before any bootstrap, whether $a$ and $b$ are separately estimable.\n\n2. **On the heavy tail of $\\hat a\\hat b$:** I agree with László and Peter that Sobel is wrong, but I'd be even more concrete. The product of two Gaussians is the same regime where I'd reach for matrix-Bernstein-style concentration, except here it's scalar and you genuinely *want* the non-Gaussian tail. So: percentile bootstrap on $\\hat a\\hat b$, and report the interval, never a $p$-value from a normal approximation.\n\nSo my honest verdict on the substantive question: **yes, partial mediation is a coherent and defensible claim**, the model is László's two-equation system, and it *holds* under (1)–(3) plus the explicit well-conditioning bound $1-r_{EL}^2 \\geq \\delta$ with $a,b,c'$ all bounded away from zero. That last clause is the part people forget — partial mediation is not just \"$ab\\neq 0$,\" it's \"$ab$ and $c'$ are both detectable above a noise floor that the design conditioning controls.\" Compute $r_{EL}$ on the first dataset by hand, exactly as Peter said. If it's $0.9$, we stop and go home.",
+      "created_at": "2026-06-23T16:07:44Z"
+    },
+    {
+      "id": "m81773977",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — we have converged on something genuinely clean, and I want to close one gap and add one structural observation.\n\nFirst, the gap. We keep saying \"$a,b,c'$ bounded away from zero plus well-conditioning,\" but we have not stated the *sufficient statistic* for partial mediation in a way that is invariant to the parametrization. Let me do that. After standardizing, the indirect effect is $ab = r_{EL}\\,(r_{LP\\cdot E})$, and the well-conditioning factor $1-r_{EL}^2$ enters the denominator of $\\widehat b$'s variance. So the detectability condition is genuinely a *ratio* — exactly the $\\theta$-function philosophy: a single scalar sandwiched between two combinatorial quantities. Here the analog of $\\alpha(G)\\le\\theta(G)\\le\\chi(\\bar G)$ is\n$$\n0 \\;<\\; \\underbrace{|ab|}_{\\text{indirect effect}} \\;\\le\\; \\frac{|ab|}{\\sqrt{1-r_{EL}^2}} \\;=\\; \\text{(detectable signal)},\n$$\nand mediation \"holds\" precisely when the middle quantity exceeds the bootstrap noise floor. The collinearity $r_{EL}\\to 1$ inflates the upper bound to infinity — that is the SDP becoming unbounded, the degenerate face of the feasible region. So Peter's $\\sigma_{\\min}$ and Dan's $1-r_{EL}^2$ are the same well-posedness certificate, and I'd record it as one inequality.\n\nSecond, the structural observation. We have been assuming linearity (my condition (3)), which makes \"the indirect effect\" the *product* $ab$. But the substantive claim — efficacy raises *confidence to engage in learning* — is almost certainly a saturating, nonlinear effect, and there the product decomposition fails. The honest generalization is the **controlled direct effect**: fix $L = \\ell$, compare $P$ across levels of $E$. This is exactly a graph-homomorphism count where the path $E\\to L\\to P$ is weighted by a kernel rather than a scalar — the graphon, not the graph. My recommendation: state the linear model as the *leading order* claim, and flag that the genuine mediation lives in the natural-effects (Pearl–Robins) decomposition, where $ab$ becomes $\\mathbb{E}[P(E{=}1,L(E{=}1))-P(E{=}1,L(E{=}0))]$.\n\nSo my verdict matches the room: **yes, partial mediation is defensible**, under (1)–(3), the single conditioning inequality above, and detectability of both $ab$ and $c'$. But let us write condition (3) with an asterisk — linearity is a modeling convenience, and the real object is a kernel. Compute $r_{EL}$ first, as Peter and Dan say; if it is $0.9$, the SDP is on the boundary and we go home.",
+      "created_at": "2026-06-23T16:08:30Z"
+    },
+    {
+      "id": "m2f058abd",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, that controlled-direct-effect remark is exactly where I want to push — because you've just told me the linear story is the *trivial zero* and the real arithmetic is in the kernel. Let me make the analogy precise and then disagree productively.\n\nWhen you replace the scalar $b$ by a kernel $K(\\ell)$, the indirect effect becomes $\\int K(\\ell)\\, d\\mu_E(\\ell)$ where $\\mu_E$ is the distribution of $L$ induced by efficacy. That's an *integral over a spectral measure*, not a path product — it's the analogue of the Rankin–Selberg unfolding $L(s,\\pi\\times\\pi') = \\int_{[GL_n]}\\phi_\\pi(g) E(g,s)\\,dg$ that I keep coming back to. The point: the \"total effect\" is a pairing of the efficacy-induced measure against the learning-to-performance kernel, and *mediation is strong exactly when this pairing is not concentrated on a thin set*. That is a quantum-ergodicity statement. In the Lindenstrauss–Sarnak QUE work, the whole game was ruling out mass escaping onto closed geodesics — measure concentrating on a low-dimensional locus. Here the failure mode is identical: if $\\mu_E$ is nearly a point mass (efficacy doesn't actually *spread* learning behavior across its range), the kernel is sampled at one point and you cannot distinguish mediation from a direct effect. Collinearity $r_{EL}\\to 1$ is precisely \"the limit measure is a delta\" — Dan's vanishing effective resistance and concentration-on-a-geodesic are the *same* degeneracy.\n\nNow the provocative question for the room: **is partial mediation a Ramanujan phenomenon or a CDE-violating one?** If the kernel $K$ is *monotone and bounded* — the saturating effect László anticipates — then the natural-effects decomposition is stable and the linear $ab$ is the honest leading term with controlled error, just like a sub-Ramanujan eigenvalue bound still gives you the main term. But if $K$ has an interaction — efficacy *changes the slope* of learning-on-performance, not just the level — then $ab$ is an artifact and you've got a genuine $E\\times L$ interaction term that no amount of bootstrap on the product will rescue. So I'd add a fourth condition to our certificate:\n\n4. **No efficacy–learning interaction**: $\\partial^2 P/\\partial E\\,\\partial L \\approx 0$, testable directly by including the product term $E\\cdot L$ in the regression and checking its coefficient is below the noise floor.\n\nCompute three things by hand on the first dataset, in this order: $r_{EL}$ (László/Dan's conditioning), then the spread of $L$ across the range of $E$ (is $\\mu_E$ a delta?), then the $E\\cdot L$ interaction coefficient. If $r_{EL}=0.9$ we go home — but if $r_{EL}=0.3$ and the interaction is large, we *also* go home, just for a different reason. That second failure is the one everyone misses.",
+      "created_at": "2026-06-23T16:09:17Z"
+    },
+    {
+      "id": "md7fa0123",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T16:10:09Z"
+    },
+    {
+      "id": "m0372d83a",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nEstablish partial mediation (efficacy → learning → performance) as a well-posed claim by specifying the linear two-equation structural model, stating its identifiability and detectability conditions (ordering, ignorability, linearity, well-conditioning, no interaction), and verifying them empirically rather than asserting an existence theorem.",
+      "created_at": "2026-06-23T16:10:09Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish partial mediation (efficacy → learning → performance) as a well-posed claim by specifying the linear two-equation structural model, stating its identifiability and detectability conditions (ordering, ignorability, linearity, well-conditioning, no interaction), and verifying them empirically rather than asserting an existence theorem.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the structural mediation model",
+        "body": "Write the two-equation system Performance = c'·Efficacy + b·Learning + ε and Learning = a·Efficacy + η. Represent it as the nilpotent path matrix M and compute (I-M)^{-1} = I + M + M^2 to derive the total-effect decomposition c = c' + ab via Wright's path-tracing rule. State partial mediation precisely as ab ≠ 0 AND c' ≠ 0, both detectable above a noise floor.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "State the identifiability assumptions explicitly",
+        "body": "Enumerate the conditions under which OLS coefficients equal structural path coefficients: (1) temporal/causal ordering E before L before P; (2) no unmeasured confounding of E→L, L→P, E→P (back-door criterion); (3) linearity/additivity of functional form, flagged with an asterisk as a leading-order modeling convenience. Document each as a verifiable or explicitly assumed premise.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Derive the well-conditioning certificate",
+        "body": "Show that separate estimability of a and b requires the predictor Gram matrix G = X^T X (columns standardized E and L) to be well-conditioned. Prove the equivalence σ_min(G) ≥ δ ⇔ 1 - r_EL^2 ≥ δ, and express it as the single detectability inequality 0 < |ab| ≤ |ab|/√(1-r_EL^2) = detectable signal. Tie this to effective resistance between E and L: collinearity r_EL→1 drives the bound to infinity (degenerate face / vanishing resistance).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Add the no-interaction condition",
+        "body": "Formalize condition (4): ∂²P/∂E∂L ≈ 0, i.e., efficacy must not change the slope of learning-on-performance. Specify the test: include the product term E·L in the regression and require its coefficient be below the bootstrap noise floor. Explain that nonzero interaction makes the product ab an artifact that no bootstrap can rescue, and connect to the controlled-direct-effect / natural-effects (Pearl–Robins) generalization where b becomes a kernel K(ℓ).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Specify correct inference on the indirect effect",
+        "body": "Replace the Sobel normal approximation with valid inference for the product â·b̂, whose sampling law is a heavy-tailed product of correlated Gaussians (Bessel-K_0 profile). Prescribe percentile bootstrap on â·b̂ (or a Bayesian posterior on the product) and require reporting the interval rather than a p-value. Justify why the non-Gaussian tail is intrinsic and must be preserved.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Execute the ordered empirical diagnostic on the first dataset",
+        "body": "Compute by hand, in this order: (i) r_EL — if ≈0.9, stop, identifiability has collapsed; (ii) the spread of L across the range of E (is the efficacy-induced measure μ_E nearly a point mass / delta?) — if degenerate, stop; (iii) the E·L interaction coefficient — if large, stop. Only if all three pass proceed to bootstrap estimation of â·b̂ and ĉ'.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Audit the dual failure modes and scope of the claim",
+        "body": "Critically review that the conclusion is correctly hedged: partial mediation is defensible ONLY under conditions (1)-(4) plus 1-r_EL^2 ≥ δ and both |ab| and |c'| above the noise floor. Stress-test the two distinct go-home scenarios — high collinearity (r_EL≈0.9) versus low collinearity with large interaction (r_EL≈0.3, big E·L) — and confirm neither is conflated. Flag that the genuine object under nonlinearity is the kernel/graphon CDE formulation, not the scalar product.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T16:10:09Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

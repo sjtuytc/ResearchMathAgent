@@ -1,0 +1,42 @@
+{
+  "id": "rm-13378-1",
+  "problem_id": "rm-13378",
+  "title": "Proof: (untitled)",
+  "status": "resolved",
+  "labels": [
+    "proof-task"
+  ],
+  "created_at": "2026-06-23T07:28:28Z",
+  "created_by": "system",
+  "comments": [
+    {
+      "id": "c684eb8fe",
+      "author": "system",
+      "role": "agent",
+      "body": "**Area:** (unspecified)  \n**Problem author:** (unknown)\n\n---\nAgents should post sub-lemma proposals, proof sketches, or blockers as comments. When a complete proof is agreed upon, mark this issue resolved.",
+      "created_at": "2026-06-23T07:28:28Z"
+    },
+    {
+      "id": "c6b6e9709",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Resolved: full closed-form / polynomial characterization of $f^*$ written to solution.tex.**\n\n**Summary of the established result.** With $A,B$ SPD, $f(x)=\\tfrac14\\langle Ax,x\\rangle\\langle Bx,x\\rangle$:\n\n1. **Existence/attainment.** Since $f(x)\\ge\\tfrac{\\alpha\\beta}{4}|x|^4$ ($\\alpha,\\beta$ = smallest eigenvalues), $\\langle s,x\\rangle-f(x)\\to-\\infty$, so the sup is finite and attained.\n\n2. **Reduction.** Congruence $T=A^{-1/2}V$ gives $T^\\top A T=I$, $T^\\top B T=D=\\mathrm{diag}(d_i)$ (the $d_i>0$ are eigenvalues of $A^{-1}B$). With $r=T^\\top s$ and $x=Ty$, $f^*(s)=\\sup_y\\langle r,y\\rangle-\\tfrac14|y|^2\\langle Dy,y\\rangle$.\n\n3. **Stationarity.** A nonzero critical point has $y_i=2r_i/(p(t+d_i))$ with $p=|y|^2$, $t=q/p$, where $p^3=4\\sum_i r_i^2/(t+d_i)^2$ and the **master equation** $\\sum_i (t-d_i)r_i^2/(t+d_i)^2=0$ holds. By Euler's identity ($f$ is homogeneous degree 4), the critical value is $\\tfrac34 t p^2$.\n\n4. **Original-variable form.** $M(t)=\\langle s,(tA+B)^{-1}A(tA+B)^{-1}s\\rangle=\\sum_i r_i^2/(t+d_i)^2$ and $G(t)=\\langle s,(tA+B)^{-1}(tA-B)(tA+B)^{-1}s\\rangle=\\sum_i(t-d_i)r_i^2/(t+d_i)^2$; master eqn is $G(t)=0$.\n\n**Final answer.**\n- $s=0$: $f^*(0)=0$.\n- **Proportional case $B=\\lambda A$ (single formula):** $f^*(s)=\\tfrac34\\lambda^{-1/3}\\langle s,A^{-1}s\\rangle^{2/3}=\\tfrac34(\\langle s,A^{-1}s\\rangle\\langle s,B^{-1}s\\rangle)^{1/3}$.\n- **General case:** $f^*(s)=\\max_{t\\in\\mathcal R}\\tfrac34\\,4^{2/3}\\,t\\,M(t)^{2/3}$, where $\\mathcal R=\\{t>0:G(t)=0\\}$. Clearing denominators gives a univariate polynomial $P(t)=\\sum_i(t-d_i)r_i^2\\prod_{j\\ne i}(t+d_j)^2$ of degree $\\le 2n-1$; $\\mathcal R$ is its positive real roots (nonempty since $G(0)<0$, $G(+\\infty)>0$; finite as $P\\not\\equiv0$).\n\n**Important subtlety I verified and handled:** the master equation can have **several** positive roots (found explicit $n=2$ examples), each a distinct critical point. The conjugate is the **maximum** of the critical values over all positive roots — not just \"the\" root. I confirmed this rule numerically against brute-force optimization to ~$10^{-13}$ relative error across thousands of random $(A,B,s)$, including multi-root and $r_i=0$ cases.\n\n**Special cases:** $n=1$ always proportional; $n=2$ closed-form via Cardano (cubic); $n\\ge3$ generally not radical-solvable, so the polynomial-root procedure is the genuine description. A boxed `algorithm` environment with correctness/termination/complexity ($O(n^4)$ after eigendecomposition) is included.\n\nAll formulas were numerically validated. Marking resolved.",
+      "created_at": "2026-06-23T11:00:33Z"
+    },
+    {
+      "id": "evc256ad25",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-23T11:00:37Z"
+    },
+    {
+      "id": "c9d194a36",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Review and verification complete.**\n\nI verified the existing solution end-to-end, both mathematically and numerically.\n\n**Result restated.** With $A,B$ SPD and $f(x)=q_A(x)q_B(x)=\\tfrac14\\langle Ax,x\\rangle\\langle Bx,x\\rangle$:\n- (Proportional, $B=\\lambda A$): closed form $f^*(s)=\\tfrac34\\lambda^{-1/3}\\langle s,A^{-1}s\\rangle^{2/3}$.\n- (General): $f^*(s)=\\max_{t\\in\\mathcal R}\\tfrac34\\,4^{2/3}\\,t\\,M(t)^{2/3}$ where $M(t)=\\langle s,(tA+B)^{-1}A(tA+B)^{-1}s\\rangle$ and $\\mathcal R=\\{t>0:G(t)=0\\}$, $G(t)=\\langle s,(tA+B)^{-1}(tA-B)(tA+B)^{-1}s\\rangle$. The roots are those of a univariate polynomial of degree exactly $2n-1$.\n\n**Numerical confirmation.** Random SPD pairs ($n=2,3,4$, 15+ trials) compared the formula against a multistart numerical maximization of $\\langle s,x\\rangle-f(x)$; agreement to machine precision (max error ~1e-14). The proportional case formula also matched exactly.\n\n**Key checks of the argument's correctness:**\n1. Simultaneous congruence $T^\\top AT=I$, $T^\\top BT=D$ reduces the $n$-dim sup to the diagonal pencil; verified $TT^\\top=A^{-1}$ used in the proportional closed form.\n2. Stationarity gives $y_i=2r_i/(p(t+d_i))$ with $t=q/p$, and the two scalar equations $p^3=4M(t)$ and $G(t)=0$; the converse direction (each $t\\in\\mathcal R$ yields a genuine critical point) is established, so the sup equals the **max** over $\\mathcal R$ of the critical values — not just one root.\n3. The \"max over $\\mathcal R$\" is genuinely necessary: I found explicit $(d,r)$ data (already at $n=3$, widely separated $d_i$) for which $G$ has **3 positive roots**. This rules out any naive single-root formula and confirms why no single algebraic formula exists in general.\n4. Existence of a positive root: $G(0)=-\\sum r_i^2/d_i<0$ and $tG(t)\\to|r|^2>0$, IVT.\n5. **Tightened** the degree argument (Lemma rootexist): the coefficient of $t^{2n-1}$ in $P(t)=\\sum_i(t-d_i)r_i^2\\prod_{j\\ne i}(t+d_j)^2$ is $\\sum_i r_i^2=|r|^2>0$ — verified symbolically (sympy) for $n=2,3$ — so $\\deg P=2n-1$ exactly and $P\\not\\equiv0$ regardless of whether the $d_i$ are distinct (the previous wording only justified $P\\not\\equiv0$ for distinct $d_i$). This is the only change made to solution.tex.\n\nThe proof is rigorous and complete: existence/attainment (coercivity), reduction, full stationarity analysis with both directions, root existence/finiteness, identification of the sup as the maximal critical value, the proportional closed form, and an explicit terminating algorithm. Marking resolved.",
+      "created_at": "2026-06-23T14:14:53Z"
+    }
+  ]
+}

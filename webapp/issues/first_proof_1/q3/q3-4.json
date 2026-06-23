@@ -1,0 +1,46 @@
+{
+  "id": "q3-4",
+  "problem_id": "q3",
+  "dataset": "first_proof_1",
+  "title": "prop:step2 proof is only an 'Idea' — case-by-case weight/probability match missing",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "issue_type": null,
+  "priority": "P2",
+  "created_at": "2026-06-22T20:31:35Z",
+  "created_by": "human",
+  "comments": [
+    {
+      "id": "ev867c4846",
+      "author": "human",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **human**",
+      "created_at": "2026-06-22T20:31:35Z"
+    },
+    {
+      "id": "c752812bb",
+      "author": "human",
+      "role": "human",
+      "body": "`prop:step2` claims $P^{(2)}_j(\\rho,\\nu)=c^\\rho_\\nu/D$ with $D=\\prod_{k<j}(x_k-t^{-n+2})\\prod_{k>j}(x_k-t^{-n+1})$, equivalently $P_jP^{(2)}_j=c^\\rho_\\nu/e^*_{n-1}$. The proof is labelled '[Idea]' and merely asserts that dividing each ball/pairing weight of the unique $\\overline Q\\in\\mathcal G^\\rho_\\nu$ by the matching factor of $D$ 'reproduces, case by case, the skip/settle probabilities $1-p_k,1-q_k,p_k,q_k$.'\n\nThe actual case analysis is absent. One must verify:\n- each of the four ball/pairing weights ($x_k-t^{-(n-1)}$, $x_k$, $t^{-(n-1)}$, and the pairing weight $(1-t)t^{\\mathrm{skip}}$) divided by the corresponding factor of $D$ equals the correct $p_k$, $q_k$, $1-p_k$, or $1-q_k$;\n- a full clockwise sweep telescopes to a single transition probability;\n- the claim that columns $k>j$ 'never move, factor 1' is consistent with $\\rho_j=0$ and the sweep direction.\n\nUntil this is written out, $P^{(2)}_j$ is not established to be a probability nor equal to $c^\\rho_\\nu/D$.",
+      "created_at": "2026-06-22T20:31:35Z"
+    },
+    {
+      "id": "c66c693ee",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Resolved.** I replaced the `[Idea]` proof of `prop:step2` with a full case-by-case derivation (Steps A–E) and verified every claim symbolically.\n\n**Key algebraic identities** (now stated as eq:idp/idq/skipprobs in the solution):\n- $(x_k-t^{-n+2})-t^{-n+1}(1-t)=x_k-t^{-n+1}$, hence $1-p_k=\\dfrac{x_k-t^{-n+1}}{x_k-t^{-n+2}}$.\n- $(x_k-t^{-n+2})-(1-t)x_k=t(x_k-t^{-n+1})$, hence $1-q_k=\\dfrac{t(x_k-t^{-n+1})}{x_k-t^{-n+2}}$.\n\n**The four-branch dictionary** (each branch emits one ball weight, settles also emit $1-t$; dividing by the $D$-factor $x_k-t^{-n+2}$ at a visited site $k<j$ yields the branch probability):\n1. skip, $b\\ge a$: resident stays ⇒ same-label column, ball $x_k-t^{-(n-1)}$; $\\big/(x_k-t^{-n+2})=1-p_k$.\n2. skip, $b<a$: resident stays (ball $x_k-t^{-(n-1)}$) and the moving label jumps one weaker ball, contributing a factor $t$ (a $t^{\\mathrm{skip}}$ unit); emitted $t(x_k-t^{-n+1})$, $\\big/(x_k-t^{-n+2})=1-q_k$.\n3. settle, $b\\ge a$: opens a nontrivial pairing (factor $1-t$); new column ball-case is $b<a$, weight $t^{-(n-1)}$; emitted $t^{-n+1}(1-t)$, $\\big/(x_k-t^{-n+2})=p_k$.\n4. settle, $b<a$: opens a pairing (factor $1-t$); new column ball-case is $b>a$, weight $x_k$; emitted $x_k(1-t)$, $\\big/(x_k-t^{-n+2})=q_k$.\n\n**Telescoping (Step D):** a nontrivial pairing is opened by a settle (giving $1-t$) and crosses $s$ weaker residents via type-(2) skips (each giving $t$), so its total weight is $(1-t)t^s=(1-t)t^{\\mathrm{skip}(p)}$ — exactly Definition def:unsigned.\n\n**Columns $k>j$ (Step C):** never visited ⇒ $\\nu_k=\\rho_k$ ⇒ same-label ball $x_k-t^{-(n-1)}$, which is precisely the matching factor of $D$ for $k>j$, so the ratio is $1$ (\"never move, factor 1\"). The terminal column $j$ has a top vacancy ($\\rho_j=0$), emits no ball weight, and is not a factor of $D$.\n\n**Uniqueness & probability (Step E):** because $\\lambda$ has distinct parts, each realisable output $\\nu$ is produced by a *unique* sweep path $\\sigma$, whose column ball-cases and settle-runs are exactly those of the unique $\\overline Q\\in\\mathcal G^\\rho_\\nu$; hence $\\mathrm{wt}(\\overline Q)=D\\cdot P^{(2)}_j(\\rho,\\nu)$, i.e. $P^{(2)}_j=c^\\rho_\\nu/D$. The empty case ($\\mathcal G^\\rho_\\nu=\\varnothing$, $c^\\rho_\\nu=0$) gives $P^{(2)}_j=0$ since the sweep only transports labels forward. Summing the branch-probabilities $p_k+(1-p_k)=q_k+(1-q_k)=1$ shows $\\sum_\\nu P^{(2)}_j(\\rho,\\nu)=1$, so $P^{(2)}_j$ is a genuine probability.\n\n**Numerical verification** (sympy, exact symbolic): for $\\lambda$ over $\\{0,2,4\\}$ ($n=3$), $\\{0,2,3,5\\}$, $\\{0,2,4,6\\}$ ($n=4$), and $\\{0,2,3,4,6\\}$ ($n=5$), and for every $j$, $\\rho$ with $\\rho_j=0$, and every reachable $\\nu$, I confirmed (i) emitted ball/pairing weight $= P^{(2)}_j(\\rho,\\nu)\\cdot D$ identically, and (ii) $\\sum_\\nu P^{(2)}_j(\\rho,\\nu)=1$. Also confirmed each $\\nu$ is reached by exactly one sweep path (justifying Step E).\n\nThe solution file now contains the complete argument; LaTeX environment/brace balance and all `\\ref`/`\\eqref` targets were checked (no toolchain installed to compile, but structural checks pass).",
+      "created_at": "2026-06-22T20:40:14Z"
+    },
+    {
+      "id": "ev31444a18",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-22T20:40:17Z"
+    }
+  ]
+}

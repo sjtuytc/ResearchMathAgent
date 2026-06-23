@@ -1,0 +1,433 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\asymp}{\sim}
+
+\begin{document}
+
+\title{Asymptotics of the interface width for an expanding Family--Vicsek interface}
+\author{}
+\date{}
+\maketitle
+
+\section{Formalization and standing assumptions}
+
+We make precise the (semi-empirical) scaling hypotheses of the problem, state them
+as axioms, and derive everything rigorously from those axioms. The mathematical
+content is the analysis of a one-parameter family of competing power laws; the
+experimental content is the protocol of Section~\ref{sec:protocol}.
+
+Throughout, ``$g(t)\asymp h(t)$ as $t\to\infty$'' means there are constants
+$0<c\le C<\infty$ and $t_0$ with $c\,h(t)\le g(t)\le C\,h(t)$ for all $t\ge t_0$;
+for two power laws this is equivalent to equality of exponents (with the prefactor
+absorbed into $c,C$), which is what we track. We write $f(u)\asymp k(u)$ as
+$u\to0^+$ or $u\to\infty$ analogously.
+
+\begin{definition}[Family--Vicsek scaling on a fixed substrate]\label{def:FV}
+Fix exponents $\alpha>0$ (roughness) and $\beta>0$ (growth), and set
+$z:=\alpha/\beta>0$ (dynamic exponent). On a substrate of fixed linear size
+$L_0$ the height field $h(x,t)$ has interface variance
+\begin{equation}\label{eq:FV}
+  W_0^2(L_0,t):=\langle h(x,t)^2\rangle-\langle h(x,t)\rangle^2
+  \;\asymp\; L_0^{2\alpha}\, f\!\left(\frac{t}{L_0^{\,z}}\right),
+\end{equation}
+where the dimensionless positive scaling function $f$ obeys
+\begin{equation}\label{eq:fasymp}
+  f(u)\asymp u^{2\beta}\ \ (u\to 0^+),\qquad
+  f(u)\to f_\infty\in(0,\infty)\ \ (u\to\infty),
+\end{equation}
+and is continuous and strictly positive on $(0,\infty)$, so that
+$0<\inf_{[a,b]}f\le\sup_{[a,b]}f<\infty$ on every compact $[a,b]\subset(0,\infty)$.
+\end{definition}
+
+\begin{lemma}[Growth-phase size independence]\label{lem:sizeindep}
+On a fixed substrate, before saturation (i.e.\ for $t\ll L_0^{z}$) the
+Family--Vicsek width is independent of the substrate size:
+$W_0^2(L_0,t)\asymp t^{2\beta}$, with implicit constant independent of $L_0$.
+After saturation ($t\gg L_0^{z}$) it is time-independent and size-dependent:
+$W_0^2(L_0,t)\asymp f_\infty\,L_0^{2\alpha}$.
+\end{lemma}
+\begin{proof}
+For $t\ll L_0^{z}$, $u:=t/L_0^{z}\to0$, so by \eqref{eq:fasymp}
+$f(u)\asymp u^{2\beta}$, hence by \eqref{eq:FV}
+$W_0^2\asymp L_0^{2\alpha}(t/L_0^{z})^{2\beta}=t^{2\beta}\,L_0^{\,2\alpha-2\beta z}
+=t^{2\beta}$, because $2\alpha-2\beta z=2\alpha-2\beta(\alpha/\beta)=0$. For
+$t\gg L_0^{z}$, $u\to\infty$, so $f(u)\to f_\infty$ and
+$W_0^2\asymp f_\infty L_0^{2\alpha}$.
+\end{proof}
+
+Lemma~\ref{lem:sizeindep} is the structural hallmark of Family--Vicsek scaling and
+will be decisive for the extraction analysis: \emph{the substrate size enters the
+width only after saturation}.
+
+The single dimensionless control variable in \eqref{eq:FV} is the ratio of lateral
+correlation length to system size. Defining the \emph{correlation length}
+\begin{equation}\label{eq:xi}
+  \xi(t):=t^{1/z},
+\end{equation}
+the argument of $f$ is $t/L_0^{z}=(\xi(t)/L_0)^{z}$, with crossover at
+$\xi(t)=L_0$.
+
+\begin{definition}[Expanding substrate; adiabatic Family--Vicsek closure]\label{def:expand}
+The substrate grows as $L(t)\asymp t^{\gamma}$ ($\gamma>0$) for $t\ge t_0$, with
+reference size $L_0:=L(t_0)$ at a fixed reference time $t_0>0$; thus
+\begin{equation}\label{eq:Lt}
+  L(t)=L_0\,(t/t_0)^{\gamma},\qquad t\ge t_0,\ \gamma>0.
+\end{equation}
+We posit the \emph{adiabatic Family--Vicsek closure}: the expanding-interface
+variance obeys \eqref{eq:FV}--\eqref{eq:fasymp} with the fixed size replaced at
+each instant by the current size $L(t)$:
+\begin{equation}\label{eq:adiabatic}
+  W^2(t):=\langle h(x,t)^2\rangle-\langle h(x,t)\rangle^2
+  \;\asymp\; L(t)^{2\alpha}\, f\!\left(\frac{t}{L(t)^{\,z}}\right)
+  = L(t)^{2\alpha}\, f\!\left(\Big(\tfrac{\xi(t)}{L(t)}\Big)^{z}\right),
+\end{equation}
+with the same $\alpha,\beta,z,f$ as in Definition~\ref{def:FV}.
+\end{definition}
+
+\begin{remark}[Status of the closure]
+Equation~\eqref{eq:adiabatic} is the standard closure for slowly expanding
+interfaces: on time scales over which $L(t)$ changes by an $O(1)$ factor, the
+interface relaxes onto the Family--Vicsek form for the instantaneous size. It is
+the hypothesis the problem invites us to analyze; all results below are theorems
+\emph{conditional on \eqref{eq:adiabatic}}.
+\end{remark}
+
+\section{The dichotomy theorem: exactly two leading regimes (plus the boundary)}
+\label{sec:dichotomy}
+
+\begin{theorem}[Trichotomy of asymptotics]\label{thm:main}
+Assume \eqref{eq:FV}--\eqref{eq:adiabatic}. As $t\to\infty$ the expanding-interface
+variance satisfies, with $L(t)=L_0(t/t_0)^{\gamma}$,
+\begin{align}
+  \text{\emph{(F)} fast/uncorrelated, } \gamma>1/z:\quad
+    & W^2(t)\;\asymp\; t^{2\beta}
+      \;=\; L(t)^{2\alpha}\,t^{\,2\beta-2\gamma\alpha},
+      \label{eq:fast}\\[2pt]
+  \text{\emph{(S)} slow/correlated, } \gamma<1/z:\quad
+    & W^2(t)\;\asymp\; f_\infty\,L(t)^{2\alpha}
+      \;\asymp\; L_0^{2\alpha}\,t^{2\gamma\alpha},
+      \label{eq:slow}\\[2pt]
+  \text{\emph{(C)} critical, } \gamma=1/z:\quad
+    & W^2(t)\;\asymp\; t^{2\beta}\;\asymp\;L(t)^{2\alpha}.
+      \label{eq:crit}
+\end{align}
+In particular $W^2(t)\asymp \kappa(L_0)\,t^{\theta(\gamma)}$ for a single power
+\begin{equation}\label{eq:theta}
+  \theta(\gamma)=\min\{\,2\beta,\;2\gamma\alpha\,\}
+  =\begin{cases}2\beta, & \gamma\ge 1/z,\\[2pt] 2\gamma\alpha, & \gamma\le 1/z,\end{cases}
+\end{equation}
+and there are \emph{no other} asymptotic power laws. The size-dependence of the
+amplitude is
+\begin{equation}\label{eq:kappa}
+  \kappa(L_0)\asymp
+  \begin{cases}
+    L_0^{0}\ \ (\text{$L_0$-independent}), & \gamma>1/z,\\[2pt]
+    L_0^{2\alpha}\,t_0^{-2\gamma\alpha}\ \ (\text{$\asymp L_0^{2\alpha}$}), & \gamma<1/z,\\[2pt]
+    L_0^{0}\ \ (\text{$L_0$-independent}), & \gamma=1/z.
+  \end{cases}
+\end{equation}
+The exponent $\theta(\gamma)$ is continuous, non-decreasing, concave (piecewise
+linear with a single kink at $\gamma=1/z$), and equals $2\beta$ on $[1/z,\infty)$.
+\end{theorem}
+
+\begin{proof}
+Put $\rho(t):=t/L(t)^{z}=(\xi(t)/L(t))^{z}$. By \eqref{eq:Lt},
+\begin{equation}\label{eq:rho}
+  \rho(t)=\frac{t}{(L_0 (t/t_0)^{\gamma})^{z}}
+  =L_0^{-z}t_0^{\gamma z}\,t^{\,1-\gamma z}
+  \asymp t^{\,z(1/z-\gamma)} ,
+\end{equation}
+so $\operatorname{sgn}$ of the time-exponent of $\rho$ equals
+$\operatorname{sgn}(1/z-\gamma)$ (as $z>0$).
+
+\medskip\noindent\textbf{Case (F): $\gamma>1/z$.} Then $\rho(t)\to0^+$. By
+\eqref{eq:fasymp} there are $0<c_1\le C_1<\infty$, $u_0>0$ with
+$c_1u^{2\beta}\le f(u)\le C_1u^{2\beta}$ for $0<u\le u_0$, and some $T$ with
+$\rho(t)\le u_0$ for $t\ge T$; hence $f(\rho(t))\asymp\rho(t)^{2\beta}$.
+Substituting into \eqref{eq:adiabatic},
+\[
+  W^2(t)\asymp L(t)^{2\alpha}\rho(t)^{2\beta}
+  =L(t)^{2\alpha}\Big(\tfrac{t}{L(t)^{z}}\Big)^{2\beta}
+  =t^{2\beta}\,L(t)^{2\alpha-2\beta z}=t^{2\beta},
+\]
+since $2\alpha-2\beta z=0$. This is \eqref{eq:fast}; the rewrite
+$t^{2\beta}=L(t)^{2\alpha}t^{2\beta-2\gamma\alpha}$ uses
+$L(t)^{2\alpha}=L_0^{2\alpha}t_0^{-2\gamma\alpha}t^{2\gamma\alpha}$. By
+Lemma~\ref{lem:sizeindep} the amplitude is $L_0$-independent, giving the first line
+of \eqref{eq:kappa}. As $\gamma>1/z=\beta/\alpha$ gives $2\gamma\alpha>2\beta$, the
+exponent is $2\beta=\min\{2\beta,2\gamma\alpha\}$, matching \eqref{eq:theta}.
+
+\medskip\noindent\textbf{Case (S): $\gamma<1/z$.} Then $\rho(t)\to+\infty$, so by
+\eqref{eq:fasymp} $f(\rho(t))\to f_\infty\in(0,\infty)$, i.e.\ $f(\rho(t))\asymp1$.
+Hence by \eqref{eq:adiabatic} and \eqref{eq:Lt},
+\[
+  W^2(t)\asymp f_\infty L(t)^{2\alpha}
+  =f_\infty L_0^{2\alpha}t_0^{-2\gamma\alpha}\,t^{2\gamma\alpha}
+  \asymp L_0^{2\alpha}\,t^{2\gamma\alpha},
+\]
+which is \eqref{eq:slow}; the amplitude is $\asymp L_0^{2\alpha}$, the second line
+of \eqref{eq:kappa}. As $\gamma<\beta/\alpha$ gives $2\gamma\alpha<2\beta$, the
+exponent is $2\gamma\alpha=\min\{2\beta,2\gamma\alpha\}$.
+
+\medskip\noindent\textbf{Case (C): $\gamma=1/z$.} Then by \eqref{eq:rho}
+$\rho(t)\asymp t^{0}\asymp1$, so $\rho(t)\in[a,b]$ for some $0<a\le b<\infty$ and
+all large $t$. By continuity and positivity of $f$ on $[a,b]$
+(Definition~\ref{def:FV}), $f(\rho(t))\asymp1$, and
+\[
+  W^2(t)\asymp L(t)^{2\alpha}\asymp t^{2\gamma\alpha}=t^{2\alpha/z}=t^{2\beta},
+\]
+using $\gamma=1/z$, $z=\alpha/\beta$; the amplitude $L(t)^{2\alpha}\asymp t^{2\beta}$
+carries the explicit $t_0,L_0$ inside the constant, so as a function of $L_0$ at
+fixed $t$ the leading $t$-power is $L_0$-independent at the level of the time
+exponent. This is \eqref{eq:crit} and the third line of \eqref{eq:kappa}.
+
+\medskip\noindent\textbf{No other behaviour; shape of $\theta$.} The cases
+partition $(0,\infty)$, in each $W^2$ is a single power $t^{\theta(\gamma)}$ with
+\eqref{eq:theta}. Continuity at $\gamma=1/z$: both branches give
+$2\beta=2(1/z)\alpha$. On $(0,1/z]$, $\theta=2\alpha\gamma$ strictly increases
+(slope $2\alpha$); on $[1/z,\infty)$, $\theta\equiv2\beta$. Being the minimum of
+two affine functions of $\gamma$, $\theta$ is concave with a single downward kink
+at $\gamma=1/z$ (slope drops $2\alpha\to0$). This disproves any third regime: the
+only freedom in $\theta$ is the kink location $1/z$ and the slopes $2\alpha,0$.
+\end{proof}
+
+\begin{remark}[Correction of the problem's first fast-form]\label{rem:correction}
+The problem states the fast regime as
+``$W^2\asymp L_0^{2\alpha}t^{2\beta}\asymp L(t)^{2\alpha}t^{2\beta-2\gamma\alpha}$.''
+The \emph{second} expression is correct (and equals $t^{2\beta}$, our
+\eqref{eq:fast}), but the \emph{first} expression $L_0^{2\alpha}t^{2\beta}$ is
+\emph{not} consistent with Family--Vicsek scaling: by
+Lemma~\ref{lem:sizeindep} the growing (unsaturated) width is \emph{always}
+substrate-size independent, because the would-be amplitude
+$L_0^{2\alpha}(t/L_0^{z})^{2\beta}$ has $L_0$-exponent $2\alpha-2\beta z=0$. Hence
+in the fast regime $W^2\asymp t^{2\beta}$ with an $L_0$-independent constant; the
+factor $L_0^{2\alpha}$ in the problem's first form is spurious (it is cancelled by
+$L(t)^{-2\alpha}$ hidden in $t^{2\beta-2\gamma\alpha}$ when one rewrites via
+$L(t)$). This correction is essential for the extraction analysis: $\alpha$
+\emph{cannot} be read off from the $L_0$-dependence of the fast regime, contrary to
+the literal phrasing of part (a). It is the slow (saturated) regime that carries
+$\alpha$, cf.\ \eqref{eq:kappa}. We prove the corrected extraction in
+Section~\ref{sec:protocol}.
+\end{remark}
+
+\begin{remark}[The boundary case]
+The two strict regimes leave $\gamma=1/z$ unaddressed; there $\rho(t)\asymp1$ so
+$f$ sits in its crossover, a genuinely distinct sub-leading structure. But the
+leading power $t^{2\beta}$ at $\gamma=1/z$ matches both one-sided limits, so
+$\theta(\gamma)$ is continuous and the two strict regimes are the only two
+\emph{leading} power laws, separated by the single critical point $\gamma=1/z$.
+\end{remark}
+
+\section{The order parameter $1/z-\gamma$: distance from correlation}
+\label{sec:correlation}
+
+\begin{definition}[Global correlation]\label{def:corr}
+At time $t$ the interface is \emph{globally correlated} (saturated) if
+$\xi(t)\ge L(t)$ and \emph{uncorrelated} (roughening) if $\xi(t)<L(t)$.
+\end{definition}
+
+\begin{proposition}[Sign law]\label{prop:sign}
+Let $\Delta:=1/z-\gamma$. For large $t$,
+\[
+  \frac{\xi(t)}{L(t)}\asymp t^{\Delta},\qquad
+  \frac{\log(\xi(t)/L(t))}{\log t}\to\Delta .
+\]
+Hence: (i) $\Delta>0\iff\gamma<1/z\iff\xi/L\to\infty$: correlated phase (S);
+(ii) $\Delta<0\iff\gamma>1/z\iff\xi/L\to0$: uncorrelated phase (F);
+(iii) $\Delta=0\iff\gamma=1/z\iff\xi/L\asymp1$: critical phase (C).
+The magnitude $|\Delta|$ is the per-decade rate of approach to/retreat from full
+correlation: $\xi/L$ changes by the factor $10^{\Delta}$ when $t\mapsto10t$. Thus
+$\Delta=1/z-\gamma$ is the precise ``distance from correlation,'' its sign the
+phase and $|\Delta|$ the speed.
+\end{proposition}
+\begin{proof}
+By \eqref{eq:xi},\eqref{eq:Lt}, $\xi/L=t^{1/z}/(L_0(t/t_0)^{\gamma})
+\asymp t^{1/z-\gamma}=t^{\Delta}$, giving the limit. The equivalences are the sign
+cases of $\Delta$, matched to the cases of Theorem~\ref{thm:main} via
+\eqref{eq:rho} ($\rho=(\xi/L)^z\asymp t^{z\Delta}$, same sign). Per decade:
+$(\xi/L)(10t)\big/(\xi/L)(t)\asymp10^{\Delta}$.
+\end{proof}
+
+\begin{theorem}[Minimal control strength to switch phase]\label{thm:control}
+Let the bare system have growth index $\gamma_0$ and dynamic exponent $z$, hence
+phase $\operatorname{sgn}(\Delta_0)$ with $\Delta_0:=1/z-\gamma_0$. A control
+protocol replacing $\gamma_0$ by $\gamma=\gamma_0+\delta$ ($\delta\in\mathbb R$,
+$\gamma>0$) crosses the phase boundary iff $\gamma$ crosses $1/z$, i.e.\ iff
+$\delta$ crosses $\Delta_0$. The boundary is reached exactly at $\delta=\Delta_0$
+(critical phase (C)), and the system lands strictly in the opposite phase for any
+$\delta$ on the far side of $\Delta_0$; the infimal switching strength is
+\begin{equation}\label{eq:thresh}
+  |\delta_{\min}|=\big|\,\tfrac1z-\gamma_0\,\big|=|\Delta_0|,
+\end{equation}
+attained in the limit. Directionally: from the uncorrelated phase
+($\gamma_0>1/z$) one must \emph{decrease} $\gamma$ with
+$\delta<\Delta_0<0$, $|\delta|>|\Delta_0|$; from the correlated phase
+($\gamma_0<1/z$) one must \emph{increase} $\gamma$ with $\delta>\Delta_0>0$.
+\end{theorem}
+\begin{proof}
+By Theorem~\ref{thm:main} and Proposition~\ref{prop:sign}, the phase is
+$\operatorname{sgn}(1/z-\gamma)=\operatorname{sgn}(\Delta)$, boundary $\Delta=0$.
+With $\gamma=\gamma_0+\delta$, $\Delta(\delta)=\Delta_0-\delta$ is affine,
+strictly decreasing, with unique zero $\delta=\Delta_0$. Thus the sign flips
+exactly as $\delta$ passes $\Delta_0$: same side $\Rightarrow$ same phase, far side
+$\Rightarrow$ opposite phase, $\delta=\Delta_0\Rightarrow$ critical. The infimal
+$|\delta|$ that changes the sign is $|\Delta_0|$ (not attained at the strict level,
+attained as the boundary). The directional statements are the two sign cases of
+$\Delta_0$.
+\end{proof}
+
+\section{Experimental protocol and unambiguous extraction of $\alpha,\beta$}
+\label{sec:protocol}
+
+By Remark~\ref{rem:correction} and \eqref{eq:kappa}, the two exponents live in
+\emph{different} regimes:
+\begin{itemize}
+\item the \textbf{fast} regime (F) yields $\beta$ via the time exponent
+  $W^2\asymp t^{2\beta}$ (and is $L_0$-independent);
+\item the \textbf{slow} regime (S) yields $\alpha$ via the
+  size exponent $W^2\asymp L_0^{2\alpha}t^{2\gamma\alpha}$ at fixed $t$ (equivalently
+  via the time exponent $2\gamma\alpha$ with measured $\gamma$).
+\end{itemize}
+Therefore $\alpha$ and $\beta$ are \emph{unambiguously} extractable, but data from
+\emph{both} regimes are required; the control protocol of
+Theorem~\ref{thm:control} (tuning $\gamma$ across $1/z$) is exactly the tool that
+makes both regimes accessible in one biological system.
+
+\subsection*{Protocol (biological realization)}
+\begin{enumerate}
+\item Prepare $m\ge2$ replicate colonies/tissues with controlled distinct initial
+  front sizes $L_0^{(1)}<\cdots<L_0^{(m)}$, all other conditions identical so that
+  $\alpha,\beta,z,f$ are shared.
+\item For each replicate and a set of large times $t_1<\cdots<t_n$ (in the
+  asymptotic window $t\gg t_0$), image the front, extract $h(x,t)$, and compute the
+  spatial variance $W^2(t)=\overline{h^2}-\overline h^2$ (replicate-averaged).
+\item Track the front size $L(t)$ and fit $\log L\sim\gamma\log t$ to measure
+  $\gamma$.
+\item Run the system, via an external control of the expansion rate, in a
+  \emph{fast} setting $\gamma_{\mathrm F}>1/z$ and in a \emph{slow} setting
+  $\gamma_{\mathrm S}<1/z$. (If only one setting is accessible, only one exponent
+  is obtainable; Theorem~\ref{thm:control} gives the minimal change
+  $|\delta|>|1/z-\gamma|$ needed to reach the other regime.)
+\end{enumerate}
+
+\subsection*{Extraction algorithm}
+
+\begin{algorithm}[H]
+\caption{Unambiguous extraction of $\alpha,\beta,z$ from both regimes}
+\begin{algorithmic}[1]
+\Require Variances $W^2_{\mathrm F}(t_j)$ in a fast setting $\gamma_{\mathrm F}>1/z$;
+  variances $W^2_{\mathrm S}(L_0^{(i)},t_j)$ in a slow setting
+  $\gamma_{\mathrm S}<1/z$ for $m\ge2$ initial sizes; measured
+  $\gamma_{\mathrm F},\gamma_{\mathrm S}$.
+\Ensure $\hat\beta,\hat\alpha,\hat z$ with self-consistency checks.
+\State \textbf{($\beta$ from fast regime.)} Regress
+  $\log W^2_{\mathrm F}(t_j)$ on $\log t_j$; the slope is $2\hat\beta$. Set
+  $\hat\beta\gets\tfrac12\cdot\mathrm{slope}$. (Check: this slope is independent of
+  $L_0$, per Lemma~\ref{lem:sizeindep}.)
+\State \textbf{($\alpha$ from slow regime, size route.)} For each fixed $t_j$,
+  regress $\log W^2_{\mathrm S}(L_0^{(i)},t_j)$ on $\log L_0^{(i)}$ across
+  $i=1,\dots,m$; the slope is $2\hat\alpha_j$. Check
+  $\hat\alpha_1\approx\cdots\approx\hat\alpha_n$ (time-independence of the size
+  exponent) and set $\hat\alpha\gets\tfrac12\,\mathrm{mean}_j(2\hat\alpha_j)$.
+\State \textbf{($\alpha$ from slow regime, time route — consistency.)} Regress
+  $\log W^2_{\mathrm S}$ on $\log t_j$ at fixed $L_0$; the slope is
+  $2\gamma_{\mathrm S}\hat\alpha'$, so $\hat\alpha'\gets\mathrm{slope}/(2\gamma_{\mathrm S})$.
+  Check $\hat\alpha'\approx\hat\alpha$.
+\State \textbf{(Dynamic exponent.)} $\hat z\gets\hat\alpha/\hat\beta$.
+\State \textbf{(Regime checks.)} Verify $\gamma_{\mathrm F}>1/\hat z>\gamma_{\mathrm S}$.
+\State \Return $\hat\alpha,\hat\beta,\hat z$.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proposition}[Correctness, identifiability, termination, complexity]\label{prop:alg}
+Under \eqref{eq:FV}--\eqref{eq:adiabatic}:
+\begin{enumerate}
+\item[\textnormal{(i)}] \emph{(Consistency.)} In the fast setting
+  ($\gamma_{\mathrm F}>1/z$), $\log W^2_{\mathrm F}(t)=2\beta\log t+\text{const}+o(\log t)$
+  by \eqref{eq:fast}, so the Step-1 slope $\to2\beta$ and $\hat\beta\to\beta$. In
+  the slow setting ($\gamma_{\mathrm S}<1/z$),
+  $\log W^2_{\mathrm S}(L_0,t)=2\alpha\log L_0+2\gamma_{\mathrm S}\alpha\log t+\text{const}+o(\log t)$
+  by \eqref{eq:slow}, so the Step-2 size slope $\to2\alpha$ and the Step-3 time
+  slope $\to2\gamma_{\mathrm S}\alpha$; hence $\hat\alpha\to\alpha$,
+  $\hat\alpha'\to\alpha$, and $\hat z\to z$.
+\item[\textnormal{(ii)}] \emph{(Unambiguous identifiability.)} In the slow regime,
+  $(\log L_0,\log t)\mapsto\log W^2_{\mathrm S}$ is affine with gradient
+  $(2\alpha,2\gamma_{\mathrm S}\alpha)$. The two regressors $\log L_0$ (varied over
+  $m\ge2$ distinct sizes) and $\log t$ (varied over $n\ge2$ times) are
+  independently controlled, so the $(\le mn)\times3$ design matrix has full column
+  rank and $\alpha$ is uniquely determined; the fast regression gives $\beta$
+  separately. Thus $(\alpha,\beta)$ — and $z=\alpha/\beta$ — are uniquely fixed.
+\item[\textnormal{(iii)}] \emph{(Why both regimes are needed.)} By
+  Lemma~\ref{lem:sizeindep} and \eqref{eq:kappa}, the fast regime is
+  $L_0$-independent, so it cannot supply $\alpha$; the slow regime saturates and
+  cannot supply $\beta$ (the growth exponent is invisible once the interface is
+  saturated). Hence no single regime determines both exponents, and the two-regime
+  protocol is necessary; the size route (Step 2) and time route (Step 3) in the
+  slow regime cross-check $\alpha$, and Step 6 verifies the regime assignment.
+\item[\textnormal{(iv)}] \emph{(Termination/complexity.)} The algorithm performs
+  $O(1)$ regressions over $\le mn$ points; it runs in $O(mn)$ time and $O(mn)$
+  space and halts (loops over finite index sets only).
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+(i) Taking logs of \eqref{eq:fast} and \eqref{eq:slow} gives the affine laws with
+$o(\log t)$ residual from the $\asymp$ (the ratio of $W^2$ to its leading power is
+bounded between two positive constants and converges, contributing $o(\log t)$ to
+the log; ordinary least squares of a function that is affine up to $o(\log t)$
+returns slopes converging to the true exponents). (ii) Stack the slow data as
+$y=\Phi w$, rows $(1,\log L_0^{(i)},\log t_j)$, $w=(\text{const},2\alpha,
+2\gamma_{\mathrm S}\alpha)^\top$; with $m\ge2$ distinct $L_0$ and $n\ge2$ distinct
+$t$ the three columns (constant; nonconstant function of $i$; nonconstant function
+of $j$) are linearly independent, so $\Phi$ has rank $3$ and $w$ — hence $\alpha$ —
+is unique; $\beta$ comes from the rank-$2$ fast fit. (iii) Is
+Lemma~\ref{lem:sizeindep} plus \eqref{eq:kappa}: fast amplitude has $L_0$-exponent
+$0$, slow width has no $\beta$-dependence (the saturated value $f_\infty L(t)^{2\alpha}$
+involves only $\alpha,\gamma$). (iv) Immediate from the operation count over finite
+index sets.
+\end{proof}
+
+\begin{remark}[Closure of part (b)]
+Proposition~\ref{prop:alg} yields $\hat z=\hat\alpha/\hat\beta$, and with the
+measured $\gamma$ the order parameter $\widehat\Delta=1/\hat z-\gamma$ of
+Proposition~\ref{prop:sign} classifies the phase; by Theorem~\ref{thm:control} the
+minimal control strength to switch phase is
+$|\delta_{\min}|=|1/\hat z-\gamma|=|\widehat\Delta|$.
+\end{remark}
+
+\section{Summary}
+
+\begin{itemize}
+\item \textbf{Trichotomy.} Under the adiabatic Family--Vicsek closure, the
+  long-time width is the single power law $W^2(t)\asymp\kappa(L_0)\,t^{\theta(\gamma)}$,
+  $\theta(\gamma)=\min\{2\beta,2\alpha\gamma\}$ (Theorem~\ref{thm:main}). The two
+  announced regimes (F) $\gamma>1/z$ and (S) $\gamma<1/z$ are exactly the two
+  leading behaviours, separated by the single critical point $\gamma=1/z$ (regime
+  (C)); there are no others. This settles ``prove or disprove'': the two strict
+  regimes are the only leading power laws, and the boundary case (omitted in the
+  problem) is identified.
+\item \textbf{Correction.} The problem's first fast-form $L_0^{2\alpha}t^{2\beta}$
+  is inconsistent with FV scaling; the correct fast width is the $L_0$-independent
+  $t^{2\beta}$ (Lemma~\ref{lem:sizeindep}, Remark~\ref{rem:correction}). The $L_0$
+  dependence resides in the slow regime, $W^2\asymp L_0^{2\alpha}t^{2\gamma\alpha}$.
+\item \textbf{Order parameter \& control.} $\Delta=1/z-\gamma$ equals
+  $\lim_t\log(\xi/L)/\log t$; its sign is the phase and $|\Delta|$ the per-decade
+  rate (Proposition~\ref{prop:sign}). Minimal control to switch phase is
+  $|\delta_{\min}|=|1/z-\gamma_0|$ (Theorem~\ref{thm:control}).
+\item \textbf{Extraction.} $\beta$ from the fast regime (time slope), $\alpha$ from
+  the slow regime (size slope at fixed $t$, cross-checked by the time slope divided
+  by $\gamma$); both regimes are necessary and the parameters are identifiable
+  (Algorithm 1, Proposition~\ref{prop:alg}).
+\end{itemize}
+
+\end{document}

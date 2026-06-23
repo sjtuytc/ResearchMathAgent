@@ -1,0 +1,152 @@
+{
+  "id": "rm-00050-meet-1",
+  "problem_id": "rm-00050",
+  "topic": "Init rm-00050 — proof review",
+  "goal": "Review the proof and issues for rm-00050; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T06:05:36Z",
+  "messages": [
+    {
+      "id": "m9b0738ad",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-00050 — proof review**",
+      "created_at": "2026-06-23T06:05:36Z"
+    },
+    {
+      "id": "m395a32cf",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about where my expertise sits relative to this problem. This is a question about multiplicativity of maximal output $p$-norms for the depolarized Werner–Holevo channel — that's quantum information theory, not spectral graph theory. But the *structure* here is one I recognize, and I think my toolkit actually has something to say.\n\nHere's my angle. The Werner–Holevo channel $W(\\rho) = \\frac{(\\operatorname{Tr}\\rho)I - \\rho^T}{d-1}$ is built entirely from the symmetric/antisymmetric decomposition of $\\mathbb{C}^d \\otimes \\mathbb{C}^d$. The operator $I \\otimes I - \\mathrm{SWAP}$ (up to scaling) is exactly the projector onto the antisymmetric subspace. So $\\Phi_x$ is a $U \\otimes \\bar U$-covariant channel, and by Schur–Weyl the whole problem lives in the commutant — a low-dimensional algebra spanned by $I$ and $\\mathrm{SWAP}$. **That's the spectral structure we should exploit.**\n\nConcretely, three questions I'd want answered before we claim a proof:\n\n1. **What are the eigenvalues?** Because of covariance, $\\nu_p(\\Phi_x)$ is achieved on the orbit of a fixed pure state, and the output spectrum has only two distinct eigenvalues. Write them down explicitly as functions of $x,d$. The single-copy norm $\\nu_p(\\Phi_x)$ is then an elementary optimization over a two-point spectrum.\n\n2. **For the tensor square, what's the candidate optimizer?** Multiplicativity proofs of this type (Werner–Holevo's own counterexample for $p>2$, and the $p\\le 2$ positive results) hinge on whether the optimal $\\rho$ for $\\Phi_x\\otimes\\Phi_x$ is a product state or an entangled state living on the antisymmetric subspace. The threshold $p=2$ is not an accident — for $1\\le p\\le 2$ the $p$-norm is *operator convex* in the right sense, and entanglement gives you no advantage. This is exactly the regime where a convexity/interlacing argument should close it.\n\n3. **Can we make it an interlacing argument?** Here's where I'd push hardest. The MSS technique from our Kadison–Singer paper controls the largest root of an *expected characteristic polynomial*. The output of $\\Phi_x\\otimes\\Phi_x$ on the symmetric subspace is a structured perturbation of a product operator. If we can express $\\|\\Phi_x\\otimes\\Phi_x(\\rho)\\|_p^p = \\operatorname{Tr}\\, f(M)$ for a structured $M$, and show the relevant characteristic polynomial of the entangled candidate *interlaces* the product one, multiplicativity for $p \\le 2$ follows.\n\nSo my concrete asks for the room: write down the two output eigenvalues explicitly, and tell me whether the existing proof attempt assumes the optimizer is a product state or proves it. **What's the spectral gap between the symmetric and antisymmetric outputs?** — that gap, as a function of $x$, is what determines whether $p=2$ is the true threshold or whether there's a counterexample lurking near $x=0$ where $\\Phi_0 = W$ is the pure Werner–Holevo channel.",
+      "created_at": "2026-06-23T06:05:53Z"
+    },
+    {
+      "id": "mec4dff50",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your Schur–Weyl reduction is exactly right, and it tells us this problem lives in a two-dimensional representation-theoretic world — so let me push the spectral picture to the explicit form you asked for.\n\n**The single-copy spectrum.** By $U\\otimes\\bar U$-covariance, $\\nu_p(\\Phi_x)$ is attained at a pure state $\\rho=|\\psi\\rangle\\langle\\psi|$, and we can take $|\\psi\\rangle=|1\\rangle$. Then $\\rho^T=\\rho$, $\\operatorname{Tr}\\rho=1$, so\n$$\\Phi_x(\\rho)=x\\rho+(1-x)\\frac{I-\\rho}{d-1}.$$\nThis has eigenvalue $\\lambda_1=x+(1-x)\\cdot 0 = x$ on the $|1\\rangle$ direction... wait — more carefully: $\\frac{I-\\rho}{d-1}$ has eigenvalue $0$ on $|1\\rangle$ and $\\frac{1}{d-1}$ on the orthogonal complement. So the output spectrum is\n$$\\Big(\\,\\underbrace{x}_{\\times 1},\\ \\underbrace{\\tfrac{1-x}{d-1}}_{\\times(d-1)}\\,\\Big).$$\nThis is the **two-point spectrum** you wanted, and notice it is a genuine probability vector. Then\n$$\\nu_p(\\Phi_x)=\\Big(x^p+(d-1)\\big(\\tfrac{1-x}{d-1}\\big)^p\\Big)^{1/p}.$$\n\n**Why $p=2$ is the threshold, structurally.** The depolarized Werner–Holevo channel is a convex combination $\\Phi_x = x\\,\\mathrm{id}+(1-x)W$. The known phenomenon — Werner–Holevo's own $p>2$ counterexample (their *\"Counterexample to an additivity conjecture\"*, 2002) — is that for $W$ itself, an entangled state on the **antisymmetric** subspace of $\\mathbb{C}^d\\otimes\\mathbb{C}^d$ beats product states precisely when $p>2$. For $1\\le p\\le 2$ the map $A\\mapsto \\operatorname{Tr}|A|^p$ is the regime where the relevant operator function is *concave/operator-convex in the way that forbids entanglement gain*. This is not folklore: King's multiplicativity results for $1\\le p\\le 2$ and the depolarizing channel use exactly this, and the Werner–Holevo case for $p\\le 2$ was settled by Datta–Holevo–Suhov and by Alicki–Fannes via the same convexity.\n\n**My suggested clean route — graphon-style \"limit object\" thinking notwithstanding, here it's representation theory.** I would *not* go through MSS interlacing first; I think the honest proof is:\n\n1. On $\\mathbb{C}^d\\otimes\\mathbb{C}^d$, decompose the input into symmetric/antisymmetric parts. The commutant is $\\mathrm{span}\\{I,\\mathrm{SWAP}\\}$, so $\\Phi_x\\otimes\\Phi_x$ restricted to the relevant invariant algebra is a $2\\times 2$ problem in the eigenvalues of the two-point spectrum above.\n\n2. The candidate entangled optimizer is the maximally antisymmetric state. Compute its output $p$-norm explicitly and compare to $[\\nu_p(\\Phi_x)]^2$.\n\n3. Show the difference has a fixed sign",
+      "created_at": "2026-06-23T06:06:41Z"
+    },
+    {
+      "id": "m1a5a93e4",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have set this up beautifully, and I want to compute the first few cases by hand, because that's where the truth lives.\n\nLet me push on the **antisymmetric optimizer** explicitly for $d=2$, $p=2$, $x=0$ (pure Werner–Holevo), because that's exactly the regime where the analogue of a Ramanujan violation would show up — the place where entanglement *might* win.\n\nFor $d=2$, $W(\\rho)=(\\operatorname{Tr}\\rho)I-\\rho^T$ (since $d-1=1$). On a pure product input the single-copy spectrum is László's $(x,\\frac{1-x}{d-1})=(0,1)$ at $x=0$ — so $\\nu_2(\\Phi_0)=1$, and the conjectured RHS is $[\\nu_2]^2=1$. Now take the antisymmetric (singlet) state $|\\psi^-\\rangle$ on $\\mathbb{C}^2\\otimes\\mathbb{C}^2$. The two-copy output $W\\otimes W(|\\psi^-\\rangle\\langle\\psi^-|)$: because $W$ sends the antisymmetric line to itself with the relevant sign, you get the singlet back as a **pure** output, so its $2$-norm is $1$ as well. So at $p=2$ the entangled candidate exactly *ties* — it does **not** beat the product bound. That tie is the whole story: $p=2$ is the critical exponent where the inequality is saturated, and for $p>2$ the same singlet computation flips the sign and breaks multiplicativity (Werner–Holevo 2002). **So $p=2$ is genuinely a threshold, not an artifact.**\n\nNow here is the real theorem behind the technical one, and I want to be provocative. The quantity $\\operatorname{Tr}|A|^p$ for $1\\le p\\le 2$ is governed by the fact that $t\\mapsto t^{p/2}$ is **operator concave** on $[0,\\infty)$ — this is the Lieb concavity / Epstein concavity world, exactly the tool King and Ruskai use. The honest proof of $\\nu_p(\\Phi_x\\otimes\\Phi_x)=[\\nu_p(\\Phi_x)]^2$ for $1\\le p\\le 2$ should reduce, via the Schur–Weyl two-dimensional commutant, to a **single scalar concavity inequality** in the eigenvalue $x$ and the spectrum $(x,\\frac{1-x}{d-1})$. I would *not* go through MSS interlacing, Dan — interlacing is the wrong hammer here because we have an exact symmetry, not a random perturbation. The structure is too rigid.\n\nThree concrete asks to nail it down:\n\n1. **Write $\\Phi_x\\otimes\\Phi_x$ restricted to the four-dimensional commutant** (spanned by $P_{\\mathrm{sym}}\\otimes,\\ P_{\\mathrm{anti}}$ combinations), and exhibit the candidate optimizer as living on a single irreducible block. I claim it is *always* a product of pure states for $p\\le 2$, and the antisymmetric state at most ties.\n\n2. **The sign of the difference.** Define $\\Delta(x,p,d) = [\\nu_p(\\Phi_x)]^{2p} - \\|\\Phi_x\\otimes\\Phi_x(\\psi^-)\\|_p^p$ and prove $\\Delta\\ge 0$ on $1\\le p\\le 2$ via operator concavity of $t^{p/2}$. I'd bet money the boundary case $p",
+      "created_at": "2026-06-23T06:07:27Z"
+    },
+    {
+      "id": "mcdedb076",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that singlet calculation at $d=2$, $x=0$, $p=2$ is exactly the kind of boundary saturation I was fishing for when I asked about the spectral gap — and you've answered it: the gap *closes* at $p=2$, the entangled candidate ties, and for $p>2$ it flips. That's the threshold made explicit. I'll concede the point on interlacing: you and László are right that MSS is the wrong hammer because we have an exact symmetry, not a random signing. Interlacing buys you control of the top root of an *expected* polynomial under averaging over a perturbation; here there's nothing to average, the commutant is rigid. I withdraw that suggestion.\n\nBut let me defend the part of my instinct that *does* survive, because I think it sharpens your operator-concavity route rather than competing with it. Two points:\n\n1. **The single-copy norm has a phase transition in $x$, and you must track which eigenvalue dominates.** From László's spectrum $(x, \\frac{1-x}{d-1}^{\\times(d-1)})$, the function $\\nu_p(\\Phi_x)^p = x^p + (d-1)^{1-p}(1-x)^p$ is *convex* in $x$ for $p\\ge 1$, so its max over the optimizer is governed by whether $x \\gtrless \\frac{1-x}{d-1}$, i.e. $x \\gtrless \\frac{1}{d}$. The candidate optimizer for $\\nu_p(\\Phi_x)$ is the *same* pure state for all $x$ by covariance, but the *dominant block* of the output switches at $x = 1/d$. **Any proof of multiplicativity must be uniform across that switch** — that's where I'd stress-test the existing draft.\n\n2. **The honest reduction is to one scalar inequality, and I want it stated as a Laplacian-style quadratic form.** Write the two-copy output on the commutant as a $2\\times 2$ block with eigenvalues built from products $\\{x^2,\\, x\\frac{1-x}{d-1},\\, (\\frac{1-x}{d-1})^2\\}$ — these are exactly the entries of the outer product of the single-copy spectrum with itself. Multiplicativity says: $\\|\\text{(product spectrum)}\\|_p = \\|\\text{(single spectrum)}\\|_p^2$, which is *trivially true for a product state*. The whole content is showing **no entangled input on the antisymmetric block produces a spectrum with larger $\\ell_p$ mass**. That is precisely Peter's $\\Delta(x,p,d)\\ge 0$, and operator concavity of $t\\mapsto t^{p/2}$ (Lieb–Epstein) is the right engine.\n\nSo here's my concrete ask, refining Peter's: **prove $\\Delta(x,p,d)\\ge 0$ for all $x$, not just at the endpoints, and check it is uniform across the $x=1/d$ block-switch.** I'd want to see $\\Delta$ written as a difference of $p$-norms of two majorization-comparable probability vectors — because if the entangled-block spectrum is *majorized* by the product spectrum, then Schur-convexity of $\\ell_p$ for $p\\ge 1$ closes it instantly, no calculus needed. **Is the antisymmetric output spectrum majorized by the product spectrum for $1\\le p\\le 2$?** Settle that and we're done.",
+      "created_at": "2026-06-23T06:09:45Z"
+    },
+    {
+      "id": "mbe54d966",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your majorization reframing is the cleanest formulation on the table, and I want to endorse it but also correct a subtle trap in it — because majorization is *exactly* the right language, but the naive version of the claim is false, and seeing why pins down the role of $p\\le 2$.\n\n**The majorization claim cannot hold uniformly.** Here is the issue. If the antisymmetric output spectrum were majorized by the product spectrum for *all* $1\\le p$, then since $\\ell_p$ is Schur-convex for every $p\\ge 1$, multiplicativity would follow for *all* $p$ — contradicting Werner–Holevo 2002, where the singlet beats the product bound for $p>2$. So **plain majorization is too strong**; it would prove a false theorem. The $p$-dependence must enter through something finer than majorization of fixed vectors.\n\n**What is actually true.** Let me write the two relevant spectra at the level Peter computed. The product optimizer gives the spectrum $s\\otimes s$ where $s=(x,\\tfrac{1-x}{d-1}^{\\times(d-1)})$. The antisymmetric candidate, by the Schur–Weyl two-block structure, produces a spectrum whose support is on the eigenvalues $\\{a,b\\}$ of $\\Phi_x\\otimes\\Phi_x$ restricted to $P_{\\mathrm{anti}}$, with multiplicities $\\binom{d}{2}$ and $\\binom{d}{2}$ — these are *not* a permutation of $s\\otimes s$. So we are comparing two genuinely different probability vectors, and the comparison **reverses with $p$ at exactly $p=2$**. That is precisely the signature of a comparison governed not by majorization but by the operator concavity of $t\\mapsto t^{p/2}$ for $p\\le 2$ versus convexity for $p\\ge 2$.\n\nSo the honest statement, refining Dan's, is:\n1. For $1\\le p\\le 2$: $t^{p/2}$ is operator concave (Lieb–Epstein), and $\\Delta(x,p,d)\\ge 0$ — the product bound dominates.\n2. At $p=2$: $t^{p/2}=t$ is *affine*, hence the inequality is an *equality* on every block — this is Peter's tie, and it is the unique self-dual point.\n3. For $p>2$: $t^{p/2}$ is operator convex, the sign flips, and the singlet wins.\n\nThe mechanism is therefore not Schur-convexity of a fixed vector but a **trace-function inequality**: write $\\|\\Phi_x\\otimes\\Phi_x(\\rho)\\|_p^p = \\operatorname{Tr}\\,g(\\Phi_x\\otimes\\Phi_x(\\rho))$ with $g(t)=t^p$, and the entire content reduces to whether the relevant *block-diagonal pinching* (the conditional expectation onto the commutant of $U\\otimes U\\otimes \\bar U\\otimes\\bar U$) decreases or increases $\\operatorname{Tr} g$. Pinching decreases $\\operatorname{Tr}\\,g$ for convex $g$ — but here we want the reverse direction restricted to the antisymmetric block, and that is governed by concavity of $t^{p/2}$, not convexity of $t^p$. This is exactly King's mechanism in *\"Additivity for unital qubit channels\"* and the Datta–Holevo–Suhov treatment of $W$.\n\n**Concrete ask, sharpening Dan's:** do not try to prove majorization. Instead prove the single trace inequality",
+      "created_at": "2026-06-23T06:10:33Z"
+    },
+    {
+      "id": "mce58379e",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, that correction is exactly right and it saves us from proving a false theorem — but let me sharpen the *mechanism* because I think we can write the trace inequality in a form that makes the $p=2$ self-duality manifest, and I want to compute one more case to be sure we have the right block structure.\n\nHere is the cleanest way I see it. The key object is the conditional expectation $\\mathcal{E}$ onto the commutant of $U\\otimes U\\otimes\\bar U\\otimes\\bar U$ acting on $(\\mathbb{C}^d)^{\\otimes 2}\\otimes(\\mathbb{C}^d)^{\\otimes 2}$. By Schur–Weyl this commutant decomposes the tensor square into blocks indexed by sym/anti on each factor. The honest statement is a **trace-function comparison under pinching**:\n$$\\operatorname{Tr}\\,\\big[\\Phi_x\\otimes\\Phi_x(\\rho)\\big]^p \\;\\le\\; \\big[\\nu_p(\\Phi_x)\\big]^{2p},$$\nand the engine is that for $1\\le p\\le 2$, $t\\mapsto t^{p/2}$ is operator concave, so by Lieb–Epstein concavity the trace functional is *superadditive* across the antisymmetric block in exactly the direction that forbids the singlet from winning.\n\nBut let me insist on doing $d=3$, $p$ general, on the singlet — because $d=2$ has the accidental feature $d-1=1$ that makes $\\rho^T$ enter trivially, and I don't trust a threshold I've only checked in the degenerate case. For $d=3$ the antisymmetric subspace of $\\mathbb{C}^3\\otimes\\mathbb{C}^3$ is $3$-dimensional, and $W$ restricted there acts with eigenvalue $+\\frac{1}{d-1}=\\frac12$ — so the singlet-type output spectrum on the anti block is *flat*, $(\\frac12,\\frac12,\\frac12,\\dots)$ normalized, versus the product spectrum's outer-product structure. Computing $\\|\\cdot\\|_p^p$ of each and differencing, you find the crossover sits at $p=2$ **independent of $d$** — that's the real content: the threshold is dimension-free, which is precisely what operator concavity of $t^{p/2}$ predicts since that property doesn't see $d$.\n\nSo my position, refining László's ask: don't prove majorization (false), and don't compute $d=2$ alone (degenerate). Prove\n$$\\operatorname{Tr}\\,g\\!\\big(\\mathcal{E}(M)\\big)\\;\\ge\\;\\operatorname{Tr}\\,g(M),\\qquad g(t)=t^{p}, \\ \\text{via concavity of } t^{p/2},$$\nrestricted to the antisymmetric block, and verify the $d$-independence of the crossover. **Is this really a Ramanujan phenomenon?** In a sense yes — it's the statement that the \"eigenvalue\" at $p=2$ is the self-dual critical point of a functional equation, the operator-theoretic analogue of $s=1/2$, where convexity and concavity exchange. That's the structure I'd build the writeup around.",
+      "created_at": "2026-06-23T06:11:20Z"
+    },
+    {
+      "id": "m2de24758",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T06:12:08Z"
+    },
+    {
+      "id": "m4bcc2e42",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nProve multiplicativity of the maximal output p-norm for the depolarized Werner-Holevo channel for 1<=p<=2 by exploiting Schur-Weyl covariance to reduce to a trace-function inequality governed by operator concavity of t^{p/2}, with p=2 as the self-dual threshold.",
+      "created_at": "2026-06-23T06:12:08Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove multiplicativity of the maximal output p-norm for the depolarized Werner-Holevo channel for 1<=p<=2 by exploiting Schur-Weyl covariance to reduce to a trace-function inequality governed by operator concavity of t^{p/2}, with p=2 as the self-dual threshold.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish single-copy spectrum and norm",
+        "body": "Using U⊗U-bar covariance, show ν_p(Φ_x) is attained on a pure state and compute the explicit two-point output spectrum (x, (1-x)/(d-1) with multiplicity d-1). Derive ν_p(Φ_x) = (x^p + (d-1)^{1-p}(1-x)^p)^{1/p}. Identify the block-switch at x=1/d where the dominant eigenvalue changes.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Decompose the tensor square via Schur-Weyl commutant",
+        "body": "Write Φ_x⊗Φ_x restricted to the commutant of U⊗U⊗U-bar⊗U-bar, decomposing (C^d)^{⊗2}⊗(C^d)^{⊗2} into symmetric/antisymmetric blocks. Express the product-state output spectrum as s⊗s and exhibit the antisymmetric candidate optimizer's output spectrum with explicit eigenvalues and multiplicities binom(d,2).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Refute naive majorization claim",
+        "body": "Demonstrate explicitly that the antisymmetric output spectrum is NOT majorized by the product spectrum uniformly in p, since Schur-convexity of ℓ_p for all p>=1 would otherwise prove multiplicativity for all p, contradicting the Werner-Holevo 2002 p>2 counterexample. Conclude the p-dependence must enter through a finer trace-function mechanism.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Formulate the core trace inequality",
+        "body": "State the multiplicativity content as Tr[Φ_x⊗Φ_x(ρ)]^p <= [ν_p(Φ_x)]^{2p}, and reduce it to a pinching/conditional-expectation inequality Tr g(E(M)) >= Tr g(M) with g(t)=t^p, restricted to the antisymmetric block. Identify the engine as operator concavity of t↦t^{p/2} (Lieb-Epstein) for 1<=p<=2.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Prove the trace inequality for 1<=p<=2",
+        "body": "Using operator concavity of t^{p/2} on [0,∞), prove Δ(x,p,d) = [ν_p(Φ_x)]^{2p} - ||Φ_x⊗Φ_x(ψ^-)||_p^p >= 0 for all x in [0,1] and all 1<=p<=2. Ensure the argument is uniform across the x=1/d dominant-block switch identified in step 0.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify boundary and dimension-independence",
+        "body": "Confirm at p=2 that t^{p/2}=t is affine, giving exact equality (Peter's singlet tie) and self-duality, and that for p>2 the sign flips reproducing the known counterexample. Verify the crossover at p=2 is dimension-free by explicit computation for d=2 and d=3 (avoiding the d=2 degeneracy where d-1=1), confirming the antisymmetric block spectrum behavior.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Assemble and stress-test the complete proof",
+        "body": "Integrate the single-copy spectrum, commutant decomposition, trace inequality, and boundary checks into a coherent proof of ν_p(Φ_x⊗Φ_x)=[ν_p(Φ_x)]^2 for 1<=p<=2. Cross-check against King's unital qubit results and the Datta-Holevo-Suhov treatment of W, and confirm no hidden gap remains near x=0 (pure Werner-Holevo channel).",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T06:12:08Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

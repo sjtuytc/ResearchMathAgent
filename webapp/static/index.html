@@ -181,8 +181,10 @@ MathJax = {
   .solve-badge{font-size:10px;padding:1px 5px;border-radius:4px;font-weight:700;letter-spacing:.03em}
   .solve-badge.easy{background:#1a3a1a;color:var(--green)}
   .solve-badge.med{background:#3a2a00;color:var(--amber)}
-  .solve-badge.hard{background:#2d1010;color:var(--red)}
+  .solve-badge.hard{background:#2e1c0a;color:#db6d28}
+  .solve-badge.open{background:#2d1010;color:var(--red)}
   .solve-badge.none{background:var(--panel2);color:var(--muted)}
+  .tier-chip{font-size:9px;padding:0 5px;border-radius:8px;border:1px solid;font-weight:600;background:transparent;flex-shrink:0;line-height:15px;white-space:nowrap}
   /* Meet pane */
   #pane-meet.active{display:flex;flex-direction:column;padding:0;overflow:hidden}
   .meet-msg-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
@@ -195,6 +197,9 @@ MathJax = {
   /* Dataset badge on qitem */
   .ds-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);margin-left:auto;flex-shrink:0}
   .qitem-top{display:flex;align-items:center;gap:4px}
+  .qitem-top .qid{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .qitem-score{margin-left:auto;flex-shrink:0;display:flex;gap:4px;align-items:center}
+  .qitem-sub{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:3px}
   /* Tags strip */
   .tag-strip{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px}
   .tag-chip{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--panel2);color:var(--muted);border:1px solid var(--border)}
@@ -252,12 +257,20 @@ MathJax = {
       <input type="text" id="f-tags" placeholder="e.g. number theory" style="width:100%;padding:4px 7px;font-size:12px;margin-bottom:6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px">
       <label>Sort by</label>
       <select id="f-sort" class="ds-picker" style="margin-bottom:6px">
-        <option value="id">Default</option>
+        <option value="solvability_desc" selected>Solvability: Easiest first</option>
+        <option value="solvability_asc">Solvability: Hardest first</option>
+        <option value="id">Dataset / ID</option>
         <option value="title">Title A→Z</option>
         <option value="difficulty_asc">Difficulty: Easy→Hard</option>
         <option value="difficulty_desc">Difficulty: Hard→Easy</option>
-        <option value="solvability_desc">Solvability: Easiest first</option>
-        <option value="solvability_asc">Solvability: Hardest first</option>
+      </select>
+      <label>Category</label>
+      <select id="f-tier" class="ds-picker" style="margin-bottom:6px">
+        <option value="">All categories</option>
+        <option value="likely">🟢 Likely solvable (≥70)</option>
+        <option value="plausible">🟡 Plausible (40–69)</option>
+        <option value="hard">🟠 Hard (20–39)</option>
+        <option value="open">🔴 Open / breakthrough (&lt;20)</option>
       </select>
       <label>Min solvability: <span id="f-solv-label">any</span></label>
       <div class="filter-row" style="display:flex;gap:6px;align-items:center">
@@ -298,7 +311,7 @@ MathJax = {
       <div class="tab active" data-tab="overview">Overview</div>
       <div class="tab" data-tab="question">Question</div>
       <div class="tab" data-tab="insights">Insights</div>
-      <div class="tab" data-tab="issue">Issue</div>
+      <div class="tab" data-tab="issue">Evaluation</div>
       <div class="tab" data-tab="agent">Agent</div>
       <div class="tab" data-tab="proofs">Proofs</div>
       <div class="tab" data-tab="documents">Documents</div>
@@ -638,13 +651,11 @@ MathJax = {
           <h2 class="ttl" id="q-title" style="margin:0;flex:1"></h2>
         </div>
         <div class="bar">
-          <button class="btn-sec" id="q-toggle">View raw .tex</button>
-          <button class="btn-sec" id="q-pdf-btn" style="display:none">Compile PDF</button>
           <span class="muted" id="q-file"></span>
           <span class="muted" id="q-view-mode" style="font-size:11px"></span>
+          <button class="btn-sec" id="q-pdf-btn" style="margin-left:auto;font-size:11px;padding:2px 8px;display:none">⟳ Recompile</button>
+          <a id="q-pdf-dl" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;display:none">⬇ Download</a>
         </div>
-        <div class="rendered" id="q-rendered" style="display:none"></div>
-        <pre id="q-raw" style="display:none"><code id="q-raw-code"></code></pre>
         <div id="q-pdf-area" style="display:none;margin-top:12px;background:#404040;border-radius:8px;padding:16px;flex-direction:column;align-items:center;gap:12px"></div>
       </div>
     </section>
@@ -661,6 +672,38 @@ MathJax = {
         </div>
         <div id="iss-agent-log-wrap" style="display:none;background:#0a0e14;border-bottom:1px solid var(--border);max-height:180px;overflow-y:auto;flex-shrink:0">
           <pre id="iss-agent-log" style="margin:0;padding:10px 14px;font-size:11px;line-height:1.5;color:#c9d1d9;white-space:pre-wrap;word-break:break-word"></pre>
+        </div>
+        <!-- AI-solvability evaluation panel (per-problem) -->
+        <div id="iss-eval-panel" style="display:none;flex-shrink:0;border-bottom:1px solid var(--border);background:linear-gradient(180deg,var(--panel2),var(--panel));padding:11px 16px">
+          <div style="display:flex;align-items:flex-start;gap:18px">
+            <div style="text-align:center;flex-shrink:0;min-width:76px">
+              <div id="iss-eval-score" style="font-size:32px;font-weight:800;line-height:1;color:var(--accent)">—</div>
+              <div style="margin-top:4px"><span id="iss-eval-tier"></span></div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">AI-solvability</div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px">
+                <span style="font-size:12px;font-weight:700;color:var(--fg)">Solvability Evaluation</span>
+                <span id="iss-eval-meta" style="font-size:11px;color:var(--muted)"></span>
+              </div>
+              <div id="iss-eval-reasoning" style="font-size:12.5px;line-height:1.55;color:var(--text)"></div>
+              <div id="iss-eval-lists" style="margin-top:7px;display:flex;gap:24px;flex-wrap:wrap"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Proof Evaluation panel (4-dimension rubric) -->
+        <div id="iss-proof-eval-wrap" style="display:none;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--panel)">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--panel2);border-bottom:1px solid var(--border)">
+            <span style="font-size:12px;font-weight:700;color:var(--fg)">Proof Evaluation</span>
+            <span style="font-size:10px;color:var(--muted);letter-spacing:.04em">First Proof Benchmark rubric · 4 dimensions</span>
+            <button class="btn-sec" id="iss-pe-btn" style="font-size:11px;padding:3px 10px;margin-left:auto">Run Evaluation</button>
+            <button class="btn-sec" id="iss-pe-rerun" style="font-size:11px;padding:3px 10px;display:none">Re-run</button>
+            <span id="iss-pe-status" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div id="iss-pe-body" style="display:none;padding:10px 16px 12px">
+            <!-- scores + verdict populated by JS -->
+          </div>
+          <div id="iss-pe-hint" style="padding:10px 16px;font-size:12px;color:var(--muted)">Runs the First Proof benchmark rubric on the consolidated proof: answer accuracy, logical correctness, completeness, and clarity.</div>
         </div>
         <div style="display:grid;grid-template-columns:260px 1fr;flex:1;overflow:hidden">
           <!-- sidebar: issue list + activity toggle -->
@@ -702,7 +745,7 @@ MathJax = {
               </div>
               <div id="iss-pdf-view" style="display:none;flex:1;overflow-y:auto;position:relative"></div>
               <div id="iss-comments" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px"></div>
-              <div style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0">
+              <div id="iss-footer" style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0">
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
                   <label style="font-size:12px;color:var(--muted)">Post as</label>
                   <select id="iss-poster" style="font-size:12px;background:var(--panel);border:1px solid var(--border);color:var(--fg);padding:2px 8px;border-radius:4px">
@@ -813,10 +856,10 @@ MathJax = {
     <section class="pane" id="pane-documents" style="display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 98px);gap:0">
       <!-- Left: document browser -->
       <div id="doc-sidebar" style="border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;background:var(--panel2)">
-        <div style="padding:4px 12px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Documents</div>
-        <div id="doc-tree"></div>
-        <div style="padding:12px 12px 4px;border-top:1px solid var(--border);margin-top:8px">
-          <button class="btn-sec" id="d-run" style="font-size:10px;padding:3px 8px;width:100%" title="Run daily report agent">Daily Report</button>
+        <div style="padding:4px 12px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Context Reports</div>
+        <div id="doc-report-list" style="padding:0 6px"></div>
+        <div style="padding:10px 12px 4px;border-top:1px solid var(--border);margin-top:8px">
+          <button class="btn-sec" id="doc-refresh-btn" style="font-size:10px;padding:3px 8px;width:100%" title="Rebuild reports from latest run data">↻ Refresh</button>
         </div>
       </div>
       <!-- Right: viewer -->
@@ -825,14 +868,14 @@ MathJax = {
         <div id="doc-warnings" style="display:none;background:#1a1200;border-bottom:1px solid #554400;padding:6px 14px;font-size:11px;color:#ffcc44;flex-shrink:0"></div>
         <!-- Toolbar -->
         <div class="bar" style="flex-shrink:0;gap:8px;padding:6px 12px">
-          <span id="doc-breadcrumb" style="font-size:12px;font-weight:600;color:var(--fg)">Select a document</span>
+          <span id="doc-breadcrumb" style="font-size:12px;font-weight:600;color:var(--fg)">Loading reports…</span>
           <span class="muted" id="d-status" style="font-size:11px"></span>
           <button class="btn-sec" id="doc-view-toggle" style="font-size:11px;padding:3px 8px;display:none;margin-left:auto">View PDF</button>
-          <a id="d-bundle-dl" href="#" download="context_bundle.pdf" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;color:var(--accent);text-decoration:none;background:var(--panel2);display:none">⬇ PDF</a>
+          <a id="d-bundle-dl" href="#" download="context_report.pdf" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;color:var(--accent);text-decoration:none;background:var(--panel2);display:none">⬇ PDF</a>
         </div>
         <!-- Markdown viewer -->
         <div id="doc-md-view" style="flex:1;overflow-y:auto;padding:20px 28px;line-height:1.65;font-size:13px">
-          <div class="empty" style="padding:40px;text-align:center">Select a document from the left panel.</div>
+          <div class="empty" style="padding:40px;text-align:center">Select a report from the left panel.</div>
         </div>
         <!-- PDF viewer (hidden by default) -->
         <div id="d-pdf-wrap" style="flex:1;overflow-y:auto;background:#404040;display:none;flex-direction:column;align-items:center;padding:12px;gap:8px"></div>
@@ -1075,34 +1118,13 @@ MathJax = {
                   <div id="meet-room-topic" style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
                   <div id="meet-room-goal" style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px"></div>
                 </div>
-                <button class="btn-sec" id="meet-pdf-btn" title="Render this meeting (discussion + action plan) as a PDF" style="font-size:11px;padding:4px 10px;flex-shrink:0">PDF</button>
                 <span id="meet-pdf-status" class="muted" style="font-size:11px;flex-shrink:0"></span>
+                <button class="btn-sec" id="meet-pdf-refresh" title="Re-render this meeting PDF" style="font-size:11px;padding:4px 10px;flex-shrink:0">⟳ Refresh</button>
+                <a id="meet-pdf-dl" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;flex-shrink:0;display:none">⬇ Download</a>
                 <span id="meet-room-status-badge" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--panel);flex-shrink:0"></span>
               </div>
-              <!-- PDF view (hidden until PDF button toggled) -->
-              <div id="meet-pdf-view" style="display:none;flex:1;overflow-y:auto;position:relative"></div>
-              <!-- participants bar -->
-              <div style="padding:6px 14px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                <span style="font-size:11px;color:var(--muted)">Participants:</span>
-                <div id="meet-participants" style="display:flex;gap:5px;flex-wrap:wrap"></div>
-              </div>
-              <!-- split: chat + plan -->
-              <div id="meet-split" style="flex:1;overflow:hidden;display:grid;grid-template-columns:1fr 320px">
-                <!-- chat (read-only) -->
-                <div style="display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)">
-                  <!-- messages -->
-                  <div id="meet-messages" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px"></div>
-                </div>
-                <!-- plan panel (read-only) -->
-                <div id="meet-plan-panel" style="display:flex;flex-direction:column;overflow:hidden">
-                  <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:6px">
-                    Action Plan
-                    <span id="meet-plan-status" style="font-size:10px;padding:1px 6px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-weight:400;text-transform:none"></span>
-                  </div>
-                  <div id="meet-plan-empty" style="padding:20px;color:var(--muted);font-size:12px;text-align:center">No action plan generated yet.</div>
-                  <div id="meet-plan-steps" style="flex:1;overflow-y:auto;padding:8px"></div>
-                </div>
-              </div>
+              <!-- PDF view (the only meeting renderer) -->
+              <div id="meet-pdf-view" style="flex:1;overflow:hidden;position:relative;background:#404040"></div>
             </div>
           </div>
         </div>
@@ -1171,6 +1193,42 @@ MathJax = {
 
     <!-- ── Export tab ──────────────────────────────────────────────────── -->
     <section class="pane" id="pane-export" style="padding:18px 22px;overflow-y:auto">
+      <!-- Dataset solvability export (filter system) -->
+      <div class="card" style="margin-bottom:20px;border-color:var(--accent)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">Solvability Filter — Dataset Export</div>
+        <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px">
+          Export every problem (all datasets) as one PDF plus an evaluation-instructions PDF,
+          hand both to Claude, then paste the returned JSON back here. Ingested scores feed the
+          sidebar solvability filter. Huge datasets can be exported in batches with a per-dataset
+          cap and offset.
+        </p>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px">
+          <label style="font-size:11px;color:var(--muted)">Datasets
+            <select id="ex-ds-sel" style="display:block;margin-top:3px;min-width:200px">
+              <option value="">All datasets</option>
+            </select>
+          </label>
+          <label style="font-size:11px;color:var(--muted)">Max / dataset (0 = all)
+            <input id="ex-ds-cap" type="number" min="0" value="0" style="display:block;margin-top:3px;width:120px">
+          </label>
+          <label style="font-size:11px;color:var(--muted)">Offset
+            <input id="ex-ds-off" type="number" min="0" value="0" style="display:block;margin-top:3px;width:90px">
+          </label>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn" id="ex-dl-probs">⬇ Problem Catalogue PDF</button>
+          <button class="btn-sec" id="ex-dl-instr">⬇ Evaluation Instructions PDF</button>
+          <span id="ex-ds-hint" style="font-size:11px;color:var(--muted);align-self:center"></span>
+        </div>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">Ingest model evaluations</div>
+        <textarea id="ex-ingest" placeholder='Paste the JSON array Claude returned, e.g. [{"key":"first_proof_1/q3","score":35,...}, ...]'
+          style="width:100%;box-sizing:border-box;height:120px;resize:vertical;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:9px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;line-height:1.5"></textarea>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <button class="btn" id="ex-ingest-btn">Ingest evaluations</button>
+          <span id="ex-ingest-status" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
+
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
         <span style="font-size:15px;font-weight:700">Export Context Bundle</span>
         <span id="exp-q-label" style="font-size:13px;color:var(--muted)">No question selected</span>
@@ -1219,14 +1277,18 @@ MathJax = {
     </section>
 
     <!-- Design tab -->
-    <!-- Design tab: ACL-format supplementary PDF (pdf.js canvas viewer) -->
+    <!-- Design tab: priority report + ACL supplementary -->
     <section class="pane" id="pane-design" style="padding:0;overflow:hidden">
       <div id="dz-viewer" style="overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 98px);background:#404040">
         <!-- toolbar -->
         <div id="dz-toolbar" style="background:var(--panel);border-bottom:1px solid var(--border);padding:5px 10px;display:flex;align-items:center;gap:6px;font-size:13px;flex-shrink:0">
-          <span style="font-size:13px;font-weight:700;color:var(--text)">System Design Supplementary</span>
-          <span style="font-size:11px;color:var(--muted)">ACL format</span>
-          <div style="width:1px;height:18px;background:var(--border);margin:0 4px"></div>
+          <span style="font-size:13px;font-weight:700;color:var(--text)" id="dz-title">Priority Report</span>
+          <span style="font-size:11px;color:var(--muted)" id="dz-subtitle">Solvability × Value</span>
+          <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
+          <!-- mode toggle -->
+          <button class="btn-sec" id="dz-mode-priority" style="padding:3px 9px;font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent)" title="Show priority report">Priority</button>
+          <button class="btn-sec" id="dz-mode-supp" style="padding:3px 9px;font-size:11px" title="Show system supplementary">Supplementary</button>
+          <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
           <button class="btn-sec" id="dz-prev" title="Previous page (←)" style="padding:3px 9px;font-size:14px">‹</button>
           <input id="dz-pageinput" class="page-num-input" type="number" min="1" value="1" title="Jump to page" />
           <span id="dz-pagetotal" style="color:var(--muted);font-size:12px;white-space:nowrap">/ 1</span>
@@ -1236,7 +1298,7 @@ MathJax = {
           <button class="btn-sec" id="dz-zout" style="padding:3px 8px">−</button>
           <span id="dz-zoom" style="color:var(--muted);font-size:12px;min-width:38px;text-align:center">150%</span>
           <button class="btn-sec" id="dz-zin" style="padding:3px 8px">+</button>
-          <a id="dz-dl" href="/api/design/pdf" download="rma_supplementary.pdf" style="margin-left:auto;font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none" target="_blank">⬇ Download</a>
+          <a id="dz-dl" href="/api/design/priority-report" download="rma_priority_report.pdf" style="margin-left:auto;font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none" target="_blank">⬇ Download</a>
         </div>
         <div id="dz-canvas-wrap" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px"></div>
       </div>
@@ -1338,14 +1400,15 @@ function setStatus(s,cls){$("status").innerHTML=cls?`<span class="dot ${cls}"></
 function solvBadge(score){
   if(score===null||score===undefined) return '<span class="solve-badge none">?</span>';
   const pct=Math.round(score*100);
-  const cls=pct>=60?"easy":pct>=30?"med":"hard";
+  // colour by solvability tier thresholds (70 / 40 / 20)
+  const cls=pct>=70?"easy":pct>=40?"med":pct>=20?"hard":"open";
   return `<span class="solve-badge ${cls}">${pct}%</span>`;
 }
 
 // ── Dataset picker ───────────────────────────────────────────────────────────
 // ── Static fallback data (renders instantly, no server needed) ──────────────
 // Only these two datasets are fully supported; others are shown greyed out
-const SUPPORTED_DATASETS = new Set(["first_proof_1","first_proof_2"]);
+let SUPPORTED_DATASETS = new Set(["first_proof_1","first_proof_2"]);  // extended at runtime to every dataset /api/datasets returns
 const STATIC_DATASETS=[
   {slug:"first_proof_1",name:"First Proof — Benchmark Round 1",problem_count:10},
   {slug:"first_proof_2",name:"First Proof — Benchmark Round 2",problem_count:10},
@@ -1375,6 +1438,8 @@ function fetchWithTimeout(url, ms=5000){
 async function loadDatasets(){
   function populateDsSel(datasets){
     const sel=$("ds-select"); sel.innerHTML="";
+    // Solve system supports every dataset the server exposes (each curated to 10).
+    (datasets||[]).forEach(d=>{ if(d&&d.slug) SUPPORTED_DATASETS.add(d.slug); });
     const supported=datasets.filter(d=>SUPPORTED_DATASETS.has(d.slug));
     const unsupported=datasets.filter(d=>!SUPPORTED_DATASETS.has(d.slug));
     for(const ds of supported){
@@ -1466,19 +1531,33 @@ $("f-search").oninput=()=>scheduleFilterReload();
 $("f-tags").oninput=()=>scheduleFilterReload();
 $("f-sort").onchange=loadProblems;
 $("f-status").onchange=loadProblems;
+$("f-tier").onchange=loadProblems;
 $("f-solv").oninput=function(){
   const v=parseInt(this.value);
   $("f-solv-label").textContent=v>0?`${v}%`:"any";
   scheduleFilterReload(600);
 };
 
+// Solvability category (tier) metadata, mirrors SOLVABILITY_TIERS in dataset_store.py
+const TIER_META={
+  likely:   {label:"Likely",   color:"#3fb950"},
+  plausible:{label:"Plausible",color:"#d29922"},
+  hard:     {label:"Hard",     color:"#db6d28"},
+  open:     {label:"Open",     color:"#f85149"},
+};
+function tierChip(tier){
+  const m=TIER_META[tier]; if(!m) return "";
+  return `<span class="tier-chip" style="border-color:${m.color};color:${m.color}">${m.label}</span>`;
+}
+
 // ── Problem list loader ──────────────────────────────────────────────────────
 async function loadProblems(){
   const params=new URLSearchParams();
   if(selectedDataset) params.set("dataset",selectedDataset);
-  const sort=$("f-sort").value; if(sort&&sort!=="id") params.set("sort",sort);
+  const sort=$("f-sort").value; if(sort) params.set("sort",sort);
   const search=$("f-search").value.trim(); if(search) params.set("search",search);
   const tags=$("f-tags").value.trim(); if(tags) params.set("tags",tags);
+  const tier=$("f-tier").value; if(tier) params.set("tier",tier);
   const solv=parseInt($("f-solv").value||"0"); if(solv>0) params.set("min_solvability",(solv/100).toFixed(2));
   const status=$("f-status").value; if(status) params.set("status",status);
 
@@ -1534,9 +1613,10 @@ function renderProblemList(ps){
       dotColor="var(--amber)";dotTitle="In progress";
     }
     else{dotColor="var(--red)";dotTitle="Failing";}
-    // One-word domain from tags
-    const domain=_domainFromTags(p.tags);
-    const domainHtml=domain?`<span class="domain-chip">${esc(domain)}</span>`:"";
+    // Category: prefer native dataset category, fall back to tag heuristic
+    const fullCat=p.category||_domainFromTags(p.tags)||"";
+    const domain=fullCat.length>18?fullCat.slice(0,17)+"…":fullCat;
+    const domainHtml=domain?`<span class="domain-chip" title="${esc(fullCat)}">${esc(domain)}</span>`:"";
     // Stats row: use server accuracy_pct (already computed above)
     const accPct=accPctRaw;
     let statsHtml;
@@ -1552,7 +1632,11 @@ function renderProblemList(ps){
       statsHtml=`<div class="qitem-stats"><span style="opacity:.45">No runs yet</span></div>`;
     }
     const dsBadge=showDs?`<span class="ds-badge">${esc(p.dataset||"")}</span>`:"";
-    it.innerHTML=`<div class="qitem-top"><span class="qstat-dot" style="background:${dotColor}" title="${esc(dotTitle)}"></span><span class="qid">${esc(p.id)}</span>${domainHtml}${dsBadge}<span style="margin-left:auto">${solvBadge(p.solvability_score)}</span></div><span class="qt">${esc((p.title||p.id).replace(/^Problem \d+:\s*/,""))}</span>${statsHtml}`;
+    // Score + tier pinned right (flex-shrink:0) so they are never clipped; the
+    // id truncates instead. Category/dataset move to a second meta line.
+    const scoreRt=`<span class="qitem-score">${tierChip(p.solvability_tier)}${solvBadge(p.solvability_score)}</span>`;
+    const subLine=(domainHtml||dsBadge)?`<div class="qitem-sub">${domainHtml}${dsBadge}</div>`:"";
+    it.innerHTML=`<div class="qitem-top"><span class="qstat-dot" style="background:${dotColor}" title="${esc(dotTitle)}"></span><span class="qid">${esc(p.id)}</span>${scoreRt}</div><span class="qt">${esc((p.title||p.id).replace(/^Problem \d+:\s*/,""))}</span>${subLine}${statsHtml}`;
     it.dataset.pid=p.id; it.dataset.ds=p.dataset||selectedDataset||"first_proof_1";
     it.onclick=()=>selectQuestion(p.id,it,p.dataset||selectedDataset||"first_proof_1");
     list.appendChild(it);
@@ -2419,7 +2503,7 @@ function renderOverview(d, pid){
       </div>`;
     }).join("");
   } else {
-    actEl.innerHTML='<div style="color:var(--muted);font-size:12px">No agent activity yet — run the daily cycle or click Discover in the Issue tab.</div>';
+    actEl.innerHTML='<div style="color:var(--muted);font-size:12px">No agent activity yet — run the daily cycle or click Discover in the Evaluation tab.</div>';
   }
 }
 function startOvRefresh(){ loadOverview(); if(!ovTimer) ovTimer=setInterval(loadOverview,30000); }
@@ -2453,7 +2537,7 @@ function setTab(name){
   });
   const q=_lvlQ();
   if(name==="overview"){ startOvRefresh(); if(ovData) renderOverview(ovData, q||null); } else stopOvRefresh();
-  if(name==="documents"){ if(q){ loadQuestionDocs(q,{skipAutoFile:true}); loadDocBundle(); } else loadDocuments(); }
+  if(name==="documents"){ if(q){ loadQuestionDocs(q); } else loadDocuments(); }
   if(name==="proofs"){ if(q) loadProofForQuestion(q); else if(!pfProbs.length) loadProofs(); }
   if(name==="literature"){ if(q) loadLiterature(q); }
   if(name==="runs"){ loadRuns(); }
@@ -2474,7 +2558,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab)
   const TABS = [
     {id:"overview",  icon:"🗂",  label:"Overview",    sub:"Problem cards & solvability"},
     {id:"question",  icon:"❓",  label:"Question",    sub:"Problem statement"},
-    {id:"issue",     icon:"🐛",  label:"Issue",       sub:"Per-problem issue tracker"},
+    {id:"issue",     icon:"🧪",  label:"Evaluation",  sub:"AI-solvability score + proof-gap findings"},
     {id:"agent",     icon:"🤖",  label:"Agent",       sub:"Run live solver"},
     {id:"documents", icon:"📄",  label:"Documents",   sub:"Daily reports"},
     {id:"proofs",    icon:"📐",  label:"Proofs",      sub:"Best proof per problem"},
@@ -2492,7 +2576,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setTab(t.dataset.tab)
   const ALIASES = {
     proof:"proofs","author-solution":"author-solution",authorsolution:"author-solution",author:"author-solution",
     question:"question",q:"question",
-    issue:"issue",issues:"issue",bug:"issue",
+    issue:"issue",issues:"issue",bug:"issue",evaluation:"issue",eval:"issue",evals:"issue",
     agent:"agent",run:"agent",solve:"agent",
     doc:"documents",docs:"documents",documents:"documents",
     lit:"literature",literature:"literature",paper:"literature",
@@ -2681,6 +2765,16 @@ async function pdfRenderAll(doc, scale, wrap, withTextLayer=true){
   }
 }
 
+async function fetchJsonSafe(url){
+  // Tolerates empty / non-JSON responses (e.g. dev server mid-reload) — returns null.
+  try{
+    const r=await fetch(url);
+    const t=await r.text();
+    if(!t) return null;
+    try{ return JSON.parse(t); }catch(_){ return null; }
+  }catch(_){ return null; }
+}
+
 async function pdfLoad(url, wrap, onDoc, scale){
   wrap.innerHTML=`<div style="color:#aaa;padding:32px;font-size:13px">Loading PDF…</div>`;
   try{
@@ -2772,15 +2866,13 @@ async function selectQuestion(qid, node, dataset){
   document.querySelectorAll(".qitem").forEach(n=>n.classList.remove("active"));
   if(node)node.classList.add("active");
   setStatus(`${qid} loading…`,"run");
-  // Reset question pane to rendered view
+  // Reset question pane (PDF-only renderer)
   $("q-empty").style.display="none";
   $("q-body").style.display="block";
-  $("q-rendered").style.display="none";
-  $("q-raw").style.display="none";
   $("q-pdf-area").style.display="none";
-  $("q-toggle").textContent="View raw .tex";
   $("q-pdf-btn").style.display="none";
   $("q-pdf-btn").disabled=false;
+  const _qdl0=$("q-pdf-dl"); if(_qdl0) _qdl0.style.display="none";
   $("q-view-mode").textContent="loading…";
   let _qTex="";
   try{
@@ -2796,7 +2888,6 @@ async function selectQuestion(qid, node, dataset){
     $("q-file").textContent=`${ds}/${qid}`;
     _qTex=pr.tex||pr.statement||"";        // raw .tex view shows full source
     const _displayTex=pr.statement||extractStatement(pr.tex||"")||_qTex; // rendered view uses statement
-    $("q-raw-code").textContent=_qTex;
     // Show solvability + tags + Opus labels in a metadata bar
     const metaHtml=(()=>{
       let h="";
@@ -2804,52 +2895,59 @@ async function selectQuestion(qid, node, dataset){
       const qSum = (ovData&&ovData.question_summaries||[]).find(s=>s.qid===qid);
       const opusScore = qSum?.opus_eval?.score;
       const dispScore = opusScore!=null ? opusScore : pr.solvability_score;
-      if(dispScore!=null) h+=`${solvBadge(dispScore)} `;
+      if(dispScore!=null) h+=`${tierChip(pr.solvability_tier)} ${solvBadge(dispScore)} `;
       // Tags from dataset API
       if(pr.tags&&pr.tags.length) h+=pr.tags.slice(0,4).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join("");
       // Curated labels from overview data
       const labs = qSum?.labels||[];
       if(labs.length) h+=labs.map(l=>`<span class="tag-chip">${esc(l)}</span>`).join("");
-      return h ? `<div class="tag-strip" style="margin-bottom:8px">${h}</div>` : "";
+      let strip = h ? `<div class="tag-strip" style="margin-bottom:6px">${h}</div>` : "";
+      // Solvability evaluation rationale (from the ingested model eval)
+      const ev = pr.solv_eval;
+      if(ev && (ev.reasoning || ev.confidence)){
+        const det = [ev.confidence?`confidence: ${esc(ev.confidence)}`:"",
+                     ev.estimated_proof_length?`proof: ${esc(ev.estimated_proof_length)}`:""]
+                    .filter(Boolean).join(" · ");
+        strip += `<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.45">`
+              + (ev.reasoning?`<span style="color:var(--text)">Solvability:</span> ${esc(ev.reasoning)} `:"")
+              + (det?`<span style="opacity:.8">(${det})</span>`:"") + `</div>`;
+      }
+      return strip;
     })();
-    // Auto-load pre-compiled PDF (backend pre-compiles at startup)
+    // PDF-only rendering (no raw .tex / MathJax fallback).
     const area=$("q-pdf-area");
     area.style.display="flex";
     area.innerHTML=`${metaHtml}<div style="color:#aaa;padding:20px;font-size:13px">Loading PDF…</div>`;
     setStatus(`${qid} loading PDF…`,"run");
+    const pdfEndpoint = (ds==="first_proof_1")
+      ? `/api/problem-pdf/${encodeURIComponent(qid)}`
+      : `/api/ds/problem-pdf/${encodeURIComponent(ds)}/${encodeURIComponent(qid)}`;
     try{
-      const pdfEndpoint = (ds==="first_proof_1")
-        ? `/api/problem-pdf/${encodeURIComponent(qid)}`
-        : `/api/ds/problem-pdf/${encodeURIComponent(ds)}/${encodeURIComponent(qid)}`;
-      const pdfRes=await (await fetch(pdfEndpoint)).json();
-      if(pdfRes.ok && pdfRes.pdf_url){
+      const pdfRes=await fetchJsonSafe(pdfEndpoint);
+      if(pdfRes===null){
+        area.innerHTML=`${metaHtml}<div style="color:#cbd5e1;padding:30px 20px;font-size:13px;max-width:620px;text-align:center;line-height:1.55">The PDF service is busy (the dev server may be reloading). Click <b>⟳ Recompile</b> in a moment.</div>`;
+        $("q-view-mode").textContent="busy";
+        $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="⟳ Recompile";
+      } else if(pdfRes.ok && pdfRes.pdf_url){
         area.innerHTML=metaHtml; // clear the "loading" message; pdfLoad fills the rest
         await pdfLoad(pdfRes.pdf_url, area, d=>{qDoc=d;}, qScale);
         $("q-view-mode").textContent="PDF";
-        $("q-toggle").textContent="View raw .tex";
+        const _dl=$("q-pdf-dl"); if(_dl){ _dl.href=pdfRes.pdf_url; _dl.style.display="inline"; }
       } else {
-        // PDF not ready — show rendered markdown with MathJax
-        area.style.display="none";
-        const r=$("q-rendered");
-        r.style.display="block";
-        r.innerHTML=metaHtml;
-        renderContent(r, _displayTex||"*(no statement)*");
-        $("q-view-mode").textContent="source (PDF unavailable)";
-        $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="Compile PDF";
+        area.innerHTML=`${metaHtml}<div style="color:#cbd5e1;padding:30px 20px;font-size:13px;max-width:620px;text-align:center;line-height:1.55">Could not compile this problem to PDF.<br><span style="color:#888">${esc((pdfRes.log||"").slice(0,200))}</span></div>`;
+        $("q-view-mode").textContent="PDF unavailable";
+        $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="⟳ Recompile";
       }
     }catch(pdfErr){
-      area.style.display="none";
-      const r=$("q-rendered");
-      r.style.display="block";
-      r.innerHTML=metaHtml;
-      renderContent(r, _displayTex||"");
-      $("q-view-mode").textContent="source";
-      $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="Compile PDF";
+      area.innerHTML=`${metaHtml}<div style="color:#f88;padding:30px 20px;font-size:13px">Error compiling PDF: ${esc(String(pdfErr))}</div>`;
+      $("q-view-mode").textContent="error";
+      $("q-pdf-btn").style.display=""; $("q-pdf-btn").textContent="⟳ Recompile";
     }
     setStatus(`${qid} selected`);
   }catch(e){
-    $("q-rendered").style.display="block";
-    $("q-rendered").innerHTML=`<span style="color:var(--red)">Failed to load question: ${esc(String(e))}</span>`;
+    const area=$("q-pdf-area");
+    area.style.display="flex";
+    area.innerHTML=`<span style="color:var(--red);padding:20px">Failed to load question: ${esc(String(e))}</span>`;
     $("q-view-mode").textContent="error";
     setStatus("load error","err");
   }
@@ -2883,50 +2981,35 @@ async function selectQuestion(qid, node, dataset){
   loadMeetPersonas(qid).catch(()=>{}); // pre-fetch so persona chips display instantly
 }
 
-$("q-toggle").onclick=()=>{
-  const raw=$("q-raw"), area=$("q-pdf-area"), ren=$("q-rendered"), b=$("q-toggle");
-  const pdfShowing = area.style.display!=="none" || ren.style.display!=="none";
-  const rawShowing = raw.style.display!=="none";
-  if(rawShowing){
-    // Currently in raw view — go back to PDF/rendered view
-    raw.style.display="none";
-    const wasInPdf = $("q-view-mode").textContent.includes("PDF") || $("q-view-mode").textContent==="PDF";
-    if(wasInPdf){ area.style.display="flex"; ren.style.display="none"; }
-    else { area.style.display="none"; ren.style.display="block"; }
-    b.textContent="View raw .tex";
-  } else {
-    // Currently in PDF/rendered view — switch to raw .tex
-    area.style.display="none"; ren.style.display="none";
-    raw.style.display="block";
-    b.textContent="View PDF";
-  }
-};
+// (Removed: q-toggle raw/.tex view — the Question tab is PDF-only.)
 
-// On-demand fallback compile (only shown when PDF not pre-available)
+// Recompile the problem PDF on demand (PDF-only; no raw/rendered fallback).
 $("q-pdf-btn").onclick=async function(){
   if(!selected)return;
   this.disabled=true; this.textContent="Compiling…";
   const area=$("q-pdf-area");
   area.style.display="flex"; area.innerHTML=`<div style="color:#aaa;padding:20px">Compiling PDF…</div>`;
-  $("q-rendered").style.display="none"; $("q-raw").style.display="none";
   try{
     const _ds2=selectedDataset||"first_proof_1";
     const _ep2=(_ds2==="first_proof_1")
-      ? `/api/problem-pdf/${encodeURIComponent(selected)}`
-      : `/api/ds/problem-pdf/${encodeURIComponent(_ds2)}/${encodeURIComponent(selected)}`;
-    const res=await (await fetch(_ep2)).json();
-    if(res.ok && res.pdf_url){
-      this.textContent="PDF ready"; this.style.display="none";
-      $("q-view-mode").textContent="PDF"; $("q-toggle").textContent="View raw .tex";
+      ? `/api/problem-pdf/${encodeURIComponent(selected)}?force=true`
+      : `/api/ds/problem-pdf/${encodeURIComponent(_ds2)}/${encodeURIComponent(selected)}?force=true`;
+    const res=await fetchJsonSafe(_ep2);
+    if(res===null){
+      this.disabled=false; this.textContent="⟳ Recompile";
+      area.innerHTML=`<div style="color:#cbd5e1;padding:20px;font-size:13px">Service busy (dev server reloading). Click ⟳ Recompile again in a moment.</div>`;
+    } else if(res.ok && res.pdf_url){
+      this.disabled=false; this.textContent="⟳ Recompile";
+      $("q-view-mode").textContent="PDF";
+      const _dl=$("q-pdf-dl"); if(_dl){ _dl.href=res.pdf_url; _dl.style.display="inline"; }
       await pdfLoad(res.pdf_url, area, d=>{qDoc=d;}, qScale);
     } else {
-      this.disabled=false; this.textContent="Compile PDF";
-      area.style.display="none"; $("q-rendered").style.display="block";
+      this.disabled=false; this.textContent="⟳ Recompile";
       area.innerHTML=`<details style="padding:12px;width:100%"><summary style="color:var(--red);cursor:pointer">PDF compile failed</summary><pre style="font-size:11px;color:#aaa;white-space:pre-wrap;margin-top:8px">${esc(res.log||"no log")}</pre></details>`;
     }
   }catch(e){
-    this.disabled=false; this.textContent="Compile PDF";
-    area.style.display="none"; $("q-rendered").style.display="block";
+    this.disabled=false; this.textContent="⟳ Recompile";
+    area.innerHTML=`<div style="color:#f88;padding:20px">Error: ${esc(String(e))}</div>`;
   }
 };
 
@@ -2991,9 +3074,56 @@ function issSelectById(issueId){
 }
 function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
 
+// AI-solvability evaluation panel for the selected problem (Evaluation tab).
+async function renderEvalPanel(pid, ds){
+  const panel=$("iss-eval-panel"); if(!panel) return;
+  if(!pid){ panel.style.display="none"; return; }
+  panel.style.display="";
+  $("iss-eval-score").textContent="…"; $("iss-eval-score").style.color="var(--accent)";
+  $("iss-eval-tier").innerHTML=""; $("iss-eval-meta").textContent="";
+  $("iss-eval-reasoning").textContent="Loading evaluation…"; $("iss-eval-lists").innerHTML="";
+  let ev=null, scoreNorm=null, tier=null;
+  try{
+    const p=await (await fetch(`/api/ds/problem/${encodeURIComponent(ds)}/${encodeURIComponent(pid)}`)).json();
+    scoreNorm=p.solvability_score; tier=p.solvability_tier; ev=p.solv_eval||null;
+  }catch(_){}
+  // Richer Opus eval (key_obstacles / positive_factors) for first_proof_1 q1-q10
+  const qs=(ovData&&ovData.question_summaries||[]).find(s=>s.qid===pid);
+  if(qs&&qs.opus_eval) ev=Object.assign({}, ev||{}, qs.opus_eval);
+  let pct=(ev&&ev.score!=null)?ev.score:(scoreNorm!=null?Math.round(scoreNorm*100):null);
+  if(!tier && pct!=null) tier=pct>=70?"likely":pct>=40?"plausible":pct>=20?"hard":"open";
+  const tm=(typeof TIER_META!=="undefined"&&TIER_META[tier])||null;
+  $("iss-eval-score").textContent=pct!=null?pct:"—";
+  if(tm) $("iss-eval-score").style.color=tm.color;
+  $("iss-eval-tier").innerHTML=tier?tierChip(tier):"";
+  const meta=[];
+  if(ev&&ev.confidence) meta.push(`confidence: ${esc(ev.confidence)}`);
+  if(ev&&ev.estimated_proof_length) meta.push(`est. proof: ${esc(String(ev.estimated_proof_length).replace(/_/g," "))}`);
+  $("iss-eval-meta").textContent=meta.join("  ·  ");
+  $("iss-eval-reasoning").textContent=(ev&&ev.reasoning)?ev.reasoning:
+    (pct!=null?"No written rationale recorded for this score.":"Not yet evaluated — export this dataset for solvability scoring (Export tab) and ingest the results.");
+  const lists=$("iss-eval-lists"); lists.innerHTML="";
+  const mkList=(title,arr,color)=>{
+    if(!arr||!arr.length) return;
+    const d=el("div"); d.style.cssText="min-width:170px;flex:1";
+    d.innerHTML=`<div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:${color};font-weight:700;margin-bottom:3px">${title}</div>`
+      +`<ul style="margin:0;padding-left:15px;font-size:11.5px;color:var(--muted);line-height:1.5">`
+      +arr.slice(0,4).map(x=>`<li>${esc(String(x))}</li>`).join("")+`</ul>`;
+    lists.appendChild(d);
+  };
+  if(ev){ mkList("Key obstacles", ev.key_obstacles, "var(--red)"); mkList("Positive factors", ev.positive_factors, "var(--green)"); }
+}
+
 async function loadIssues(){
   const level=_globalLevel;
   const ds=selectedDataset||"first_proof_1";
+  renderEvalPanel(level==="question"&&selected ? selected : null, ds);
+  // Load proof evaluation panel for per-question scope
+  if(level==="question" && selected){
+    loadIssProofEval(selected);
+  } else {
+    $("iss-proof-eval-wrap").style.display="none";
+  }
   const badge=$("iss-q-badge");
   const scopeLabel=$("iss-scope-label");
   const discoverBtn=$("i-discover-btn");
@@ -3029,6 +3159,8 @@ async function loadIssues(){
       renderIssueList(d.issues||[],true);
     }catch(e){ $("iss-list").innerHTML=`<div style="color:var(--red);font-size:12px;padding:8px">Load failed: ${esc(String(e))}</div>`; }
   }
+  // Default the main pane to the single combined "all issues" PDF (not split).
+  loadCombinedIssuesPdf(level, ds, (level==="question"&&selected)?selected:null);
 }
 
 function agentColor(author){ return AGENT_COLORS[author]||'#8b949e'; }
@@ -3071,8 +3203,40 @@ function showProofModal(tex){
   $("proof-modal-content").textContent=tex;
 }
 
+function setIssueViewMode(combined){
+  // combined=true → show the single overall all-issues PDF; false → editable single-issue thread.
+  const comments=$("iss-comments"); if(comments) comments.style.display = combined ? "none" : "flex";
+  const footer=$("iss-footer"); if(footer) footer.style.display = combined ? "none" : "block";
+  for(const id of ["iss-status-badge","iss-status-sel","iss-pdf-btn"]){
+    const e=$(id); if(e) e.style.display = combined ? "none" : "";
+  }
+}
+
+async function loadCombinedIssuesPdf(level, ds, qid){
+  // The overall issue view: ALL issues rendered into one big PDF (not split).
+  $("iss-thread-empty").style.display="none";
+  $("iss-thread").style.display="flex";
+  setIssueViewMode(true);
+  const view=$("iss-pdf-view"); view.style.display="block";
+  view.innerHTML=`<div style="color:#aaa;padding:32px;font-size:13px">Compiling combined issues PDF…</div>`;
+  const scoped = (level==="question" && qid);
+  $("iss-title").textContent = scoped ? `All issues — ${qid}` : `All issues — ${ds}`;
+  const scope = scoped ? encodeURIComponent(qid) : "_dataset";
+  try{
+    const d=await fetchJsonSafe(`/api/all-issues-pdf/${scope}?dataset=${encodeURIComponent(ds)}`);
+    if(d===null){ view.innerHTML=`<div style="color:#cbd5e1;padding:32px;font-size:13px">Service busy (dev server reloading). Reopen the Issue tab in a moment.</div>`; return; }
+    if(d.ok && d.pdf_url){
+      view.innerHTML=`<iframe src="${d.pdf_url}?t=${Date.now()}" style="width:100%;height:100%;border:0;background:#fff"></iframe>`;
+      $("iss-title").textContent += ` (${d.count||0} issues)`;
+    } else {
+      view.innerHTML=`<div style="color:#f88;padding:32px;font-size:12px;white-space:pre-wrap">Could not compile issues PDF.\n${esc((d.log||"").slice(0,300))}</div>`;
+    }
+  }catch(e){ view.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`; }
+}
+
 function renderIssueThread(issue){
   issSelectedId=issue.id;
+  setIssueViewMode(false);
   // Reset state; _autoLoadIssuePdf will switch to PDF view and update button label
   _issPdfMode=false;
   $("iss-pdf-view").style.display="none";
@@ -3728,157 +3892,183 @@ async function compilePdf(content,name,card,btn){
 
 // ---- Documents tab -------------------------------------------------------
 
-let _docFiles = [];
-let _docCurrentPath = null;
+let _docScope = null;       // current report scope: "system" or a problem id
 let _docPdfMode = false;
+let _docReportItems = [];
 let _bundleUrl = null;
 
-function _docBuildTree(docs){
-  const tree=$("doc-tree"); if(!tree) return;
-  tree.innerHTML="";
-  const groups={};
-  for(const d of docs){ const folder=d.folder||""; (groups[folder]=groups[folder]||[]).push(d); }
-  const qFolders=Object.keys(groups).filter(f=>f.startsWith("questions/")).sort();
-  const other=Object.keys(groups).filter(f=>!f.startsWith("questions/")).sort();
-  for(const folder of [...qFolders,...other]){
-    const label=folder.startsWith("questions/")?folder.replace("questions/",""):(folder||"root");
-    const section=el("div");
-    const hdr=el("div");
-    hdr.style.cssText="padding:4px 10px 2px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px";
-    hdr.innerHTML=`<span id="doc-folder-arrow-${esc(label)}" style="font-size:9px">▶</span> ${esc(label)}`;
-    const items=el("div"); items.id="doc-folder-items-"+label; items.style.display="none";
-    for(const d of groups[folder]){
-      const row=el("div");
-      row.style.cssText="padding:3px 10px 3px 22px;font-size:11px;cursor:pointer;border-radius:3px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
-      const fname=(d.path||d.name||"").split("/").pop();
-      row.textContent=fname; row.title=d.path||d.name;
-      row.onclick=()=>loadDocFile(d);
-      row.onmouseenter=()=>{ if(_docCurrentPath!==(d.path||d.name)) row.style.background="var(--panel2)"; };
-      row.onmouseleave=()=>{ if(_docCurrentPath!==(d.path||d.name)) row.style.background=""; };
-      row.id="doc-row-"+(d.path||d.name).replace(/[^a-z0-9]/gi,"_");
-      items.appendChild(row);
-    }
-    hdr.onclick=()=>{
-      const open=items.style.display!=="none";
-      items.style.display=open?"none":"block";
-      const arrow=$("doc-folder-arrow-"+label); if(arrow) arrow.textContent=open?"▶":"▼";
-    };
-    section.appendChild(hdr); section.appendChild(items); tree.appendChild(section);
+// Build the left sidebar: one entry per problem (+ System Overview unless we're
+// in per-question mode, where the system review is intentionally hidden).
+async function loadDocReportIndex(showSystem){
+  if(showSystem===undefined) showSystem=true;
+  const ds = selectedDataset || "first_proof_1";
+  let items=[];
+  try{
+    const r=await fetch(`/api/context-report/index?dataset=${encodeURIComponent(ds)}`);
+    if(r.ok){ const d=await r.json(); items=d.items||[]; }
+  }catch(e){}
+  _docReportItems=items;
+  const list=$("doc-report-list"); if(!list) return;
+  list.innerHTML="";
+
+  // System overview entry (hidden in per-question mode)
+  if(showSystem){
+    const sysRow=el("div");
+    sysRow.id="doc-rep-system";
+    sysRow.style.cssText="padding:7px 10px;margin:2px 0;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;display:flex;align-items:center;gap:7px";
+    sysRow.innerHTML=`<span>📊</span><span>System Overview</span>`;
+    sysRow.onclick=()=>loadDocReport("system");
+    sysRow.onmouseenter=()=>{ if(_docScope!=="system") sysRow.style.background="var(--panel)"; };
+    sysRow.onmouseleave=()=>{ if(_docScope!=="system") sysRow.style.background=""; };
+    list.appendChild(sysRow);
+    const sep=el("div"); sep.style.cssText="height:1px;background:var(--border);margin:6px 4px";
+    list.appendChild(sep);
+  }
+
+  // Per-problem entries
+  for(const it of items){
+    const scope = it.scope;
+    const row=el("div");
+    row.id="doc-rep-"+scope;
+    row.style.cssText="padding:7px 10px;margin:2px 0;border-radius:6px;cursor:pointer";
+    const counts=[];
+    if(it.has_proof) counts.push(`<span style="color:var(--green)">proof</span>`);
+    if(it.open_issues) counts.push(`<span style="color:var(--amber)">${it.open_issues} open</span>`);
+    if(it.resolved_issues) counts.push(`<span style="color:var(--muted)">${it.resolved_issues}✓</span>`);
+    if(it.meetings) counts.push(`<span style="color:var(--muted)">${it.meetings}💬</span>`);
+    row.innerHTML=`<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600">
+        <span>${it.status_emoji||"•"}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(scope.toUpperCase())}</span>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin:2px 0 0 20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((it.area||"").slice(0,30))}</div>
+      <div style="font-size:10px;margin:2px 0 0 20px;display:flex;gap:8px;flex-wrap:wrap">${counts.join("")||'<span style="color:var(--muted)">no data</span>'}</div>`;
+    row.onclick=()=>loadDocReport(scope);
+    row.onmouseenter=()=>{ if(_docScope!==scope) row.style.background="var(--panel)"; };
+    row.onmouseleave=()=>{ if(_docScope!==scope) row.style.background=""; };
+    list.appendChild(row);
+    // Concept PDF sub-entry
+    const cRow=el("div");
+    cRow.id=`doc-rep-concepts:${scope}`;
+    cRow.style.cssText="padding:4px 10px 4px 26px;margin:1px 0;border-radius:5px;cursor:pointer;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px";
+    cRow.innerHTML=`<span style="font-size:10px">📚</span><span>Concept PDF</span>`;
+    cRow.onclick=(e)=>{ e.stopPropagation(); loadDocConceptPdf(scope); };
+    cRow.onmouseenter=()=>{ if(_docScope!==`concepts:${scope}`) cRow.style.background="var(--panel)"; };
+    cRow.onmouseleave=()=>{ if(_docScope!==`concepts:${scope}`) cRow.style.background=""; };
+    list.appendChild(cRow);
+  }
+  _docHighlightActive();
+}
+
+function _docHighlightActive(){
+  document.querySelectorAll('[id^="doc-rep-"]').forEach(r=>{ r.style.background=""; r.style.outline=""; });
+  if(_docScope){
+    const a=$("doc-rep-"+_docScope);
+    if(a){ a.style.background="var(--accent)22"; a.style.outline="1px solid var(--accent)66"; }
   }
 }
 
-function _docExpandQuestion(qid){
-  if(!qid) return;
-  const items=$("doc-folder-items-"+qid);
-  if(items){ items.style.display="block"; const arrow=$("doc-folder-arrow-"+qid); if(arrow) arrow.textContent="▼"; }
-}
-
-function _renderMd(md){
-  if(!md) return "<em class='muted'>Empty document.</em>";
-  let h=md
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-    .replace(/^### (.+)$/gm,'<h4 style="margin:.8em 0 .3em;font-size:13px;color:var(--accent)">$1</h4>')
-    .replace(/^## (.+)$/gm,'<h3 style="margin:1em 0 .3em;font-size:14px;border-bottom:1px solid var(--border);padding-bottom:4px">$1</h3>')
-    .replace(/^# (.+)$/gm,'<h2 style="margin:0 0 .5em;font-size:16px;font-weight:700">$1</h2>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/```[\w]*\n([\s\S]*?)```/g,'<pre style="background:var(--panel2);padding:10px 14px;border-radius:5px;overflow-x:auto;font-size:11px;border:1px solid var(--border)"><code>$1</code></pre>')
-    .replace(/`([^`]+)`/g,'<code style="background:var(--panel2);padding:1px 5px;border-radius:3px;font-size:11px">$1</code>')
-    .replace(/^&gt; (.+)$/gm,'<blockquote style="border-left:3px solid var(--accent);margin:0;padding:4px 12px;color:var(--muted);background:var(--panel2)">$1</blockquote>')
-    .replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:14px 0">')
-    .replace(/^\d+\. (.+)$/gm,'<li style="margin:2px 0 2px 1em;list-style:decimal">$1</li>')
-    .replace(/^[-*] (.+)$/gm,'<li style="margin:2px 0 2px 1em;list-style:disc">$1</li>')
-    .replace(/\n\n/g,'</p><p style="margin:.5em 0">');
-  return '<p style="margin:.5em 0">'+h+'</p>';
-}
-
-async function loadDocFile(d){
-  const path=d.path||d.name; _docCurrentPath=path;
-  document.querySelectorAll('[id^="doc-row-"]').forEach(r=>r.style.background="");
-  const row=$("doc-row-"+path.replace(/[^a-z0-9]/gi,"_")); if(row) row.style.background="var(--accent)22";
-  const crumb=$("doc-breadcrumb"); if(crumb) crumb.textContent=path.split("/").slice(-2).join(" / ");
-  _docPdfMode=false;
-  $("doc-md-view").style.display=""; $("d-pdf-wrap").style.display="none";
-  const toggle=$("doc-view-toggle"); if(toggle){ toggle.style.display=""; toggle.textContent="View PDF"; }
-  $("doc-md-view").innerHTML='<div style="color:var(--muted);padding:20px">Loading…</div>';
+// Load a concept PDF into the Documents tab viewer.
+async function loadDocConceptPdf(pid){
+  const scopeKey = `concepts:${pid}`;
+  _docScope = scopeKey;
+  _docHighlightActive();
+  $("doc-md-view").style.display = "none";
+  const wrap = $("d-pdf-wrap"); wrap.style.display = "flex";
+  const dl = $("d-bundle-dl"); if(dl) dl.style.display="none";
+  const crumb = $("doc-breadcrumb");
+  if(crumb) crumb.innerHTML=`<span style="font-weight:700">📚 ${esc(pid.toUpperCase())} — Concept PDF</span>`;
+  wrap.innerHTML='<div style="color:#aaa;padding:40px;font-size:13px">Building concept PDF…</div>';
   try{
-    const r=await fetch("/api/document/"+encodeURIComponent(path));
-    if(!r.ok){ $("doc-md-view").innerHTML=`<div class="muted">Not found (${r.status})</div>`; return; }
-    const d2=await r.json(); const content=d2.content||d2.markdown||"";
-    _docShowWarnings(path,content);
-    $("doc-md-view").innerHTML=_renderMd(content);
-  }catch(e){ $("doc-md-view").innerHTML=`<div class="muted">Error: ${esc(String(e))}</div>`; }
-}
-
-function _docShowWarnings(path,content){
-  const warn=$("doc-warnings"); if(!warn) return;
-  const issues=[];
-  if(path.includes("timeline")&&(content.match(/rma-skeleton.*fail/g)||[]).length>5)
-    issues.push("⚠ "+(content.match(/rma-skeleton/g)||[]).length+" identical rma-skeleton entries");
-  if(path.includes("progress")&&content.includes("Best:** -1"))
-    issues.push("⚠ Scoring sentinel: -1 is an error code, not a near-complete result");
-  if(path.includes("overview")&&path.includes("q3")&&content.includes("fitting inside"))
-    issues.push("⚠ Definition error: S_n(λ) description may be outdated");
-  if(issues.length){ warn.innerHTML=issues.join(" &nbsp;·&nbsp; "); warn.style.display=""; }
-  else warn.style.display="none";
-}
-
-function _docBundleUrl(){
-  const q=_lvlQ(); const ds=selectedDataset||"first_proof_1";
-  const params=new URLSearchParams({dataset:ds}); if(q) params.set("question",q);
-  return "/api/documents/bundle.pdf?"+params.toString();
-}
-
-async function loadDocBundle(){
-  _docPdfMode=true;
-  $("doc-md-view").style.display="none"; $("d-pdf-wrap").style.display="flex";
-  const wrap=$("d-pdf-wrap");
-  const toggle=$("doc-view-toggle"); if(toggle){ toggle.style.display=""; toggle.textContent="View Docs"; }
-  wrap.innerHTML='<div style="color:#aaa;padding:32px;font-size:13px">Building PDF…</div>';
-  if(_bundleUrl){ URL.revokeObjectURL(_bundleUrl); _bundleUrl=null; }
-  try{
-    const r=await fetchWithTimeout(_docBundleUrl(),30000);
-    if(!r.ok){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Failed (${r.status})</div>`; return; }
-    const blob=await r.blob(); _bundleUrl=URL.createObjectURL(blob);
-    const dl=$("d-bundle-dl"); if(dl){ dl.href=_bundleUrl; dl.style.display=""; }
-    await pdfLoad(_bundleUrl,wrap,()=>{},1.5);
+    const r = await fetch(`/api/concepts/${encodeURIComponent(pid)}/pdf`);
+    const data = await r.json();
+    if(_docScope !== scopeKey) return;
+    if(!data.ok || !data.pdf_url){
+      wrap.innerHTML=`<div style="color:#f88;padding:32px;font-size:12px">Concept PDF not available: ${esc(data.log||"no concepts extracted yet")}</div>`;
+      return;
+    }
+    wrap.innerHTML='<div style="color:#aaa;padding:40px;font-size:13px">Rendering…</div>';
+    const doc = await pdfjsLib.getDocument(data.pdf_url+"?t="+Date.now()).promise;
+    if(_docScope !== scopeKey) return;
+    const page = await doc.getPage(1);
+    const nat = page.getViewport({scale:1});
+    const scale = Math.max(0.8, Math.min(2.2, (wrap.clientWidth-40)/nat.width));
+    await pdfRenderAll(doc, scale, wrap);
+    if(dl){ dl.href=data.pdf_url; dl.style.display=""; }
   }catch(e){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`; }
 }
 
-async function loadDocuments(){
+// Show an informative breadcrumb from the report index item (title + status + counts).
+function _docCrumb(scope){
+  const crumb=$("doc-breadcrumb"); if(!crumb) return;
+  if(scope==="system"){ crumb.textContent="System Overview"; return; }
+  if(scope.startsWith("concepts:")){ return; } // breadcrumb already set in loadDocConceptPdf
+  const it=(_docReportItems||[]).find(x=>x.scope===scope);
+  if(!it){ crumb.textContent=scope.toUpperCase(); return; }
+  const bits=[];
+  if(it.has_proof) bits.push("proof");
+  bits.push(`${it.open_issues||0} open`);
+  if(it.resolved_issues) bits.push(`${it.resolved_issues} resolved`);
+  if(it.meetings) bits.push(`${it.meetings} meetings`);
+  const cleanTitle=(it.title||scope).replace(/\$/g,"").slice(0,60);
+  crumb.innerHTML=`<span style="font-weight:700">${esc(it.status_emoji||"")} ${esc(cleanTitle)}</span>`
+    + `<span style="color:var(--muted);font-weight:400;font-size:11px;margin-left:8px">${esc(it.area||"")}</span>`
+    + `<span style="color:var(--muted);font-weight:400;font-size:11px;margin-left:8px">· ${bits.join(" · ")}</span>`;
+}
+
+// Compile the report to PDF and render it (PDF-only — no in-browser markdown).
+async function loadDocReport(scope, force){
+  _docScope=scope;
+  _docPdfMode=true;
+  _docHighlightActive();
+  $("doc-md-view").style.display="none";
+  const wrap=$("d-pdf-wrap"); wrap.style.display="flex";
+  const toggle=$("doc-view-toggle"); if(toggle) toggle.style.display="none";
+  const dl=$("d-bundle-dl"); if(dl) dl.style.display="none";
+  _docCrumb(scope);
+  wrap.innerHTML='<div style="color:#aaa;padding:40px;font-size:13px">Compiling PDF…</div>';
+  const ds = selectedDataset || "first_proof_1";
   try{
-    const r=await fetch("/api/documents"); const {documents}=await r.json();
-    _docFiles=documents||[]; _docBuildTree(_docFiles);
-  }catch(e){}
+    const url=`/api/context-report/${encodeURIComponent(scope)}/pdf?dataset=${encodeURIComponent(ds)}`+(force?"&force=true":"");
+    const r=await fetch(url);
+    const txt=await r.text();
+    if(_docScope!==scope) return; // a newer selection superseded this one
+    let meta=null;
+    try{ meta=txt?JSON.parse(txt):null; }catch(_){ meta=null; }
+    if(!meta){
+      wrap.innerHTML=`<div style="color:#f88;padding:32px;font-size:12px">Could not build the report PDF (server returned ${r.status||"no"} response). Try ↻ Refresh.</div>`;
+      return;
+    }
+    if(!meta.ok || !meta.pdf_url){
+      wrap.innerHTML=`<div style="color:#f88;padding:32px;white-space:pre-wrap;font-size:12px">PDF compile failed:\n${esc((meta.log||"").slice(0,400))}</div>`;
+      return;
+    }
+    // Fit-to-width: render the PDF to fill the viewer instead of a thin strip.
+    wrap.innerHTML='<div style="color:#aaa;padding:40px;font-size:13px">Rendering…</div>';
+    const doc=await pdfjsLib.getDocument(meta.pdf_url+"?t="+Date.now()).promise;
+    if(_docScope!==scope) return;
+    const page=await doc.getPage(1);
+    const nat=page.getViewport({scale:1});
+    const scale=Math.max(0.8, Math.min(2.2, (wrap.clientWidth-40)/nat.width));
+    await pdfRenderAll(doc, scale, wrap);
+    if(dl){ dl.href=meta.pdf_url; dl.style.display=""; }
+  }catch(e){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`; }
 }
 
-async function loadQuestionDocs(qid, {skipAutoFile=false}={}){
-  await loadDocuments();
-  _docExpandQuestion(qid);
-  if(skipAutoFile) return;
-  // Auto-load the question's overview (or progress) when switching to this question
-  const folder = "questions/"+qid;
-  const overview = _docFiles.find(d=>d.folder===folder && d.name.startsWith("overview"));
-  const progress  = _docFiles.find(d=>d.folder===folder && d.name.startsWith("progress"));
-  if(overview) loadDocFile(overview);
-  else if(progress) loadDocFile(progress);
-}
-
+// ── Entry points ────────────────────────────────────────────────────────────
+// General Documents view: show the System Overview + all problems.
+async function loadDocuments(){ await loadDocReportIndex(true); if(!_docScope) await loadDocReport("system"); }
+// Per-question view: hide the system review, show just this problem.
+async function loadQuestionDocs(qid){ await loadDocReportIndex(false); await loadDocReport(qid); }
 async function openQuestionDoc(qid){ setTab("documents"); await loadQuestionDocs(qid); }
+// legacy aliases (Documents tab is PDF-only now)
+async function loadDocReportPdf(){ await loadDocReport(_docScope||"system"); }
+async function loadDocBundle(){ await loadDocReportPdf(); }
 
-$("doc-view-toggle").onclick=async()=>{
-  if(_docPdfMode){
-    _docPdfMode=false; $("doc-md-view").style.display=""; $("d-pdf-wrap").style.display="none";
-    $("doc-view-toggle").textContent="View PDF";
-  } else { loadDocBundle(); }
-};
-
-$("d-run").onclick=async()=>{
-  $("d-run").disabled=true; $("d-status").textContent="starting…";
-  const r=await (await fetch("/api/run-daily",{method:"POST"})).json();
-  if(!r.started){ $("d-status").textContent=r.reason||"already running"; $("d-run").disabled=false; return; }
-  $("d-status").textContent="generating…";
-  setTimeout(()=>{ $("d-run").disabled=false; $("d-status").textContent="done — reload docs"; loadDocuments(); },20000);
+$("doc-refresh-btn").onclick=async()=>{
+  $("doc-refresh-btn").disabled=true; $("d-status").textContent="rebuilding…";
+  await loadDocReportIndex(_docScope!=="system" && !!_docScope ? false : true);
+  if(_docScope) await loadDocReport(_docScope, true);  // force recompile
+  $("d-status").textContent=""; $("doc-refresh-btn").disabled=false;
 };
 
 // ---- Daily run button (sidebar) ----
@@ -4236,7 +4426,7 @@ async function loadProofs(){
   _pfShowGrid();
   $("pf-status").textContent="loading…";
   try{
-    const r=await fetch("/api/best-proofs"); const d=await r.json();
+    const r=await fetch(`/api/best-proofs?dataset=${encodeURIComponent(selectedDataset||"first_proof_1")}`); const d=await r.json();
     pfProbs=d.proofs||[];
     if(!pfProbs.length||pfProbs.every(p=>!p.has_solution)){
       $("pf-grid").innerHTML=""; $("pf-empty").style.display="block"; $("pf-status").textContent=""; return; }
@@ -4286,7 +4476,8 @@ async function loadProofDetail(pid){
   $("pf-eval-hint").style.display="block";
   $("pf-eval-status").textContent="";
   try{
-    const r=await fetch(`/api/best-proof/${encodeURIComponent(pid)}`);
+    const _pfDs=selectedDataset||"first_proof_1";
+    const r=await fetch(`/api/best-proof/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(_pfDs)}`);
     const d=await r.json();
     if(d.error){
       // Show a clear "no proof yet" panel inside pf-detail instead of just a status bar message
@@ -4326,7 +4517,7 @@ async function loadProofDetail(pid){
     loadProofHistory(pid);
     const wrap=$("pf-pdf-wrap");
     pfDoc=null;
-    const pdfUrl=`/api/best-proof-pdf/${encodeURIComponent(pid)}`;
+    const pdfUrl=`/api/best-proof-pdf/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(_pfDs)}`;
     $("pf-dl").href=pdfUrl; $("pf-dl").style.display="";
     $("pf-dl").download=`${pid}_best_proof.pdf`;
     await pdfLoad(pdfUrl, wrap, d=>{pfDoc=d;}, pfScale);
@@ -4345,7 +4536,7 @@ async function loadProofHistory(pid){
   sec.style.display="none";
   const list=$("pf-history-list"); if(!list) return;
   try{
-    const r=await fetch(`/api/proof-history/${encodeURIComponent(pid)}`);
+    const r=await fetch(`/api/proof-history/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(selectedDataset||"first_proof_1")}`);
     if(!r.ok) return;
     const d=await r.json();
     const hist=(d.history||[]).slice().reverse(); // newest first
@@ -4467,7 +4658,7 @@ function renderEvalIssues(pid, issues){
   const statusColor = {open:"var(--accent)", in_progress:"var(--amber)", resolved:"var(--green)"};
   const statusIcon  = {open:"●", in_progress:"◑", resolved:"✓"};
   el_.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">
-    ${issues.length} issue${issues.length!==1?"s":""} — <a href="#" onclick="event.preventDefault();selectQuestion('${esc(pid)}',null,selectedDataset||'first_proof_1');setTab('issue')" style="color:var(--accent)">open in Issue tab ↗</a>
+    ${issues.length} issue${issues.length!==1?"s":""} — <a href="#" onclick="event.preventDefault();selectQuestion('${esc(pid)}',null,selectedDataset||'first_proof_1');setTab('issue')" style="color:var(--accent)">open in Evaluation tab ↗</a>
   </div>
   ${issues.map(iss=>{
     const col = statusColor[iss.status] || "var(--muted)";
@@ -4512,6 +4703,111 @@ $("pf-eval-toggle-log").onclick = ()=>{
 };
 
 // proofs tab click is handled by setTab above
+
+// ---- Proof Evaluation panel in Evaluation tab ----
+let _issProofEvalEs = null;
+let _issProofEvalPid = null;
+
+function renderIssProofEval(data){
+  const body = $("iss-pe-body");
+  const hint = $("iss-pe-hint");
+  const rerun = $("iss-pe-rerun");
+  const btn   = $("iss-pe-btn");
+  if(!body) return;
+  if(!data || data.cached === false){
+    body.style.display = "none";
+    hint.style.display = "block";
+    hint.textContent = "Runs the First Proof benchmark rubric on the consolidated proof: answer accuracy, logical correctness, completeness, and clarity.";
+    btn.style.display = "";
+    rerun.style.display = "none";
+    return;
+  }
+  hint.style.display = "none";
+  btn.style.display = "none";
+  rerun.style.display = "";
+  body.style.display = "block";
+  const aa = data.answer_accuracy;
+  const lc = data.logical_correctness;
+  const pc = data.proof_completeness;
+  const cl = data.proof_clarity;
+  function bar5(v){ if(v==null) return "—"; const f=["░","░","░","░","░"]; for(let i=0;i<v;i++) f[i]="█"; return f.join(""); }
+  function scoreColor(v,mx){ if(v==null) return "var(--muted)"; const r=v/mx; return r>=0.8?"var(--green)":r>=0.5?"var(--amber)":"var(--red)"; }
+  const aaColor = (aa===1)?"var(--green)":"var(--red)";
+  const total = (lc!=null&&pc!=null&&cl!=null) ? lc+pc+cl : null;
+  const totalMax = 15;
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:var(--muted);min-width:130px">Answer Accuracy</span>
+        <span style="font-size:15px;font-weight:800;color:${aaColor}">${aa===1?"✅ Correct":"❌ Incorrect"}</span>
+        <span style="font-size:11px;color:var(--muted)">${aa!=null?aa+"/1":"—"}</span>
+      </div>
+      ${total!=null?`<div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:var(--muted);min-width:130px">Overall (L+C+Cl)</span>
+        <span style="font-size:15px;font-weight:800;color:${scoreColor(total,totalMax)}">${total}/${totalMax}</span>
+      </div>`:""}
+      ${[["Logical Correctness",lc,5],["Proof Completeness",pc,5],["Proof Clarity",cl,5]].map(([label,v,mx])=>`
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--muted);min-width:130px">${label}</span>
+          <span style="font-family:monospace;font-size:13px;letter-spacing:1px;color:${scoreColor(v,mx)}">${bar5(v)}</span>
+          <span style="font-size:11px;font-weight:700;color:${scoreColor(v,mx)}">${v!=null?v+"/"+mx:"—"}</span>
+        </div>`).join("")}
+    </div>
+    ${data.verdict?`<div style="font-size:12.5px;font-weight:600;color:var(--fg);margin-bottom:6px;border-left:3px solid var(--accent);padding-left:8px">${esc(data.verdict)}</div>`:""}
+    ${data.notes?`<div style="font-size:12px;color:var(--text);line-height:1.55">${esc(data.notes)}</div>`:""}`;
+  $("iss-pe-status").textContent = "";
+}
+
+async function loadIssProofEval(pid){
+  if(!pid) return;
+  _issProofEvalPid = pid;
+  $("iss-proof-eval-wrap").style.display = "";
+  $("iss-pe-status").textContent = "loading…";
+  try{
+    const r = await fetch(`/api/proof-eval/${encodeURIComponent(pid)}`);
+    const d = await r.json();
+    if(_issProofEvalPid !== pid) return;
+    renderIssProofEval(d);
+  }catch(_){
+    $("iss-pe-status").textContent = "error";
+  }
+}
+
+function issProofEvalRun(force){
+  const pid = _issProofEvalPid;
+  if(!pid){ $("iss-pe-status").textContent = "no problem selected"; return; }
+  if(_issProofEvalEs){ _issProofEvalEs.close(); }
+  $("iss-pe-btn").disabled = true;
+  $("iss-pe-rerun").disabled = true;
+  $("iss-pe-status").textContent = "evaluating…";
+  $("iss-pe-hint").style.display = "none";
+  const url = `/api/proof-eval/${encodeURIComponent(pid)}/run` + (force?"?force=true":"");
+  _issProofEvalEs = new EventSource(url);
+  _issProofEvalEs.onmessage = (e)=>{
+    const ev = JSON.parse(e.data);
+    if(ev.type === "result"){
+      renderIssProofEval({cached:true, ...ev});
+      $("iss-pe-status").textContent = "done";
+    } else if(ev.type === "error"){
+      $("iss-pe-status").textContent = "error: "+(ev.message||"").slice(0,60);
+      $("iss-pe-hint").style.display = "block";
+      $("iss-pe-hint").textContent = ev.message || "Evaluation failed — ensure a consolidated proof exists (Proofs tab).";
+    } else if(ev.type === "done"){
+      _issProofEvalEs.close(); _issProofEvalEs = null;
+      $("iss-pe-btn").disabled = false;
+      $("iss-pe-rerun").disabled = false;
+    }
+  };
+  _issProofEvalEs.onerror = ()=>{
+    $("iss-pe-status").textContent = "stream error";
+    _issProofEvalEs.close(); _issProofEvalEs = null;
+    $("iss-pe-btn").disabled = false;
+    $("iss-pe-rerun").disabled = false;
+  };
+}
+
+$("iss-pe-btn").onclick  = ()=> issProofEvalRun(false);
+$("iss-pe-rerun").onclick = ()=> issProofEvalRun(true);
 
 // ---- Author Solution tab (PDF.js) ----
 let fpfLoaded=false, fpfDoc=null, fpfScale=1.5, fpfCurrentUrl=null, fpfViewerActive=false;
@@ -5175,29 +5471,12 @@ function openMeetRoom(room){
   meetSelectedRoom=room;
   $("meet-room-empty").style.display="none";
   $("meet-room-view").style.display="flex";
-  // Reset PDF view back to live split whenever a room is opened
-  _meetPdfMode=false;
-  $("meet-pdf-view").style.display="none";
-  $("meet-split").style.display="grid";
-  $("meet-pdf-btn").textContent="PDF";
-  $("meet-pdf-status").textContent="";
   $("meet-room-topic").textContent=room.topic;
   $("meet-room-goal").textContent=room.goal||"";
   const statusColor={open:"var(--accent)",planned:"var(--amber)",done:"var(--green)"}[room.status]||"var(--muted)";
   $("meet-room-status-badge").textContent=room.status;
   $("meet-room-status-badge").style.color=statusColor;
-  // Participants chips
-  const pp=$("meet-participants"); pp.innerHTML="";
-  for(const p of (room.participants||[])){
-    const chip=el("span","meet-persona-chip");
-    const lp=meetPersonaLookup(p);
-    chip.style.borderColor=meetPersonaColor(p);
-    chip.title=lp.field?`${lp.display||p} · ${lp.field}${lp.institution?` · ${lp.institution}`:""}`:p;
-    chip.innerHTML=`${meetPersonaIcon(p)} <b>${esc(meetPersonaDisplay(p))}</b>`;
-    pp.appendChild(chip);
-  }
-  renderMeetMessages(room);
-  renderMeetPlan(room);
+  meetRenderPdf(room);
 }
 
 function renderMeetMessages(room){
@@ -5268,32 +5547,30 @@ async function refreshMeetRoom(){
 
 
 // ─── Meeting PDF rendering ───────────────────────────────────────────────────
-let _meetPdfMode=false;
-$("meet-pdf-btn").onclick=async()=>{
-  if(!meetSelectedRoom||!selected) return;
-  const pdfView=$("meet-pdf-view"), split=$("meet-split"), btn=$("meet-pdf-btn");
-  if(_meetPdfMode){
-    // Toggle back to live discussion view
-    pdfView.style.display="none"; split.style.display="grid";
-    btn.textContent="PDF"; _meetPdfMode=false; $("meet-pdf-status").textContent=""; return;
-  }
-  btn.disabled=true; $("meet-pdf-status").textContent="rendering…";
+// Meetings always render as an inline PDF (compiled server-side via tectonic).
+async function meetRenderPdf(room, force){
+  if(!room||!selected) return;
+  const pdfView=$("meet-pdf-view"), dl=$("meet-pdf-dl");
+  if(dl) dl.style.display="none";
+  $("meet-pdf-status").textContent="rendering…";
+  pdfView.innerHTML=`<div style="color:#aaa;padding:32px;font-size:13px">Rendering meeting PDF…</div>`;
   try{
-    const r=await fetch(`/api/meet-pdf/${encodeURIComponent(selected)}/${encodeURIComponent(meetSelectedRoom.id)}`);
-    const d=await r.json();
+    const url=`/api/meet-pdf/${encodeURIComponent(selected)}/${encodeURIComponent(room.id)}`+(force?"?force=true":"");
+    const d=await (await fetch(url)).json();
     if(d.ok&&d.pdf_url){
       pdfView.innerHTML=`<iframe src="${d.pdf_url}" style="width:100%;height:100%;border:0;background:#fff"></iframe>`;
-      split.style.display="none"; pdfView.style.display="block";
-      btn.textContent="Discussion"; _meetPdfMode=true; $("meet-pdf-status").textContent="";
+      if(dl){ dl.href=d.pdf_url; dl.style.display="inline"; }
+      $("meet-pdf-status").textContent="";
     }else{
-      $("meet-pdf-status").textContent=(d.log||"render failed").slice(0,60);
-      setTimeout(()=>$("meet-pdf-status").textContent="",5000);
+      pdfView.innerHTML=`<div style="color:#cbd5e1;padding:40px 24px;font-size:13px;max-width:620px;text-align:center;line-height:1.6">${esc(d.log||"Could not render this meeting as a PDF.")}</div>`;
+      $("meet-pdf-status").textContent="render failed";
     }
   }catch(e){
+    pdfView.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`;
     $("meet-pdf-status").textContent="error";
-    setTimeout(()=>$("meet-pdf-status").textContent="",4000);
-  }finally{ btn.disabled=false; }
-};
+  }
+}
+if($("meet-pdf-refresh")) $("meet-pdf-refresh").onclick=()=>{ if(meetSelectedRoom&&selected) meetRenderPdf(meetSelectedRoom, true); };
 
 // Navigate to a specific meeting room (used from push-forward overview links)
 async function loadMeetRoom(qid, roomId){
@@ -5526,11 +5803,26 @@ function dzScrollToPage(n){
   if(page) wrap.scrollTo({top:page.offsetTop-12,behavior:"smooth"});
   $("dz-pageinput").value=n;
 }
-async function loadDesignPdf(){
+let _dzMode="priority"; // "priority" or "supplementary"
+async function loadDesignPdf(mode){
+  if(mode) _dzMode=mode;
   const wrap=$("dz-canvas-wrap");
   if(!wrap) return;
   wrap.onscroll=null;
-  await pdfLoad("/api/design/pdf?"+Date.now(), wrap, d=>{
+  const isPri=(_dzMode==="priority");
+  const url=isPri?`/api/design/priority-report?${Date.now()}`:`/api/design/pdf?${Date.now()}`;
+  $("dz-title").textContent=isPri?"Priority Report":"System Supplementary";
+  $("dz-subtitle").textContent=isPri?"Solvability × Value":"ACL format";
+  $("dz-dl").href=isPri?"/api/design/priority-report":"/api/design/pdf";
+  $("dz-dl").download=isPri?"rma_priority_report.pdf":"rma_supplementary.pdf";
+  // Toggle button highlight
+  $("dz-mode-priority").style.background=isPri?"var(--accent)":"";
+  $("dz-mode-priority").style.color=isPri?"#fff":"";
+  $("dz-mode-priority").style.borderColor=isPri?"var(--accent)":"";
+  $("dz-mode-supp").style.background=isPri?"":"var(--accent)";
+  $("dz-mode-supp").style.color=isPri?"":"#fff";
+  $("dz-mode-supp").style.borderColor=isPri?"":"var(--accent)";
+  await pdfLoad(url, wrap, d=>{
     dzDoc=d;
     $("dz-pagetotal").textContent=`/ ${d.numPages}`;
     $("dz-pageinput").max=d.numPages; $("dz-pageinput").value=1;
@@ -5538,6 +5830,8 @@ async function loadDesignPdf(){
   wrap.onscroll=()=>{ if(dzDoc) $("dz-pageinput").value=dzGetCurrentPage(); };
   dzLoaded=true;
 }
+$("dz-mode-priority").onclick=()=>{ dzLoaded=false; loadDesignPdf("priority"); };
+$("dz-mode-supp").onclick=()=>{ dzLoaded=false; loadDesignPdf("supplementary"); };
 $("dz-zin").onclick=async()=>{dzScale=Math.min(dzScale+0.25,4);$("dz-zoom").textContent=Math.round(dzScale*100)+"%";if(dzDoc)await pdfRenderAll(dzDoc,dzScale,$("dz-canvas-wrap"));};
 $("dz-zout").onclick=async()=>{dzScale=Math.max(dzScale-0.25,0.5);$("dz-zoom").textContent=Math.round(dzScale*100)+"%";if(dzDoc)await pdfRenderAll(dzDoc,dzScale,$("dz-canvas-wrap"));};
 $("dz-zoom").textContent=Math.round(dzScale*100)+"%";
@@ -5559,8 +5853,85 @@ $("dz-fitw").onclick=async()=>{
 
 // ── Export tab ────────────────────────────────────────────────────────────────
 let _expBundle = "";
+let _exDsLoaded = false;
+
+async function _exLoadDatasets(){
+  if(_exDsLoaded) return;
+  try{
+    const data = await (await fetch("/api/datasets")).json();
+    const sel = $("ex-ds-sel");
+    (data.datasets||data||[]).forEach(d=>{
+      const slug = d.slug||d.name; if(!slug) return;
+      const o = document.createElement("option");
+      o.value = slug;
+      o.textContent = `${d.name||slug} (${d.problem_count!=null?d.problem_count:"?"})`;
+      sel.appendChild(o);
+    });
+    _exDsLoaded = true;
+  }catch(e){}
+}
+
+function _exQuery(){
+  const slug = $("ex-ds-sel").value;
+  const cap = parseInt($("ex-ds-cap").value||"0")||0;
+  const off = parseInt($("ex-ds-off").value||"0")||0;
+  const p = new URLSearchParams();
+  if(slug) p.set("datasets", slug);
+  if(cap>0) p.set("max_per_dataset", cap);
+  if(off>0) p.set("offset", off);
+  return p.toString();
+}
+
+$("ex-dl-probs").onclick = async ()=>{
+  const hint = $("ex-ds-hint");
+  const url = "/api/export/problems-pdf"+(_exQuery()?"?"+_exQuery():"");
+  hint.style.color = "var(--muted)";
+  hint.textContent = "preparing export…";
+  const deadline = Date.now() + 180000; // up to 3 min for the full 22k export
+  try{
+    while(Date.now() < deadline){
+      const r = await fetch(url);
+      if(r.status === 202){
+        hint.textContent = "compiling in background… (large exports take ~20s)";
+        await new Promise(res=>setTimeout(res, 3000));
+        continue;
+      }
+      if(!r.ok){ hint.style.color="var(--red)"; hint.textContent = "export failed (HTTP "+r.status+")"; return; }
+      const blob = await r.blob();
+      const burl = URL.createObjectURL(blob);
+      window.open(burl, "_blank");
+      hint.style.color = "var(--green)";
+      hint.textContent = "opened ("+(blob.size/1e6).toFixed(1)+" MB)";
+      setTimeout(()=>URL.revokeObjectURL(burl), 60000);
+      return;
+    }
+    hint.style.color="var(--red)"; hint.textContent = "timed out — try a per-dataset cap";
+  }catch(e){ hint.style.color="var(--red)"; hint.textContent = "error: "+e.message; }
+};
+$("ex-dl-instr").onclick = ()=>{ window.open("/api/export/eval-instructions-pdf", "_blank"); };
+
+$("ex-ingest-btn").onclick = async ()=>{
+  const status = $("ex-ingest-status");
+  const raw = $("ex-ingest").value.trim();
+  if(!raw){ status.textContent = "paste the JSON first"; return; }
+  let parsed;
+  try{ parsed = JSON.parse(raw); }
+  catch(e){ status.textContent = "invalid JSON: "+e.message; status.style.color="var(--red)"; return; }
+  status.style.color="var(--muted)"; status.textContent = "ingesting…";
+  try{
+    const r = await fetch("/api/export/ingest-evaluations", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(parsed)
+    });
+    const d = await r.json();
+    if(d.error){ status.style.color="var(--red)"; status.textContent = "error: "+d.error; return; }
+    status.style.color="var(--green)";
+    status.textContent = `ingested ${d.ingested} score(s) into ${(d.datasets_updated||[]).join(", ")||"—"}`
+      + (d.skipped?`, skipped ${d.skipped}`:"");
+  }catch(e){ status.style.color="var(--red)"; status.textContent = "request failed: "+e.message; }
+};
 
 function initExportTab(){
+  _exLoadDatasets();
   const q = _lvlQ() || selected;
   const lbl = $("exp-q-label");
   const genBtn = $("exp-gen-btn");

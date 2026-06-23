@@ -1,22 +1,44 @@
 {
- "id": "q5-25",
- "problem_id": "q5",
- "dataset": "first_proof_1",
- "title": "[Jun-21] Critical: false suspension/discreteness claim in setup invalidates proof structure",
- "status": "open",
- "labels": [
-  "verification-report-jun21"
- ],
- "issue_type": "logical-error",
- "priority": "P0",
- "created_at": "2026-06-21T18:40:00Z",
- "created_by": "verifier-agent",
- "comments": [
-  {
-   "id": "cq5jun21a",
-   "author": "verifier-agent",
-   "role": "agent",
-   "body": "**From external verification report Jun 21 — Critical error**\n\n**Issue:** The setup asserts a suspension/discreteness claim about the relevant indexing category (treating a mapping space or coefficient system as discrete / as an honest suspension) that is mathematically false in this generality. The argument then uses this claim as the structural backbone for the slice-filtration computation.\n\n**Why it fails:** The objects in question are not discrete and the suspension identification does not hold on the nose; it holds only up to a weaker inclusion/relation. Because the rest of the proof is built on the false equality, the current proof structure is invalidated even though the final answer is correct.\n\n**Suggested fix:** Weaken the claim from an equality/discreteness statement to the correct inclusion, and re-derive the downstream steps so they only use the weaker relation. The external reviewer noted this is likely a local fix but it changes the load-bearing structure, so the affected lemmas must be re-checked individually.\n\nRelated: the broader pattern of asserting load-bearing setup claims at 'idea' level — see the system insight in webapp/insights/verification_report_jun21.json."
-  }
- ]
+  "id": "q5-25",
+  "problem_id": "q5",
+  "dataset": "first_proof_1",
+  "title": "[Jun-21] Critical: false suspension/discreteness claim in setup invalidates proof structure",
+  "status": "resolved",
+  "labels": [
+    "verification-report-jun21"
+  ],
+  "issue_type": "logical-error",
+  "priority": "P0",
+  "created_at": "2026-06-21T18:40:00Z",
+  "created_by": "verifier-agent",
+  "comments": [
+    {
+      "id": "cq5jun21a",
+      "author": "verifier-agent",
+      "role": "agent",
+      "body": "**From external verification report Jun 21 — Critical error**\n\n**Issue:** The setup asserts a suspension/discreteness claim about the relevant indexing category (treating a mapping space or coefficient system as discrete / as an honest suspension) that is mathematically false in this generality. The argument then uses this claim as the structural backbone for the slice-filtration computation.\n\n**Why it fails:** The objects in question are not discrete and the suspension identification does not hold on the nose; it holds only up to a weaker inclusion/relation. Because the rest of the proof is built on the false equality, the current proof structure is invalidated even though the final answer is correct.\n\n**Suggested fix:** Weaken the claim from an equality/discreteness statement to the correct inclusion, and re-derive the downstream steps so they only use the weaker relation. The external reviewer noted this is likely a local fix but it changes the load-bearing structure, so the affected lemmas must be re-checked individually.\n\nRelated: the broader pattern of asserting load-bearing setup claims at 'idea' level — see the system insight in webapp/insights/verification_report_jun21.json."
+    },
+    {
+      "id": "cb9a06b93",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Re-assessment against current `solution.tex`.\n\nThis refers to the same discreteness/suspension clause as q5-15. In the current text the suspension *containment* $\\Sigma:\\tau^{\\mathcal O}_{\\ge k}\\to\\tau^{\\mathcal O}_{\\ge k+1}$ is correct (it follows from $\\Sigma N^TS^1\\simeq N^{T\\sqcup *}S^1$); only the appended 'whence ... discrete' is an unproven non-sequitur. Crucially, this clause is **not used as a backbone** anywhere in the proof of `thm:main` (forward and converse rely on `prop:phiNT`, `lem:shift`, `lem:restr`, `lem:induced`, `lem:geom`, and the isotropy separation — none invoke discreteness of slices). The subcategory is also correctly defined as *connective* (no desuspension), so there is no false on-the-nose suspension *equality* of subcategories driving the argument. I therefore downgrade this from 'critical / invalidates proof structure' to a minor unused-claim gap, identical to q5-15.",
+      "created_at": "2026-06-21T22:08:46Z"
+    },
+    {
+      "id": "c4fdbd507",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Fix applied\n\n**Diagnosis.** The only place the offending text appeared was a single sentence in the slice-filtration section:\n\n> \"The suspension $\\Sigma N^T S^1\\simeq N^{T\\sqcup *}S^1$ shows $\\Sigma:\\tau^{\\mathcal O}_{\\ge k}\\to\\tau^{\\mathcal O}_{\\ge(k+1)}$, whence the $\\infty$-category of $\\mathcal O$-$k$-slices is discrete.\"\n\nI confirmed (via text search) that `discrete` occurred nowhere else, and verified the critic's claim that no later lemma uses it: the convergence argument and `thm:main` (forward + converse) depend only on `prop:phiNT`, `lem:shift`, `lem:restr`, `lem:induced`, `lem:geom`, `lem:detect-conn`, and the isotropy-separation cofiber sequence.\n\n**What is true vs. false.**\n- TRUE: $N^{T\\sqcup *}S^1\\simeq N^T S^1\\otimes N^{G/G}S^1\\simeq \\Sigma N^T S^1$, since $N^{G/G}S^1\\simeq S^1$ and the norm is multiplicative on disjoint unions. Also $G/G$ is admissible for every transfer system (reflexivity gives $G\\to G$), and $|T\\sqcup *|=|T|+1$, so $\\Sigma$ sends generating cells of $\\tau_{\\ge k}$ to generating cells of $\\tau_{\\ge k+1}$. Combined with exactness of $\\Sigma$ and compatibility with the closure operations (o1)-(o3), this yields the one-sided **containment** $\\Sigma\\,\\tau^{\\mathcal O}_{\\ge k}\\subseteq\\tau^{\\mathcal O}_{\\ge(k+1)}$.\n- FALSE / non-sequitur: \"whence the slice categories are discrete.\" Slice categories of $G$-spectra are stable $\\infty$-categories with nontrivial mapping spectra and are not discrete in general; the containment above gives no such conclusion.\n\n**Fix.** I replaced the erroneous sentence with a labeled remark (`rem:susp`) that:\n1. proves only the correct equivalence $N^{T\\sqcup *}S^1\\simeq\\Sigma N^T S^1$ and the admissibility of $G/G$;\n2. concludes only the weaker one-sided **containment** $\\Sigma:\\tau^{\\mathcal O}_{\\ge k}\\to\\tau^{\\mathcal O}_{\\ge(k+1)}$ (no equality of subcategories, no on-the-nose suspension identification beyond the displayed equivalence);\n3. explicitly states slices are in general NOT discrete and that the remark is motivational and used nowhere in the sequel.\n\nEnvironments remain balanced (qfiveremark 7/7, proof 14/14, theorem 2/2). No LaTeX toolchain is installed in the workspace so I could not compile, but the edit is a self-contained well-formed remark block.\n\nThis resolves the issue: the false discreteness/equality claim is removed, the correct weaker inclusion is stated and proved, and no downstream lemma relied on the removed claim, so no re-derivation of other lemmas was required.",
+      "created_at": "2026-06-21T22:20:10Z"
+    },
+    {
+      "id": "ev387d2406",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T22:20:14Z"
+    }
+  ]
 }

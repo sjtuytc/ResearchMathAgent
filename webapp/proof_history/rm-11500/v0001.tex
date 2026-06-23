@@ -1,0 +1,128 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\begin{document}
+
+\title{The infiniteness of the Kleene star of a finite language is in $\mathsf{P}$}
+\maketitle
+
+\section{Statement}
+
+A finite language is a finite set $L \subseteq \Sigma^*$ of words over a finite
+alphabet $\Sigma$. Its Kleene star is
+\[
+L^* = \{w_1 w_2 \cdots w_k : k \ge 0,\ w_i \in L\},
+\]
+where the case $k=0$ yields the empty word $\varepsilon$ (the empty concatenation).
+We consider the decision problem
+
+\begin{quote}
+INPUT: a finite alphabet $\Sigma$ and a finite list of words
+$L = \{w_1,\dots,w_n\} \subseteq \Sigma^*$, each word given explicitly as a string
+of symbols; the input size is the total number of symbols used to list the words.
+
+QUESTION: Is $L^*$ infinite?
+\end{quote}
+
+We determine its computational complexity.
+
+\begin{theorem}\label{thm:main}
+$L^*$ is infinite if and only if $L$ contains at least one nonempty word.
+Consequently, the problem ``Is $L^*$ infinite?'' is decidable in linear time
+in the input size and therefore lies in $\mathsf{P}$. In fact it is essentially
+trivial: it is solvable by a single scan of the input that checks whether any
+listed word has length $\ge 1$.
+\end{theorem}
+
+\section{Proof}
+
+The key observation is a complete combinatorial characterization of when $L^*$
+is infinite. We prove the two directions of the criterion separately.
+
+\begin{lemma}\label{lem:suff}
+If $L$ contains a nonempty word, then $L^*$ is infinite.
+\end{lemma}
+
+\begin{proof}
+Suppose $w \in L$ with $|w| = \ell \ge 1$, where $|\cdot|$ denotes word length.
+For every integer $k \ge 0$, the word $w^k = \underbrace{w w \cdots w}_{k}$ is a
+concatenation of $k$ words from $L$ (each equal to $w$), hence $w^k \in L^*$ by
+the definition of the Kleene star.
+
+Concatenation is additive on lengths: $|uv| = |u| + |v|$ for all words $u,v$.
+By induction, $|w^k| = k\ell$. Since $\ell \ge 1$, the map $k \mapsto |w^k| = k\ell$
+is strictly increasing in $k$, so the words $\{w^k : k \ge 0\}$ have pairwise
+distinct lengths and are therefore pairwise distinct. Thus $L^*$ contains the
+infinite set $\{w^k : k \ge 0\}$, and so $L^*$ is infinite.
+\end{proof}
+
+\begin{lemma}\label{lem:nec}
+If $L$ contains no nonempty word, then $L^*$ is finite; indeed
+$L^* \subseteq \{\varepsilon\}$.
+\end{lemma}
+
+\begin{proof}
+The hypothesis means that every element of $L$ is the empty word $\varepsilon$;
+that is, $L \subseteq \{\varepsilon\}$ (so $L$ is either $\emptyset$ or
+$\{\varepsilon\}$).
+
+Take any $u \in L^*$. By definition $u = w_1 w_2 \cdots w_k$ with $k \ge 0$ and
+each $w_i \in L \subseteq \{\varepsilon\}$, so each $w_i = \varepsilon$. Since
+$\varepsilon$ is the identity for concatenation, $u = \varepsilon$ (this also
+covers $k = 0$, which gives the empty concatenation $\varepsilon$). Hence every
+element of $L^*$ equals $\varepsilon$, i.e. $L^* \subseteq \{\varepsilon\}$.
+
+A subset of the one-element set $\{\varepsilon\}$ is finite; therefore $L^*$ is
+finite. (Concretely, $L^* = \{\varepsilon\}$ in both cases $L = \emptyset$ and
+$L = \{\varepsilon\}$, since the empty concatenation $k=0$ always produces
+$\varepsilon \in L^*$.)
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+Lemmas~\ref{lem:suff} and~\ref{lem:nec} together establish the criterion:
+\[
+L^* \text{ is infinite} \iff L \text{ contains a word of length } \ge 1.
+\]
+Indeed, Lemma~\ref{lem:suff} gives the ``$\Leftarrow$'' direction, and
+Lemma~\ref{lem:nec} gives the contrapositive of the ``$\Rightarrow$'' direction
+(if $L$ has no nonempty word then $L^*$ is finite).
+
+This criterion yields a trivial decision procedure. Read the input, which lists
+the words $w_1,\dots,w_n$ as explicit strings of symbols; accept if and only if
+some $w_i$ consists of at least one symbol. The empty word is exactly the word
+contributing zero symbols to the listing, so detecting a nonempty word amounts
+to detecting any symbol attached to some listed word. Scanning the input once
+suffices, which costs $O(m)$ time where $m$ is the input size (the total number
+of symbols). Hence the problem is solvable in linear time, and in particular it
+lies in $\mathsf{P}$.
+
+Finally we address the contrast posed in the problem statement. The problem is
+\emph{not} $\mathsf{NP}$-hard unless $\mathsf{P} = \mathsf{NP}$, because it lies
+in $\mathsf{P}$: an $\mathsf{NP}$-hardness reduction from any $\mathsf{NP}$-hard
+problem would, composed with the polynomial-time decision procedure above, place
+that $\mathsf{NP}$-hard problem (and hence all of $\mathsf{NP}$) in $\mathsf{P}$.
+Thus, under the standard assumption $\mathsf{P} \neq \mathsf{NP}$, the problem is
+not $\mathsf{NP}$-hard. This completes the characterization: the problem is in
+$\mathsf{P}$ (indeed solvable in linear time by a single scan).
+\end{proof}
+
+\section{Remarks}
+
+\begin{itemize}
+\item The result is robust to natural variants of the encoding. Whether $L$ is
+given as a set or a list, with or without repetitions, and regardless of how the
+alphabet $\Sigma$ is encoded, the only quantity that matters is the existence of
+a single listed word of length $\ge 1$. The empty alphabet $\Sigma = \emptyset$
+forces $L \subseteq \{\varepsilon\}$, consistent with the criterion.
+
+\item The problem is in fact far below $\mathsf{P}$ in complexity (e.g. it is
+$\mathsf{AC}^0$/logspace computable, since it is a disjunction over input
+symbols of whether the symbol belongs to some listed word). The theorem only
+needs the weaker conclusion that it lies in $\mathsf{P}$, which already settles
+the dichotomy raised in the problem.
+\end{itemize}
+
+\end{document}

@@ -1,0 +1,163 @@
+{
+  "id": "rm-12775-meet-1",
+  "problem_id": "rm-12775",
+  "topic": "Init rm-12775 — proof review",
+  "goal": "Review the proof and issues for rm-12775; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T06:00:07Z",
+  "messages": [
+    {
+      "id": "m2aa7b74d",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-12775 — proof review**",
+      "created_at": "2026-06-23T06:00:07Z"
+    },
+    {
+      "id": "m33d90119",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "I'll be honest: this problem is well outside my usual territory of Laplacians and spectral methods — this is term rewriting and complexity theory, not effective resistances. Let me think about it the way I'd think about any decision problem, by looking for the combinatorial source of hardness.\n\nThe key structural observation is the multiset case (c) in RPO versus the lexicographic case in LPO. That's where the two problems diverge in complexity.\n\nLet me lay out what I believe the answers are and *why*:\n\n1. **LPO (problem (ii)) is in P.** The lexicographic extension is deterministic: to check $s >_{\\text{lpo}} t$ you recurse on a polynomial-size set of subterm pairs, and the lexicographic comparison of tuples $(s_1,\\dots,s_m)$ vs $(t_1,\\dots,t_n)$ proceeds position-by-position with no branching choices. Memoize over the $O(|s|\\cdot|t|)$ pairs of subterms and you get a polynomial-time dynamic program. Non-totality of the precedence doesn't hurt here, because case (b) just fails when $f, g$ are incomparable.\n\n2. **RPO (problem (i)) is harder, and the culprit is the multiset comparison combined with a non-total precedence.** The multiset extension $\\{s_1,\\dots,s_m\\} >_{\\text{mul}} \\{t_1,\\dots,t_n\\}$ requires finding a matching/cover between the two multisets — essentially a bipartite-matching-style existential choice of which $s_i$ dominates which $t_j$. With a *total* precedence the multiset order is itself decidable in polynomial time greedily, but with a *non-total* precedence the underlying $>_{\\text{rpo}}$ is only a partial order, and multiset comparison over a partial order forces you to guess the domination structure. That smells like **NP-completeness** for (i).\n\nSo my conjecture: **(i) is NP-complete, (ii) is in P.**\n\nWhat I'd want to nail down — and here's where I want the rewriting experts to push back — is the lower bound for (i). Can we actually find a reduction from, say, 3-SAT or a matching/covering problem into the multiset-domination choices? And on the upper side: is the witness for $s >_{\\text{rpo}} t$ (the choice of dominating subterms at each node) polynomially verifiable? I believe it is, which puts (i) in NP. Convince me the lower bound matches.",
+      "created_at": "2026-06-23T06:00:21Z"
+    },
+    {
+      "id": "m855b442b",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your instinct about where the difficulty concentrates is sound, but let me sharpen both ends, because I think the upper bound for (i) is better than NP and the lower bound is more delicate than 3-SAT.\n\nFirst, the membership question. The multiset extension over a partial order is not actually as wild as \"guess the entire domination structure.\" There is a classical characterization (Dershowitz–Manna): $\\{s_1,\\dots,s_m\\} >_{\\text{mul}} \\{t_1,\\dots,t_n\\}$ over a partial order $>$ iff after removing the common elements, the remaining multisets $X, Y$ satisfy $Y \\neq \\emptyset$ and every $y \\in Y$ has some $x \\in X$ with $x > y$. Crucially, this is **not** a matching condition — it is a *covering* condition: each $t_j$ needs *some* dominating $s_i$, and a single $s_i$ may dominate many $t_j$'s. That is exactly a reachability/dominance check, decidable greedily. So the multiset step itself is polynomial *given* the $>_{\\text{rpo}}$ relations on the pairs.\n\nThe subtlety you flagged with non-totality is real but it lives elsewhere: case (a) \"$s_i \\ge_{\\text{rpo}} t$ for *some* $i$\" and case (b) interact recursively, and with an incomparable precedence the recursion can explore many branches. But each query $u >_{\\text{rpo}} v$ is determined by queries on *subterm pairs* — there are only $O(|s|\\cdot|t|)$ such pairs. Memoize, as in your LPO dynamic program, and the whole relation $>_{\\text{rpo}}$ on all subterm pairs is computed bottom-up. The covering test at each node is polynomial in the precomputed table. I therefore claim **(i) is in P as well**, not NP-complete — the apparent existential \"guessing\" collapses because Dershowitz–Manna replaces matching by domination.\n\nSo my counter-conjecture: **both (i) and (ii) are in P**, indeed both solvable by the same memoized fixed-point over the $O(|s|\\cdot|t|)$ subterm-pair lattice. This is structurally a least-fixed-point computation — the \"smallest relation\" in the problem statement is literally a monotone operator on the finite lattice of subterm-pair relations, and you iterate to closure in polynomially many rounds.\n\nWhere I would invest the remaining effort: confirm there is no hidden exponential blowup in case (c)'s recursion when $f=g$ and we must compare *new* pairs $(s_i, t_j)$ not already in the closure — but those are still subterm pairs of the original terms, so the lattice stays of size $O(|s|\\cdot|t|)$. If someone can exhibit a family forcing super-polynomially many distinct queries, that breaks my argument; otherwise the NP-hardness reduction Dan seeks should fail to exist. Let us try to construct that bad family explicitly before committing to NP-completeness.",
+      "created_at": "2026-06-23T06:01:09Z"
+    },
+    {
+      "id": "m7f7fc421",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me compute the first few cases by hand, because that's where the truth hides — László's fixed-point picture is seductive but I think it's *too* clean.\n\nThe crucial question, in my language: is the recursion confined to the subterm-pair lattice? For LPO and for *standard* RPO on ground terms, yes — every query $u >_{\\text{rpo}} v$ has $u,v$ subterms of the original $s,t$. There the memoization is exactly a monotone operator on $O(|s|\\cdot|t|)$ pairs, and László is right: **P**. That matches what's actually in the literature.\n\nBut hold on — the problem says terms *may contain variables*, and the precedence is *non-total*. That is the analog of dropping the Ramanujan bound: the \"easy\" structure disappears. Two points:\n\n1. **László's Dershowitz–Manna remark is correct but doesn't close the gap.** Yes, multiset comparison over a fixed partial order is the covering condition, polynomial. The danger Dan smelled is not the multiset test per se — it's that with an incomparable precedence, case (a)/(b) at a node with $f \\not>_\\Sigma g$ and $g \\not>_\\Sigma f$ forces case (c) *only when $f=g$*; when $f\\neq g$ incomparable you fall back entirely on case (a). That branching on \"which $s_i$ covers $t$\" is still over subterm pairs. So far, P survives.\n\n2. **Where I'd actually look for hardness:** the genuine subtlety is whether you must compare a subterm of $s$ against a *constructed* term, e.g. in proving $s >_{\\text{rpo}} t_j$ for all $j$ in case (b) — those $t_j$ are subterms, fine. I don't yet see the term lattice escaping $O(|s|\\cdot|t|)$.\n\nSo I lean toward László: **both in P**. *But* — and this is the real theorem behind the technical one — the literature (Krishnamoorthy–Narendran, and the careful analysis by Comon and others) records that **RPO with non-total precedence becomes NP-complete**, precisely because for *incomparable* function symbols you may permute the multiset/lexicographic status and the existential choice is genuine. The folklore answer is: **(i) RPO is NP-complete, (ii) LPO is in P.**\n\nSo before we commit: let's settle the one experiment that decides it. Take $f,g$ incomparable in $>_\\Sigma$ and build $s,t$ where deciding $s>_{\\text{rpo}}t$ requires *guessing a consistent total extension* of the precedence. If such a family exists, the choice is not memoizable over subterm pairs — it's a choice over *linearizations of $>_\\Sigma$*, which is exponential, and that is the NP witness. László, your lattice argument assumes the operator is monotone in a *fixed* order; non-totality lets the order itself be a degree of freedom. **That's the hidden existential.** Let me sketch a 3-SAT reduction encoding clause satisfaction into mutually-incomparable symbol comparisons — I bet that's where Dan's instinct is vindicated.",
+      "created_at": "2026-06-23T06:01:59Z"
+    },
+    {
+      "id": "m900a2c3a",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that's the crux — you've located the hidden existential exactly where I should have looked. Let me reconcile this with László's fixed-point picture, because I now think we're *both* right, but about different problems.\n\nLászló's monotone-operator argument is airtight **for a fixed precedence**: the relation $>_{\\text{rpo}}$ on the $O(|s|\\cdot|t|)$ subterm pairs is the least fixed point of a monotone operator, computable bottom-up in polynomial time. I have no quarrel with that. The Dershowitz–Manna covering characterization makes case (c) polynomial *given the table*. So if $>_\\Sigma$ were total — or even just fixed — we'd be in P, full stop.\n\nThe escape, as Peter says, is that with a **non-total** precedence the order itself becomes a degree of freedom. Here's the clean way to see it. RPO has a fundamental monotonicity: $s >_{\\text{rpo}} t$ holds for precedence $>_\\Sigma$ implies it holds for any extension $>_\\Sigma'$. So\n$$s >_{\\text{rpo}}^{>_\\Sigma} t \\iff \\exists \\text{ total extension } >_\\Sigma' \\text{ of } >_\\Sigma:\\ s >_{\\text{rpo}}^{>_\\Sigma'} t.$$\nThat existential over linearizations is *exactly* the NP witness: guess the linear extension (polynomial-size — it's a total order on $\\Sigma$), then run László's polynomial fixed-point on the now-total precedence to verify. **So (i) is in NP**, and the witness is the linearization, not a domination structure inside the multiset. That cleans up my original membership claim.\n\nFor the lower bound, Peter, your 3-SAT sketch is the right target, but let me push for the *right gadget*. The variables of the SAT formula should be the incomparable symbol pairs $\\{f_i, g_i\\}$ — the choice \"$f_i >_\\Sigma g_i$ or $g_i >_\\Sigma f_i$\" in the linearization encodes the truth assignment. Then each clause must be a term comparison that holds in the global RPO iff at least one of its literals' orientations is chosen. The subtlety, exactly as you said, is that the *same* linearization must satisfy all clauses simultaneously — consistency across gadgets is what makes it 3-SAT rather than independent local choices.\n\nSo my revised, sharpened conjecture, and I'll bet on it: **(i) RPO is NP-complete; (ii) LPO is in P.** Two action items: (1) verify the linearization-monotonicity lemma rigorously — does $s >_{\\text{rpo}} t$ genuinely commute with order extension in case (c)'s multiset test? I think yes but it must be checked. (2) Build the clause gadget where each literal forces one orientation and a subterm comparison succeeds iff the clause is satisfied. If both hold, we're done — and crucially, this is *constructive*, an explicit reduction, not an existence proof. That's the version I'll believe.",
+      "created_at": "2026-06-23T06:04:16Z"
+    },
+    {
+      "id": "m01bc9bd7",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — I yield gracefully, and indeed I think the resolution is more elegant than my fixed-point picture admitted. The error in my \"both in P\" claim was precisely the one Peter named: I treated $>_\\Sigma$ as fixed, but the input *gives us a partial order*, and the operator's monotonicity in a fixed order is irrelevant when the order is itself a free parameter. Dan's linearization identity\n$$s >_{\\text{rpo}}^{>_\\Sigma} t \\iff \\exists\\ \\text{total extension } >_\\Sigma' \\supseteq >_\\Sigma :\\ s >_{\\text{rpo}}^{>_\\Sigma'} t$$\nis the correct lens, and it puts (i) cleanly in NP: guess the linear extension (size $O(|\\Sigma|^2)$), then my polynomial fixed-point verifies. Good.\n\nLet me make three sharpening remarks.\n\n1. **The monotonicity lemma (action item 1) does hold, and the multiset case is exactly where my Dershowitz–Manna observation earns its keep.** The covering characterization — every $y \\in Y$ has *some* $x \\in X$ with $x >_{\\text{rpo}} y$ — is *monotone* in the underlying relation: enlarging $>_{\\text{rpo}}$ (via enlarging $>_\\Sigma$) can only add dominating pairs, never destroy them. So case (c) commutes with order extension. This is the structural reason the existential collapses onto the linearization and *not* onto the domination structure — my earlier point survives, just in service of the NP upper bound rather than a P claim.\n\n2. **Why my \"no super-polynomial query family\" argument was a red herring.** The subterm-pair lattice does stay size $O(|s|\\cdot|t|)$ — that part was never wrong. The blowup is orthogonal to it: it lives in the $2^{O(|\\Sigma|\\log|\\Sigma|)}$ choices of linearization, a dimension entirely outside the term lattice. I was searching for hardness in the wrong space.\n\n3. **On the lower bound — Peter's gadget.** The right framing is that each incomparable pair $\\{f_i,g_i\\}$ is a Boolean variable, and the linearization is a truth assignment. This is morally a constraint satisfaction over the *order polytope* of the partial order $>_\\Sigma$: linear extensions are the vertices, clauses are constraints. The consistency Dan emphasizes — one global linearization satisfying all clauses — is exactly what lifts independent local choices to genuine 3-SAT. I'd recommend building the clause gadget so that a literal $f_i >_\\Sigma g_i$ is *read off* by a term comparison $f_i(\\dots) >_{\\text{rpo}} g_i(\\dots)$ that succeeds via case (b) iff that orientation is chosen, with the three literals of a clause feeding a single root comparison via case (a). Krishnamoorthy–Narendran's hardness for RPO with partial precedence is the precedent, and Comon–Treinen's work confirms the picture.\n\nSo I now firmly endorse: **(i) NP-complete, (ii) P.** The discriminating experiment Peter proposed is the one to write up — and I'll add that the *reason* LPO escapes is that the lexicographic extension, unlike multiset covering, fails to be monotone-and-collapsible in the same benign way; but with LPO the position-by-position comparison never needs to *choose* an orientation existentially, it reads the precedence at fixed argument positions, so even non-totality leaves it in",
+      "created_at": "2026-06-23T06:05:08Z"
+    },
+    {
+      "id": "m19db0147",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — we've converged, and the convergence is correct. But let me insist on closing the *one* gap that nobody has fully nailed, because the devil here is the same devil I chase in subconvexity: the upper bound and lower bound must meet *exactly*, and I want LPO's escape proven, not asserted.\n\nThree precise points.\n\n1. **The linearization lemma needs the right invariant.** Dan's identity $s >_{\\text{rpo}}^{>_\\Sigma} t \\iff \\exists \\text{ total } >_\\Sigma' \\supseteq >_\\Sigma$ is the heart, and László's monotonicity of the Dershowitz–Manna covering test is exactly what makes it go through for case (c). But note the subtlety in case (b): $f >_\\Sigma g$ is a *positive* atomic test, monotone under extension; case (a) and the variable case don't touch the precedence at all. So the whole RPO predicate is built from precedence-atoms that occur only *positively*. That positivity is the real theorem — it's why the existential over linearizations is sound and complete. Write it as: $>_{\\text{rpo}}$ is monotone in $>_\\Sigma$ because $>_\\Sigma$ appears only in positive position. Clean.\n\n2. **For the lower bound, I'll commit to the gadget.** Variable $x_i \\leftrightarrow$ incomparable pair $\\{f_i, g_i\\}$; the linearization picks the orientation. A literal is checked by a comparison succeeding via case (b) precisely when its orientation is chosen. The only thing to verify — and this is where Krishnamoorthy–Narendran is the precedent — is that the clause gadget is *order-faithful*: no spurious comparison succeeds via case (a) \"for free.\" That's a hygiene condition on the gadget terms; it's checkable by hand on the first clause. I'd write out the 3-clause example explicitly before trusting the general construction.\n\n3. **Why LPO genuinely escapes — the asymmetry must be proven, not waved.** The lexicographic extension at $f=g$ reads arguments left-to-right at *fixed* positions: compare $s_1$ vs $t_1$; if equal, $s_2$ vs $t_2$; etc. There is no choice of *which* argument dominates — the position is forced. So even with a non-total precedence, LPO is still a monotone fixed point over the subterm lattice with precedence-atoms in positive position, and there is *no second existential dimension* over linearizations to exploit — because for a *given* pair the lex outcome is a deterministic scan. Therefore LPO stays in **P** regardless of totality. The discriminator between (i) and (ii) is exactly: multiset covering admits a free orientation choice that 3-SAT can encode; lexicographic scanning does not. That asymmetry is the actual content.\n\nSo: **(i) NP-complete, (ii) P** — and the write-up should foreground the positivity-of-precedence lemma plus the order-faithful clause gadget. Let me compute the three-variable, two-clause instance by hand to be sure the gadget doesn't leak through case (a); if it survives that, I believe the theorem.",
+      "created_at": "2026-06-23T06:05:55Z"
+    },
+    {
+      "id": "me5eabf5f",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T06:06:48Z"
+    },
+    {
+      "id": "m9f1137f2",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve that RPO (i) with non-total precedence is NP-complete while LPO (ii) is in P, using the linearization-monotonicity (positivity-of-precedence) lemma for NP membership, an order-faithful 3-SAT clause gadget for NP-hardness, and a deterministic memoized fixed-point for LPO.",
+      "created_at": "2026-06-23T06:06:48Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that RPO (i) with non-total precedence is NP-complete while LPO (ii) is in P, using the linearization-monotonicity (positivity-of-precedence) lemma for NP membership, an order-faithful 3-SAT clause gadget for NP-hardness, and a deterministic memoized fixed-point for LPO.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Prove positivity-of-precedence / monotonicity lemma",
+        "body": "Formally prove that the RPO predicate is monotone in the precedence: if s >_rpo t under partial order >_Sigma, then it holds under any extension >_Sigma'. Show that >_Sigma occurs only in positive position across cases (a) (no precedence test), (b) (positive atomic test f >_Sigma g), and (c) (Dershowitz-Manna covering test, which is monotone since enlarging >_rpo only adds dominating pairs). Conclude the linearization identity: s >_rpo^{>_Sigma} t iff there exists a total extension >_Sigma' of >_Sigma with s >_rpo^{>_Sigma'} t.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Establish NP membership of RPO (i)",
+        "body": "Using the linearization identity from step 0, show RPO is in NP: the witness is a total extension >_Sigma' of the input partial order (size O(|Sigma|^2)). Given this linearization, verify s >_rpo t via a polynomial-time memoized fixed-point over the O(|s|*|t|) subterm-pair lattice, computed bottom-up, with the multiset case decided by the polynomial Dershowitz-Manna covering test. Confirm verification is polynomial.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Construct the 3-SAT clause gadget for NP-hardness",
+        "body": "Build an explicit reduction from 3-SAT to RPO with non-total precedence. Map each Boolean variable x_i to an incomparable symbol pair {f_i, g_i}, so a linearization choosing f_i >_Sigma g_i or g_i >_Sigma f_i encodes the truth assignment. Encode each literal as a term comparison f_i(...) >_rpo g_i(...) that succeeds via case (b) exactly when its orientation is chosen, and combine the three literals of a clause into a single root comparison via case (a) so the clause holds iff at least one literal is satisfied. Ensure all clause gadgets share one global linearization to enforce consistency.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Verify order-faithfulness of the gadget on a small instance",
+        "body": "Compute by hand a concrete three-variable, two-clause (and ideally a single 3-literal clause) instance of the gadget from step 2. Check that no spurious comparison succeeds via case (a) 'for free' — i.e., that a clause comparison holds if and only if the chosen linearization satisfies at least one literal. Confirm the hygiene/order-faithfulness condition before trusting the general construction.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Prove LPO (ii) is in P",
+        "body": "Show that LPO is decidable in polynomial time regardless of non-totality. Give a memoized dynamic program over the O(|s|*|t|) subterm pairs; in the case f=g, the lexicographic extension compares arguments left-to-right at fixed positions with no existential choice of which argument dominates. Prove there is no second existential dimension over linearizations, since the lex outcome for any fixed pair is a deterministic scan, and case (b) failures simply terminate when symbols are incomparable.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 5,
+        "title": "Articulate the structural asymmetry between (i) and (ii)",
+        "body": "Crisply state and justify why multiset covering (RPO) admits a free orientation choice encodable by 3-SAT while lexicographic scanning (LPO) does not. Contrast the monotone-collapsible covering test (which forces the existential onto linearizations) with the position-forced lexicographic comparison (which leaves no orientation choice). This is the discriminating content separating NP-complete from P.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          1,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Stress-test the linearization lemma and reduction for hidden gaps",
+        "body": "Critically probe the proof: confirm the monotonicity lemma genuinely commutes with order extension in case (c)'s multiset test (no edge case where extending >_Sigma destroys a covering); confirm terms with variables do not let the subterm lattice escape O(|s|*|t|); and attempt to construct a counterexample family forcing super-polynomial distinct queries within a fixed precedence. If no such family exists, the NP upper bound and P bound are secured.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1,
+          4
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble the complete NP-completeness and P theorems",
+        "body": "Combine NP membership (step 1) with verified NP-hardness (steps 2-3) to conclude RPO (i) is NP-complete, and combine the polynomial algorithm (step 4) to conclude LPO (ii) is in P. Foreground the positivity-of-precedence lemma and the order-faithful clause gadget in the write-up, citing Krishnamoorthy-Narendran and Comon-Treinen as precedents. Ensure upper and lower bounds meet exactly.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1,
+          3,
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T06:06:48Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

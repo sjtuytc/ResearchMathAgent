@@ -1,0 +1,151 @@
+{
+  "id": "rm-11439-meet-1",
+  "problem_id": "rm-11439",
+  "topic": "Init rm-11439 — proof review",
+  "goal": "Review the proof and issues for rm-11439; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T03:15:04Z",
+  "messages": [
+    {
+      "id": "m1a11b534",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-11439 — proof review**",
+      "created_at": "2026-06-23T03:15:04Z"
+    },
+    {
+      "id": "mf2f0d255",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "I have to be honest with the room: this problem isn't actually about graphs or Laplacians at all — it's a number-theoretic iteration problem about $d(n)$ and $\\sigma(n)$. So let me put aside effective resistances and think about it as the discrete dynamical system it is. But I do bring an algorithmic instinct: I want the *exact rate of contraction* of these iterates, which is the analogue of asking \"what's the spectral gap?\" — here it's \"how fast does the iteration collapse to its fixed point?\"\n\nLet me set up part (a) concretely:\n\n- The map $n \\mapsto d(n)$ for $n \\ge 2$ strictly decreases until it reaches $2$ (since $d(n) < n$ for all $n \\ge 3$, and $d(2)=2$ is the fixed point). So $k_d(n)$ is the number of steps to reach the fixed point $2$.\n- The key contraction estimate: for $n \\ge 3$, $d(n) \\le 2\\sqrt{n}$, and more usefully $d(n) = n^{o(1)}$. The iterate is *roughly logarithmic* at each step. After one step we're at $\\sim \\log n$ scale, after two at $\\sim \\log\\log n$, and so on.\n- This strongly suggests $k_d(n) = \\Theta(\\log^* n)$ — the iterated logarithm — because each application of $d$ takes you down a full logarithm in scale, and $\\log^*$ counts exactly how many logarithms until you hit a constant.\n\nSo my conjecture for (a): $k_d(n) = (1+o(1))\\log^* n$, with an effective version where you track the constant in $d(n) \\le n^{c/\\log\\log n}$ (the maximal order of $d$). That's the analogue of nailing the contraction constant, which is exactly the kind of thing I care about — not just $O(\\log^* n)$ but the sharp leading coefficient.\n\nFor part (b) it's the reverse: $\\sigma$ is *expansive*, $\\sigma(n) > n$, and in fact $\\sigma(n)/n$ grows like $\\log\\log n$ on average (Grönwall). Iterating $\\sigma$ from $2$, the growth is super-exponential — roughly $\\sigma^{(k)}(2)$ grows doubly-exponentially-ish — so $k_\\sigma(m)$ should be $\\Theta(\\log\\log m / \\log\\log\\log m)$ or thereabouts. We need to pin the growth rate of the orbit $2, \\sigma(2), \\sigma^{(2)}(2),\\dots$ precisely.\n\nTwo questions for the room: (1) Is the claimed answer to (a) actually $\\log^* n$, and do we have the matching lower bound via the *minimum* order of $d$ (e.g. $d(p)=2$ for primes gives one-step examples but the worst case is what governs $k_d$)? (2) For (b), what is the proven lower and upper bound on $\\log \\sigma^{(k)}(2)$ as a function of $k$? Let's write down the recursion for the orbit explicitly before claiming a closed form.",
+      "created_at": "2026-06-23T03:15:20Z"
+    },
+    {
+      "id": "m3e4ce564",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right to set aside the Laplacian machinery — this is a discrete dynamical system, and the right instinct is to track the *scale* at each step. Let me sharpen the analysis of (a), because I think the $\\log^*$ claim is correct but needs care about which bound on $d$ governs the iteration.\n\nThe crucial point: after the *first* application, we are in a regime where the relevant bound is the **maximal order** of $d$, namely Wigert's theorem,\n$$\\log d(n) \\le (1+o(1)) \\frac{\\log 2 \\cdot \\log n}{\\log\\log n}.$$\nSo one step takes $n$ to at most roughly $n^{o(1)}$, but not all the way down to $\\log n$ — it's $\\exp\\!\\big(O(\\log n/\\log\\log n)\\big)$. That is *almost* a logarithm but with the $\\log\\log n$ correction. The key observation is that $\\log^* $ is insensitive to this: whether each step divides the logarithm of the scale by $1$ or by $\\log\\log$, the *number* of steps to reach a constant is $\\log^* n$ up to a $(1+o(1))$ factor, since $\\log^*$ counts the number of $\\log$-iterations and the $\\log\\log$ factor only perturbs lower-order terms. So I agree: $k_d(n) = (1+o(1))\\log^* n$.\n\nBut I want to flag a subtlety Dan glossed. The iteration is *not monotone in a simple way* across the orbit — $d(n)$ can be small (a prime gives $d(p)=2$ in one step) or comparatively large. The function $k_d(n)$ is therefore *highly non-monotone* in $n$, and a true \"closed form\" can only be an asymptotic envelope. The right statements are:\n- **Worst case (sharp upper bound):** $\\max_{2\\le n\\le N} k_d(n) = (1+o(1))\\log^* N$, governed by Wigert.\n- **Typical/lower behavior:** for most $n$, $k_d(n)$ is bounded by a small constant beyond $\\log^* n$.\n\nFor (b), let me write the orbit recursion explicitly. Set $a_k = \\sigma^{(k)}(2)$, so $a_0=2$. Then $\\log a_{k+1} = \\log \\sigma(a_k)$, and since $a_k \\le \\sigma(a_k) \\le a_k \\log\\log a_k$ (Grönwall direction, with $n \\le \\sigma(n) \\le e^\\gamma n \\log\\log n (1+o(1))$ on the upper side), we get\n$$\\log a_{k+1} = \\log a_k + \\log\\log\\log a_k + O(1).$$\nThis is the cleaner formulation than \"doubly-exponential.\" Let $L_k = \\log a_k$. Then $L_{k+1} = L_k + \\log\\log L_k + O(1)$, an *additive* recursion with increment $\\log\\log L_k$. Summing, $L_k \\approx k \\cdot \\log\\log L_k$, which inverts to\n$$k_\\sigma(m) = (1+o(1)) \\frac{\\log m}{\\log\\log\\log m}.$$\nSo Dan's $\\log\\log m/\\log\\log\\log m$ guess is one logarithm too aggressive — the orbit grows only *singly*-exponentially-ish in $k$, not doubly. The increment per step is $\\log\\log L_k$, which is tiny, so it takes about $\\log m / \\log\\log\\log m$ steps to reach $\\log a_k \\approx \\log m$.\n\nTwo action items: (1) verify the lower bound on $\\sigma(n)/n$ used in the rec",
+      "created_at": "2026-06-23T03:16:08Z"
+    },
+    {
+      "id": "m6272cf76",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — but let me compute the first few cases by hand, because that's where the truth lives. For (a): start with $n=2^{2^k}$, the genuinely worst-case tower. We have $d(2^{2^k}) = 2^k+1$. Now $d(2^k+1)$ depends on the factorization of $2^k+1$ — this is where it gets *arithmetic*, not just analytic. Laszlo is right that Wigert's $\\log d(n) \\le (1+o(1))\\frac{\\log 2\\,\\log n}{\\log\\log n}$ governs the envelope, and the $\\log\\log$ correction washes out under $\\log^*$. So $\\max_{n\\le N} k_d(n) = (1+o(1))\\log^* N$ stands. But I insist we be honest: the *worst case* sequence is not freely choosable — you can't pick $d(n)$ to be maximal at every step, because the orbit is forced. After one step you're at $d(n)$, and that's a specific integer whose divisor count you can't optimize. So the sharp leading constant Dan wants requires building a tower where Wigert is *saturated at every iterate simultaneously*, and I doubt that's achievable past depth two. The honest theorem is $\\log^* N (1+o(1))$ for the max, full stop.\n\nNow part (b) — this is the cleaner one and I agree with Laszlo's correction of Dan: the increment is additive, $L_{k+1} = L_k + \\log\\log L_k + O(1)$. But let me push on the constant. The Grönwall upper bound $\\sigma(n)\\le e^\\gamma n\\log\\log n(1+o(1))$ is unconditional, but it's only attained on a thin sequence (the colossally abundant numbers). The orbit $a_k$ is one specific sequence — is it abundant in the Grönwall sense? Almost certainly *not* every step, so the true increment is $\\log\\log\\log a_k + O(1)$ where the $O(1)$ hides whether $a_k$ sits near the Grönwall extremal points. Let me just compute: $a_0=2$, $\\sigma(2)=3$, $\\sigma(3)=4$, $\\sigma(4)=7$, $\\sigma(7)=8$, $\\sigma(8)=15$, $\\sigma(15)=24$, $\\sigma(24)=60$, $\\sigma(60)=168$. So the orbit prefers numbers with many small prime factors — it's self-selecting toward abundance! That's the real phenomenon: $\\sigma$ iteration drives you toward highly composite numbers where $\\sigma(n)/n$ is large, so the increment per step *increases* toward the Grönwall regime. That tightens Laszlo's inversion to\n$$k_\\sigma(m) = (1+o(1))\\frac{\\log m}{\\log\\log\\log m},$$\nand I'd bet the implied constant is genuinely $1$, not just $\\Theta$. Action item: prove the orbit eventually satisfies $\\sigma(a_k)/a_k = e^\\gamma \\log\\log a_k(1+o(1))$ — that's the real content behind the closed form.",
+      "created_at": "2026-06-23T03:16:53Z"
+    },
+    {
+      "id": "m62d05746",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's hand computation is exactly the right move — compute the orbit and watch what it does. But I want to push back on his optimistic claim that the orbit self-selects all the way to the Grönwall extremal regime, because the numbers don't support it yet, and this matters for the *constant*, which is what I actually care about.\n\nLook at his orbit: $2,3,4,7,8,15,24,60,168,\\dots$. Compute the increments $\\sigma(a_k)/a_k$: $1.5, 1.33, 1.75, 1.14, 1.875, 1.6, 2.5, 2.8,\\dots$. These are growing, but the Grönwall envelope $e^\\gamma \\log\\log a_k$ at $a_k=168$ is $e^\\gamma \\log\\log 168 \\approx 1.78 \\times 1.64 \\approx 2.9$, and we're at $2.8$ — so we are *tracking* near the envelope but the prime $7\\mapsto 8$ and $3\\mapsto4$ steps show the orbit can stall when it lands on a near-prime or prime power. That's the analogue of a *bad eigenvalue gap*: the increment isn't uniformly $\\log\\log L_k$, it dips whenever $a_k$ has a large prime factor.\n\nSo here's the precise question I want answered, in my language: **what is the worst-case contraction-failure rate?** Define the \"stall fraction\" — the density of indices $k$ where $\\sigma(a_k)/a_k = O(1)$ rather than $\\Theta(\\log\\log a_k)$. If stalls have density zero, Peter's constant-$1$ bet is safe and $k_\\sigma(m)=(1+o(1))\\frac{\\log m}{\\log\\log\\log m}$. If stalls have positive density, the constant changes.\n\nThree points:\n\n1. **For (a), I now fully concede the leading constant to Peter.** You cannot saturate Wigert at every iterate — the orbit is forced, exactly like you can't choose your spectrum after fixing the matrix. The honest theorem is $\\max_{n\\le N} k_d(n) = (1+o(1))\\log^* N$, and the constant-chasing I wanted is *provably* unavailable past depth two. Good.\n\n2. **For (b), the additive recursion $L_{k+1}=L_k+\\log\\log L_k+O(1)$ is correct, but the $O(1)$ is doing real work.** Summing $L_k \\approx \\sum_{j<k}\\log\\log L_j$ — if the increments fluctuate but have the *right average*, the inversion $k_\\sigma(m)=(1+o(1))\\frac{\\log m}{\\log\\log\\log m}$ survives even with bounded stalls, because $\\log\\log L$ varies so slowly that a constant-density of $O(1)$ stalls only perturbs the sum by a $(1+o(1))$ factor. So I claim the asymptotic is *robust* even if Peter's strong abundance claim fails — but the implied constant being exactly $1$ does require the average increment to hit $\\log\\log L_k(1+o(1))$.\n\n3. **Action item, sharpened:** prove a lower bound $\\sigma(n)/n \\ge 1 + \\frac{1}{p^-(n)}$ where $p^-(n)$ is the smallest prime factor — this guarantees no step *decreases* and bounds the stall depth. Combined with the unconditional Grönwall upper bound, that brackets $L_k$ tightly enough to give the $(1+o(1))$ in the denominator $\\log\\log\\log m$ unconditionally, leaving only the leading constant to Peter's abundance",
+      "created_at": "2026-06-23T03:19:11Z"
+    },
+    {
+      "id": "m8c5bc520",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's robustness argument in his point 2 is exactly right, and I want to make it airtight, because the slow variation of $\\log\\log L$ is the entire reason the constant survives. Let me phrase it as a comparison of sums, which is the cleanest formalization.\n\nWe have $L_{k+1} = L_k + \\delta_k$ with $\\delta_k = \\log\\log\\log a_k + O(1) = \\log\\log L_k + O(1)$, where the $O(1)$ is now provably *bounded below by a positive constant* via Dan's $\\sigma(n)/n \\ge 1 + 1/p^-(n)$, so $\\delta_k \\ge \\log 2 > 0$ — no stalls below a floor. The key point: since $L_k$ is increasing to infinity and $\\log\\log$ is monotone and slowly varying, for the inversion we only need\n$$\\sum_{j<k} \\delta_j = L_k - L_0.$$\nNow here is where the slow variation does the work. Replace the sum by an integral: if $\\delta_j \\approx \\log\\log L_j$, then $\\frac{dL}{dk} \\approx \\log\\log L$, giving $k \\approx \\int^{L} \\frac{dt}{\\log\\log t} = (1+o(1)) \\frac{L}{\\log\\log L}$. With $L = \\log m$ this is precisely\n$$k_\\sigma(m) = (1+o(1)) \\frac{\\log m}{\\log\\log\\log m}.$$\nThe reason a positive density of $O(1)$ stalls cannot move the constant is that $\\log\\log L$ changes by a factor $(1+o(1))$ over any window where $L$ itself changes by a $(1+o(1))$ factor — so even replacing $\\delta_j$ by anything in $[\\log 2, \\, e^\\gamma + \\log\\log L_j]$ on a sparse-or-dense set perturbs $\\int \\frac{dt}{\\delta(t)}$ only at lower order, *provided* the average of $\\delta_j$ over each dyadic block of $L$-values is $(1+o(1))\\log\\log L$. That last clause is exactly Peter's abundance claim, and it is the only thing standing between $\\Theta$ and the sharp constant $1$.\n\nSo I propose we factor the remaining work as a clean separation, mirroring how in the graphon framework one separates the limit object from the fluctuations:\n1. **The envelope (settled):** $k_\\sigma(m) = \\Theta\\!\\big(\\tfrac{\\log m}{\\log\\log\\log m}\\big)$ unconditionally, from $\\log 2 \\le \\delta_k \\le \\log\\log L_k + O(1)$.\n2. **The constant (open):** whether the *block-average* of $\\delta_k$ equals $(1+o(1))\\log\\log L_k$ — equivalently, whether the orbit equidistributes near the colossally abundant ridge often enough. This is an additive-energy / equidistribution statement about the orbit, and I doubt it follows from elementary bounds; it is genuinely the analogue of asking whether a dynamical orbit hits the high-density region of phase space with the right frequency.\n\nFor (a) I am fully in agreement with Peter and Dan: the forced nature of the orbit means Wigert can be saturated at most at depth two, and the honest theorem is $\\max_{n \\le N} k_d(n) = (1+o(1))\\log^* N$. Let me only add a structural remark — the non-monotonicity of $k_d(n)$ that I flagged means the right object is the *level set* $\\{n : k_d(n) = j\\}$, and these are determined by the inverse images $d^{-1}$",
+      "created_at": "2026-06-23T03:19:58Z"
+    },
+    {
+      "id": "mb4039985",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo's separation into envelope and constant is exactly right, and I want to seize on his point 2 — the equidistribution of the orbit near the colossally abundant ridge — because that is where this stops being elementary and becomes a *real* dynamics question, the kind I've spent my life on.\n\nHere's the thing. The orbit $a_k = \\sigma^{(k)}(2)$ is a deterministic sequence, but the question \"does it hit the high-$\\sigma(n)/n$ region with the right frequency?\" is morally a quantum-ergodicity question in disguise. In my work with Lindenstrauss on QUE, the whole content was: an arithmetically forced orbit (there, Hecke-pushed microlocal lifts) must equidistribute with respect to the natural measure, and the proof came not from the orbit being \"random\" but from a rigidity — the Hecke correspondence forced positive entropy, which forced full support. I'd bet the same structure is hiding here. The map $n\\mapsto\\sigma(n)$ has a *multiplicative rigidity*: $\\sigma(n)/n = \\prod_{p^a\\|n}(1+1/p+\\cdots+1/p^a)$, and the orbit's value at step $k$ is controlled by the small-prime structure of $a_k$. The question is whether the iteration injects small primes fast enough.\n\nBut let me push back gently on the optimism that the constant is $1$. Look again at the orbit: $7\\mapsto 8$, $3\\mapsto 4$ — these are exactly the steps where $a_k$ is a prime or prime power, $\\sigma(p)=p+1$, increment $\\approx 1$. The real question is the *density of primes and prime powers in the orbit*. If $a_k$ is prime infinitely often with positive density, then $\\delta_k$ dips to $\\log 2$ on a positive-density set, and Laszlo's block-average is genuinely below $\\log\\log L_k$ — the constant is strictly less than $1$. Is the orbit prime infinitely often? This is a number-theoretic statement of exactly the flavor where we have *no* tools — it's like asking whether $\\sigma^{(k)}(2)$ avoids primes, a sieve-in-orbits question, precisely the affine-sieve regime Bourgain, Gamburd and I worked in, except here the orbit is one-dimensional and we lack the expansion.\n\nSo my honest assessment of the action items:\n1. **(a) is closed:** $\\max_{n\\le N}k_d(n)=(1+o(1))\\log^* N$. The forced orbit kills constant-chasing past depth two. Done.\n2. **(b) envelope is closed** at $\\Theta(\\log m/\\log\\log\\log m)$ via the bracketing $\\log 2\\le\\delta_k\\le\\log\\log L_k+O(1)$.\n3. **(b) constant is NOT $1$ for free** — it requires controlling the density of prime and prime-power values in the orbit. I now suspect the *true* constant is some $c\\in(0,1]$ determined by the average of $\\sigma(a_k)/a_k$ along the orbit, and pinning it is genuinely open, an equidistribution-of-orbit problem with no current handle.\n\nThe real theorem behind the technical one is: *what measure does the orbit $\\{a_k\\}$ equidistribute toward in the multiplicative profile?* That's the question I'd write on the board.",
+      "created_at": "2026-06-23T03:20:46Z"
+    },
+    {
+      "id": "m456b1709",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T03:21:38Z"
+    },
+    {
+      "id": "m8683a123",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nTreat rm-11439 as a discrete dynamical system: prove k_d(n) = (1+o(1))log* n for the divisor iteration via Wigert's envelope, and establish k_σ(m) = Θ(log m / log log log m) for the sigma iteration via the additive recursion L_{k+1}=L_k+log log L_k+O(1), separating the unconditional envelope from the open leading-constant equidistribution question.",
+      "created_at": "2026-06-23T03:21:38Z"
+    }
+  ],
+  "plan": {
+    "summary": "Treat rm-11439 as a discrete dynamical system: prove k_d(n) = (1+o(1))log* n for the divisor iteration via Wigert's envelope, and establish k_σ(m) = Θ(log m / log log log m) for the sigma iteration via the additive recursion L_{k+1}=L_k+log log L_k+O(1), separating the unconditional envelope from the open leading-constant equidistribution question.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish part (a) upper bound via Wigert",
+        "body": "Prove that for the forced orbit n, d(n), d(d(n)),... each step reduces the scale by roughly a logarithm using Wigert's maximal-order theorem log d(n) ≤ (1+o(1)) (log 2 · log n)/(log log n). Show the log log n correction perturbs only lower-order terms under iterated logarithm counting, yielding max_{2≤n≤N} k_d(n) ≤ (1+o(1)) log* N.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Establish part (a) matching lower bound and forcedness",
+        "body": "Construct a worst-case tower (e.g. starting from n=2^{2^k}, with d(2^{2^k})=2^k+1) demonstrating that k_d can be as large as (1-o(1)) log* N, giving the matching lower bound. Carefully argue that the orbit is forced — Wigert cannot be saturated simultaneously at every iterate beyond depth two — so the honest sharp statement is the asymptotic envelope max_{n≤N} k_d(n) = (1+o(1)) log* N rather than a depth-by-depth optimal constant.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Derive the additive recursion for the sigma orbit",
+        "body": "Define a_k = σ^{(k)}(2), L_k = log a_k. Using Grönwall's unconditional upper bound σ(n) ≤ e^γ n log log n (1+o(1)) and the elementary lower bound, prove L_{k+1} = L_k + δ_k with δ_k = log log L_k + O(1). Verify the lower floor δ_k ≥ 1 + 1/p^-(n) bound so that σ(n)/n ≥ 1 + 1/p^-(n), guaranteeing strictly increasing orbit with δ_k ≥ log 2 > 0 (no stalls below a positive floor).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 3,
+        "title": "Invert the recursion to get the (b) envelope",
+        "body": "From the bracketing log 2 ≤ δ_k ≤ log log L_k + O(1), perform the sum-to-integral comparison k ≈ ∫^L dt/(log log t) = (1+o(1)) L/(log log L). With L = log m, conclude the unconditional envelope k_σ(m) = Θ(log m / log log log m). Formalize the slow-variation argument showing that bounded-density stalls perturb the inverted sum only at lower order, securing the denominator log log log m to (1+o(1)).",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Verify orbit computations and increment behavior",
+        "body": "Independently recompute the sigma orbit 2,3,4,7,8,15,24,60,168,... and the increments σ(a_k)/a_k (1.5,1.33,1.75,1.14,1.875,1.6,2.5,2.8,...). Compare against the Grönwall envelope e^γ log log a_k at each point to confirm whether the orbit tracks near the colossally abundant ridge or stalls at prime/prime-power values, validating the claimed bracketing constants empirically.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Analyze the leading constant as an equidistribution problem",
+        "body": "Frame the open question: whether the block-average of δ_k equals (1+o(1)) log log L_k, equivalent to the orbit equidistributing near the colossally abundant ridge. Investigate the density of prime and prime-power values among {a_k}, since σ(p)=p+1 gives increment ≈1 dips. Determine whether the true constant c lies in (0,1] and articulate why elementary methods (and even affine-sieve-in-orbits techniques) appear insufficient.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Stress-test claims and scope the final theorem",
+        "body": "Critically review the proposed answers: confirm part (a) is fully closed at (1+o(1)) log* N, confirm part (b) envelope is closed at Θ(log m/log log log m), and challenge any unjustified claim that the (b) leading constant equals 1. Identify the precise gap — the equidistribution/density-of-primes-in-orbit statement — and recommend whether the final write-up should claim Θ (safe) or attempt the sharp constant (conditional).",
+        "agent": "critic-agent",
+        "depends_on": [
+          1,
+          3,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T03:21:38Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

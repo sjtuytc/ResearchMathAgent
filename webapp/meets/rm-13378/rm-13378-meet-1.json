@@ -1,0 +1,151 @@
+{
+  "id": "rm-13378-meet-1",
+  "problem_id": "rm-13378",
+  "topic": "Init rm-13378 — proof review",
+  "goal": "Review the proof and issues for rm-13378; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T07:22:00Z",
+  "messages": [
+    {
+      "id": "m73e64f82",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-13378 — proof review**",
+      "created_at": "2026-06-23T07:22:00Z"
+    },
+    {
+      "id": "m9862760a",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me set this up the way I'd attack any quadratic form problem — diagonalize and reduce to a univariate question.\n\nThe product $f(x) = \\frac14 \\langle Ax,x\\rangle\\langle Bx,x\\rangle$ is a quartic, homogeneous of degree 4, so $f^*$ is homogeneous of degree $4/3$. That scaling already tells us the answer has the form $f^*(s) = c \\cdot g(s)^{4/3}$ for some quadratic-ish gadget $g$ — *if* we're lucky enough to get a single formula.\n\nHere's the clean case. **Simultaneous diagonalization**: since $A \\succ 0$, write $A = R^T R$ and consider $R^{-T} B R^{-1}$, which is symmetric PD, so it has eigendecomposition $Q \\Lambda Q^T$. After the change of variables $y = QR x$, we get $A \\mapsto I$ and $B \\mapsto \\Lambda = \\mathrm{diag}(\\lambda_1,\\dots,\\lambda_n)$. So WLOG\n$$f(y) = \\tfrac14 \\|y\\|^2 \\sum_i \\lambda_i y_i^2.$$\n\nNow the conjugate. By homogeneity the supremum's stationarity condition $\\nabla f(x) = s$ gives\n$$s = \\tfrac12\\big[ q_B(x) A x + q_A(x) B x\\big].$$\nWrite $u = q_A(x) = \\tfrac12\\|y\\|^2$ and $v = q_B(x) = \\tfrac12 \\sum_i \\lambda_i y_i^2$. Then $\\nabla f = v A x + u B x$, i.e. in $y$-coords $s' = v y + u \\Lambda y$, so $y_i = s'_i/(v + u\\lambda_i)$. This is exactly a **secular-equation** structure — the same $\\sum_i \\frac{c_i}{t - \\lambda_i}$ barrier function I use for tracking eigenvalues.\n\nSo the procedure is:\n- The two scalars $(u,v)$ satisfy the consistency equations $u = \\tfrac12\\sum_i \\frac{(s'_i)^2}{(v+u\\lambda_i)^2}$ and $v = \\tfrac12 \\sum_i \\frac{\\lambda_i (s'_i)^2}{(v+u\\lambda_i)^2}$.\n- Eliminating gives a **univariate polynomial** whose root we pick, then $f^*(s) = \\langle s,x\\rangle - 3f(x) = \\tfrac14\\langle s', y\\rangle$ (using Euler: $\\langle s',y\\rangle = \\nabla f\\cdot y = 4f$, so $f^* = 4f - f = 3f$... let me be careful: $f^* = \\langle s,x\\rangle - f = 4f - f = 3f$ at the optimum). So $f^*(s) = 3f(x^\\*)$.\n\n**The single-formula case**: when $B = \\beta A$ (i.e. $\\Lambda = \\beta I$), all $\\lambda_i$ collapse and $f(y) = \\tfrac{\\beta}{4}\\|y\\|^4$. Then standard computation gives\n$$f^*(s) = 3\\Big(\\tfrac{1}{4\\beta}\\Big)^{1/3}\\Big(\\tfrac14 \\langle A^{-1}s,s\\rangle\\Big)^{2/3}\\cdot(\\text{const}),$$\nwhich I can pin down exactly. More generally a clean closed form survives when $A$ and $B$ share enough",
+      "created_at": "2026-06-23T07:22:15Z"
+    },
+    {
+      "id": "mfb535942",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your simultaneous diagonalization is exactly right, and the secular-equation structure is the heart of the matter. Let me push on it from the Euler-homogeneity angle to get the cleanest possible statement, and then on the single-formula classification.\n\nFirst, a clean invariant. Since $f$ is homogeneous of degree $4$, $f^*$ is homogeneous of degree $4/3$, and at the optimum $f^*(s) = 3 f(x^*)$ as you said. Better: by Euler, $\\langle s, x^*\\rangle = \\nabla f(x^*)\\cdot x^* = 4 f(x^*)$, so\n$$f^*(s) = \\tfrac{3}{4}\\langle s, x^*\\rangle.$$\nEverything reduces to finding the *direction* of $x^*$; the radial scale is then forced by homogeneity. This is the same philosophy as in the $\\theta$-function: solve a normalized problem on the sphere, recover the rest by scaling.\n\nNow the secular structure. In $y$-coordinates with $t := v/u$ (the ratio is the only essential unknown — again homogeneity at work), we have $y_i \\propto s'_i/(t + \\lambda_i)$, and the consistency condition collapses to a **single univariate equation**\n$$\\Phi(t) := \\sum_i \\frac{\\lambda_i (s'_i)^2}{(t+\\lambda_i)^2} - t \\sum_i \\frac{(s'_i)^2}{(t+\\lambda_i)^2} = 0,$$\ni.e. $\\sum_i \\frac{(\\lambda_i - t)(s'_i)^2}{(t+\\lambda_i)^2} = 0$. This is precisely a barrier/secular function; clearing denominators gives a polynomial of degree $\\le 2n-1$ in $t$, and one selects the root in $(0,\\lambda_{\\max})$ for which the resulting form is the genuine supremum (here convexity of $f$ guarantees uniqueness of the maximizing branch).\n\nOn the single-formula question — let me sharpen Dan's $B=\\beta A$ case into a classification. A closed form survives precisely when $\\Phi$ degenerates so the root $t$ is rational in the data. Two clean regimes:\n1. **$B = \\beta A$** (one distinct eigenvalue): $f(y)=\\frac{\\beta}{4}\\|y\\|^4$, $t=\\beta$ identically, and\n$$f^*(s) = \\frac{3}{4}\\,\\beta^{-1/3}\\,\\big(\\tfrac14\\langle A^{-1}s,s\\rangle\\big)^{2/3}\\cdot 4^{1/3}.$$\n2. **Two distinct eigenvalues** $\\{\\lambda_1,\\lambda_2\\}$ (the pencil $A^{-1}B$ has spectrum of size $2$): $\\Phi(t)=0$ becomes a *quadratic* in $t$ after clearing denominators, so $f^*$ has a genuine closed form involving a square root. This is the natural \"next\" solvable family — the analog of a two-block graphon.\n\nFor three or more distinct eigenvalues the polynomial is generically irreducible of degree $\\ge 3$, so no radical formula exists by Galois obstruction, and the secular-root procedure is the honest answer. I'd state the theorem as: *$f^*$ admits a closed radical form iff $A^{-1}B$ has at most $\\le 4$ distinct eigenvalues* — solvability of the secular polynomial — though the genuinely clean cases are the two above. Shall",
+      "created_at": "2026-06-23T07:23:02Z"
+    },
+    {
+      "id": "m3e9294ee",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good, good — but let me push on the *real* theorem here, because I think Laszlo's Galois claim is too optimistic and the secular structure is even more beautiful than stated.\n\nFirst, let me compute the simplest nontrivial case by hand, the way I always do. Take $n=2$, $\\Lambda = \\mathrm{diag}(\\lambda_1,\\lambda_2)$, $s'=(a,b)$. The secular equation is\n$$\\frac{(\\lambda_1-t)a^2}{(t+\\lambda_1)^2} + \\frac{(\\lambda_2-t)b^2}{(t+\\lambda_2)^2} = 0.$$\nClearing denominators gives a polynomial of degree **3** in $t$, not 2 — count carefully: each term contributes $(\\lambda_i - t)(t+\\lambda_j)^2$, which is cubic. So even the two-eigenvalue case is a *cubic*, and Laszlo's \"quadratic\" is wrong unless there's a cancellation of the leading term. Let me check: the $t^3$ coefficient is $-(a^2+b^2)$, which does **not** vanish. So two distinct eigenvalues already gives a genuine cubic — solvable by radicals (Cardano), yes, but not the clean quadratic claimed.\n\nThis matters for the classification. The right invariant is the degree of the secular polynomial, which is $2m-1$ where $m$ is the number of *distinct* eigenvalues of the pencil $A^{-1}B$ (with $s'$ in general position). So:\n- $m=1$: degree 1, the $B=\\beta A$ formula — clean.\n- $m=2$: degree 3, radicals via Cardano.\n- $m=3$: degree 5, generically **not** solvable by radicals ($S_5$ Galois group). This is the obstruction, not $m\\ge 5$.\n\nNow — is this a *Ramanujan phenomenon*? The structure $y_i \\propto s'_i/(t+\\lambda_i)$ with the constraint $\\sum (\\lambda_i-t)|s'_i|^2/(t+\\lambda_i)^2=0$ is *exactly* a resolvent trace: $t$ is a pole-balancing point of $\\langle s', (t+\\Lambda)^{-1} s'\\rangle$, the same Stieltjes transform that governs eigenvalue interlacing in the Selberg/trace-formula picture. The right statement of the theorem is spectral: **$f^*(s) = \\frac34\\langle s,x^*\\rangle$ where $t^*=v/u$ is the unique root in $(\\lambda_{\\min},\\lambda_{\\max})$ of the secular function, and the secular function is the logarithmic derivative of a resolvent.** That's the honest content, and it tells you the root is real and simple by the interlacing of $\\Phi$'s poles — no Galois ambiguity about *which* root, only about whether you can write it down. Beautiful.",
+      "created_at": "2026-06-23T07:23:46Z"
+    },
+    {
+      "id": "mc630ba34",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, you're right and I should own the arithmetic — the degree is $2m-1$, not $2m$, and the $m=2$ case is a genuine cubic. Good. But let me make the interlacing statement Peter gestured at *fully rigorous*, because it resolves the \"which root\" question completely and that's what I care about algorithmically.\n\nDefine $\\psi(t) = \\langle s', (t+\\Lambda)^{-1} s'\\rangle = \\sum_i \\frac{(s_i')^2}{t+\\lambda_i}$. This is exactly a Stieltjes/barrier function — the same $\\Phi(\\lambda)=\\sum_i \\frac{1}{\\lambda_i - t}$ object I use to track eigenvalues in the sparsification and Kadison–Singer barrier arguments. Then a short computation gives\n$$\\psi'(t) = -\\sum_i \\frac{(s_i')^2}{(t+\\lambda_i)^2}, \\qquad \\frac{d}{dt}\\big(t\\,\\psi'(t)\\big) + \\psi'(t)\\cdot(\\ldots),$$\nand in fact the secular function is\n$$\\Phi(t) = \\sum_i \\frac{(\\lambda_i - t)(s_i')^2}{(t+\\lambda_i)^2} = -2t\\,\\psi'(t) - \\psi(t)\\cdot 0\\ldots$$\nlet me just state it cleanly: $\\Phi(t) = -\\psi(t) - 2t\\,\\psi'(t)$ up to the bookkeeping. The point is that $\\Phi$ is a **logarithmic-derivative-type function with simple poles at $-\\lambda_i$**, so on the relevant interval it is strictly monotone between consecutive poles. That is the interlacing that guarantees a *unique* root in the physical branch $t\\in(0,\\lambda_{\\max})$ — exactly the uniqueness that convexity of $f$ demands.\n\nTwo things for the action plan:\n\n1. **Algorithm, not Cardano.** Even for $m=3$ where there's no radical formula, I don't want to invoke Galois and stop. The honest computable procedure is: do one secular solve. Since $\\Phi$ is monotone with known sign changes, **Newton's method on $\\Phi(t)$ converges quadratically from any bracket endpoint**, and each evaluation is $O(n)$ after the $O(n^3)$ simultaneous diagonalization. So $f^*(s)$ is computable in $O(n^3 + n\\log\\log(1/\\varepsilon))$ — this is the right answer for a working algorithm, and it parallels how I'd never solve a Laplacian system by Cramer's rule.\n\n2. **Avoid the diagonalization if possible.** The simultaneous diagonalization costs $O(n^3)$ and destroys sparsity. The secular equation can be written invariantly: $x^* = (vA + uB)^{-1}s$ with the two scalar consistency equations $u=q_A(x^*)$, $v=q_B(x^*)$. If $A,B$ are graph Laplacians (plus regularization), each evaluation is one **nearly-linear-time Laplacian solve** $(vA+uB)^{-1}s$ — and $vA+uB$ is still an SDD/Laplacian-type matrix! So the whole thing becomes: fixed-point iterate on $(u,v)\\in\\mathbb{R}^2$, each step a Laplacian solve. That's $O(m\\log^c n)$ per iteration rather than $O(n^3)$. That's the version I'd actually want stated as a theorem.",
+      "created_at": "2026-06-23T07:26:04Z"
+    },
+    {
+      "id": "m4dd6867f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Peter, Dan — both corrections land, and I concede the arithmetic: the degree is $2m-1$, so the two-eigenvalue case is a cubic, not a quadratic. My Galois threshold was off by exactly Peter's reindexing; the genuine obstruction is at $m=3$, degree $5$, generic $S_5$. Let me record the corrected classification cleanly and then add the one structural point I think we're still missing.\n\n**Corrected theorem.** $f^*$ admits a closed radical form iff the pencil $A^{-1}B$ has at most $m \\le 3$ distinct eigenvalues (degrees $1,3,5$... wait — $m=3$ is degree $5$, not solvable). So honestly: radical form iff $m \\le 2$ (degrees $1,3$). For $m \\ge 3$ the secular root is the answer.\n\nBut here is what I want to insist on, because it is the structural heart and it resolves the uniqueness question without any appeal to convexity-as-an-axiom. Dan's $\\psi(t) = \\langle s',(t+\\Lambda)^{-1}s'\\rangle$ is exactly a one-line resolvent, and the secular function is its *homogeneity-twisted* logarithmic derivative. The clean identity is\n$$\\Phi(t) = -\\psi(t) - 2t\\,\\psi'(t) = -\\frac{d}{dt}\\!\\big(t^{1/2}\\psi(t)\\big)\\cdot 2t^{1/2},$$\nso $\\Phi(t)=0 \\iff \\frac{d}{dt}\\big(t^{1/2}\\psi(t)\\big)=0$. The maximizer is a **critical point of $t^{1/2}\\psi(t)$**, and since $\\psi$ is a Stieltjes transform — completely monotone with simple poles at $-\\lambda_i$ — Cauchy interlacing gives exactly one critical point in $(0,\\lambda_{\\max})$. This is the rigorous version of Peter's resolvent-trace remark, and it is the same monotonicity I exploit in the $\\theta$-function: solve a normalized scalar problem, recover everything by homogeneity, $f^*(s)=\\tfrac34\\langle s,x^*\\rangle$.\n\nOn Dan's point (2) — the invariant, diagonalization-free formulation $x^* = (vA+uB)^{-1}s$ with $u=q_A(x^*)$, $v=q_B(x^*)$ — this is the version I would put in the paper, and I'd add: the fixed-point map $(u,v)\\mapsto(q_A,q_B)\\circ(vA+uB)^{-1}s$ is a *contraction* on the physical branch precisely because of the interlacing monotonicity above, so convergence is unconditional. That makes the \"computable procedure\" the theorem, not a footnote. The closed forms for $m\\le 2$ are then corollaries — the degenerate graphons, if you like — and the secular solve is the generic continuous object.",
+      "created_at": "2026-06-23T07:26:48Z"
+    },
+    {
+      "id": "m2f177280",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Excellent — we've now converged on the resolvent picture, and Laszlo's identity $\\Phi(t) = 0 \\iff \\frac{d}{dt}(t^{1/2}\\psi(t)) = 0$ is exactly the clean spectral statement I was reaching for. But let me sound *one* note of caution on Laszlo's \"contraction\" claim, because I think the dynamics are subtler than stated.\n\nThe map $(u,v) \\mapsto (q_A, q_B)\\circ(vA+uB)^{-1}s$ is *not* globally a contraction — it's homogeneous of degree $-2$ in $(u,v)$, so it can't be. The right object is the *projectivized* map on the ratio $t = v/u$, where the interlacing forces a unique fixed point. So I'd reformulate: iterate on $t$ directly via Newton on $\\Phi$ (Dan's point), not on the pair $(u,v)$ — the latter has a spurious scaling degeneracy that will hurt you numerically.\n\nNow, the thing I want to *insist* on, because it's the real theorem. Look at the structure: $t^{1/2}\\psi(t)$ critical, with $\\psi(t) = \\sum_i \\frac{(s_i')^2}{t+\\lambda_i}$ a Stieltjes transform. This is *precisely* a Rankin–Selberg integral in disguise. Consider\n$$\\psi(t) = \\int \\frac{d\\mu_{s}(\\lambda)}{t+\\lambda}, \\qquad \\mu_s = \\sum_i (s_i')^2\\,\\delta_{\\lambda_i},$$\nthe spectral measure of the pencil weighted by $s$. The maximizer $t^*$ is the point where the measure $\\mu_s$ balances against the homogeneity weight $t^{1/2}$ — and **the value** $f^*(s) = \\frac34\\langle s, x^*\\rangle$ is, up to normalization, a *moment* of the equilibrium measure. Let me write it explicitly:\n$$f^*(s) = \\frac{3}{4}\\,u^*\\,\\psi(t^*) = \\frac{3}{4}\\,u^*\\sum_i \\frac{(s_i')^2}{t^*+\\lambda_i},$$\nand at the critical point one finds $u^* = \\big(\\tfrac12 \\psi'(t^*)\\big)^{?}$ — the homogeneity fixes the radial scale. Let me do the bookkeeping cleanly: $u = q_A(x) = \\frac12\\|y\\|^2 = \\frac12\\sum_i \\frac{(s_i')^2}{(t+\\lambda_i)^2}\\cdot u^2$... so $u = \\big(\\tfrac12 \\sum_i \\frac{(s_i')^2}{(t+\\lambda_i)^2}\\big)^{-1} = (-\\frac12\\psi'(t))^{-1}$.\n\nTherefore the **fully explicit closed form**, valid for all $m$ once you have the secular root, is\n$$\\boxed{\\,f^*(s) = \\frac{3}{4}\\,\\frac{\\psi(t^*)}{-\\tfrac12\\psi'(t^*)} = -\\frac{3}{2}\\,\\frac{\\psi(t^*)}{\\psi'(t^*)}\\,}$$\nwhere $t^*$ is the unique critical point of $t^{1/2}\\psi(t)$ in $(0,\\lambda_{\\max})$. That's a one-line answer in terms of the resolvent — much better than carrying $\\langle s, x^*\\rangle$ around. Note $\\psi/\\",
+      "created_at": "2026-06-23T07:27:36Z"
+    },
+    {
+      "id": "meb016e5f",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T07:28:28Z"
+    },
+    {
+      "id": "me5b9e37e",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nCompute the convex conjugate of f(x) = (1/4)<Ax,x><Bx,x> by simultaneous diagonalization reducing to a univariate secular equation, proving the unique physical root via Stieltjes-resolvent monotonicity, and expressing f* as a one-line resolvent formula.",
+      "created_at": "2026-06-23T07:28:28Z"
+    }
+  ],
+  "plan": {
+    "summary": "Compute the convex conjugate of f(x) = (1/4)<Ax,x><Bx,x> by simultaneous diagonalization reducing to a univariate secular equation, proving the unique physical root via Stieltjes-resolvent monotonicity, and expressing f* as a one-line resolvent formula.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Set up simultaneous diagonalization and reduction",
+        "body": "Using A = R^T R and the eigendecomposition of R^{-T} B R^{-1} = Q Λ Q^T, perform the change of variables y = QRx so that A ↦ I and B ↦ Λ = diag(λ_1,...,λ_n). Write f(y) = (1/4)||y||^2 Σ λ_i y_i^2 and set s' = QR^{-T}... (track the transform of s precisely). Establish the homogeneity facts: f is degree 4, f* is degree 4/3, and at the optimum f*(s) = 3 f(x*) = (3/4)<s, x*> by Euler's identity.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Derive the secular equation and confirm its degree",
+        "body": "From the stationarity condition ∇f(x*) = s, write x* = (vA + uB)^{-1} s with scalars u = q_A(x*), v = q_B(x*). In y-coordinates y_i ∝ s'_i/(t + λ_i) with t = v/u. Derive the secular function Φ(t) = Σ (λ_i - t)(s'_i)^2/(t+λ_i)^2 = 0. Verify by clearing denominators that for m distinct pencil eigenvalues the polynomial has degree exactly 2m-1 (so m=2 gives a genuine cubic, m=3 gives a quintic), correcting the earlier off-by-one claims.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove uniqueness of the physical root via resolvent monotonicity",
+        "body": "Define ψ(t) = Σ (s'_i)^2/(t + λ_i), the Stieltjes transform of the weighted spectral measure μ_s = Σ (s'_i)^2 δ_{λ_i}. Prove the identity Φ(t) = -ψ(t) - 2t ψ'(t), equivalent to Φ(t)=0 ⟺ d/dt(t^{1/2} ψ(t)) = 0. Using complete monotonicity of ψ and Cauchy interlacing of its simple poles at -λ_i, prove there is exactly one critical point t* in (0, λ_max), giving the unique physical maximizing branch.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Establish the closed-form resolvent expression for f*",
+        "body": "Compute the radial scale u* = (-½ ψ'(t*))^{-1} from u = q_A(x*) = ½ Σ (s'_i)^2 u^2/(t+λ_i)^2. Combine with f*(s) = (3/4)<s,x*> = (3/4) u* ψ(t*) to derive the explicit formula f*(s) = -(3/2) ψ(t*)/ψ'(t*), where t* is the unique critical point of t^{1/2}ψ(t). Verify dimensional/homogeneity consistency and re-express in original A,B,s coordinates.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Verify the special closed-form cases m=1 and m=2",
+        "body": "For m=1 (B = βA): confirm t* = β identically and derive f*(s) = (3/4) β^{-1/3} (¼ <A^{-1}s,s>)^{2/3} · 4^{1/3}, checking the constant by direct substitution. For m=2: solve the cubic via Cardano and confirm a genuine radical closed form. Confirm that for m ≥ 3 the secular polynomial is generically irreducible with S_5 (or larger) Galois group, so no radical formula exists and the secular root is the honest answer.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Scrutinize the contraction vs. projectivized-iteration claim",
+        "body": "Critically examine Laszlo's claim that the map (u,v) ↦ (q_A,q_B)∘(vA+uB)^{-1}s is a contraction. Verify Peter's objection that this map is homogeneous of degree -2 and therefore cannot be globally a contraction. Confirm the correct formulation: iterate on the projective ratio t = v/u directly via Newton's method on Φ, where interlacing monotonicity guarantees a unique attracting fixed point.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Specify the computational algorithm and complexity",
+        "body": "State the algorithm: one O(n^3) simultaneous diagonalization, then Newton's method on the monotone Φ(t) (each evaluation O(n)) converging quadratically from a bracket endpoint, giving O(n^3 + n log log(1/ε)). Develop the diagonalization-free variant for sparse/Laplacian A,B: fixed-point iteration on t with each step a near-linear-time SDD/Laplacian solve of (vA+uB)^{-1}s, yielding O(m log^c n) per iteration. Justify validity via the uniqueness/monotonicity results.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T07:28:28Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

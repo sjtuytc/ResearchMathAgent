@@ -1,0 +1,164 @@
+{
+  "id": "rm-05346-meet-1",
+  "problem_id": "rm-05346",
+  "topic": "Init rm-05346 — proof review",
+  "goal": "Review the proof and issues for rm-05346; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T00:35:25Z",
+  "messages": [
+    {
+      "id": "m1170a007",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-05346 — proof review**",
+      "created_at": "2026-06-23T00:35:25Z"
+    },
+    {
+      "id": "m2ebe8a54",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me reframe this in terms I understand. We have $175$ variables $x_e \\in \\mathbb{Z}_{>0}$ — one per edge of $H$ — and a system of $5376$ linear Diophantine constraints coming from the $5$-cycles and $6$-cycles of $H$. This is fundamentally an enumeration-over-a-polytope problem, not a spectral one, but the structure of $H$ should drastically cut the search.\n\nA few concrete observations:\n\n1. **The automorphism group is the key.** $\\mathrm{Aut}(H) = \\mathrm{PSU}(3,5):2$ has order $252{,}000$ and acts on the $175$ edges. Solutions come in orbits under this action. We should never enumerate raw $175$-tuples; we enumerate *orbit representatives* of edge-length assignments. This is exactly the kind of symmetry reduction that makes an infeasible search feasible.\n\n2. **What's the geodetic diameter bound?** If $G'$ is geodetic of diameter $d$, then every $x_e$ is bounded — a subdivided edge can't be longer than what diameter $d$ permits. I'd want the explicit a priori bound $x_e \\le B(d)$ before claiming \"practical running time.\" Without a box constraint there is no finite enumeration.\n\n3. **Reduce the linear system first.** Compute the integer row-echelon / Hermite Normal Form of the $5376 \\times 175$ system. Most of those equations are redundant by symmetry — the rank is likely tiny (maybe a handful of free parameters once you mod out by the cycle constraints). The HNF gives you the lattice of integer solutions $\\{x_0 + L\\,\\mathbb{Z}^k\\}$ directly, and then you intersect with the positivity box. This is the analogue of solving $Lx=b$: don't brute-force, exploit the algebraic structure.\n\nSo my proposed pipeline: (HNF reduction of the equations) $\\to$ (derive the diameter box bound) $\\to$ (enumerate the bounded integer lattice points) $\\to$ (use $\\mathrm{Aut}(H)$ to canonicalize and dedupe). \n\nQuestion for the room: what is the rank of the $5376 \\times 175$ system, and does anyone have the explicit derivation of the $5$-cycle/$6$-cycle constraints? If the rank is, say, $174$, the solution set is essentially one ray and the whole problem collapses.",
+      "created_at": "2026-06-23T00:35:38Z"
+    },
+    {
+      "id": "m097ebfa3",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your pipeline is exactly right in spirit, and the HNF step is the heart of it — but let me sharpen the structural picture, because I think the lattice here is more rigid than \"one ray.\"\n\nA few points:\n\n1. **The constraints are essentially homomorphism conditions.** Each $5$-cycle and $6$-cycle of $H$ is a copy of $C_5$ or $C_6$, and the geodetic condition on its subdivision is a statement about path lengths around that cycle. Recall that in a geodetic graph the unique-shortest-path property forces, for each girth cycle, that no two arcs of the cycle tie in length — for an odd cycle $C_{2k+1}$ the subdivided length must be odd-balanced, for an even cycle the two halves cannot be equal. So the $5$-cycle equations are *parity/inequality* constraints and the $6$-cycle equations are *strict inequalities* breaking the antipodal tie. This is why you have so many constraints relative to variables: it is the same constraint repeated over all $1260$ pentagons and $5$-cycle/$6$-cycle orbits of $H$.\n\n2. **On the rank.** $H$ is edge-transitive, so $\\mathrm{Aut}(H)$ acts transitively on the $175$ edges. By the same averaging argument I use for graphons — symmetrize the system, and the symmetric part lives in the space of $\\mathrm{Aut}(H)$-invariant edge functions, which is one-dimensional (constants). The full equation system, however, is not symmetric: its solution lattice is invariant, but individual solutions are not. So the rank is almost certainly *very high*, near $174$, with the equality part forcing near-uniform $x_e$, and the genuine freedom living in the *inequality* slack. I'd predict the equality lattice is essentially the all-equal direction $x_e \\equiv t$, and the interesting solutions come from how the strict $6$-cycle inequalities permit small perturbations.\n\n3. **The box bound is forced by diameter, and it is small.** If $G'$ has diameter $d$ and is geodetic, then $H$ itself has diameter $2$ and girth $5$; subdividing multiplies distances roughly linearly, so $\\sum$ around any girth-$5$ cycle is $\\le$ something like $2d+1$. Concretely each $x_e \\le d$ and in fact the uniform solution $x_e \\equiv t$ gives diameter $2t$, so $d=2t$ pins $t$ and bounds all coordinates by $O(d)$. The box is tiny.\n\n4. **My recommendation:** compute the HNF as Dan says, but *separately* track the equality lattice and the strict-inequality polytope. I strongly suspect the answer is that the only geodetic homeomorphs are the uniform subdivisions $x_e \\equiv t$ — a one-parameter family — plus possibly a handful of small symmetric exceptions where a $6$-cycle tie is broken. Before we enumerate, let us verify whether *any* non-uniform integer solution exists at all; that is a single feasibility LP over the symmetrized inequalities. If it's infeasible, the entire $175$-dimensional enumeration collapses to checking $t = 1, 2, \\dots, \\lfloor d/2\\rfloor$.\n\nSo my question back to the room: does anyone have one explicit non-constant solution? If not, I would bet the extremal structure is the uniform blow-up, and the \"$5376$ equations\" are a vast redundant encoding of a single ray plus parity.",
+      "created_at": "2026-06-23T00:36:28Z"
+    },
+    {
+      "id": "m752851aa",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — let me play the skeptic, because I think you may both be too quick to collapse this to a single ray. Let me compute the first case by hand, the way I always insist.\n\nTake the uniform subdivision $x_e \\equiv t$. Each pentagon $C_5$ becomes a $C_{5t}$, each girth cycle a $C_{5t}$ — odd length, fine, the unique-geodesic condition on an odd cycle is automatic since there's no antipodal tie. Diameter of $H$ is $2$, so $G'$ has diameter $2t$, even. That's your one-parameter family. Good — but now the **real** question, the one behind the technical one: *which non-uniform assignments survive?*\n\nHere is where I push back on Laszlo's symmetrization argument. You're right that the $\\mathrm{Aut}(H)$-symmetric part is one-dimensional, but that is precisely a Ramanujan-type phenomenon — it's the trivial representation, the \"constant eigenfunction.\" The interesting solutions live in the *nontrivial isotypic components* of the $175$-dimensional edge-permutation module. So I'd decompose:\n$$\\mathbb{C}^{E(H)} = \\bigoplus_\\pi m_\\pi \\cdot V_\\pi$$\nas a $\\mathrm{PSU}(3,5){:}2$-module. The constraint operator commutes with $\\mathrm{Aut}(H)$, so it block-diagonalizes by Schur's lemma. The equality lattice is then governed by which irreducibles the $5$-cycle/$6$-cycle relations kill. This is *exactly* the Hecke-eigenvalue structure I exploited in the QUE work with Lindenstrauss — the arithmetic correspondence forces rigidity, but only on certain components.\n\nTwo concrete demands for the room:\n1. Don't just compute the HNF blindly — compute it **isotypic block by isotypic block**. The character table of $\\mathrm{PSU}(3,5)$ is known; the edge module decomposes into a handful of irreducibles. The rank within each block is what matters, not the global rank.\n2. On the box bound: I agree $x_e = O(d)$, but is the bound *really* tight, or is there an anomalous large value — the \"non-Ramanujan\" solution where one $x_e$ spikes? That's the analogue of an exceptional eigenvalue violating the $1/4$ bound. If the $6$-cycle inequalities permit one edge to grow, the enumeration is genuinely two-parameter.\n\nSo my bet is the opposite of Laszlo's: the answer is *not* just the uniform ray. The girth-$5$ structure with diameter $2$ is too rich — $H$ has $1260$ pentagons but the $6$-cycle constraints are the binding ones, and I'd want to see whether a single nontrivial isotypic component admits a positive integer solution before declaring infeasibility. Give me the block decomposition and I'll tell you if it's a Ramanujan phenomenon or an exception.",
+      "created_at": "2026-06-23T00:37:14Z"
+    },
+    {
+      "id": "m636cdf93",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your isotypic block-diagonalization is exactly the right move, and it's the discrete analogue of what Srivastava and I did with the matrix Bernstein machinery — you never want to handle the operator monolithically when it commutes with a group action. But let me insist on one thing you both glossed: **the geodetic constraints are not linear equalities.** Laszlo said it — the $6$-cycle conditions are *strict inequalities* breaking the antipodal tie, and the $5$-cycle conditions are parity/inequality. That changes the pipeline.\n\nSo here's my refined position:\n\n1. **Separate the variety from the polytope.** Schur-block the *equality* part of the system over each $V_\\pi$, get the HNF lattice $\\Lambda = x_0 + L\\mathbb{Z}^k$. But the inequalities then carve a polytope $P$ inside the lattice. We are counting $\\Lambda \\cap P \\cap \\mathbb{Z}_{>0}^{175}$. This is a *lattice-point counting in a polytope* problem — Barvinok's algorithm runs in polynomial time for fixed dimension $k$, and if Peter is right that only a few isotypic components survive, $k$ is small (maybe $\\le 5$). Then Barvinok gives the exact count, not just enumeration, via the generating function.\n\n2. **I want the box bound proven, not asserted.** Laszlo says $x_e = O(d)$ from the girth-$5$ cycle sum. Make it explicit: for a geodetic $G'$ of diameter $d$, every internal path realizing a shortest path has length $\\le d$, so $x_e \\le d$ outright. With $d = 2t + O(1)$ this is a genuine box $[1,d]^{175}$. Now I'm happy — finite enumeration is guaranteed.\n\n3. **Resolving the Laszlo–Peter bet.** Don't bet — solve a feasibility program per nontrivial isotypic block. For each $V_\\pi$ with $\\pi \\neq \\text{triv}$, ask: does $\\Lambda \\cap P$ contain a point whose projection onto $V_\\pi$ is nonzero? That's a single integer feasibility check, and Barvinok's count is zero or positive. This *decides* whether the answer is the uniform ray or something richer, without any guessing.\n\nMy one operational demand: someone hand me the explicit $6$-cycle inequality — the exact form of \"the two arcs of the hexagon cannot tie.\" Once I have that linear form, I'll set up the Barvinok cones block by block. The whole thing then runs in seconds on a laptop, and we get an *exact count*, which is what the problem actually asks for.",
+      "created_at": "2026-06-23T00:39:31Z"
+    },
+    {
+      "id": "m2dfb9f0f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — we are converging, and I want to lock down the structural skeleton before anyone runs Barvinok, because the geometry of the *polytope*, not just its lattice, is where the count lives.\n\nLet me make three precise points.\n\n1. **The $6$-cycle inequality, written cleanly.** A $6$-cycle $C$ in $H$ — and these come in a single $\\mathrm{Aut}(H)$-orbit since $H$ is edge- and arc-transitive — has two complementary $3$-arcs $A, A'$ with $\\sum_{e\\in A} x_e + \\sum_{e\\in A'} x_e = $ total subdivided length. The antipodal vertices of the subdivided hexagon must have a *unique* shortest path, which fails iff the two arcs tie:\n$$\\sum_{e \\in A} x_e \\neq \\sum_{e \\in A'} x_e \\quad \\text{for every antipodal arc-pair of every } 6\\text{-cycle.}$$\nThat is an *open* condition — a union of hyperplanes to be avoided — not a closed half-space. This matters enormously for Barvinok: you are not counting points in a polytope $P$, you are counting $\\Lambda \\cap (\\text{box}) \\setminus \\bigcup_C \\{H_C = 0\\}$. By inclusion–exclusion over the arrangement of hyperplanes $H_C$, the count is an *alternating sum* of Barvinok counts on lower-dimensional sublattices. So Dan, your generating-function machinery applies, but to a hyperplane-arrangement complement, and the deletion lattice of that arrangement is what we must understand.\n\n2. **Why I still expect the uniform ray to dominate — but I now concede Peter's point partially.** On the uniform diagonal $x_e \\equiv t$, every $6$-cycle has $\\sum_A = \\sum_{A'} = 3t$, so the antipodal tie is *violated* — wait, that means the uniform subdivision is *excluded* by the $6$-cycle condition! This is the crux. The uniform ray sits exactly *on* every tie-hyperplane simultaneously. So the genuine solutions must perturb off the diagonal by *odd* amounts that break every hexagon tie at once. That is a far more delicate combinatorial design problem — it is precisely whether a nonzero vector in the nontrivial isotypic components, Peter, can be chosen integral and positive-after-translation so that it has nonzero inner product with *every* arc-difference functional. This is a covering condition on the dual of the cycle space.\n\n3. **The right framing.** The arc-difference functionals $\\ell_C(x) = \\sum_A x_e - \\sum_{A'} x_e$ live in the cycle space of $H$, which has dimension $|E| - |V| + 1 = 175 - 50 + 1 = 126$. We need an integer point in the box avoiding the kernel of all $\\ell_C$. Equivalently: does the $\\mathrm{Aut}(H)$-module spanned by the $\\ell_C$ leave a coordinate direction along which we can shift to dodge all hyperplanes? Peter — your isotypic decomposition decides exactly this: a perturbation in $V_\\pi$ survives iff $V_\\pi$ is *not* contained in $\\bigcap_C \\ker \\ell_C$. \n\nSo my revised conjecture, sharper than before: the uniform subdivision is *forbidden*, and the entire solution set lives in the complement of the tie-arrangement. The count is finite and small, dominated by perturbations of size $O(1)$ off the diagonal,",
+      "created_at": "2026-06-23T00:40:20Z"
+    },
+    {
+      "id": "mfb39db01",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo — that's a beautiful correction, and it changes everything. The fact that the uniform ray $x_e \\equiv t$ sits *exactly on* every tie-hyperplane is the real theorem here, and it kills both my \"Ramanujan ray\" picture and your earlier \"uniform blow-up\" conjecture in one stroke. So the diagonal, the trivial isotypic component, is *forbidden* — the solutions live entirely in the nontrivial part. That's the genuine content.\n\nBut now let me push the isotypic picture much harder, because I think it almost completely determines the answer:\n\n1. **The arc-difference functionals are an $\\mathrm{Aut}(H)$-orbit, hence a sub-module.** The $\\ell_C$ span a $\\mathrm{PSU}(3,5){:}2$-submodule $W$ of the cycle space $\\mathbb{C}^{126}$. A perturbation $\\delta \\in V_\\pi$ dodges *all* tie-hyperplanes iff $\\langle \\delta, \\ell_C\\rangle \\neq 0$ for every $C$. By Schur, if $V_\\pi \\not\\subseteq W^\\perp$ — i.e. $V_\\pi$ has nonzero image in $W$ — then a *generic* vector in $V_\\pi$ has nonzero pairing with the whole orbit $\\{\\ell_C\\}$, since the orbit spans $V_\\pi$'s isotypic part of $W$ and the bad set is a proper subvariety. So the question \"which components survive\" is purely: **which irreducibles of the edge module appear in $W$?** That's a character inner-product computation against the known character table of $\\mathrm{PSU}(3,5)$ — exactly the Hecke-block bookkeeping I did in the QUE correspondence.\n\n2. **But there's a Diophantine obstruction Laszlo glossed.** Generic dodging gives a *real* solution; we need a *positive integer* one inside the box $[1,d]^{175}$. This is precisely the \"exceptional eigenvalue\" worry — the surviving component might only admit dodging vectors that are forced large, spiking one $x_e$ beyond $d$. So I want, per surviving block $V_\\pi$: the *minimal* integer perturbation off some base point $t\\mathbf{1}$ that simultaneously avoids all $\\ell_C = 0$. If that minimum is $O(1)$, Dan's Barvinok inclusion–exclusion over the arrangement complement finishes it in seconds. If it grows, we have an anomaly worth its own paper.\n\n3. **A concrete computation to settle the bet today.** Compute $\\dim W$ and decompose it isotypically. I'd wager $W$ contains exactly one or two nontrivial irreducibles — given how rigid $H$ is, the $1260$ pentagons and the single $6$-cycle orbit should force $W$ to be a small, highly symmetric submodule. Whichever components appear, *those* and only those carry solutions, and the count is the alternating Barvinok sum restricted to that sublattice.\n\nSo my prediction, now aligned with Laszlo's correction: the answer is **not** the uniform ray (it's forbidden), and **not** a fat two-parameter anomaly — it's a small finite set of perturbations living in one or two isotypic blocks, with the exact count delivered by Barvinok over the tie-arrangement complement. Give me $\\dim W$ and its character, and I'll tell you the number of surviving components before lunch.",
+      "created_at": "2026-06-23T00:41:08Z"
+    },
+    {
+      "id": "md05cd49b",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T00:41:57Z"
+    },
+    {
+      "id": "m3571e059",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nDetermine all geodetic homeomorphs of H by reducing the 5376 cycle constraints via Aut(H)-isotypic decomposition, establishing a diameter box bound, and counting positive-integer edge-length assignments that avoid the 6-cycle tie-hyperplanes using Barvinok's algorithm over the arrangement complement.",
+      "created_at": "2026-06-23T00:41:57Z"
+    }
+  ],
+  "plan": {
+    "summary": "Determine all geodetic homeomorphs of H by reducing the 5376 cycle constraints via Aut(H)-isotypic decomposition, establishing a diameter box bound, and counting positive-integer edge-length assignments that avoid the 6-cycle tie-hyperplanes using Barvinok's algorithm over the arrangement complement.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Derive explicit cycle constraints",
+        "body": "Write down the exact linear forms for the 5-cycle (parity/inequality) and 6-cycle (arc-difference) conditions on the subdivision variables x_e. For each 6-cycle C with complementary 3-arcs A, A', record the functional l_C(x) = sum_{e in A} x_e - sum_{e in A'} x_e, and confirm the 6-cycles form a single Aut(H)-orbit. Output the full list of tie-hyperplane functionals.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the diameter box bound",
+        "body": "Establish rigorously that for a geodetic G' of diameter d, every shortest-path-realizing internal path has length <= d, hence x_e <= d for all edges, giving the explicit finite box [1,d]^175. Relate d to the uniform parameter t (diameter 2t) to pin the admissible range of t and bound all coordinates by O(d).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Isotypic decomposition of the edge module and cycle constraints",
+        "body": "Using the known character table of PSU(3,5):2, decompose the 175-dimensional edge-permutation module into irreducibles. Compute the submodule W spanned by the arc-difference functionals l_C inside the 126-dimensional cycle space, find dim W, and determine which nontrivial irreducibles V_pi appear in W (i.e. which have nonzero image in W).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Confirm the uniform ray is forbidden",
+        "body": "Verify the key structural claim that the uniform subdivision x_e = t makes sum_A x_e = sum_{A'} x_e = 3t for every 6-cycle, placing it exactly on every tie-hyperplane and thus excluding it as a geodetic solution. Confirm that all genuine solutions must live in the complement of the tie-arrangement, i.e. in the nontrivial isotypic components.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Per-block feasibility and minimal-perturbation analysis",
+        "body": "For each surviving nontrivial V_pi (those not contained in the common kernel of all l_C), determine whether a positive integer point of the form t*1 + delta with delta in V_pi can simultaneously avoid all tie-hyperplanes l_C = 0 while staying inside the box [1,d]^175. Compute the minimal integer perturbation that dodges every hyperplane and check whether it stays O(1) or forces a coordinate to spike beyond d (anomalous solution).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Barvinok count over tie-arrangement complement",
+        "body": "Set up the lattice Lambda = x_0 + L*Z^k from the HNF of the equality part within each surviving isotypic block. Apply Barvinok's lattice-point counting algorithm via inclusion-exclusion over the hyperplane arrangement {l_C = 0}, intersected with the box, to obtain the exact alternating-sum count of positive integer solutions, including the one-parameter t-dependence.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Canonicalize and dedupe solutions under Aut(H)",
+        "body": "Use the Aut(H) = PSU(3,5):2 action of order 252000 on the edge set to canonicalize each enumerated solution to an orbit representative, removing duplicate assignments related by symmetry. Report the final list of distinct geodetic homeomorphs with multiplicities.",
+        "agent": "solver-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Verify the final count and structural conclusions",
+        "body": "Independently cross-check the Barvinok count against direct bounded enumeration over orbit representatives within the box, confirm that the surviving isotypic components match the character computation, and validate that every reported solution genuinely satisfies all 5-cycle parity and 6-cycle strict-inequality conditions. Flag any anomalous large-coordinate solution for separate treatment.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T00:41:57Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

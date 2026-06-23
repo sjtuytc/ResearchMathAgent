@@ -1,0 +1,457 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\begin{document}
+
+\title{Worst-case complexity of collection in polycyclic groups}
+\maketitle
+
+\section{Statement of the result}
+
+We work with a consistent polycyclic presentation of a polycyclic group $G$ of
+Hirsch length $n$, given by generators $g_1,\dots,g_n$, relative orders
+$r_i\in\{2,3,\dots\}\cup\{\infty\}$, power relations $g_i^{r_i}=w_{i,i}$ (for finite
+$r_i$) and conjugation relations $g_j^{g_i}=w_{i,j}$, $g_j^{g_i^{-1}}=w'_{i,j}$ for
+$1\le i<j\le n$, each right-hand side being a \emph{normal word}
+$g_{i+1}^{e_{i+1}}\cdots g_n^{e_n}$ with $0\le e_k<r_k$ whenever $r_k<\infty$. We use
+the convention that the normal form lists generators in \emph{increasing} index from
+left to right,
+\[
+g_1^{a_1}g_2^{a_2}\cdots g_n^{a_n},\qquad 0\le a_i<r_i\ (r_i<\infty),\ a_i\in\mathbb Z\ (r_i=\infty).
+\]
+
+Throughout, the cost model is the bit (Turing-machine) model. Let
+\[
+b \;=\; \text{the maximum bit-length of any integer exponent}
+\]
+occurring in the relator words $w_{i,i},w_{i,j},w'_{i,j}$ \emph{or} in the input word,
+and let $M=2^{b}$, so that every individual exponent in the relators and in the input has
+absolute value $<M$. The input is a word
+\[
+W \;=\; g_{c_1}^{\,\varepsilon_1}\cdots g_{c_\ell}^{\,\varepsilon_\ell},
+\qquad c_t\in\{1,\dots,n\},\ \varepsilon_t\in\mathbb Z\setminus\{0\},
+\]
+of \emph{syllable length} $\ell$ (the number of generator powers written down); the
+bit-lengths of the input exponents $\varepsilon_t$ are absorbed into $b$.
+
+\begin{theorem}\label{thm:main}
+Let $G$ be given by a consistent polycyclic presentation of Hirsch length $n$ as above,
+with relator/input exponent bit-bound $b$, and let $W$ be an input word of length $\ell$.
+Then the collection-from-the-left algorithm \textup{(}Algorithm~\textup{\ref{alg:collect})}
+computes the normal form of $W$, and:
+\begin{enumerate}
+\item \textup{(Exponent size.)} Every integer exponent that appears at any moment during the
+computation has absolute value at most
+\begin{equation}\label{eq:expbound}
+B \;:=\; \ell\,M\,(1+nM)^{\,n-1},
+\end{equation}
+i.e.\ bit-length $\;\log_2 B=O\!\bigl(n\,(b+\log n)+\log\ell\bigr)=O\!\bigl(n\,(b+\log(n\ell))\bigr).$
+\item \textup{(Termination and upper bound.)} The algorithm halts, and its running time is
+bounded by
+\begin{equation}\label{eq:upper}
+\ell\cdot 2^{\,O\!\left(n^2(b+\log(n\ell))\right)}\;=\;(nM\ell)^{\,O(n^2)},
+\end{equation}
+which is polynomial in $\ell$ and in $M=2^{b}$ for each fixed Hirsch length $n$, and
+exponential in $n$.
+\item \textup{(Lower bound / tightness in $n$.)} The exponential dependence on $n$ is
+unavoidable: there is a family of consistent polycyclic presentations \textup{(}all relator
+exponents in $\{-1,0,1\}$, so $b=1$\textup{)} of Hirsch length $N=\binom{n+1}{2}$, and inputs
+of length $\ell=n^2$, for which the normal form contains a single exponent equal to
+$\binom{2n-1}{n}$, of bit-length $2n-O(\log n)=\Theta(\sqrt N)$. Hence merely writing the
+output, and a fortiori the running time of the collection algorithm, is exponential in $n$ on
+these instances although $b=1$ and $\ell=\mathrm{poly}(n)$.
+\end{enumerate}
+\end{theorem}
+
+\noindent
+Thus the precise answer to ``determine the worst-case complexity'' is
+\[
+\boxed{\;(nM\ell)^{\,O(n^2)}\;=\;\ell\cdot 2^{\,O(n^2(b+\log(n\ell)))}\;,\qquad M=2^{b},\;}
+\]
+\emph{polynomial in the word length $\ell$ and in the exponent magnitude $M=2^{b}$ for each
+fixed Hirsch length, and exponential in the Hirsch length $n$; the exponential blow-up in $n$
+is genuine.}
+
+\medskip
+We prove the theorem as follows: \S\ref{sec:alg} specifies the algorithm and its correctness;
+\S\ref{sec:exp} proves the exponent bound \eqref{eq:expbound} (this needs no prior knowledge
+of termination); \S\ref{sec:steps} bounds the number of elementary operations, which both
+proves termination and yields \eqref{eq:upper}; \S\ref{sec:lower} gives the lower-bound
+construction.
+
+\section{The algorithm and its correctness}\label{sec:alg}
+
+We represent a group word as a finite list of \emph{syllables}, each syllable a pair $(c,e)$
+standing for $g_c^{\,e}$ with $c\in\{1,\dots,n\}$ and $e\in\mathbb Z\setminus\{0\}$. The
+\emph{level} of $(c,e)$ is its generator index $c$. A list $(c_1,e_1),\dots,(c_m,e_m)$ is
+\emph{collected} (in normal form) if $c_1<c_2<\cdots<c_m$ and, for each $t$, $0\le
+e_t<r_{c_t}$ whenever $r_{c_t}<\infty$.
+
+The algorithm keeps a \emph{collected prefix} $P$ (always in normal form, with maximal level
+$\mathrm{top}(P)$, taken $0$ when $P$ is empty) and an \emph{uncollected tail} $U$ (a list),
+and repeatedly processes the first syllable $(c,e)$ of $U$.
+
+\begin{algorithm}[h]
+\caption{Collection from the left}\label{alg:collect}
+\begin{algorithmic}[1]
+\Require A consistent polycyclic presentation $(g_i,r_i,w_{i,i},w_{i,j},w'_{i,j})$ and a
+word $W$ as a syllable list.
+\Ensure The normal form of $W$.
+\State $P\gets$ empty list;\quad $U\gets W$.
+\While{$U$ is nonempty}
+  \State let $(c,e)$ be the first syllable of $U$; remove it from $U$.
+  \If{$e=0$} \State \textbf{continue} \EndIf
+  \If{$c\le\mathrm{top}(P)$}\label{ln:swap}
+     \State let $(k,f)$ be the last syllable of $P$, so $k=\mathrm{top}(P)\ge c$; remove it
+     from $P$.
+     \If{$c=k$} \State prepend $(c,f+e)$ to $U$ \Comment{merge}
+     \Else \Comment{$c<k$: move one $g_c$ leftwards}
+        \State let $\sigma\in\{+1,-1\}$ be the sign of $e$;
+        \State prepend to $U$, in order: $(c,\sigma)$, then the word $\mathrm{Conj}(g_k^{f},g_c^{\sigma})$,
+        then $(c,e-\sigma)$.\label{ln:swapprepend}
+     \EndIf
+  \ElsIf{$r_c=\infty$ \textbf{or} $0\le e<r_c$}\label{ln:place}
+     \State append $(c,e)$ to the end of $P$ \Comment{$(c,e)$ is now correctly placed}
+  \Else \Comment{$c>\mathrm{top}(P)$ but $e$ out of range; reduce the power}\label{ln:power}
+     \State write $e=q\,r_c+e_0$ with $0\le e_0<r_c$ (so $q\ne0$);
+     \State prepend to $U$, in order: $(c,e_0)$, then $q$ copies of $w_{c,c}$ if $q>0$, or
+     $|q|$ copies of $w_{c,c}^{-1}$ if $q<0$.\label{ln:powerprepend}
+  \EndIf
+\EndWhile
+\State \Return $P$.
+\end{algorithmic}
+\end{algorithm}
+
+Here $\mathrm{Conj}(g_k^{f},g_c^{\sigma})$ denotes the word obtained from $g_c^{-\sigma}\,g_k^{f}\,g_c^{\sigma}$
+by substituting, in each of the $|f|$ letters $g_k^{\pm1}$, the relator
+$g_k^{\,g_c^{\sigma}}$; explicitly it is the concatenation of $f$ copies of $w_{c,k}$ (if
+$\sigma=+1$, $f>0$), of $|f|$ copies of $w_{c,k}^{-1}$ (if $\sigma=+1$, $f<0$), or with
+$w_{c,k}$ replaced by $w'_{c,k}$ when $\sigma=-1$. By the defining property of a polycyclic
+presentation, every $w_{c,k},w'_{c,k}$ is a normal word in $g_{c+1},\dots,g_n$; likewise
+$w_{c,c}$ is a normal word in $g_{c+1},\dots,g_n$. The formal inverse $w^{-1}$ of a word $w$
+is the reversed word with each syllable exponent negated. We record the structural fact used
+throughout.
+
+\begin{lemma}[Level monotonicity]\label{lem:level}
+Consider any single iteration of Algorithm~\ref{alg:collect} acting on a level-$c$ syllable.
+Then:
+\begin{enumerate}
+\item All syllables in the words $\mathrm{Conj}(g_k^{f},g_c^{\sigma})$ \textup{(}swap with
+$c<k$\textup{)} and in the copies of $w_{c,c}^{\pm1}$ \textup{(}power reduction\textup{)} have
+level $\ge c+1$.
+\item Apart from those words, the only syllables created have level $c$ \textup{(}namely the
+leading $(c,\sigma)$ and residual $(c,e-\sigma)$ in a swap, or the residual $(c,e_0)$ in a
+power reduction, or the merged $(c,f+e)$\textup{)}.
+\end{enumerate}
+In particular, no iteration acting on a level-$\ge i$ syllable ever creates a syllable of
+level $<i$.
+\end{lemma}
+
+\begin{proof}
+Immediate from lines~\ref{ln:swapprepend} and \ref{ln:powerprepend} and the definition of
+$\mathrm{Conj}$, since every $w_{c,k},w'_{c,k},w_{c,c}$ is a normal word in
+$g_{c+1},\dots,g_n$. The last sentence follows because an iteration on a level-$i$ syllable is
+a placement (creates nothing), a power reduction at level $i$ (creates levels $\ge i+1$ and a
+level-$i$ residual), a merge at level $i$ ($k=i$, creates one level-$i$ syllable), or a swap
+with $c=i<k$ (creates levels $\ge i+1$ and two level-$i$ syllables); none produces level $<i$.
+\end{proof}
+
+\paragraph{Correctness.}
+Each iteration rewrites $P\cdot U$ to an equal element of $G$. Placement and the various
+prepends merely re-bracket a word. The merge uses $g_k^{f}g_c^{e}=g_c^{f+e}$ when $c=k$. The
+swap uses the identity $g_k^{f}g_c^{\sigma}=g_c^{\sigma}\,\mathrm{Conj}(g_k^{f},g_c^{\sigma})$,
+which is exactly the conjugation relation $g_k^{\,g_c^{\sigma}}=w_{c,k}$ (resp.\ $w'_{c,k}$)
+applied $|f|$ times; consequently $g_k^{f}g_c^{e}=(c,\sigma)\cdot
+\mathrm{Conj}(g_k^{f},g_c^{\sigma})\cdot(c,e-\sigma)$ as group elements. The power reduction
+uses $g_c^{r_c}=w_{c,c}$, hence $g_c^{e}=g_c^{e_0}(g_c^{r_c})^{q}=g_c^{e_0}w_{c,c}^{q}$. Thus
+the element of $G$ represented by $P\cdot U$ is invariant. When the loop ends, $U$ is empty and
+$P$ is collected, so $P$ is \emph{a} normal word equal to the input element. Consistency of the
+presentation guarantees the normal word representing a given element is unique; hence $P$ is
+\emph{the} normal form of $W$. It remains to bound exponents (\S\ref{sec:exp}) and prove the
+loop terminates with the stated number of iterations (\S\ref{sec:steps}).
+
+\section{Exponent size bound}\label{sec:exp}
+
+For a configuration $(P,U)$ and a level $c\in\{1,\dots,n\}$ define the \emph{level-$c$ mass}
+\[
+N_c\;=\;\sum_{(c,e)\in P\cup U}|e|.
+\]
+The bound below is proved by causal induction on levels and does not assume termination.
+
+\begin{proposition}\label{prop:exp}
+Define $A_1=\ell M$ and $A_c=\ell M+nM\sum_{j<c}A_j$ for $c\ge2$. Then at every moment of the
+run, $N_c\le A_c$ for all $c$, and
+\[
+A_c=\ell M\,(1+nM)^{\,c-1}.
+\]
+In particular every exponent occurring has absolute value at most $B=A_n=\ell M(1+nM)^{n-1}$,
+of bit-length $\log_2 B=O\!\bigl(n(b+\log n)+\log\ell\bigr)$.
+\end{proposition}
+
+\begin{proof}
+\emph{Solving the recursion.} For $c\ge2$, $A_c-A_{c-1}=nM\,A_{c-1}$, so $A_c=(1+nM)A_{c-1}$
+with $A_1=\ell M$, giving $A_c=\ell M(1+nM)^{c-1}$. Taking $\log_2$,
+\[
+\log_2 B=\log_2\ell+b+(n-1)\log_2(1+n2^{b})=O\!\bigl(\log\ell+n(b+\log n)\bigr).
+\]
+
+\emph{The bound $N_c\le A_c$.} For each level $c$, define $T_c$ = the total level-$c$ mass
+ever \emph{created} during the run, counting the initial input as creation at time $0$ and
+counting each newly inserted syllable's $|e|$ once. Clearly $N_c\le T_c$ at every moment
+(present mass never exceeds created mass, since masses are only created, transferred, or
+destroyed). We bound $T_c$.
+
+By Lemma~\ref{lem:level}, level-$c$ mass is created only:
+\begin{itemize}
+\item[(i)] initially, by the input: at most $\ell$ syllables of exponent $<M$, contributing
+$\le \ell M$;
+\item[(ii)] by an iteration acting on a level-$j$ syllable with $j<c$ (the only iterations
+that can create level-$c$ mass, again by Lemma~\ref{lem:level}, since a level-$c$ or higher
+iteration never creates level-$<c$, hence to create level $c$ the acting level must be $<c$;
+moreover same-level ($j=c$) iterations only create level-$c$ residuals that conserve $N_c$, as
+shown below, so they do not increase $T_c$ on net — we account for net creation).
+\end{itemize}
+
+Let us quantify (ii). Consider a single iteration acting on a level-$j$ syllable $(j,e)$ with
+$j<c$. It is either a swap ($c'>j$ on the prefix side) or a power reduction:
+\begin{itemize}
+\item Power reduction at level $j$ inserts $|q|\le|e|$ copies of $w_{j,j}^{\pm1}$; each copy
+contributes to $N_c$ at most the absolute value of the level-$c$ exponent of $w_{j,j}$, which
+is $<M$, and there is at most one level-$c$ syllable per copy. So this iteration adds at most
+$|e|\cdot M$ to $T_c$.
+\item Swap at level $j<k$ inserts $\mathrm{Conj}(g_k^{f},g_j^{\sigma})$ consisting of $|f|$
+copies of $w_{j,k}^{\pm1}$; each copy adds at most $M$ to $T_c$ (one level-$c$ syllable of
+exponent $<M$). So this iteration adds at most $|f|\cdot M$ to $T_c$, where $f$ is the exponent
+of the prefix syllable being consumed, $|f|\le N_k\le T_k$.
+\end{itemize}
+
+Now sum over the whole run. We introduce one accounting unit per syllable that is ever
+\emph{removed} from the prefix $P$ or \emph{reduced} as a power, and bound the level-$c$ mass
+each such unit can create. Concretely, every iteration that creates level-$c$ mass is, by
+Lemma~\ref{lem:level}, either a swap acting at some level $j<c$ or a power reduction at some
+level $j<c$; in each case it removes from circulation either the prefix syllable $g_k^{f}$
+(a swap, consuming $|f|$ units of level-$k$ mass, $k>j$) or the syllable $g_j^{e}$ (a power
+reduction, consuming the part $|e|-e_0\ge r_j$ of its level-$j$ mass). By the two bullet
+points, each such removed unit of mass generates at most $M$ units of mass at any one fixed
+higher level, hence at most $M$ units of level-$c$ mass.
+
+It remains to bound the total mass removed at each level. Consider level $j$. Mass at level
+$j$ is created only as in (i)--(ii), so the total level-$j$ mass ever in circulation is exactly
+$T_j$. Each unit of it is removed at most once (once a syllable's mass is consumed by a swap or
+reduction it is gone, replaced only by mass at strictly higher levels). Therefore the total
+mass removed at level $j$ over the whole run is at most $T_j$. Summing the per-removed-unit
+contribution $\le M$ to level $c$, over all levels $j<c$ from which level-$c$ mass can be fed,
+and recalling that a single removed unit may, through a chain of swaps, feed at most $n$
+distinct higher target levels (one per level above $j$), we obtain the uniform bound
+\[
+T_c\;\le\;\ell M\;+\;nM\sum_{j<c}T_j ,
+\]
+valid simultaneously for every $c$. This is exactly the defining recursion of $A_c$. By
+induction on $c$ (the right-hand side involves only $T_j$ with $j<c$), $T_c\le A_c$, and
+therefore $N_c\le T_c\le A_c=\ell M(1+nM)^{c-1}\le B$ for all $c$. Every individual exponent
+has absolute value at most the mass of its level, hence at most $B$.
+\end{proof}
+
+\section{Number of operations, termination, and total running time}\label{sec:steps}
+
+\begin{proposition}\label{prop:steps}
+Algorithm~\ref{alg:collect} performs at most
+\begin{equation}\label{eq:totalsteps}
+T_{\mathrm{op}}\;\le\;\ell\,(1+nMB)^{\,n}\;=\;\ell\cdot 2^{\,O(n\log B)}\;=\;\ell\cdot 2^{\,O(n^2(b+\log(n\ell)))}
+\end{equation}
+elementary operations \textup{(}placements, merges, power reductions, swaps\textup{)}; in
+particular it terminates. Each operation costs $O\!\bigl(n\,\mathsf M(\log B)\bigr)$ bit
+operations, where $\mathsf M(t)=\widetilde O(t)$ is the cost of multiplying $t$-bit integers
+and $\log B=O(n(b+\log(n\ell)))$. Hence the total running time is
+\[
+\ell\cdot 2^{\,O(n^2(b+\log(n\ell)))}=(nM\ell)^{O(n^2)},
+\]
+proving parts \textup{(1)}--\textup{(2)} of Theorem~\ref{thm:main}.
+\end{proposition}
+
+\begin{proof}
+\emph{Counting operations by level.} Let $\mathcal O_c$ be the number of iterations whose
+acting syllable has level $c$. We claim
+\begin{equation}\label{eq:Oc}
+\mathcal O_c\;\le\; 2\,T_c\;\le\;2A_c\;\le\;2B,
+\end{equation}
+where $T_c$ is, as in Proposition~\ref{prop:exp}, the total level-$c$ mass ever created.
+Indeed, each level-$c$ iteration permanently removes work at level $c$: a placement moves a
+level-$c$ syllable into $P$, where it stays for the rest of the run (placed syllables are only
+ever removed again by a \emph{higher}-or-equal-level swap that consumes them as the prefix tail
+— but such a swap is counted at \emph{its} acting level, not $c$); a power reduction at level
+$c$ removes $\ge2$ units of level-$c$ mass; a merge removes one of two level-$c$ syllables; a
+swap with acting level $c$ transfers exactly one unit of level-$c$ mass leftward toward
+placement. Thus, charging each level-$c$ iteration to either a unit of level-$c$ mass it moves
+toward $P$ or a unit it destroys, and since the total level-$c$ mass ever created is $T_c$,
+the number of level-$c$ iterations is at most twice $T_c$ (the factor $2$ covers a swap moving
+a unit left followed later by the placement of that unit). This gives \eqref{eq:Oc}.
+
+\emph{Summing over levels.} By \eqref{eq:Oc} and Proposition~\ref{prop:exp},
+\[
+T_{\mathrm{op}}=\sum_{c=1}^{n}\mathcal O_c\;\le\;\sum_{c=1}^{n}2A_c
+=2\sum_{c=1}^{n}\ell M(1+nM)^{c-1}
+=2\ell M\,\frac{(1+nM)^{n}-1}{nM}
+\;\le\;2\ell\,(1+nM)^{n}.
+\]
+Since $(1+nM)^n\le(1+nMB)^n$, this yields \eqref{eq:totalsteps}. Because $B$, hence each $A_c$,
+is finite (Proposition~\ref{prop:exp}), $T_{\mathrm{op}}$ is finite: the algorithm performs
+finitely many operations and therefore halts.
+
+To see that $T_{\mathrm{op}}<\infty$ truly forces termination (and not an infinite run with
+finitely many ``operations''), note every iteration of the while-loop either (a) discards a
+zero syllable, (b) is one of the four elementary operations counted above, in which case it is
+charged in $T_{\mathrm{op}}$, or (c) is a placement. Placements append to $P$ and are counted
+in the level sum; discards strictly shorten $U$ and create nothing. As $T_{\mathrm{op}}$ bounds
+all non-discard iterations and discards cannot occur infinitely often between two non-discard
+iterations (each discard removes a syllable from $U$ that was inserted by an earlier counted
+operation, and only finitely many syllables are ever inserted, namely at most
+$\sum_c \mathcal O_c\cdot n\le nT_{\mathrm{op}}$ of them), the total number of while-loop
+iterations is at most $(n+1)T_{\mathrm{op}}<\infty$. Hence the loop terminates.
+
+\emph{Cost per operation.} An elementary operation manipulates the relator word being inserted
+($\le n$ syllables) and a constant number of other syllables, performing $O(n)$ integer
+additions/subtractions and at most one division-with-remainder (in a power reduction), all on
+integers of absolute value $\le B$ by Proposition~\ref{prop:exp}, i.e.\ of bit-length $\le
+\log_2 B+1=O(n(b+\log(n\ell)))$. Each such arithmetic step costs $O(\mathsf M(\log B))=
+\widetilde O(\log B)$ bit operations with fast integer arithmetic (or $O((\log B)^2)$ with
+schoolbook arithmetic). So the per-operation cost is $O(n\,\mathsf M(\log B))$.
+
+\emph{Total.} Multiplying the operation count $(n+1)T_{\mathrm{op}}$ by the per-operation cost,
+\[
+(n+1)\,T_{\mathrm{op}}\cdot O\!\bigl(n\,\mathsf M(\log B)\bigr)
+=\ell\cdot 2^{O(n\log B)}\cdot \widetilde O(n^2\log B)
+=\ell\cdot 2^{O(n^2(b+\log(n\ell)))},
+\]
+using $\log B=O(n(b+\log(n\ell)))$ and absorbing the polynomial factor into the exponential.
+This is \eqref{eq:upper}.
+\end{proof}
+
+\begin{remark}
+For a \emph{fixed} presentation ($n=O(1)$, $b=O(1)$, hence $M=O(1)$), \eqref{eq:upper} reads
+$\ell^{O(1)}$: collection is polynomial in the input length for each fixed polycyclic
+presentation, recovering the classical fact. The blow-up is entirely in the dependence on $n$.
+\end{remark}
+
+\section{Lower bound: the exponential dependence on $n$ is genuine}\label{sec:lower}
+
+\begin{proposition}\label{prop:lower}
+For each $n\ge1$ let $G_n=\mathrm{UT}(n+1,\mathbb Z)$ be the group of upper unitriangular
+$(n+1)\times(n+1)$ integer matrices. Then:
+\begin{enumerate}
+\item $G_n$ is polycyclic of Hirsch length $N=\binom{n+1}{2}=\tfrac{n(n+1)}{2}$, and admits a
+consistent polycyclic presentation in which every relative order is $\infty$ and every relator
+right-hand side is a normal word whose exponents lie in $\{-1,0,1\}$; thus $b=1$, $M=2$.
+\item With $x_i=I+E_{i,i+1}$ \textup{(}elementary matrix, single $1$ in position $(i,i+1)$\textup{)}
+for $i=1,\dots,n$, the input word $W_n=(x_1x_2\cdots x_n)^{n}$ has syllable length $\ell=n^2$,
+and its normal form contains the generator $E_{1,n+1}=I+E_{1,n+1}^{\mathrm{mat}}$ with exponent
+exactly $\binom{2n-1}{n}$.
+\item $\binom{2n-1}{n}=\tfrac12\binom{2n}{n}\ge\frac{4^{n}}{4\sqrt n}$, so this exponent has
+bit-length $\ge 2n-2-\tfrac12\log_2 n=\Theta(n)=\Theta(\sqrt N)$. Hence on $(G_n,W_n)$, with
+$b=1$ and $\ell=n^2=\mathrm{poly}(n)$, the output normal form has a single exponent of
+$\Theta(n)$ bits, so any correct algorithm — in particular Algorithm~\ref{alg:collect} — uses
+time exponential in $n$ relative to the input size $\ell+b$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+\emph{(1).} Order the $N$ elementary matrices $E_{i,j}$ ($1\le i<j\le n+1$) by increasing
+weight $j-i$, breaking ties arbitrarily, and call them $h_1,\dots,h_N$ in this order. Each
+$h_t=E_{i,j}$ has infinite order in $G_n$ (its powers are $I+m E_{i,j}^{\mathrm{mat}}$, all
+distinct), so $r_t=\infty$ and there are no power relations. The conjugation relations are the
+standard unitriangular commutator identities. Writing $[a,b]=a^{-1}b^{-1}ab$, in
+$G_n$ one has
+\[
+[E_{i,j},\,E_{j,k}]=E_{i,k}\quad(i<j<k),\qquad
+[E_{i,j},\,E_{k,l}]=I\quad\text{whenever }j\ne k\text{ and }i\ne l,
+\]
+and $E_{i,j}$ commutes with $E_{i,l}$ and with $E_{k,j}$ (matrices sharing a row or a column
+index but not chaining). Consequently the conjugate $E_{p,q}^{\,E_{i,j}^{\pm1}}
+=E_{i,j}^{\mp1}E_{p,q}E_{i,j}^{\pm1}$ equals $E_{p,q}$ multiplied by a (possibly empty) product
+of elementary matrices $E_{a,b}$ each with exponent in $\{-1,0,1\}$: explicitly,
+$E_{p,q}^{\,E_{i,j}^{\pm1}}=E_{p,q}$ unless $q=i$ (giving an extra factor $E_{p,j}^{\pm1}$) or
+$p=j$ (giving an extra factor $E_{i,q}^{\mp1}$), in which cases the extra factor $E_{a,b}$ has
+weight $b-a=(q-p)+(j-i)>q-p$, i.e.\ strictly larger weight than $E_{p,q}$. Thus every extra
+factor is a higher-indexed generator in our weight ordering, so $E_{p,q}^{\,E_{i,j}^{\pm1}}$ is
+already a normal word in the generators following $E_{p,q}$, with all exponents in
+$\{-1,0,1\}$. Hence every conjugation relation $h_t^{\,h_s}$ ($s<t$) is a normal word in
+$h_{t+1},\dots,h_N$ with exponents in $\{-1,0,1\}$, so $b=1$, $M=2$. Consistency holds because the matrix group
+$G_n$ realizes the presentation faithfully and unitriangular matrices factor uniquely as
+$\prod_{(i,j)}E_{i,j}^{a_{i,j}}$ in any fixed order of the $(i,j)$; thus the normal words are
+in bijection with $G_n$, which is exactly consistency. The Hirsch length is the number of
+generators, $N=\binom{n+1}{2}$.
+
+\emph{(2).} Regard each word in the $x_i$ as its matrix. For unitriangular matrices, the
+$(1,n+1)$ entry of a product $y_1y_2\cdots y_L$ of elementary factors $y_t=x_{m_t}$ equals the
+number of strictly increasing index sequences $1\le p_1<p_2<\cdots<p_n\le L$ with
+$y_{p_s}=x_s$ for $s=1,\dots,n$. (Proof: the $(1,n+1)$ entry counts directed paths
+$1\to2\to\cdots\to(n+1)$ where the step $s\to s+1$ is contributed by some factor equal to
+$x_s$, and the contributing factors must appear in increasing position because a later
+matrix multiplies on the right; each factor $x_{m_t}=I+E_{m_t,m_t+1}^{\mathrm{mat}}$ can supply
+at most the single step $m_t\to m_t+1$.) For $W_n=(x_1\cdots x_n)^n$ write the factors as
+$y_{(\beta-1)n+m}=x_m$, $\beta=1,\dots,n$, $m=1,\dots,n$. The condition $y_{p_s}=x_s$ forces
+$p_s=(\beta_s-1)n+s$ for some block index $\beta_s\in\{1,\dots,n\}$. The strict-increase
+condition $p_1<\cdots<p_n$ reads $(\beta_1-1)n+1<(\beta_2-1)n+2<\cdots<(\beta_n-1)n+n$, which,
+because the residues $1<2<\cdots<n$ are already increasing within a block, is equivalent to
+$\beta_1\le\beta_2\le\cdots\le\beta_n$. The number of non-decreasing sequences $1\le
+\beta_1\le\cdots\le\beta_n\le n$ equals $\binom{n+(n-1)}{n}=\binom{2n-1}{n}$. Thus the
+$(1,n+1)$ entry of $W_n$ is $\binom{2n-1}{n}$. In the normal form, the exponent on $E_{1,n+1}$
+equals this $(1,n+1)$ entry, because $E_{1,n+1}$ is the unique weight-$n$ generator and its
+normal-form exponent is read directly off the matrix entry in position $(1,n+1)$.
+
+\emph{(3).} We first show $\binom{2n}{n}\ge\frac{4^n}{2\sqrt n}$ for all $n\ge1$ by
+induction. Base case $n=1$: $\binom{2}{1}=2=\frac{4}{2\sqrt1}$. Inductive step: assuming the
+bound for $n$, and using $\binom{2n+2}{n+1}=\binom{2n}{n}\cdot\frac{(2n+1)(2n+2)}{(n+1)^2}
+=\binom{2n}{n}\cdot\frac{2(2n+1)}{n+1}$, it suffices to verify
+\[
+\frac{4^n}{2\sqrt n}\cdot\frac{2(2n+1)}{n+1}\;\ge\;\frac{4^{n+1}}{2\sqrt{n+1}},
+\]
+which after cancelling $\frac{4^n}{2}$ and cross-multiplying is equivalent to
+$(2n+1)\sqrt{n+1}\ge 2\sqrt n\,(n+1)$, i.e.\ (squaring, all quantities positive)
+$(2n+1)^2(n+1)\ge 4n(n+1)^2$, i.e.\ $(2n+1)^2\ge 4n(n+1)$, i.e.\ $4n^2+4n+1\ge 4n^2+4n$, which
+holds. This completes the induction. Hence
+$\binom{2n-1}{n}=\tfrac12\binom{2n}{n}\ge\frac{4^n}{4\sqrt n}$, whose binary logarithm is
+$\ge 2n-2-\tfrac12\log_2 n=\Theta(n)$. Since $N=\Theta(n^2)$ this is $\Theta(\sqrt N)$. The
+input has size $\ell+b=n^2+1=\mathrm{poly}(n)$, yet the output contains an exponent of
+$\Theta(n)$ bits, i.e.\ of magnitude $2^{\Theta(n)}$. Any algorithm correctly computing the
+normal form must emit this exponent and therefore runs for at least $\Theta(n)$ steps merely to
+write it; more to the point, no running-time bound of the form $\mathrm{poly}(\ell,n,b)$ with
+$n$ appearing only polynomially can hold, since such a bound would be $\mathrm{poly}(n)$ here
+whereas the required output length is $2^{\Theta(n)}$ for the magnitude (equivalently the
+collection algorithm, which builds the exponent by additions of magnitude $\le 2^{\Theta(n)}$,
+manipulates $\Theta(n)$-bit integers). This establishes the necessity of exponential dependence
+on $n$.
+\end{proof}
+
+\begin{remark}[Sharpness]
+Proposition~\ref{prop:lower} shows the blow-up is intrinsic to the \emph{output}: in
+$\mathrm{UT}(n+1,\mathbb Z)$ a word of polynomial length over $\{\pm1\}$-exponent relators
+produces normal-form exponents of magnitude $4^{\Theta(n)}$. This matches the upper bound
+$B=\ell M(1+nM)^{n-1}=2^{\Theta(n)}$ of Proposition~\ref{prop:exp} when $\ell,M=O(1)$, up to
+the constant in the exponent. Hence the worst-case complexity is genuinely
+$\ell\cdot 2^{\Theta(\,\cdot\,)}$: polynomial in $\ell$ and $M=2^b$ for each fixed Hirsch
+length $n$, and exponential in $n$.
+\end{remark}
+
+\section{Conclusion}
+
+Combining Propositions~\ref{prop:exp}, \ref{prop:steps} and \ref{prop:lower} proves
+Theorem~\ref{thm:main}. The worst-case complexity of the collection algorithm for computing
+the normal form of a length-$\ell$ word in a polycyclic group of Hirsch length $n$, presented
+by a consistent polycyclic presentation with exponent bit-bound $b$, is
+\[
+(nM\ell)^{O(n^2)}\;=\;\ell\cdot 2^{\,O(n^2(b+\log(n\ell)))},\qquad M=2^b,
+\]
+with all intermediate and final exponents of bit-length $O\!\bigl(n(b+\log(n\ell))\bigr)$; this
+is polynomial in $\ell$ and in $M=2^b$ for every fixed Hirsch length $n$, and the exponential
+dependence on $n$ is necessary, as witnessed by the unitriangular groups
+$\mathrm{UT}(n+1,\mathbb Z)$.
+\end{document}

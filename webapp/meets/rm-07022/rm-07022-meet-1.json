@@ -1,0 +1,161 @@
+{
+  "id": "rm-07022-meet-1",
+  "problem_id": "rm-07022",
+  "topic": "Init rm-07022 — proof review",
+  "goal": "Review the proof and issues for rm-07022; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T11:31:09Z",
+  "messages": [
+    {
+      "id": "m4d6c74f7",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-07022 — proof review**",
+      "created_at": "2026-06-23T11:31:09Z"
+    },
+    {
+      "id": "m6c2746c8",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about where my expertise sits relative to this problem. This is a differential-geometry problem about left-invariant statistical connections on the $(\\mu,\\sigma)$ upper half-plane — the Fisher metric here is just the hyperbolic metric (up to the factor of $2$ on $d\\sigma$). My instinct is still to linearize and reduce to algebra, which is exactly what works here. Let me set up the computation explicitly.\n\nA left-invariant affine connection on a Lie group $G$ is determined entirely by a bilinear map $\\alpha: \\mathfrak{g}\\times\\mathfrak{g}\\to\\mathfrak{g}$ on the Lie algebra, $\\alpha(X,Y) = \\nabla_X Y$ for left-invariant fields $X,Y$. So $\\mathcal{C}(G,g)$ is a **finite-dimensional** object — we've reduced an infinite-dimensional connection space to a subset of $\\mathrm{Hom}(\\mathfrak{g}\\otimes\\mathfrak{g},\\mathfrak{g}) \\cong \\mathbb{R}^8$. That's the whole game; everything else is linear constraints. Concretely:\n\n1. **Basis.** Take the left-invariant frame $e_1 = \\sigma\\,\\partial_\\mu$, $e_2 = \\sigma\\,\\partial_\\sigma$, orthogonal with $g(e_1,e_1)=1$, $g(e_2,e_2)=2$. The bracket is $[e_2,e_1] = e_1$ (the $ax+b$ algebra).\n2. **Torsion-free:** $\\alpha(X,Y)-\\alpha(Y,X) = [X,Y]$. This is an affine linear constraint, cutting the $8$ parameters down.\n3. **Compatibility / duality:** the dual $\\nabla^*$ is forced by $X g(Y,Z) = g(\\nabla_X Y,Z) + g(Y,\\nabla^*_X Z)$, so $\\nabla^*$ is *determined* by $\\nabla$ and $g$. Torsion-freeness of $\\nabla^*$ is then a second linear constraint on $\\alpha$.\n\nSo my question to the group, in my own language: **what's the dimension of the affine solution space after imposing the two torsion-free conditions plus duality?** I'd bet $\\mathcal{C}(G,g)$ is a low-dimensional affine subspace — likely the Amari $\\alpha$-family is only part of it, since that family is $1$-parameter but the general left-invariant compatible torsion-free connection should have more freedom. Has anyone actually written out $\\alpha(e_i,e_j)$ component-by-component? Let's get the matrix of the duality constraint down before we argue about the moduli quotient — the isometry group of hyperbolic space restricted to $g$-isometric *automorphisms* of this Lie group is tiny, so the quotient won't kill many dimensions.",
+      "created_at": "2026-06-23T11:31:22Z"
+    },
+    {
+      "id": "m1f0586fe",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your linearization is exactly right, and I want to push the bookkeeping to its conclusion — this is precisely the kind of problem where the *right* structure dissolves the difficulty. Let me write out the constraints in your frame $e_1=\\sigma\\partial_\\mu$, $e_2=\\sigma\\partial_\\sigma$, with $g=\\mathrm{diag}(1,2)$ and $[e_2,e_1]=e_1$.\n\nA left-invariant connection is $\\nabla_{e_i}e_j=\\sum_k \\Gamma^k_{ij}e_k$, eight numbers. The dual is determined: from $e_i\\,g(e_j,e_k)=0$ (the $g_{jk}$ are constant in this frame!) we get $g(\\nabla^*_{e_i}e_k,e_j)=-g(e_j,\\nabla_{e_i}e_k)$, i.e. $\\nabla^*=-\\nabla$ transposed in the metric — concretely $\\Gamma^{*\\,m}_{\\,ik}=-g^{mj}g_{\\ell j}\\Gamma^\\ell_{ik}\\cdot(\\text{reindexed})$, a linear involution.\n\nNow the two torsion-free conditions. Write $T(X,Y)=\\nabla_XY-\\nabla_YX-[X,Y]$. Imposing $T=0$ for $\\nabla$ and $T^*=0$ for $\\nabla^*$ gives, after the metric is constant:\n\n- $T=0$: $\\Gamma^k_{ij}-\\Gamma^k_{ji}=c^k_{ij}$ where $c^1_{21}=1$, else $0$.\n- $T^*=0$: the *symmetric* part difference, which combined with duality forces the **cubic tensor** $C_{ijk}=g(\\nabla_{e_i}e_j-\\nabla^{(0)}_{e_i}e_j,\\,e_k)$ to be **totally symmetric** — this is the Amari–Nagaoka theorem: a torsion-free $\\nabla$ with torsion-free dual is exactly $\\nabla^{(0)}\\pm\\frac12 C$ with $C$ a fully symmetric $3$-tensor. That is the real content of \"statistical compatibility.\"\n\nSo $\\mathcal{C}(G,g)$ is an **affine space modeled on $\\mathrm{Sym}^3(\\mathfrak{g}^*)$**, which has dimension $\\binom{3+1}{3}=\\binom{4}{3}$... no — $\\dim\\mathrm{Sym}^3(\\mathbb{R}^2)=4$. So $\\mathcal{C}(G,g)$ is a $4$-dimensional affine space over the Levi-Civita base point, **not** the $1$-parameter Amari $\\alpha$-line. The $\\alpha$-family is the distinguished line $C=2\\alpha\\,T_{\\mathrm{Amari}}$ where $T_{\\mathrm{Amari}}$ is the *skewness tensor* of the normal family — but left-invariance alone permits the full $\\mathrm{Sym}^3$.\n\nNow the quotient. The $g$-isometric Lie automorphisms: an automorphism of the $ax+b$ algebra fixing $g$ must preserve the bracket and the metric. $\\mathrm{Aut}(\\mathfrak{g})$ for $[e_2,e_1]=e_1$ is $\\{e_1\\mapsto a e_1,\\ e_2\\mapsto e_2+b e_1\\}$; requiring $g$-invariance",
+      "created_at": "2026-06-23T11:32:10Z"
+    },
+    {
+      "id": "m9f5612ab",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have done the right thing: linearize, and let $\\mathrm{Sym}^3(\\mathfrak{g}^*)$ emerge. But let me push for the *real* theorem behind the technical one, because I think László cut himself off at exactly the interesting point: the isometry constraint.\n\nLet me compute the automorphisms explicitly, the way I always insist on doing the first case by hand. We have $\\mathfrak{g}=\\langle e_1,e_2\\rangle$, $[e_2,e_1]=e_1$. An automorphism must fix $e_1$ up to scale (it spans the derived algebra $[\\mathfrak g,\\mathfrak g]$), so $\\phi(e_1)=a e_1$, $\\phi(e_2)=e_2+b e_1$ with $a\\neq 0$. Now impose $g$-isometry with $g=\\mathrm{diag}(1,2)$:\n- $g(\\phi e_1,\\phi e_1)=a^2=1\\Rightarrow a=\\pm1$.\n- $g(\\phi e_1,\\phi e_2)=ab\\cdot 1=0\\Rightarrow b=0$ (since $a\\neq0$).\n- $g(\\phi e_2,\\phi e_2)=2$ automatically.\n\nSo the $g$-isometric automorphism group is **just $\\mathbb{Z}/2$**: $e_1\\mapsto -e_1$, $e_2\\mapsto e_2$. That's the parity $\\mu\\mapsto -\\mu$, exactly the reflection symmetry of the Gaussian! The continuous part is killed by the metric — this is the rigidity of the hyperbolic structure, and it's why the quotient barely shrinks anything.\n\nNow how does $\\mathbb{Z}/2$ act on $\\mathrm{Sym}^3(\\mathfrak g^*)\\cong\\mathbb{R}^4$? With $e_1\\mapsto-e_1$ the monomials $\\{e_1^{*3},\\,e_1^{*2}e_2^*,\\,e_1^*e_2^{*2},\\,e_2^{*3}\\}$ transform by $\\{-,+,-,+\\}$. So $\\mathbb{Z}/2$ acts as $\\mathrm{diag}(-1,+1,-1,+1)$ on $\\mathbb{R}^4$. The quotient $\\mathbb{R}^4/(\\mathbb{Z}/2)$ is therefore $\\mathbb{R}^2\\times(\\mathbb{R}^2/\\pm)$ — a half-space type cone:\n$$\\mathcal{M}(G,g)\\;\\cong\\;\\mathbb{R}^2\\times\\big(\\mathbb{R}^2/(\\mathbf{x}\\sim-\\mathbf{x})\\big),$$\nthe second factor being the standard cone (a half-plane folded, coordinates $u=e_1^{*3}$-comp, $v=e_1^*e_2^{*2}$-comp invariants $u^2,uv,v^2$).\n\nTwo remarks where I want to be provocative. First: the Amari $\\alpha$-line sits inside the *odd* eigenspace — the skewness tensor of the normal family is the totally symmetric cubic $T_{ijk}=E[\\partial_i\\ell\\,\\partial_j\\ell\\,\\partial_k\\ell]$, which for the Gaussian is odd under $\\mu\\mapsto-\\mu$. So Amari's whole $\\alpha$-family lives in the part the $\\mathbb{Z}/2$ *folds*, meaning $\\nabla^{(\\alpha)}",
+      "created_at": "2026-06-23T11:32:55Z"
+    },
+    {
+      "id": "m86bd4f50",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your $\\mathbb{Z}/2$ computation is clean and I believe it — but let me act as the algorithmic skeptic and *audit the dimension count*, because I think there's an off-by-something hiding in the affine-space claim that we should nail before declaring victory.\n\nHere's my worry. László said $\\mathcal{C}(G,g)$ is an affine space modeled on $\\mathrm{Sym}^3(\\mathfrak{g}^*)$, dimension $4$. That's the Amari–Nagaoka picture *in a flat coordinate frame*. But our frame is **not** coordinate — $[e_2,e_1]=e_1\\neq 0$. The Amari–Nagaoka theorem says the difference tensor $C_{ijk}=g(\\nabla_{e_i}e_j-\\nabla^{(0)}_{e_i}e_j,e_k)$ between a compatible pair and Levi-Civita must be totally symmetric, and *that* statement is frame-independent. So I agree the model space is $\\mathrm{Sym}^3$ and $\\dim\\mathcal{C}=4$. Good — the bracket only enters in computing the base point $\\nabla^{(0)}$, not the dimension. So that part survives my audit.\n\nNow the part I actually want to be careful about: **is the parametrization the full $C$, or does left-invariance impose extra constraints on $C$ itself?** It does not — a left-invariant $\\nabla^{(0)}$ plus a *constant* (in the left-invariant frame) symmetric tensor $C$ is again left-invariant, and every left-invariant compatible $\\nabla$ arises this way. So the $4$ parameters are genuinely free. Confirmed.\n\nSo the honest summary, which I'll commit to:\n$$\\mathcal{M}(G,g)\\;\\cong\\;\\mathbb{R}^4 \\big/ \\mathrm{diag}(-1,+1,-1,+1)\\;\\cong\\;\\mathbb{R}^2\\times\\mathrm{Cone}(\\mathbb{R}^2),$$\nwith invariant coordinates on the folded factor $(p,q,r)=(u^2,\\,uv,\\,v^2)$ subject to $pr=q^2$, $p,r\\ge 0$ — a quadric cone in $\\mathbb{R}^3$.\n\nOne genuinely constructive point, in my style: the Amari $\\alpha$-line is the *axis* $u=$ (skewness), $v=0$ in the odd eigenspace, so under the fold it maps to the ray $\\{p\\ge0, q=r=0\\}$ — meaning $\\nabla^{(\\alpha)}$ and $\\nabla^{(-\\alpha)}$ are **identified** in $\\mathcal{M}$. That's a real, checkable consequence: parity sends $\\alpha\\mapsto-\\alpha$. So the moduli space does not distinguish the $e$-connection from the $m$-connection up to isometry. Can someone verify that against the explicit Christoffel symbols of $\\nabla^{(\\pm1)}$? That's the one assertion I'd want to see survive a direct computation before we write it down.",
+      "created_at": "2026-06-23T11:35:10Z"
+    },
+    {
+      "id": "m720ddb00",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your audit is correct and I want to verify your last assertion directly, because that identification $\\nabla^{(\\alpha)}\\sim\\nabla^{(-\\alpha)}$ is the cleanest fingerprint of the whole structure — and it does survive.\n\nThe Amari skewness tensor for the Gaussian is\n$$T_{ijk}=E[\\partial_i\\ell\\,\\partial_j\\ell\\,\\partial_k\\ell],\\quad \\ell=\\log p(x;\\mu,\\sigma).$$\nIn our orthonormal-up-to-scale frame the only nonvanishing independent components are $T(e_1,e_1,e_2)$ and $T(e_2,e_2,e_2)$ — both contain an **odd** number of $e_1$'s? No: $T(e_1,e_1,e_2)$ has two $e_1$'s, hence is *even* under $\\mu\\mapsto-\\mu$, while $T(e_2,e_2,e_2)$ is even as well. Let me be careful — this is exactly where Peter's eigenspace decomposition must be checked component-by-component. Differentiating $\\ell$ once in $\\mu$ brings down one factor odd in $(x-\\mu)$, so $\\partial_\\mu\\ell$ is odd, $\\partial_\\sigma\\ell$ is even. The expectation kills any product odd in $(x-\\mu)$. Therefore the surviving components of $T$ are those with an **even** number of $e_1$-derivatives: $T(e_1,e_1,e_2)$ and $T(e_2,e_2,e_2)$. These are the **invariant** monomials $e_1^{*2}e_2^*$ and $e_2^{*3}$, i.e. the $(+,+)$ eigenspace.\n\nSo I must correct Peter and Dan on one point: the Amari $\\alpha$-tensor lies in the **even** (invariant) eigenspace, not the odd one. The consequence is the *opposite* of what was stated — $\\nabla^{(\\alpha)}$ and $\\nabla^{(-\\alpha)}$ are sent by parity to $C$ and $-C$ with $C$ even, so they are **not** identified by the $\\mathbb{Z}/2$; the $\\alpha$-line sits inside the fixed-point locus $\\mathbb{R}^2$ of the fold, where the action is trivial and $\\pm\\alpha$ remain distinct.\n\nThis actually sharpens the whole picture and I think gives the final answer. Writing $C=u\\,e_1^{*3}+p\\,e_1^{*2}e_2^*+v\\,e_1^*e_2^{*2}+q\\,e_2^{*3}$, parity acts as $(u,p,v,q)\\mapsto(-u,p,-v,q)$. So:\n$$\\mathcal{M}(G,g)\\;\\cong\\;\\mathbb{R}^2_{(p,q)}\\times\\big(\\mathbb{R}^2_{(u,v)}/\\pm\\big),$$\nthe invariants of the cone being $(u^2,uv,v^2)$ with $u^2v^2=(uv)^2$, a quadric cone in $\\mathbb{R}^3$. The Amari $\\alpha$-line is the axis $\\{(p,q)=\\alpha\\cdot(t_1,t_2),\\ u=v=0\\}$ inside the **unfolded** $\\mathbb{R}^2$ factor — a genuine line, faithfully embedded, with $\\alpha$ a global coordinate. This is the right structure: $\\mathcal{C}(G,g)$ is the $4$-dimensional aff",
+      "created_at": "2026-06-23T11:35:56Z"
+    },
+    {
+      "id": "md4ea0e2e",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László has just caught a genuine error — mine included — and it's the right correction, but let me make sure we *all* believe it by doing the parity computation the way I always insist: with the actual Gaussian by hand.\n\nSet $\\mu=0,\\sigma=1$ for the parity check (parity $\\mu\\mapsto-\\mu$ is the relevant involution). Then $\\ell=-\\tfrac12\\log(2\\pi)-\\tfrac{x^2}{2}$ at this point and\n$$\\partial_\\mu\\ell = (x-\\mu)/\\sigma^2 = x \\quad(\\text{odd in }x),\\qquad \\partial_\\sigma\\ell = \\frac{(x-\\mu)^2}{\\sigma^3}-\\frac1\\sigma = x^2-1\\quad(\\text{even}).$$\nThe skewness tensor $T_{ijk}=E[\\partial_i\\ell\\,\\partial_j\\ell\\,\\partial_k\\ell]$ is an *expectation against the symmetric Gaussian*, so any integrand odd in $x$ dies. Counting $e_1$-derivatives ($=\\mu$-derivatives, odd factors):\n- $T_{111}=E[x^3]=0$, $T_{112}=E[x^2(x^2-1)]=3-1=2\\neq0$, $T_{122}=E[x(x^2-1)^2]=0$, $T_{222}=E[(x^2-1)^3]=8\\neq0$ (it's $E[x^6]-3E[x^4]+3E[x^2]-1=15-9+3-1=8$).\n\nSo László is exactly right: the surviving components are $T_{112}$ and $T_{222}$ — **even** in the parity action — and my earlier \"Amari lives in the folded part\" was backwards. The skewness tensor is parity-*invariant*, which of course it must be: the Gaussian family is symmetric, so its statistical structure can't see the sign of $\\mu$. Good — that's the real theorem behind the technical one: the $\\alpha$-connections are honestly distinct in moduli, $\\alpha$ is a faithful global coordinate, and they sit in the *fixed locus* $\\mathbb R^2_{(p,q)}$.\n\nSo the final answer stands as László wrote it:\n$$\\mathcal{M}(G,g)\\;\\cong\\;\\mathbb{R}^2_{(p,q)}\\times\\big(\\mathbb{R}^2_{(u,v)}/\\{\\pm1\\}\\big),$$\na plane times a quadric cone $\\{(P,Q,R): Q^2=PR,\\ P,R\\ge0\\}$, with the Amari $\\alpha$-line the faithfully-embedded line $(p,q)=\\alpha\\,(T_{112},T_{222})=\\alpha\\,(2,8)$ inside the smooth $\\mathbb R^2$ factor. The cone singularity at the origin is the Levi–Civita connection $C=0$ — the unique point fixed by the full would-be continuous automorphism group, the most symmetric connection. That's the geometrically honest statement.",
+      "created_at": "2026-06-23T11:36:40Z"
+    },
+    {
+      "id": "ma8a63781",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T11:37:34Z"
+    },
+    {
+      "id": "mf922b1b0",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nClassify left-invariant statistical (torsion-free, dual-torsion-free) connections on the Gaussian (mu,sigma) upper half-plane by linearizing to the Lie algebra, parametrizing the moduli space as Sym^3(g*) modulo the Z/2 g-isometric automorphism, and locating the Amari alpha-family within it.",
+      "created_at": "2026-06-23T11:37:34Z"
+    }
+  ],
+  "plan": {
+    "summary": "Classify left-invariant statistical (torsion-free, dual-torsion-free) connections on the Gaussian (mu,sigma) upper half-plane by linearizing to the Lie algebra, parametrizing the moduli space as Sym^3(g*) modulo the Z/2 g-isometric automorphism, and locating the Amari alpha-family within it.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Set up the algebraic frame and connection parameters",
+        "body": "Fix the left-invariant frame e1 = sigma d_mu, e2 = sigma d_sigma with metric g = diag(1,2) and bracket [e2,e1] = e1. Write a general left-invariant connection as nabla_{ei}ej = sum_k Gamma^k_{ij} e_k (8 parameters) and record the constant metric components in this frame.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Impose statistical-compatibility constraints and identify Sym^3 model",
+        "body": "Compute the dual connection nabla* from X g(Y,Z) = g(nabla_X Y, Z) + g(Y, nabla*_X Z) using constant g. Impose torsion-freeness of both nabla and nabla*, and show via the Amari-Nagaoka theorem that the difference tensor C_{ijk} = g(nabla_{ei}ej - nabla^(0)_{ei}ej, e_k) from Levi-Civita must be totally symmetric. Verify C ranges over the full Sym^3(g*), so C(G,g) is a 4-dimensional affine space.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Verify the affine dimension count is frame-independent",
+        "body": "Audit Dan's concern: confirm that the nonzero bracket only affects computation of the base point nabla^(0), not the dimension of the model space. Check explicitly that left-invariance imposes no extra constraints on a constant symmetric C beyond total symmetry, so the 4 parameters are genuinely free.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Compute the g-isometric automorphism group",
+        "body": "Determine Aut(g) for the ax+b algebra: phi(e1) = a e1, phi(e2) = e2 + b e1. Impose g-isometry to derive a = +/-1 and b = 0, yielding the automorphism group Z/2 (parity mu -> -mu). Confirm the continuous part is killed by the metric.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Resolve the parity eigenspace decomposition of Sym^3 and the Amari tensor",
+        "body": "Compute the Z/2 action on monomials {e1*^3, e1*^2 e2*, e1* e2*^2, e2*^3} giving signs (-,+,-,+). Critically, verify by direct Gaussian computation at mu=0, sigma=1 (partial_mu ell = x odd, partial_sigma ell = x^2-1 even) which components of the skewness tensor T_{ijk} = E[partial_i ell partial_j ell partial_k ell] survive: T_{111}=0, T_{112}=2, T_{122}=0, T_{222}=8. Resolve the disagreement, confirming the Amari tensor lies in the EVEN (invariant) eigenspace.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Assemble the moduli space and place the Amari line",
+        "body": "Form M(G,g) = Sym^3 / Z/2 with parity acting as (u,p,v,q) -> (-u,p,-v,q), giving R^2_{(p,q)} x (R^2_{(u,v)}/+-), i.e. a plane times a quadric cone {Q^2 = PR, P,R >= 0}. Show the Amari alpha-line is the faithfully embedded line (p,q) = alpha(2,8), u=v=0, lying in the fixed-locus R^2 factor where alpha is a global coordinate, and that the cone vertex C=0 is the Levi-Civita connection.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify alpha-connections are distinct (not identified by parity)",
+        "body": "Confirm via explicit Christoffel symbols of nabla^(+1) and nabla^(-1) that, because the skewness tensor is parity-invariant, nabla^(alpha) and nabla^(-alpha) are NOT identified in moduli (correcting the earlier claim). Check the e-connection and m-connection remain distinct points in M(G,g).",
+        "agent": "verifier-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Critically review the full argument for gaps",
+        "body": "Audit the chain: correctness of the dual-connection formula, completeness of the Amari-Nagaoka reduction, exhaustiveness of left-invariant connections captured, validity of the cone quotient description, and consistency of all parity computations. Flag any remaining hidden assumptions before final write-up.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T11:37:34Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -1,0 +1,46 @@
+{
+  "id": "q10-6",
+  "problem_id": "q10",
+  "dataset": "first_proof_1",
+  "title": "Complexity accounting: hidden K-multiply cost, one-time factorizations, RHS",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "issue_type": null,
+  "priority": "P2",
+  "created_at": "2026-06-22T23:01:27Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "evbbc060bb",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-22T23:01:27Z"
+    },
+    {
+      "id": "cd0d063cb",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "**Gap G5 (Lemma L3 & L5).** The complexity analysis must be exact and must beat the direct $O(n^3r^3)$.\n\nPoints to pin down:\n1. $\\mathrm{cost}(K\\text{-multiply})$ is generically $O(n^2)$; the advertised per-iteration $O(qr+nr^2)$ silently assumes a structured/Nyström $K$. State the assumption or use $O(qnr+n^2r)$.\n2. One-time costs: Cholesky of $K$ ($O(n^3)$) for the preconditioner, factorization of the $r\\times r$ Gram ($O(r^3)$). These must be counted and shown $\\ll O(n^3r^3)$.\n3. RHS $(I_r\\otimes K)\\operatorname{vec}(B)=\\operatorname{vec}(KB)$: $B=TZ$ is the precomputed MTTKRP (given, or the sparse MTTKRP on the $q$ nonzeros at $O(qr)$), so the subproblem RHS is $O(n^2r)$ and avoids $O(M),O(N)$ — this must be stated explicitly.\n\n**Required:** a per-iteration cost, total cost $=\\#\\text{iter}\\times$ per-iter $+$ one-time, and an explicit comparison to $O(n^3r^3)$.",
+      "created_at": "2026-06-22T23:01:27Z"
+    },
+    {
+      "id": "c3b4142e0",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Resolved Gap G5 (complexity accounting).** I added three lemmas (structured mat--vec L3, preconditioner+RHS L4, exact complexity L5), two algorithm boxes (direct + PCG), and remarks that address each of the three points, all numerically verified.\n\n**1. Honest K-multiply / per-iteration cost.** Lemma \"Structured action of $\\mathcal{A}$\" proves $\\mathcal{A}\\,\\mathrm{vec}(Y)=\\mathrm{vec}(\\tilde K^T D\\tilde Z+\\lambda KY)$ with $D=\\mathrm{diag}(c)$, $c_j=\\tilde K_{j,:}Y\\tilde Z_{j,:}^T$, using only $\\tilde K\\in\\mathbb{R}^{q\\times n}$, $\\tilde Z\\in\\mathbb{R}^{q\\times r}$, $K$, $Y$ — no $N$- or $M$-vector. Exact cost $\\mathrm{cost}(\\mathcal{A}\\text{-mult})=O(qnr+n^2r)$. Remark \"Honest mat--vec cost\" states explicitly that the dense $K$-multiply $Y\\mapsto KY$ is counted at $\\Theta(n^2r)$ (NOT assumed structured/Nyström); a rank-$\\rho$ kernel is noted as an *optional* improvement replacing $n^2r$ by $n\\rho r$. Per-iteration cost is $C_{iter}=O(qnr+n^2r+nr^2)=O(qnr)$ (since $q>n,r$), with the $n^2r$ term kept visible. So the previously-advertised $O(qr+nr^2)$ is corrected to the honest $O(qnr+n^2r)$.\n\n**2. One-time costs counted and shown $\\ll n^3r^3$.** Preconditioner $P=(Z^TZ)\\otimes K^2+\\lambda(I_r\\otimes K)$ (= $\\mathcal{A}$ in the fully-observed limit). Setup: eig of $K$ = $O(n^3)$; the $r\\times r$ Gram $G=Z^TZ$ via the Khatri--Rao identity $G=\\circledast_{i\\neq k}(A_i^TA_i)$ (no order-$M$!), cost $O(r^2\\sum_{i\\neq k}n_i+dr^2)$; eig of $G$ = $O(r^3)$. Total $C_{setup}=O(n^3+r^3+qdr)$, each piece $\\ll n^3r^3$. $P^{-1}$ applies in $O(n^2r+nr^2)$ via simultaneous diagonalization $P^{-1}z=\\mathrm{vec}(U[(U^TZ_0V)\\oslash\\Omega]V^T)$.\n\n**3. RHS without $O(M),O(N)$.** Lemma \"Right-hand side\" proves $b=(I_r\\otimes K)\\mathrm{vec}(B)=\\mathrm{vec}(KB)$ with the sparse MTTKRP $B=TZ=\\sum_j t_j e_{a_j}\\tilde Z_{j,:}$ at $O(qr)$ (free if $B$ given), then $KB$ at $O(n^2r)$; total $O(qr+n^2r)$, no $O(M)$/$O(N)$ term — stated explicitly.\n\n**Total + comparison.** $C_{PCG}=m\\cdot C_{iter}+C_{setup}=O(m\\,qnr+n^3+r^3+qdr)$. Ratio to direct: $C_{PCG}/(n^3r^3)=O(mq/(n^2r^2)+1/r^3+1/n^3+qd/(n^3r^2))$. PCG beats the direct $O(n^3r^3)$ iff $m\\,q=o(n^2r^2)$; worst case $m\\le\\mathrm{rank}(\\mathcal{A})\\le nr$ gives $O(qn^2r^2)$, an improvement by the factor $q/(nr)$ (i.e. when $q=o(nr)$). I state the sufficient condition explicitly rather than asserting $q\\ll nr$ unconditionally, since $q<N$ alone does not force it.\n\n**Numerical verification (run_python):** (a) structured mat--vec matches the dense operator to $10^{-13}$; (b) the sparse $q$-nonzero version (using $\\tilde K,\\tilde Z$) matches to $10^{-14}$; (c) the Khatri--Rao Gram identity holds to $10^{-13}$; (d) sparse MTTKRP matches $TZ$ to machine eps; (e) $P^{-1}$ via simultaneous diagonalization matches the dense solve to $10^{-16}$; (f) a full PCG run converges to relative residual $10^{-13}$.\n\nWritten to solution.tex (Lemmas L3, L4, L5 + Algorithms 1--2). Closing as resolved.",
+      "created_at": "2026-06-22T23:09:47Z"
+    },
+    {
+      "id": "evbf680aab",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-22T23:09:52Z"
+    }
+  ]
+}

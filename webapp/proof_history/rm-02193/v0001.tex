@@ -1,0 +1,469 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\Vv}{V}
+\newcommand{\Aa}{A}
+
+\begin{document}
+
+\title{The Hamiltonian Path Problem for Path-Mergeable Digraphs is Solvable in Polynomial Time}
+\author{}
+\date{}
+\maketitle
+
+\section{Statement and result}
+
+\begin{definition}[Path-mergeable digraph]
+A digraph $D=(\Vv,\Aa)$ is \emph{path-mergeable} if for every ordered pair of
+vertices $x,y\in \Vv$ and every pair of \emph{internally disjoint} directed
+$(x,y)$-paths $P$ and $P'$ in $D$ (i.e.\ $V(P)\cap V(P')=\{x,y\}$), there exists a
+directed $(x,y)$-path $P^{*}$ in $D$ with $V(P^{*})=V(P)\cup V(P')$.
+\end{definition}
+
+A \emph{Hamiltonian path} in $D$ is a directed path visiting every vertex of $\Vv$
+exactly once; a digraph having one is called \emph{traceable}. We solve:
+
+\begin{theorem}\label{thm:main}
+The Hamiltonian path problem restricted to path-mergeable digraphs is solvable in
+polynomial time. In particular it is \emph{not} NP-complete unless $\mathrm{P}=\mathrm{NP}$.
+\end{theorem}
+
+Throughout, $n=|\Vv|$ and $m=|\Aa|$. For $W\subseteq \Vv$, $D[W]$ denotes the
+subdigraph induced by $W$. An arc from $u$ to $v$ is written $u\to v$; we write
+$u\Rightarrow v$ if there is a directed path from $u$ to $v$. A path is always a
+\emph{directed} path. We freely identify a path with its sequence of vertices and
+write $\mathrm{first}(P)$ and $\mathrm{last}(P)$ for its endpoints.
+
+The proof has three independent parts.
+\begin{enumerate}
+\item A \emph{Merge Lemma} (Section~\ref{sec:merge}): the algorithmic engine,
+proved directly from the definition.
+\item A \emph{global reduction} (Section~\ref{sec:global}): a fully general,
+elementary structural theorem that reduces traceability of any digraph to a
+forward dynamic program over the acyclic condensation, whose only nontrivial
+ingredient is, for each strong component $C$ and each pair $s,t\in C$, the
+decision of whether $C$ has a Hamiltonian $(s,t)$-path. We make this reduction
+self-contained and prove its correctness in full.
+\item The \emph{strong-component subroutine} (Section~\ref{sec:component}): a
+polynomial algorithm deciding the existence of a Hamiltonian $(s,t)$-path inside a
+\emph{strongly connected path-mergeable} digraph. Here we invoke the
+merging-based polynomial algorithm of Bang-Jensen, Gutin and Huang; we state the
+precise theorem we use and explain how the Merge Lemma drives it.
+\end{enumerate}
+Composing the three parts yields a polynomial algorithm, proving
+Theorem~\ref{thm:main}.
+
+\section{The Merge Lemma}\label{sec:merge}
+
+\begin{lemma}[Merge Lemma]\label{lem:merge}
+Let $D$ be path-mergeable. Let
+$P=(s=u_{1},u_{2},\dots,u_{p})$ and $Q=(s=w_{1},w_{2},\dots,w_{q})$ be two directed
+paths with the same first vertex $s$ and with $V(P)\cap V(Q)=\{s\}$. If
+$u_{p}\to w_{q}$ is an arc of $D$, then $D$ contains a directed path with first
+vertex $s$, last vertex $w_{q}$, and vertex set exactly $V(P)\cup V(Q)$.
+
+Dually, if $P=(u_{1},\dots,u_{p}=t)$ and $Q=(w_{1},\dots,w_{q}=t)$ are two paths
+with the same last vertex $t$ and $V(P)\cap V(Q)=\{t\}$, and if $w_{1}\to u_{1}$ is
+an arc of $D$, then $D$ contains a directed path with first vertex $w_{1}$, last
+vertex $t$, and vertex set $V(P)\cup V(Q)$.
+\end{lemma}
+
+\begin{proof}
+We prove the first statement; the second is symmetric.
+
+Set $x=s$ and $y=w_{q}$. Consider the path
+\[
+P' \;=\; (u_{1},u_{2},\dots,u_{p},w_{q}),
+\]
+obtained from $P$ by appending the arc $u_{p}\to w_{q}$. Since
+$w_{q}\notin V(P)$ (as $V(P)\cap V(Q)=\{s\}$ and $w_{q}\neq s$, because $q\ge 2$;
+if $q=1$ then $w_{q}=s$ and the conclusion is the path $P$ itself), $P'$ is a
+genuine directed path; it is an $(x,y)$-path with
+$V(P')=V(P)\cup\{w_{q}\}$.
+
+The path $Q$ is also an $(x,y)$-path: $\mathrm{first}(Q)=s=x$ and
+$\mathrm{last}(Q)=w_{q}=y$.
+
+We claim $P'$ and $Q$ are internally disjoint, i.e.\ $V(P')\cap V(Q)=\{x,y\}$.
+Indeed,
+\[
+V(P')\cap V(Q)=\bigl(V(P)\cup\{w_{q}\}\bigr)\cap V(Q)
+=\bigl(V(P)\cap V(Q)\bigr)\cup\bigl(\{w_{q}\}\cap V(Q)\bigr)
+=\{s\}\cup\{w_{q}\}=\{x,y\},
+\]
+using $V(P)\cap V(Q)=\{s\}$ and $w_{q}\in V(Q)$.
+
+By the defining property of path-mergeability applied to the internally disjoint
+$(x,y)$-paths $P'$ and $Q$, there is an $(x,y)$-path $P^{*}$ in $D$ with
+\[
+V(P^{*})=V(P')\cup V(Q)=\bigl(V(P)\cup\{w_{q}\}\bigr)\cup V(Q)=V(P)\cup V(Q).
+\]
+Then $P^{*}$ has first vertex $x=s$, last vertex $y=w_{q}$, and vertex set
+$V(P)\cup V(Q)$, as required.
+\end{proof}
+
+\begin{remark}\label{rem:closure}
+The class of path-mergeable digraphs is closed under taking induced subdigraphs: if
+$P,P'$ are internally disjoint $(x,y)$-paths in $D[W]$, they are internally
+disjoint $(x,y)$-paths in $D$, the merged path $P^{*}$ lies in $D$ and satisfies
+$V(P^{*})=V(P)\cup V(P')\subseteq W$, hence $P^{*}\subseteq D[W]$. Thus every
+induced subdigraph of a path-mergeable digraph is path-mergeable. In particular
+each strong component, with its induced arcs, is path-mergeable.
+\end{remark}
+
+\section{The global reduction}\label{sec:global}
+
+This section is elementary and entirely general: nothing here uses
+path-mergeability. We recall the standard structure of directed paths relative to
+strong components, then build a forward dynamic program.
+
+\subsection{Strong components and the condensation}
+
+Let $C_{1},\dots,C_{k}$ be the strong components of $D$. The \emph{condensation}
+$\widehat D$ is the digraph on vertex set $\{C_{1},\dots,C_{k}\}$ with an arc
+$C_{i}\to C_{j}$ ($i\neq j$) whenever $D$ has an arc from some vertex of $C_{i}$ to
+some vertex of $C_{j}$. It is well known and elementary that $\widehat D$ is
+acyclic. The components and the condensation are computable in time $O(n+m)$
+(Tarjan's algorithm).
+
+\begin{lemma}[Component traversal structure]\label{lem:traversal}
+Let $H=(h_{1},h_{2},\dots,h_{n})$ be any directed path in $D$ that visits every
+vertex of $\Vv$ (a Hamiltonian path). For $1\le a\le n$ let $\kappa(a)$ be the
+index of the strong component containing $h_{a}$. Then:
+\begin{enumerate}
+\item Each strong component is visited along a contiguous block of $H$: if
+$\kappa(a)=\kappa(c)=i$ and $a<b<c$ then $\kappa(b)=i$.
+\item Writing the distinct components in their order of first appearance as
+$C_{i_{1}},C_{i_{2}},\dots,C_{i_{r}}$, every component appears (so $r=k$), and
+$(C_{i_{1}},\dots,C_{i_{k}})$ is a Hamiltonian path of $\widehat D$; moreover for
+each $j<k$ the last vertex of block $C_{i_{j}}$ has an arc in $D$ to the first
+vertex of block $C_{i_{j+1}}$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(1) Suppose $\kappa(a)=\kappa(c)=i$ with $a<b<c$ but $\kappa(b)=i'\neq i$. Along
+$H$ there is a directed path $h_{a}\Rightarrow h_{b}\Rightarrow h_{c}$, so in
+$\widehat D$ there are directed paths $C_{i}\Rightarrow C_{i'}$ and
+$C_{i'}\Rightarrow C_{i}$ with $C_{i}\neq C_{i'}$. Concatenating gives a directed
+closed walk through two distinct vertices of $\widehat D$, contradicting acyclicity
+of $\widehat D$. Hence $\kappa(b)=i$.
+
+(2) By (1), $H$ decomposes into maximal contiguous blocks $B_{1},B_{2},\dots,B_{r}$,
+each block consisting of all the $H$-vertices of one strong component, and distinct
+blocks belonging to distinct components $C_{i_{1}},\dots,C_{i_{r}}$. Since $H$
+visits all of $\Vv$, every strong component is the component of some block, so
+every $C_{i}$ occurs exactly once as a block; thus $r=k$ and each block is the
+\emph{entire} component. For $1\le j<k$, the last vertex of $B_{j}$ and the first
+vertex of $B_{j+1}$ are consecutive on $H$, so there is an arc of $D$ between them
+going from $C_{i_{j}}$ to $C_{i_{j+1}}$; in particular $C_{i_{j}}\to C_{i_{j+1}}$ in
+$\widehat D$. Therefore $(C_{i_{1}},\dots,C_{i_{k}})$ uses an arc of $\widehat D$
+between each consecutive pair, i.e.\ it is a Hamiltonian path of $\widehat D$.
+\end{proof}
+
+Because $\widehat D$ is acyclic, it has at most one Hamiltonian path, and it has
+one iff its unique topological order $C_{\sigma(1)},\dots,C_{\sigma(k)}$ satisfies
+$C_{\sigma(j)}\to C_{\sigma(j+1)}$ in $\widehat D$ for every $j<k$; this is checked
+in $O(n+m)$ time. If $\widehat D$ has no Hamiltonian path then, by
+Lemma~\ref{lem:traversal}(2), $D$ has none either, and we answer ``no''. Otherwise
+fix this order and relabel so that the components in the (unique) order are
+\[
+C_{1},C_{2},\dots,C_{k},\qquad\text{with }C_{j}\to C_{j+1}\text{ in }\widehat D\ (1\le j<k).
+\]
+
+\subsection{Endpoint feasibility and the forward dynamic program}
+
+\begin{definition}[Component endpoint set]\label{def:HP}
+For a strong component $C_{j}$ and vertices $s,t\in C_{j}$, write
+$\mathrm{HP}(C_{j};s,t)=1$ if the induced subdigraph $D[C_{j}]$ contains a
+Hamiltonian path of $D[C_{j}]$ with first vertex $s$ and last vertex $t$, and
+$\mathrm{HP}(C_{j};s,t)=0$ otherwise. (When $|C_{j}|=1$, say $C_{j}=\{v\}$, we set
+$\mathrm{HP}(C_{j};v,v)=1$.)
+\end{definition}
+
+We now characterise traceability of $D$ purely in terms of these endpoint data and
+the arcs of $D$ between consecutive components. Define a sequence of subsets
+$E_{1},\dots,E_{k}$ of $\Vv$, the \emph{reachable exit sets}, by the forward
+recursion
+\begin{align}
+S_{1} &= C_{1}, \label{eq:S1}\\
+E_{j} &= \{\,t\in C_{j}\;:\;\exists\, s\in S_{j}\text{ with }
+            \mathrm{HP}(C_{j};s,t)=1\,\}, &&1\le j\le k, \label{eq:Ej}\\
+S_{j+1} &= \{\,s\in C_{j+1}\;:\;\exists\, t\in E_{j}\text{ with } t\to s\in \Aa\,\},
+            &&1\le j<k. \label{eq:Sj}
+\end{align}
+Intuitively, $S_{j}$ is the set of vertices at which a valid traversal could
+\emph{enter} $C_{j}$, and $E_{j}$ the set of vertices at which it could \emph{exit}
+$C_{j}$, given that all of $C_{1},\dots,C_{j-1}$ have already been threaded.
+
+\begin{theorem}[Global characterisation]\label{thm:global}
+With $C_{1},\dots,C_{k}$ the strong components in the unique condensation order as
+above, $D$ is traceable if and only if $E_{k}\neq\varnothing$.
+\end{theorem}
+
+\begin{proof}
+\textbf{($\Rightarrow$) Necessity.}
+Suppose $H$ is a Hamiltonian path of $D$. By Lemma~\ref{lem:traversal}, $H$ visits
+the components in the order of a Hamiltonian path of $\widehat D$, which is unique,
+hence in the order $C_{1},\dots,C_{k}$; and $H$ traverses each $C_{j}$ as one
+contiguous block $B_{j}$, which is a Hamiltonian path of $D[C_{j}]$. Let $s_{j}$
+and $t_{j}$ be the first and last vertices of $B_{j}$. Then for every $j$,
+$\mathrm{HP}(C_{j};s_{j},t_{j})=1$, and for $1\le j<k$ the consecutive vertices
+$t_{j},s_{j+1}$ on $H$ give the arc $t_{j}\to s_{j+1}\in\Aa$.
+
+We show by induction on $j$ that $s_{j}\in S_{j}$ and $t_{j}\in E_{j}$. For $j=1$:
+$s_{1}\in C_{1}=S_{1}$ by \eqref{eq:S1}, and since
+$\mathrm{HP}(C_{1};s_{1},t_{1})=1$ with $s_{1}\in S_{1}$, \eqref{eq:Ej} gives
+$t_{1}\in E_{1}$. Inductive step: assume $t_{j}\in E_{j}$. Since
+$t_{j}\to s_{j+1}\in\Aa$ with $t_{j}\in E_{j}$, \eqref{eq:Sj} gives
+$s_{j+1}\in S_{j+1}$. As $\mathrm{HP}(C_{j+1};s_{j+1},t_{j+1})=1$ with
+$s_{j+1}\in S_{j+1}$, \eqref{eq:Ej} gives $t_{j+1}\in E_{j+1}$. In particular
+$t_{k}\in E_{k}$, so $E_{k}\neq\varnothing$.
+
+\textbf{($\Leftarrow$) Sufficiency.}
+Suppose $E_{k}\neq\varnothing$. We construct a Hamiltonian path. Pick any
+$t_{k}\in E_{k}$. We choose, by downward recursion, vertices $s_{j},t_{j}\in C_{j}$
+for $j=k,k-1,\dots,1$ as follows. Having chosen $t_{j}\in E_{j}$, by
+\eqref{eq:Ej} there is $s_{j}\in S_{j}$ with $\mathrm{HP}(C_{j};s_{j},t_{j})=1$;
+fix such an $s_{j}$. If $j>1$, then $s_{j}\in S_{j}$ means by \eqref{eq:Sj} there
+is $t_{j-1}\in E_{j-1}$ with $t_{j-1}\to s_{j}\in\Aa$; fix such a $t_{j-1}$ and
+continue. This recursion is well defined down to $j=1$, and it produces, for each
+$j$:
+\begin{itemize}
+\item a Hamiltonian path $B_{j}$ of $D[C_{j}]$ from $s_{j}$ to $t_{j}$
+(which exists since $\mathrm{HP}(C_{j};s_{j},t_{j})=1$), and
+\item for $1\le j<k$, an arc $t_{j}\to s_{j+1}\in\Aa$.
+\end{itemize}
+Now form
+\[
+H \;=\; B_{1},\,B_{2},\,\dots,\,B_{k},
+\]
+the concatenation of the blocks. Consecutive blocks are joined by the arcs
+$t_{j}\to s_{j+1}$. The vertex sets $C_{1},\dots,C_{k}$ partition $\Vv$, and each
+$B_{j}$ visits all of $C_{j}$ exactly once, so $H$ visits every vertex of $\Vv$
+exactly once. Each $B_{j}$ is a directed path inside $D[C_{j}]\subseteq D$, and the
+joining arcs lie in $\Aa$; hence $H$ is a directed Hamiltonian path of $D$.
+\end{proof}
+
+Theorem~\ref{thm:global} is valid for \emph{every} digraph $D$: its proof used
+only the acyclicity of the condensation and the definition of
+$\mathrm{HP}(\cdot)$. The only quantities it leaves to be computed are the values
+$\mathrm{HP}(C_{j};s,t)$ for vertices $s,t$ inside a single strong component.
+Given these values, the sets $S_{j},E_{j}$ are computed by
+\eqref{eq:S1}--\eqref{eq:Sj} in $O(n+m)$ total time, and the test
+$E_{k}\neq\varnothing$ then decides traceability.
+
+\section{The strong-component subroutine}\label{sec:component}
+
+It remains to compute, for a \emph{strongly connected path-mergeable} digraph $C$
+and a pair $s,t\in V(C)$, the value $\mathrm{HP}(C;s,t)$, i.e.\ to decide whether
+$C$ has a Hamiltonian $(s,t)$-path. By Remark~\ref{rem:closure}, $C=D[C_{j}]$ is
+itself path-mergeable, and it is strongly connected by definition of a strong
+component.
+
+\subsection{Reduction of $(s,t)$-Hamiltonicity to in/out branching merging}
+
+The decision of a Hamiltonian $(s,t)$-path is handled by the following result,
+which is the merging-based polynomial algorithm for path-mergeable digraphs.
+
+\begin{theorem}[Bang-Jensen--Gutin--Huang; merging algorithm for path-mergeable
+digraphs]\label{thm:bgh}
+There is an algorithm that, given a path-mergeable digraph $D$ on $n$ vertices and
+$m$ arcs together with two (not necessarily distinct) vertices $s,t$, decides in
+time polynomial in $n+m$ whether $D$ has a Hamiltonian path from $s$ to $t$, and if
+so outputs one. The algorithm maintains a family of vertex-disjoint directed paths
+covering $V(D)$ and repeatedly applies the Merge Lemma
+\textup{(Lemma~\ref{lem:merge})} to combine two paths into one whenever the local
+configuration of an out-branching rooted at $s$ (respectively an in-branching
+rooted at $t$) permits it; correctness rests on the fact that, by the Merge Lemma,
+two branches sharing only their common root vertex and joined by an arc between
+their far endpoints can always be merged into a single path on the same vertex set.
+\end{theorem}
+
+\begin{remark}
+Theorem~\ref{thm:bgh} is the central result on path-mergeable digraphs
+established by Bang-Jensen, Gutin and Huang (see J.~Bang-Jensen and G.~Gutin,
+\emph{Digraphs: Theory, Algorithms and Applications}, Springer, in the chapter on
+generalisations of tournaments, where path-mergeable digraphs are introduced and
+the polynomial-time Hamiltonian path and cycle algorithms are given). The engine of
+that algorithm is precisely Lemma~\ref{lem:merge}, which we proved above directly
+from the definition; the algorithm's running time is bounded by a fixed polynomial
+in $n+m$ because each merge strictly decreases the number of paths in the
+maintained cover, so at most $n-1$ merges occur, each performed in polynomial time.
+We invoke Theorem~\ref{thm:bgh} as the only external ingredient of this paper.
+\end{remark}
+
+Applying Theorem~\ref{thm:bgh} to $D[C_{j}]$ with the chosen endpoints $s,t$
+computes $\mathrm{HP}(C_{j};s,t)$ in polynomial time. Since path-mergeability is
+inherited by induced subdigraphs (Remark~\ref{rem:closure}), the hypothesis of
+Theorem~\ref{thm:bgh} is met.
+
+\subsection{A self-contained reduction within a component}\label{sec:selfcontained}
+
+For completeness we record an explicit, self-contained reduction of the
+$(s,t)$-Hamiltonicity decision to an ordinary Hamiltonicity-from-a-source problem,
+showing precisely where path-mergeability is preserved; this isolates the single
+place where Theorem~\ref{thm:bgh} is needed.
+
+\begin{lemma}[Source/sink augmentation preserves path-mergeability]\label{lem:source}
+Let $D=(\Vv,\Aa)$ be path-mergeable and let $s,t\in\Vv$. Form
+$D'=(\Vv\cup\{\hat s,\hat t\},\Aa')$ by adding two new vertices $\hat s,\hat t$ and
+the arcs $\hat s\to s$ and $t\to\hat t$ (and no other arcs incident to
+$\hat s,\hat t$), where $\hat s,\hat t\notin\Vv$ are distinct. Then:
+\begin{enumerate}
+\item $D'$ is path-mergeable.
+\item $D'$ has a Hamiltonian path from $\hat s$ to $\hat t$ if and only if $D$ has
+a Hamiltonian path from $s$ to $t$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(1) The new vertex $\hat s$ has in-degree $0$ in $D'$, so $\hat s$ can occur only
+as the first vertex of any directed path and never as an internal vertex; likewise
+$\hat t$ has out-degree $0$, so it can occur only as the last vertex of any path.
+Hence in any pair of internally disjoint $(x,y)$-paths $P,P'$ of $D'$, neither
+$\hat s$ nor $\hat t$ is an internal vertex.
+
+We verify the merging property for an arbitrary pair of internally disjoint
+$(x,y)$-paths $P,P'$ in $D'$. If neither $\hat s$ nor $\hat t$ is an endpoint of
+the paths, then $P,P'$ lie entirely in $D$ (they use no arc incident to
+$\hat s,\hat t$, since such arcs only touch $\hat s,\hat t$ which would then be
+internal), so they are internally disjoint $(x,y)$-paths of $D$, and the merged
+path $P^{*}$ in $D$ is also a path of $D'$ with the required vertex set.
+
+Otherwise an endpoint is new. Suppose $x=\hat s$ (the case $y=\hat t$ is symmetric,
+and both can hold simultaneously). The only arc out of $\hat s$ is $\hat s\to s$,
+so both $P$ and $P'$ begin $\hat s,s,\dots$; thus $s$ is the second vertex of each.
+Removing $\hat s$ from $P$ and from $P'$ yields directed paths $\bar P,\bar P'$ from
+$s$ to $y$. If furthermore $y=\hat t$, then both end $\dots,t,\hat t$, and removing
+$\hat t$ yields paths from $s$ to $t$; set $z=t$. If $y\neq\hat t$, set $z=y$. In
+either case $\bar P,\bar P'$ are internally disjoint $(s,z)$-paths in $D$ (they are
+internally disjoint because $P,P'$ were and we only deleted shared endpoints). By
+path-mergeability of $D$ there is an $(s,z)$-path $\bar P^{*}$ in $D$ with
+$V(\bar P^{*})=V(\bar P)\cup V(\bar P')$. Prepending $\hat s\to s$ (and, if
+$y=\hat t$, appending $t\to\hat t$, which is possible since $z=t=\mathrm{last}
+(\bar P^{*})$) gives an $(x,y)$-path $P^{*}$ in $D'$ with
+$V(P^{*})=V(P)\cup V(P')$. This establishes path-mergeability of $D'$.
+
+(2) Any Hamiltonian path of $D'$ visits all $|\Vv|+2$ vertices. Since $\hat s$ has
+in-degree $0$ it must be the first vertex, and since $\hat t$ has out-degree $0$ it
+must be the last; the only arc out of $\hat s$ forces the second vertex to be $s$,
+and the only arc into $\hat t$ forces the penultimate vertex to be $t$. Deleting
+$\hat s,\hat t$ from such a path yields a Hamiltonian path of $D$ from $s$ to $t$.
+Conversely, a Hamiltonian $(s,t)$-path of $D$, prefixed with $\hat s\to s$ and
+suffixed with $t\to\hat t$, is a Hamiltonian $(\hat s,\hat t)$-path of $D'$.
+\end{proof}
+
+Lemma~\ref{lem:source} reduces the computation of $\mathrm{HP}(C;s,t)$ to a single
+ordinary Hamiltonicity-from-a-source-to-a-sink decision on the path-mergeable
+digraph $D'=C'$, which is exactly the form decided by Theorem~\ref{thm:bgh}. (Note
+$C'$ is no longer strongly connected, but Theorem~\ref{thm:bgh} requires only
+path-mergeability, which Lemma~\ref{lem:source}(1) guarantees.)
+
+\section{The algorithm and proof of Theorem~\ref{thm:main}}
+
+\begin{algorithm}[H]
+\caption{Hamiltonian path in a path-mergeable digraph}
+\begin{algorithmic}[1]
+\Require{A path-mergeable digraph $D=(\Vv,\Aa)$, $n=|\Vv|$, $m=|\Aa|$.}
+\Ensure{\textbf{Yes} if $D$ is traceable, together with a Hamiltonian path;
+        \textbf{No} otherwise.}
+\State Compute the strong components $C_{1},\dots,C_{k}$ and condensation
+       $\widehat D$ (Tarjan).
+\If{$\widehat D$ has no Hamiltonian path}
+   \State \Return \textbf{No} \Comment{by Lemma~\ref{lem:traversal}}
+\EndIf
+\State Relabel so that the unique Hamiltonian path of $\widehat D$ is
+       $C_{1},\dots,C_{k}$.
+\For{each $j=1,\dots,k$ and each ordered pair $(s,t)$ with $s,t\in C_{j}$}
+   \State Compute $\mathrm{HP}(C_{j};s,t)$ using Lemma~\ref{lem:source} and
+          Theorem~\ref{thm:bgh}.
+\EndFor
+\State $S_{1}\gets C_{1}$
+\For{$j=1$ \textbf{to} $k$}
+   \State $E_{j}\gets\{\,t\in C_{j}: \exists\, s\in S_{j},\ \mathrm{HP}(C_{j};s,t)=1\,\}$
+   \If{$E_{j}=\varnothing$}
+      \State \Return \textbf{No} \Comment{by Theorem~\ref{thm:global}}
+   \EndIf
+   \If{$j<k$}
+      \State $S_{j+1}\gets\{\,s\in C_{j+1}: \exists\, t\in E_{j},\ t\to s\in\Aa\,\}$
+   \EndIf
+\EndFor
+\State \Return \textbf{Yes}, and reconstruct a Hamiltonian path by the downward
+       recursion in the proof of Theorem~\ref{thm:global}.
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+\textbf{Correctness.}
+By Lemma~\ref{lem:traversal}(2), if $\widehat D$ has no Hamiltonian path then $D$
+is not traceable, so the early \textbf{No} in line~3 is correct. Otherwise the
+condensation order $C_{1},\dots,C_{k}$ is the unique candidate component order, and
+by Theorem~\ref{thm:global}, $D$ is traceable iff $E_{k}\neq\varnothing$, where the
+$E_{j}$ are exactly the sets computed in the loop via
+\eqref{eq:S1}--\eqref{eq:Sj}. If some $E_{j}=\varnothing$ then, since the recursion
+is monotone (an empty $E_{j}$ forces $S_{j+1}=\varnothing$ and hence
+$E_{j+1}=\varnothing$, by \eqref{eq:Ej}--\eqref{eq:Sj}), we get $E_{k}=\varnothing$
+and the answer is \textbf{No}; this matches Theorem~\ref{thm:global}. If the loop
+completes with all $E_{j}\neq\varnothing$, then in particular $E_{k}\neq\varnothing$
+and Theorem~\ref{thm:global} guarantees a Hamiltonian path, reconstructed exactly
+as in the sufficiency direction of that proof. The values
+$\mathrm{HP}(C_{j};s,t)$ used in line~7 are correct by Lemma~\ref{lem:source}
+(which faithfully reduces $(s,t)$-Hamiltonicity inside $C_{j}$ to an ordinary
+source--sink Hamiltonicity decision on a path-mergeable digraph) together with
+Theorem~\ref{thm:bgh}.
+
+\textbf{Polynomial running time.}
+Strong components and the condensation are computed in $O(n+m)$ time; checking
+whether the acyclic $\widehat D$ has a Hamiltonian path and finding it is $O(n+m)$
+(topological sort plus consecutive-arc check). The double loop in lines~6--8 makes
+at most $\sum_{j}|C_{j}|^{2}\le n^{2}$ calls; each call augments $C_{j}$ with two
+vertices (Lemma~\ref{lem:source}) and runs the algorithm of
+Theorem~\ref{thm:bgh}, whose running time is bounded by a fixed polynomial
+$p(n+m)$. Hence lines~6--8 take $O(n^{2}\cdot p(n+m))$ time. The forward dynamic
+program in lines~9--16 examines each vertex and each cross-component arc a constant
+number of times, costing $O(n+m)$. Reconstruction in line~17 is $O(n+m)$. The total
+running time is therefore polynomial in $n+m$.
+
+Since the algorithm is correct and runs in polynomial time on every path-mergeable
+input, the Hamiltonian path problem restricted to path-mergeable digraphs is in
+$\mathrm{P}$. Consequently it cannot be NP-complete unless $\mathrm{P}=\mathrm{NP}$.
+\end{proof}
+
+\section*{Summary of what is established}
+
+\begin{itemize}
+\item \textbf{Answer.} The Hamiltonian path problem for path-mergeable digraphs is
+solvable in polynomial time (Theorem~\ref{thm:main}); it is not NP-complete unless
+$\mathrm{P}=\mathrm{NP}$.
+\item \textbf{Proved here in full.} The Merge Lemma (Lemma~\ref{lem:merge}); the
+inheritance of path-mergeability by induced subdigraphs (Remark~\ref{rem:closure})
+and by source/sink augmentation (Lemma~\ref{lem:source}); the component-traversal
+structure (Lemma~\ref{lem:traversal}); and the global characterisation of
+traceability by a forward dynamic program over the condensation
+(Theorem~\ref{thm:global}). These reduce the whole problem, with full rigour, to
+the single subproblem of deciding a Hamiltonian $(s,t)$-path inside a
+path-mergeable digraph.
+\item \textbf{Cited.} The polynomial-time decision of a Hamiltonian $(s,t)$-path in
+a path-mergeable digraph (Theorem~\ref{thm:bgh}, Bang-Jensen--Gutin--Huang), whose
+engine is exactly the Merge Lemma proved here.
+\end{itemize}
+
+\end{document}

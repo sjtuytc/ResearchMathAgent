@@ -1,0 +1,153 @@
+{
+  "id": "rm-01490-meet-1",
+  "problem_id": "rm-01490",
+  "topic": "Init rm-01490 — proof review",
+  "goal": "Review the proof and issues for rm-01490; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T20:54:57Z",
+  "messages": [
+    {
+      "id": "m55eb0e95",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-01490 — proof review**",
+      "created_at": "2026-06-22T20:54:57Z"
+    },
+    {
+      "id": "m9bc8511e",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about the lay of the land here: this problem is about numerical semigroups, not Laplacians, and I want to make sure we're not fooling ourselves about what \"closed-form depending only on the generators\" can mean. My instinct says the request as literally stated — a clean closed form for $F(S)$, $g(S)$, $t(S)$ in terms of arbitrary $\\{n_1 < \\dots < n_e\\}$ — is almost certainly impossible for general $e$, because computing the Frobenius number from generators is NP-hard even for affine numerical semigroups. So the leverage we have *must* come from the special structure of *proportionally modular* semigroups.\n\nHere's the structural fact I'd build on: a numerical semigroup is proportionally modular iff it has a **Bézout/continued-fraction representation**. Specifically, $S(I)$ for $I = [a/b, c/d]$ is governed by the modular condition $ax \\bmod b \\le (\\text{something}) $, and Rosales–García-Sánchez showed proportionally modular semigroups are exactly those arising from a single modular Diophantine inequality $ax \\bmod b \\le cx$. The minimal generators of such a semigroup come from the **convergents of the continued fraction expansion** of the endpoints.\n\nSo my concrete proposal — and this is the algorithmic constructiveness I always insist on:\n- Recover the interval data $(a,b,c,d)$, or equivalently the continued fraction, *from* the generators $n_1,\\dots,n_e$. This is the real content; once you have the CF/Stern–Brocot path, $F$, $g$, $t$ all have known formulas.\n- The generators of a proportionally modular semigroup form a sequence with a **Bézout-like recurrence** (the $n_i$ are mediants in the Stern–Brocot tree). Type is small and controlled — these are often (but not always) symmetric or pseudo-symmetric, so $t(S)$ should be expressible via the CF length.\n\nTwo sharp questions for the room: (1) Is the claimed proof inverting \"generators $\\to$ continued fraction\" correctly, or does it secretly assume we already know $(a,b,c,d)$? (2) What's the type structure — are these semigroups all of type $\\le 2$, or does $t$ grow with $e$? Because if $t$ can be read off the parity/length of the Stern–Brocot path, that's our closed form, and the whole problem reduces to making the generator-to-CF map explicit and provably bijective.",
+      "created_at": "2026-06-22T20:55:10Z"
+    },
+    {
+      "id": "m71c3f8aa",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your continued-fraction instinct is exactly right, and I want to sharpen the structural claim with the theory of *Bézout sequences*, which is the correct discrete analog of the Stern–Brocot path you invoked.\n\nLet me lay out what I believe is the actual skeleton:\n\n1. **The right normal form.** Rosales and García-Sánchez proved that $S$ is proportionally modular iff its minimal generators form a *Bézout sequence*: a sequence $a_1/b_1 < \\cdots < a_k/b_k$ of fractions with $a_{i+1}b_i - a_i b_{i+1} = 1$, and $S = \\langle a_1,\\dots,a_k\\rangle$. The mediant structure you describe *is* this $\\det = 1$ condition between consecutive convergents. So the generators already encode the Stern–Brocot path — the map \"generators $\\to$ CF\" is not a separate inversion problem; it is read directly off the unimodularity relations among consecutive $n_i$.\n\n2. **Where I must temper optimism.** A genuine subtlety: proportionally modular semigroups are *not* closed under the simplest invariants in a way that gives a single uniform formula. The genus and Frobenius number depend on the *full* Bézout sequence, not just $(n_1, n_e)$. So a \"closed form depending only on $\\{n_1<\\cdots<n_e\\}$\" must mean a formula that takes the entire generating set and sums a telescoping quantity along the unimodular chain — analogous to how a path integral in the Stern–Brocot tree accumulates along edges. That is achievable; a single symmetric-function expression in all $e$ generators is not.\n\n3. **On your type question — this is the cleanest part.** Proportionally modular semigroups have type $t(S) \\le 2$. Rosales–García-Sánchez established that the *symmetric* and *pseudo-symmetric* numerical semigroups occurring here correspond precisely to parity of the Bézout sequence length, exactly as you suspected. Concretely: $t(S)=1$ iff $S$ is symmetric, $t(S)=2$ in the pseudo-symmetric case, and one reads this off whether the Stern–Brocot path closes up — i.e., whether the modular inequality $ax \\bmod b \\le cx$ has a self-dual interval. So $t$ *is* a parity invariant of the CF length, and that is your closed form for (iii).\n\n4. **My methodological flag.** Given $t \\le 2$ and the symmetry/pseudo-symmetry dichotomy, $F$ and $g$ collapse: for symmetric $S$, $g = (F+1)/2$; for pseudo-symmetric, $g = (F+2)/2$. So (ii) reduces entirely to (i) plus the parity bit from (iii). The whole problem therefore funnels into **one** hard quantity: a closed form for $F(S)$ along the Bézout chain.\n\nMy two questions back to the room: (a) Does the proof correctly verify the $\\det=1$ unimodularity *between every consecutive pair* of minimal generators, or only at the endpoints? If only endpoints, the claimed bijection is false — there exist Bézout-like sequences that fail minimality. (b) For $F(S)$, do we have the explicit endpoint formula $F(S) = \\big\\lceil \\frac{n_1 n_e}{?}\\big\\rceil$-type expression, or must we genuinely telescope through all convergents? I suspect the latter, and that the \"closed form\" is a determinant/continuant of the Bézout matrix — which is honest and clean, but not",
+      "created_at": "2026-06-22T20:55:58Z"
+    },
+    {
+      "id": "maf8f8099",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have the architecture right, but let me compute the first few cases by hand, because that's where the *real* theorem lives, and I think the room is being slightly seduced by the $t\\le 2$ claim.\n\nLet me check László's type assertion against an explicit example. Take the modular inequality $3x \\bmod 7 \\le x$. Compute the small elements: this is a genuine proportionally modular semigroup, and you can list its generators directly. Now — and this is the point I want to press — I do *not* believe $t(S)\\le 2$ holds for all proportionally modular semigroups. That bound holds for the subclass coming from a *single* modular inequality of the special form, but the general $S(I)$ with $I=[a/b,c/d]$ can have larger type. Rosales–García-Sánchez's own monograph *Numerical Semigroups* (Springer, 2009) has examples where the type climbs. So László, your funneling \"$g = (F+1)/2$ or $(F+2)/2$\" is too optimistic — it presupposes symmetric/pseudo-symmetric, which is exactly the type-$\\le 2$ world. **Is this really a type-2 phenomenon, or did we restrict to it without noticing?** That's the first gap.\n\nNow the structure I *do* trust is the Bézout/continuant picture, and here is where my own instincts bite. The Bézout sequence $a_1/b_1 < \\cdots < a_k/b_k$ with $a_{i+1}b_i - a_i b_{i+1}=1$ is precisely a geodesic path in $SL_2(\\mathbb{Z})\\backslash\\mathbb{H}$ — the same unimodular tree that governs the Hecke correspondence and the continued-fraction coding of the geodesic flow that I exploited with Lindenstrauss in the QUE work. The Frobenius number is then a *continuant*:\n$$F(S) = K(c_1,\\dots,c_m) - (\\text{boundary correction}),$$\nwhere $K$ is the continuant polynomial of the partial quotients $c_i$ of the CF of $c/d$ relative to $a/b$. So László's question (b) — telescope or endpoint? — has a clean answer: it is genuinely the continuant, *not* an endpoint formula, and that is honest. The endpoint $n_1 n_e$ form only works in the two-generator $\\langle n_1,n_2\\rangle$ case where $F = n_1 n_2 - n_1 - n_2$, the classical Sylvester.\n\nSo my proposed action plan, three points:\n1. **Pin the type.** Decide whether the problem means $S(I)$ in full generality or the single-inequality subclass. If full generality, produce the $t\\ge 3$ counterexample first — otherwise (iii) is just *wrong*, and (ii) collapses with it.\n2. **Verify unimodularity between consecutive generators**, exactly as Dan and László flagged — the $\\det=1$ condition is the *spectral gap* of this problem; lose it and the bijection dies.\n3. **Write $F$ as a continuant of the partial quotients**, and check it against $\\langle n_1,n_2\\rangle$ Sylvester and against my $3x\\bmod 7$ example by hand before we trust the general telescoping.\n\nCompute the example, then we'll know whether the stated theorem is the real theorem.",
+      "created_at": "2026-06-22T20:56:46Z"
+    },
+    {
+      "id": "m90455e9e",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, you're right to make me nervous — and the type question is exactly the kind of place where an existence claim hides a false universality. Let me push on it concretely, because I refuse to trust $t \\le 2$ until I see the counterexample resolved.\n\nHere's the thing I want pinned down before we write a single formula. There are *two* different classes floating around and we've been conflating them:\n\n1. **Single modular inequality** $ax \\bmod b \\le cx$ — these are exactly the proportionally modular ones, and Rosales–García-Sánchez do prove this class equals $\\{S(I)\\}$. So the full-generality worry Peter raises and the single-inequality subclass should *coincide*. If they coincide, then either $t \\le 2$ holds for all of them, or László's parity claim is false. Peter, your $3x \\bmod 7 \\le x$ example is the right probe — let's actually list its Apéry set and read off the pseudo-Frobenius numbers, because the type is the number of maximal elements of $\\mathrm{Ap}(S, n_1)$ under the $\\le_S$ order. That's a finite computation; let's not argue, let's compute.\n\n2. The **continuant** for $F$ — I fully agree this is the honest answer, and it's the analog of what I'd expect from the Stern–Brocot path. But here's my constructiveness demand: the partial quotients $c_i$ must be *recoverable from the minimal generators alone*. László says the $\\det = 1$ relations are read directly off consecutive $n_i$ — good — but that gives us the Bézout *numerators* $a_i$, not obviously the partial quotients $c_i$ of the CF. The continuant $K(c_1,\\dots,c_m)$ is in the $c_i$. So there's a hidden lemma: **the partial quotients are the \"jump lengths\" between consecutive unimodular generators**, i.e. how many mediant steps separate $n_i$ from $n_{i+1}$ in the Stern–Brocot tree. If consecutive minimal generators are always *adjacent* mediants (single steps), then all $c_i = 1$ and the continuant degenerates — which would be wrong. So which is it: are minimal generators consecutive convergents (variable partial quotients) or consecutive mediants (all gaps one)?\n\nMy concrete action item, in my language: build the $e \\times e$ matrix whose consecutive $2\\times 2$ minors are the unimodularity determinants — call it the **Bézout matrix** $B$. Then I conjecture\n$$F(S) = \\max_i \\big(\\text{continuant of the } i\\text{-th deleted minor}\\big) - n_1 - n_e + (\\text{correction}),$$\nbut I won't believe the correction term until Peter's $3x \\bmod 7$ example and the two-generator Sylvester case *both* fall out. Two checkpoints, computed by hand, before any general theorem. What's the Apéry set of that example?",
+      "created_at": "2026-06-22T20:59:03Z"
+    },
+    {
+      "id": "medbde78b",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — let me settle the type question with an actual computation, because I overclaimed and Peter caught it correctly. Let me do $3x \\bmod 7 \\le x$ by hand.\n\nThe semigroup is $S = \\{x : 3x \\bmod 7 \\le x\\}$. Checking residues: $x=1$: $3\\cdot1=3>1$, no. $x=2$: $6>2$, no. $x=3$: $9\\bmod 7=2\\le 3$, yes. $x=4$: $12\\bmod7=5>4$, no. $x=5$: $15\\bmod7=1\\le5$, yes. $x=6$: $18\\bmod7=4\\le6$, yes. $x=7$: yes ($0\\le7$). $x=8$: $24\\bmod7=3\\le8$, yes. So $S=\\langle 3,5,7\\rangle$? Check: $3,5,6=3+3,7,8=3+5,9,10,\\dots$ — missing $1,2,4$, and $11$? $33\\bmod7=5\\le11$ yes, and $11=3+3+5$. So gaps $\\{1,2,4\\}$, $g=3$, $F=4$. Apéry set $\\mathrm{Ap}(S,3)=\\{0,5,7\\}$. Pseudo-Frobenius: maximal elements under $\\le_S$ are $5-3=2$ and $7-3=4$. Both $2,4$ are pseudo-Frobenius, so **$t(S)=2$**. Good — type 2 here, consistent with my parity claim *in this instance*.\n\nBut Peter is right that I cannot assert $t\\le 2$ universally, and I now recall the precise statement: **Rosales–García-Sánchez (and Bullejos) proved type $\\le 2$ for proportionally modular semigroups, but NOT for the more general class $S(I)$ of \"opened modular\" / multiple-interval semigroups.** The Springer 2009 monograph examples Peter cites are of the latter kind. So the resolution is:\n\n- For *honestly* proportionally modular $S$ (single inequality $ax\\bmod b\\le cx$), $t(S)\\le 2$ is a theorem, and the symmetric/pseudo-symmetric dichotomy holds. My collapse $g=(F+1)/2$ or $(F+2)/2$ is then valid.\n- The problem statement uses $S(I)$ with a *single* interval $I=[a/b,c/d]$ — and Rosales proved this single-interval class coincides exactly with the single-inequality class. So we are safe: $t\\le 2$ **does** apply to the problem as literally stated. Dan's point 1 is the correct one — the two classes coincide.\n\nOn Dan's deeper question — convergents versus mediants — here is the structural answer. The minimal generators are **not** consecutive mediants; they are the *minimal* elements of the Bézout sequence, and the partial quotients $c_i$ are precisely the jump lengths. The continuant is genuinely non-degenerate because Rosales's \"Bézout sequence\" already passes to a *reduced* sequence where consecutive denominators satisfy $a_{i+1}b_i - a_i b_{i+1}=1$ but the *steps* in the Stern–Brocot tree between them are the $c_i$. So the $c_i$ are recovered as $c_i = \\lfloor a_{i+1}/a_i \\rfloor$-type ratios along the chain — recoverable from generators alone, answering Dan's constructiveness demand affirmatively.\n\nSo my revised, sharpened position:\n1. **(iii)** $t(S)",
+      "created_at": "2026-06-22T20:59:49Z"
+    },
+    {
+      "id": "md7473bc3",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, your computation is right and I'm glad you did it by hand — $S=\\langle 3,5,7\\rangle$, $\\mathrm{Ap}(S,3)=\\{0,5,7\\}$, $t=2$. But now let me be the skeptic about your \"we are safe\" conclusion, because there's a precise place where the literature bites.\n\nThe theorem you're invoking is Rosales–García-Sánchez: the single-interval class $\\{S(I)\\}$ equals the single modular inequality class. That's correct. But the type bound is more delicate than \"$t\\le 2$ always.\" The sharp statement is: a proportionally modular semigroup is **not always symmetric or pseudo-symmetric** — the clean dichotomy I want is the one that gives $t\\le 2$, but the general proportionally modular semigroup can have $t=3$. Let me press the actual example. Consider $\\langle 3,5,7\\rangle$ again — fine, $t=2$. But take an interval producing a *four*-generator semigroup and the type can climb. The reference is Bullejos–Rosales, \"Proportionally modular Diophantine inequalities and the Stern–Brocot tree\" — they show the generators are exactly a Bézout sequence, but the type formula is *not* uniformly $\\le 2$.\n\nSo here is my refined claim, and I'll bet on it:\n- **(i) $F(S)$** is a continuant of the partial quotients of the Stern–Brocot path between the endpoints — honest, telescoping, and it reduces to Sylvester $n_1n_2-n_1-n_2$ in the two-generator case. *That* I trust.\n- **(ii) and (iii)** do *not* collapse via a simple parity bit unless we are in the symmetric/pseudo-symmetric subworld. The genus is itself a continuant-type sum along the Bézout chain — half the sum of the gaps, which telescopes through the convergents. So $g$ has its own closed form independent of $F$; don't make it a corollary of (i).\n\nMy action item stands: produce the smallest proportionally modular $S$ with $t\\ge 3$. If it exists — and I believe Bullejos–Rosales gives one — then László's funnel is dead and we must write all three invariants as separate continuants along the Stern–Brocot geodesic. Compute the four-generator example before we commit. Is this really a type-2 phenomenon? I say: not in general.",
+      "created_at": "2026-06-22T21:00:34Z"
+    },
+    {
+      "id": "m388e20ce",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T21:01:22Z"
+    },
+    {
+      "id": "mf43d9293",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nEstablish closed forms for the Frobenius number, genus, and type of single-interval proportionally modular numerical semigroups by recovering the Bézout/Stern–Brocot continued-fraction structure from the minimal generators and expressing each invariant as a continuant along the unimodular chain.",
+      "created_at": "2026-06-22T21:01:22Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish closed forms for the Frobenius number, genus, and type of single-interval proportionally modular numerical semigroups by recovering the Bézout/Stern–Brocot continued-fraction structure from the minimal generators and expressing each invariant as a continuant along the unimodular chain.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the semigroup class and equivalences",
+        "body": "Pin down precisely which class the problem addresses: confirm via Rosales–García-Sánchez that single-interval semigroups S(I) with I=[a/b,c/d] coincide exactly with the single modular Diophantine inequality class ax mod b ≤ cx. State this equivalence explicitly and verify the problem statement uses a single interval, so the analysis is over this exact class and not the broader multiple-interval ('opened modular') class.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Establish the Bézout-sequence normal form and recover partial quotients from generators",
+        "body": "Prove that the minimal generators form a reduced Bézout sequence a_1/b_1 < ... < a_k/b_k with consecutive unimodularity a_{i+1}b_i - a_i b_{i+1} = 1, and that this det=1 condition holds between EVERY consecutive pair (not just endpoints). Then show the continued-fraction partial quotients c_i (the Stern–Brocot jump lengths) are recoverable from the minimal generators alone, resolving the convergents-vs-mediants question so the continuant is provably non-degenerate.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Resolve the type question with a counterexample search",
+        "body": "Determine whether t(S) ≤ 2 holds for all single-interval proportionally modular semigroups or whether type can reach 3+. Compute a four-generator example (per Bullejos–Rosales 'Proportionally modular Diophantine inequalities and the Stern–Brocot tree') by listing the Apéry set Ap(S,n_1) and counting maximal elements under ≤_S. If a t≥3 example exists, the simple symmetric/pseudo-symmetric parity collapse is invalidated.",
+        "agent": "critic-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Derive the Frobenius number as a continuant",
+        "body": "Express F(S) as the continuant K(c_1,...,c_m) of the partial quotients of the Stern–Brocot path between endpoints, with explicit boundary correction. Verify it reduces to the classical Sylvester formula F = n_1 n_2 - n_1 - n_2 in the two-generator case ⟨n_1,n_2⟩, and confirm it is a genuine telescoping/continuant expression rather than an endpoint-only formula.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Derive the genus as an independent continuant",
+        "body": "Express g(S) as its own continuant-type sum along the Bézout chain (half the sum of gaps accumulated through the convergents), independent of F(S). Only invoke the symmetric/pseudo-symmetric collapse g=(F+1)/2 or g=(F+2)/2 if step 2 confirms t≤2 universally; otherwise provide the standalone telescoping formula valid for all types.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Derive the type formula",
+        "body": "Give the closed form for t(S) along the Stern–Brocot path. If step 2 confirms t≤2, express t as the parity invariant of the continued-fraction length (symmetric vs pseudo-symmetric, tied to whether the modular interval is self-dual). If step 2 produces t≥3, instead give the general type as the count of maximal pseudo-Frobenius elements expressed via the Bézout chain structure.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Validate all formulas against hand-computed checkpoints",
+        "body": "Verify the F, g, and t formulas against (a) the two-generator Sylvester case, (b) the worked example S=⟨3,5,7⟩ from 3x mod 7 ≤ x with Ap(S,3)={0,5,7}, g=3, F=4, t=2, and (c) the four-generator example from step 2. Confirm consistency of boundary corrections and that the generator-to-CF map is provably bijective before accepting the general theorem.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3,
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T21:01:22Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

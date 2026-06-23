@@ -10,13 +10,17 @@ PORT="${RMA_SOLVE_DEV_PORT:-8011}"
 cd "$ROOT"
 source "$ROOT/scripts/ensure_webapp_deps.sh"
 
+# Optional local secrets (gitignored), e.g. ANTHROPIC_API_KEY for subscription
+# billing of the /api/solve smoke endpoint.
+if [ -f "$ROOT/.env.local" ]; then set -a; . "$ROOT/.env.local"; set +a; fi
+
 echo "[solve-dev] Solve app on 127.0.0.1:${PORT}"
 
 while true; do
     echo "[solve-dev $(date '+%Y-%m-%d %H:%M:%S')] launching…"
     PYTHONPATH="${HOME}/.local/lib/python3.12/site-packages${PYTHONPATH:+:$PYTHONPATH}" \
     GOOGLE_CLOUD_PROJECT="nairr-260096-569948" \
-    GOOGLE_CLOUD_REGION="us-east5" \
+    GOOGLE_CLOUD_REGION="global" \
     "$PYTHON" -m uvicorn webapp.server:app \
         --host 127.0.0.1 \
         --port "$PORT" \

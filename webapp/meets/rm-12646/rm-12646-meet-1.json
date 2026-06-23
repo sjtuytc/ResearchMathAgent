@@ -1,0 +1,150 @@
+{
+  "id": "rm-12646-meet-1",
+  "problem_id": "rm-12646",
+  "topic": "Init rm-12646 — proof review",
+  "goal": "Review the proof and issues for rm-12646; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T10:28:48Z",
+  "messages": [
+    {
+      "id": "mbc5ad1d5",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-12646 — proof review**",
+      "created_at": "2026-06-23T10:28:48Z"
+    },
+    {
+      "id": "mbba55439",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about something up front: this problem is not in my wheelhouse, and I want to make sure we don't fool ourselves. The problem statement is about *rational parametrization of algebraic surfaces* — deciding whether $k(X)$ is purely transcendental and, if so, producing the parametrization. That is the Castelnuovo rationality criterion territory, not spectral graph theory. My $\\varepsilon$-light subset work and my effective-resistance machinery have, as far as I can see, nothing to do with the function field of a surface.\n\nSo my first contribution is a methodological warning: someone seems to have stapled my $\\varepsilon$-light subset notes onto a problem about birational geometry. Let me ask the questions I'd actually want answered before we pretend there's a unified proof:\n\n1. **What is the actual mathematical content of the decision procedure?** Castelnuovo's criterion says a smooth projective surface over an algebraically closed field of characteristic zero is rational iff $q = h^1(\\mathcal{O}_X) = 0$ and $P_2 = h^0(2K_X) = 0$ (vanishing irregularity and second plurigenus). The decision problem reduces to *computing cohomology/plurigenera from the ideal*. What's the complexity model there — Gröbner bases?\n\n2. **Where does anything I do enter?** The one place I could imagine a genuine connection is the *linear-algebra* core: computing these cohomology groups means solving large, structured linear systems over $k$. If those systems have graph-Laplacian-like structure, my nearly-linear-time Laplacian solvers (Spielman–Teng) could plausibly accelerate the syzygy computations. But that's speculative — is there actually sparse, diagonally-dominant structure here, or is this dense linear algebra over a polynomial ring?\n\n3. **Is the \"$c = 1/42$ vs $c = 1/2$\" discussion in my notes even relevant to this problem?** I don't think it is. We should explicitly cut it.\n\nCan someone state precisely which proof we are reviewing? If the real algorithm is the Schicho/de Graaf-style adjoint-curve method for parametrizing rational surfaces, then let's review *that*, and I'll keep quiet except where the linear algebra is the bottleneck. What's the spectral gap — figuratively — between what I know how to do and what this problem needs? Right now it looks large, and I'd rather name that than paper over it.",
+      "created_at": "2026-06-23T10:29:03Z"
+    },
+    {
+      "id": "m70b62154",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right, and I'll second his methodological honesty: my $\\varepsilon$-light subset notes, the LLL, the $\\theta$-function — none of these touch the function field of a surface. We should not pretend there is a unified proof. Let me state what I think the *actual* mathematics is, since this is closer to my algebraic-geometry sensibilities than to my graphon work.\n\nThe decision problem is genuinely Castelnuovo's criterion: over an algebraically closed field of characteristic zero, a smooth projective surface $X$ is rational iff $q = h^1(\\mathcal{O}_X) = 0$ and $P_2 = h^0(2K_X) = 0$. So the algorithm has two distinct phases:\n\n1. **Decision.** Resolve $X$ to a smooth model, then compute the irregularity $q$ and second plurigenus $P_2$. This is cohomology of coherent sheaves from the ideal — Gröbner-basis / syzygy computations. The complexity is dominated by the resolution of singularities and by computing $h^0(2K_X)$; both are doubly-exponential in the worst case in the naive Gröbner model, though in practice far better.\n\n2. **Construction.** *Deciding* rationality does not hand you $\\varphi$. The constructive step is the Schicho-style adjoint method: use the anticanonical / adjoint linear system to map $X$ birationally down to a minimal rational surface (a plane, a quadric, or a Hirzebruch/del Pezzo surface), parametrize that explicitly, and pull back. This is the real algorithmic content, and it is where the work lives.\n\nTwo precise points where I can actually contribute, and where Dan's instinct about linear algebra is half-right:\n\n- The construction reduces, repeatedly, to computing global sections of linear systems $H^0(X, \\mathcal{L})$ — i.e. kernels of large structured linear maps over $k$ obtained from multiplication tables in the homogeneous coordinate ring. These matrices are *sparse* (each multiplication touches few monomials) but they are emphatically **not** symmetric diagonally dominant. So Spielman–Teng Laplacian solvers do not apply off the shelf; one wants structured sparse solvers, not graph-Laplacian solvers. Dan, I'd cut the SDD hope unless we can exhibit a genuine Laplacian.\n\n- There is one honest near-analogy to my world: the search for a *real* point or a low-degree parametrization over a non-closed field becomes a lattice / short-vector problem, and *that* is where LLL — the lattice algorithm, not the Local Lemma — is the standard tool (e.g. reducing the conic to a parametrizable form). But the problem fixes $k$ algebraically closed, so even that disappears here.\n\nSo my proposed action plan: (a) excise all the $\\varepsilon$-light, $c=1/42$ vs $c=1/2$ material — it is provably irrelevant; (b) fix the proof we are reviewing to be Castelnuovo-decision + Schicho-construction; (c) state the complexity honestly in the Gröbner model, separating the resolution cost from the linear-algebra cost. I'm happy to scrutinize the linear-algebra core, but we should stop calling it spectral.",
+      "created_at": "2026-06-23T10:29:50Z"
+    },
+    {
+      "id": "m985a2515",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, László — you're both right that the $\\varepsilon$-light material is noise, and I won't pretend my QUE or GUE machinery decides rationality of a surface. But let me push on the *real* mathematics here, because I think László has stated the textbook answer and we should ask whether it's the right one algorithmically.\n\nA few sharp points:\n\n1. **Castelnuovo is the wrong primitive for the decision step.** Yes, rationality $\\iff q = P_2 = 0$. But notice the criterion *requires a smooth projective model*. The whole cost is hidden in \"resolve $X$ to a smooth model\" — resolution of singularities (Hironaka) is not a polynomial-time black box. So the honest statement is: the complexity is dominated entirely by the resolution, and Castelnuovo is a footnote. Let's not bury that.\n\n2. **The real content is the construction, and it's genuinely classical.** The Schicho method runs through del Pezzo / Hirzebruch surfaces via the *adjoint linear system* $|K_X + \\text{stuff}|$. Compute the first few cases by hand: a smooth cubic surface in $\\mathbb{P}^3$ — the anticanonical system gives you the 27 lines, blow down six skew ones, you're at $\\mathbb{P}^2$. That's the whole algorithm in miniature. The general case is iterating this adjunction. I'd want us to *write out the cubic surface case explicitly* before trusting any general complexity claim.\n\n3. **One genuine connection to my world, and it's not LLL.** When $k$ is algebraically closed everything reduces to linear algebra over $k$, fine. But the moment you want a parametrization with *control on degree* — the minimal-degree parametrization — you're computing $h^0$ of adjoint bundles, and the dimension counts are governed by Riemann–Roch on the surface. That's the same Euler-characteristic bookkeeping I use in the trace formula: spectral side (sheaf cohomology) versus geometric side (intersection numbers $K_X^2$, $c_2$). The deep efficiency comes from making those agree so you never compute a cohomology you can predict.\n\nSo my action item: state the complexity in two honestly-separated pieces — resolution cost (the dominant, doubly-exponential beast) and the adjunction/linear-algebra cost (sparse, structured, Riemann–Roch-controlled). And let's verify the cubic surface by hand first. Is the \"efficiency\" claim in the problem really about the linear algebra, or is it secretly a claim about resolution? Because if it's the latter, the problem is much harder than the proof admits.",
+      "created_at": "2026-06-23T10:30:37Z"
+    },
+    {
+      "id": "mbb31da2f",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter just nailed the thing I should have said more sharply: the \"efficiency\" claim is doing a bait-and-switch. If the dominant cost is resolution of singularities, then no amount of clever linear algebra — mine or anyone's — changes the asymptotics, and the complexity analysis the problem *asks* for is essentially a complexity analysis of Hironaka. We should say that loudly.\n\nBut let me try to earn my keep on the one piece where I actually have something, and be honest about its limits. László is right that the section-computation matrices $H^0(X,\\mathcal{L})$ are sparse-but-not-SDD, so Spielman–Teng is off the shelf inapplicable. I accept that. Two more constructive remarks:\n\n1. **Where my world really *could* enter is sparsification, not solving.** When we iterate adjunction we repeatedly compute kernels of the multiplication maps $S_d \\otimes H^0(\\mathcal{L}) \\to H^0(\\mathcal{L}(d))$. Those are huge but redundant — most monomial relations are near-consequences of a few. The right question is: is there a *spectral sparsifier* analogue, i.e. a small subset of relations that $(1\\pm\\varepsilon)$-preserves the kernel/rank structure? My effective-resistance sampling (Spielman–Srivastava, \"Graph sparsification by effective resistances\") generalizes to arbitrary matrices via leverage scores $\\ell_i = a_i^T (A^TA)^\\dagger a_i$, $\\sum_i \\ell_i = \\mathrm{rank}(A)$. Leverage-score sampling of rows is exactly the non-graph version. So the honest claim is: *the linear-algebra core admits leverage-score row sampling*, which is a real speedup, but it's randomized-numerical and we need exact arithmetic over $k$ — so it likely only helps in a Monte Carlo rank-certification step, not the exact parametrization.\n\n2. **Cut the SDD hope formally, but keep one open question.** Is there *any* natural sub-step here whose matrix is a genuine Laplacian? The only candidate I can imagine is the intersection/incidence combinatorics — the configuration of the 27 lines on the cubic, the blow-down graph. *That* is a graph, and its Laplacian governs which six skew lines you can contract. So if there's a place for spectral methods at all, it's in the **combinatorial choice of which exceptional curves to blow down**, not in the sheaf cohomology. Peter, when you write out the cubic by hand, can we record the incidence graph of the 27 lines? I want to see whether choosing the six skew lines is a max-independent-set / spectral problem on that graph — that would be the one honest bridge to my toolkit.\n\nSo my vote on the action plan: (a) agreed, excise all $\\varepsilon$-light and $c=1/42$ material; (b) state complexity as resolution-cost (dominant, super-exponential) + adjunction linear-algebra cost; (c) on the linear algebra, replace \"Laplacian solver\" with \"leverage-score sparsification, randomized\"; (d) examine the 27-lines incidence graph for a genuine spectral sub-problem. What's the spectral gap of that incidence graph? That's a concrete thing I can compute.",
+      "created_at": "2026-06-23T10:32:56Z"
+    },
+    {
+      "id": "m9e29374b",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your instinct about the 27 lines is exactly right, and I want to make it precise — because this *is* the one place where my combinatorial toolkit genuinely bites. Let me record the structure.\n\nThe incidence graph of the 27 lines on a smooth cubic surface is a strongly regular graph: the **Schläfli graph** (or its complement, depending on whether you join intersecting or skew lines). On $27$ vertices, taking edges to be *skew* pairs, each line is skew to exactly $10$ others, and it is strongly regular with parameters $\\mathrm{srg}(27,10,1,5)$. Its eigenvalues are $10, 1, -5$ with multiplicities $1, 20, 6$ — clean, because the surface is a quotient of root-system data ($E_6$). \n\nNow the algorithmic content. Blowing down to $\\mathbb{P}^2$ requires choosing **six pairwise skew lines** — i.e. a clique of size $6$ in the skew-graph (an independent set of size $6$ in the intersection-graph). So Dan's question \"is choosing the six a max-independent-set/spectral problem?\" has a sharp answer:\n\n- The Hoffman ratio bound gives $\\alpha(G) \\le n \\cdot \\frac{-\\lambda_{\\min}}{d - \\lambda_{\\min}} = 27 \\cdot \\frac{5}{10+5} = 9$ for the intersection graph — but the *exact* answer ($6$, the number of skew lines blown down) comes from the geometry, and these $6$-cliques are in bijection with the $72$ \"sixers.\" This is precisely the regime where my $\\theta$-function is exact: for vertex-transitive graphs $\\theta(G)\\theta(\\bar G) = n$, and the eigenvalue structure pins down $\\alpha$.\n- So I would *not* call this a hard optimization — there are exactly $72$ valid choices, transitively permuted by the Weyl group $W(E_6)$. Choosing one is $O(1)$ once the incidence graph is built. The spectral gap Dan asks for is $10 - 1 = 9$, large; the graph is an expander, which is *why* the combinatorial choice is well-conditioned.\n\nBut here is my caution, agreeing with Peter: this beautiful finite combinatorics only appears *after* you are already at a smooth cubic. The general parametrizable surface is not a cubic, and the adjunction tower (Schicho) produces, at each stage, a *different* incidence configuration of exceptional curves — not always a named strongly regular graph. So the honest statement is: the blow-down choice is a clique/independent-set problem on the dual graph of the negative curves, governed by the intersection form, which is a lattice of signature $(1, \\rho-1)$ — and the $(-1)$-curves are roots in that lattice. Finding them is lattice enumeration, and *there* — finally — the LLL lattice-reduction algorithm is genuinely the right tool, not as decoration but because the Néron–Severi lattice with its hyperbolic form is exactly the object LLL was built to navigate.\n\nSo my amendment to the action plan: under (d), state the blow-down combinatorics as **clique-finding in the dual graph of negative curves, equivalently short-vector search in the Néron–Severi lattice** — spectral on the regular special cases (Schläfli/cubic), LLL-lattice-reduction in general. That unifies Dan's spectral observation and my lattice algorithm into one honest sentence, and it is the only place either of our toolkits earns its keep.",
+      "created_at": "2026-06-23T10:33:46Z"
+    },
+    {
+      "id": "m23ef7a80",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, that's a beautiful synthesis, and the $E_6$ structure is exactly right — but let me sharpen the lattice point because it's *the* unifying primitive, and it's closer to my world than either of you has said.\n\n1. **The Néron–Severi lattice is the real object, and it's a root lattice.** For a smooth cubic surface $\\mathrm{NS}(X) \\cong I^{1,6}$, and the $(-1)$-curves — the 27 lines — are precisely the vectors $v$ with $v^2 = -1$, $v\\cdot K = -1$. The Weyl group $W(E_6)$ acts as I'd expect: this is the same root-system bookkeeping that runs the trace formula on arithmetic quotients. So the \"27 lines\" are not a special miracle; they are the $E_6$ root data, and the general adjunction tower lives in $I^{1,\\rho-1}$ with $K$ pinned down. Dan's spectral gap and László's $\\theta$-function are both *consequences* of the lattice being an $ADE$-type configuration.\n\n2. **But here's the Ramanujan-flavored question I keep wanting to ask:** is the blow-down choice ever genuinely hard, or is it always *rigid*? For the cubic the 72 sixers are transitively permuted — choice is free. The deep efficiency claim should be a statement that the negative-curve configuration is always governed by a *finite* Weyl group when the surface is rational. That's the analogue of my mantra \"never compute a cohomology you can predict\": you never search the lattice blindly because Riemann–Roch plus the hyperbolic form constrains the $(-1)$-curves to a Weyl orbit. LLL is the right tool, yes, but the orbit is finite and the conditioning is the spectral gap László computed — so the lattice enumeration is *bounded*, not exponential, on rational surfaces.\n\n3. **One concrete demand before we sign off on complexity.** Let me insist on the cubic by hand exactly to test this: $K_X^2 = 3$, $c_2 = 9$, so $\\chi(\\mathcal{O}_X) = \\tfrac{1}{12}(K^2 + c_2) = 1$, confirming $q = p_g = 0$ — Castelnuovo with no resolution needed *because the cubic is already smooth*. That's my real worry, echoing Peter-from-five-minutes-ago: the entire honest cost is the resolution that gets you *to* a configuration where the Néron–Severi lattice is a clean root lattice. So the two-piece complexity should read: **resolution (Hironaka, the beast) → then the lattice/Weyl combinatorics is polynomial, even spectral.** The \"efficiency\" in the problem is real only on the second piece, and we should say so without flinching.\n\nSo my amendment: state the construction as **Weyl-orbit enumeration of $(-1)$-curves in $\\mathrm{NS}(X)$ via LLL, with conditioning bounded by the spectral gap of the dual graph** — and flag that this is fast *precisely when the surface is rational*, because rationality forces the finite Weyl structure. The hardness, as Dan said, is the bait-and-switch resolution upstream.",
+      "created_at": "2026-06-23T10:34:36Z"
+    },
+    {
+      "id": "m25bcc9f0",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T10:35:29Z"
+    },
+    {
+      "id": "m0fc4ea9e",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nReview and rebuild the rm-12646 proof as a two-phase rationality algorithm — Castelnuovo decision (q = P_2 = 0) plus Schicho-style adjunction construction — with complexity honestly split into the dominant resolution-of-singularities cost and the polynomial Néron–Severi lattice/Weyl-orbit blow-down combinatorics, while excising all irrelevant spectral-graph material.",
+      "created_at": "2026-06-23T10:35:29Z"
+    }
+  ],
+  "plan": {
+    "summary": "Review and rebuild the rm-12646 proof as a two-phase rationality algorithm — Castelnuovo decision (q = P_2 = 0) plus Schicho-style adjunction construction — with complexity honestly split into the dominant resolution-of-singularities cost and the polynomial Néron–Severi lattice/Weyl-orbit blow-down combinatorics, while excising all irrelevant spectral-graph material.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Excise irrelevant material",
+        "body": "Remove all ε-light subset notes, the c=1/42 vs c=1/2 discussion, the LLL-as-Local-Lemma references, and any SDD/graph-Laplacian-solver claims, since the surface function-field problem has no genuine connection to spectral graph theory or those notes. Confirm formally that Spielman–Teng Laplacian solvers do not apply because the section-computation matrices are sparse but not symmetric diagonally dominant.",
+        "agent": "critic-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Fix the proof skeleton",
+        "body": "State the reviewed algorithm precisely as two distinct phases: (1) Decision via Castelnuovo's criterion — over an algebraically closed field of characteristic zero, a smooth projective surface X is rational iff q = h^1(O_X) = 0 and P_2 = h^0(2K_X) = 0; (2) Construction via the Schicho-style adjoint linear system, mapping X birationally to a minimal rational model (plane, quadric, Hirzebruch/del Pezzo) by iterated adjunction and pulling back the parametrization.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Work out the cubic surface by hand",
+        "body": "Explicitly verify the algorithm on a smooth cubic surface in P^3: confirm K_X^2 = 3, c_2 = 9, so χ(O_X) = (1/12)(K^2 + c_2) = 1, giving q = p_g = 0 (Castelnuovo satisfied with no resolution since the cubic is already smooth). Record the anticanonical system producing the 27 lines and the blow-down of six pairwise skew lines to reach P^2. Document the full incidence configuration as a concrete test case.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Formalize the blow-down combinatorics",
+        "body": "Record the 27-lines incidence graph as the Schläfli strongly regular graph srg(27,10,1,5) with eigenvalues 10, 1, -5 (multiplicities 1, 20, 6) and spectral gap 9. Show that choosing six pairwise skew lines is a 6-clique in the skew-graph, that there are exactly 72 such 'sixers' transitively permuted by the Weyl group W(E_6), and that the Hoffman ratio bound gives α ≤ 9 while geometry pins the exact answer. Conclude the choice is O(1) once the graph is built and is well-conditioned because the graph is an expander.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Generalize via the Néron–Severi lattice",
+        "body": "State the general blow-down step as clique-finding in the dual graph of negative curves, equivalently short-vector search in the Néron–Severi lattice NS(X) ≅ I^{1,ρ-1} of hyperbolic signature with K pinned down. Show the (-1)-curves are the vectors v with v^2 = -1, v·K = -1, forming a Weyl orbit (E_6 for the cubic), so enumeration is bounded — not exponential — precisely when the surface is rational, because rationality forces a finite Weyl structure. Identify LLL lattice reduction as the correct tool for navigating this hyperbolic lattice, with conditioning bounded by the spectral gap of the dual graph.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "State complexity honestly in two pieces",
+        "body": "Separate the complexity into: (A) resolution of singularities to a smooth model (Hironaka), the dominant doubly/super-exponential cost in the naive Gröbner model — make explicit that no linear-algebra cleverness changes this asymptotic and that the 'efficiency' claim must not be a bait-and-switch hiding resolution cost; and (B) the post-resolution adjunction/lattice/Weyl combinatorics, which is polynomial and even spectral. Note that the section computations H^0(X,L) reduce to kernels of sparse structured multiplication maps amenable to leverage-score row sampling (randomized rank certification), but exact arithmetic over k is needed for the actual parametrization.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify Riemann–Roch bookkeeping",
+        "body": "Check that all dimension counts of adjoint global sections H^0 are correctly governed by Riemann–Roch on the surface, matching the spectral side (sheaf cohomology) against the geometric side (intersection numbers K_X^2, c_2), so that predictable cohomologies are never recomputed. Confirm the χ(O_X)=1 computation for the cubic and that the criterion vanishing (q = P_2 = 0) is consistent with the lattice/Weyl structure throughout the adjunction tower.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T10:35:29Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

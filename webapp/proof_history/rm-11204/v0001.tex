@@ -1,0 +1,294 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\err}{err}
+\DeclareMathOperator*{\OR}{OR}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\X}{\{0,1\}^n}
+
+\begin{document}
+
+\title{Efficient semi-supervised PAC learning of two-sided disjunctions}
+\maketitle
+
+\section{Statement and answer}
+
+We work in the model described in the problem. Examples lie in $X=\X$. A
+\emph{two-sided disjunction} is a pair $h=(h^+,h^-)$ where, for some subsets
+$S^+,S^-\subseteq\{1,\dots,n\}$,
+\[
+  h^+(x)=\OR_{i\in S^+} x_i=\mathbf 1[\,S^+\cap P(x)\neq\emptyset\,],\qquad
+  h^-(x)=\OR_{i\in S^-} x_i=\mathbf 1[\,S^-\cap P(x)\neq\emptyset\,],
+\]
+with $P(x):=\{i:x_i=1\}$ (and the empty disjunction is identically $0$). The
+\emph{classifier} associated with $h$ uses $h^+$ only: $x$ is labeled $+1$ if
+$h^+(x)=1$ and $-1$ otherwise. For a distribution $D$ on $X$ and a target
+$h^\ast=(h^{\ast+},h^{\ast-})$, the error of a hypothesis classifier $g$ is
+\[
+  \err_{D,h^\ast}(g):=\Pr_{x\sim D}\bigl[g(x)\neq h^{\ast+}(x)\bigr].
+\]
+A hypothesis $h$ is \emph{compatible} with $D$ if for every $x\in\supp(D)$ we
+have $h^+(x)=\lnot h^-(x)$, i.e.\ exactly one of $h^+(x),h^-(x)$ equals $1$. Let
+$C$ be the class of two-sided disjunctions with this compatibility notion, and
+for a fixed $D$ let
+\[
+  C_D:=\{h\in C: h \text{ is compatible with } D\}
+\]
+be the compatibility-filtered subclass. Write
+$m_{\mathrm{filt}}(D,\eps,\delta)$ for the
+\emph{compatibility-filtered (labeled) sample complexity}: the smallest number
+of labeled examples that suffices, in the standard realizable PAC sense, to
+output a classifier of error at most $\eps$ with probability at least
+$1-\delta$ for every target in $C_D$ labeling examples drawn from $D$.
+
+\begin{theorem}\label{thm:main}
+The answer to the problem is \textbf{yes}. There is an algorithm
+$\mathcal A$ for the semi-supervised PAC model of $C$ such that:
+\begin{enumerate}
+\item[(a)] $\mathcal A$ runs in time polynomial in $n$, $1/\eps$ and
+$1/\delta$;
+\item[(b)] on every unknown distribution $D$ and every target
+$h^\ast\in C_D$, with probability at least $1-\delta$ the output classifier
+has error at most $\eps$, and the number of labeled examples used is
+\[
+  m \;=\; \Bigl\lceil \tfrac{1}{\eps}\bigl(n\ln 2+\ln(1/\delta)\bigr)\Bigr\rceil
+  \;\le\; p\bigl(n,1/\eps,\log(1/\delta)\bigr)\cdot
+          \bigl(m_{\mathrm{filt}}(D,\eps,\delta)+1\bigr)
+\]
+for a fixed polynomial $p$;
+\end{enumerate}
+while using a number of unlabeled examples that is polynomial in $n$, $1/\eps$
+and $\log(1/\delta)$ (indeed, the algorithm needs no unlabeled examples, so in
+particular it uses a polynomial number of them).
+\end{theorem}
+
+The remainder of the paper proves Theorem~\ref{thm:main}. The structure is:
+Section~\ref{sec:alg} gives the explicit algorithm and proves it is a correct,
+polynomial-time PAC learner using $m=\lceil\frac1\eps(n\ln2+\ln(1/\delta))\rceil$
+labeled examples (Lemma~\ref{lem:upper}); Section~\ref{sec:lower} proves the
+quantitative comparison to $m_{\mathrm{filt}}$ (Lemma~\ref{lem:compare}); the
+two combine to give the theorem.
+
+\section{The algorithm and its labeled-sample upper bound}\label{sec:alg}
+
+The classifier produced by a two-sided disjunction depends only on $h^+$, which
+is a monotone disjunction. We therefore learn $h^{\ast+}$ directly with the
+classical elimination (list-and-cross-off) algorithm. The compatibility
+constraint and the unlabeled sample are \emph{not} needed for correctness; they
+are only relevant to the comparison in Section~\ref{sec:lower}.
+
+\begin{algorithm}[h]
+\caption{Elimination learner for the classifier of $C$}\label{alg:elim}
+\begin{algorithmic}[1]
+  \Require parameters $\eps,\delta\in(0,1)$; oracle access to labeled examples
+           $(x,y)$, $x\sim D$, $y=h^{\ast+}(x)$.
+  \Ensure a classifier $g$ which is a monotone disjunction over $\{1,\dots,n\}$.
+  \State $m \gets \bigl\lceil \tfrac1\eps\bigl(n\ln 2+\ln(1/\delta)\bigr)\bigr\rceil$
+  \State $T \gets \{1,2,\dots,n\}$
+         \Comment{$T$ = set of variables still allowed in $g$}
+  \For{$t=1$ \textbf{to} $m$}
+     \State draw a labeled example $(x,y)$
+     \If{$y=-1$} \Comment{$h^{\ast+}(x)=0$}
+        \State $T \gets T \setminus P(x)$
+            \Comment{remove every variable set to $1$ in $x$}
+     \EndIf
+  \EndFor
+  \State \Return the classifier $g(x):=\OR_{i\in T} x_i$
+         \big(equivalently $g(x)=\mathbf 1[\,T\cap P(x)\neq\emptyset\,]$\big)
+\end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}\label{lem:upper}
+Fix any $D$ on $X$ and any target $h^\ast\in C$ (compatibility is not used).
+On a labeled sample of size
+$m=\lceil\frac1\eps(n\ln2+\ln(1/\delta))\rceil$, Algorithm~\ref{alg:elim}:
+\begin{enumerate}
+\item runs in time $O(mn)=\mathrm{poly}(n,1/\eps,\log(1/\delta))$ and uses $m$
+labeled examples and no unlabeled examples;
+\item outputs a classifier $g$ with
+$\Pr[\err_{D,h^\ast}(g)\le\eps]\ge 1-\delta$,
+the probability over the labeled sample.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\emph{Running time and sample size.} The loop runs $m$ times; each iteration
+draws one labeled example, inspects the at most $n$ coordinates of $x$ and
+deletes the corresponding elements from $T$, costing $O(n)$. Output is $O(n)$.
+Total time $O(mn)$. With
+$m=\lceil\frac1\eps(n\ln2+\ln(1/\delta))\rceil$ this is polynomial in
+$n,1/\eps,\log(1/\delta)$, hence in $n,1/\eps,1/\delta$. No unlabeled example is
+ever requested.
+
+\emph{Structure of the output.} Let $S^\ast:=S^{\ast+}$ be the index set of the
+target classifier $h^{\ast+}=\OR_{i\in S^\ast}x_i$, and let $T_{\mathrm{out}}$ be
+the final value of $T$. We first record two invariants.
+
+\textbf{(I1) $S^\ast\subseteq T_{\mathrm{out}}$.}
+A variable $i$ is deleted from $T$ only when, on some example $(x,-1)$, we have
+$i\in P(x)$, i.e.\ $x_i=1$. If $i\in S^\ast$ then $x_i=1$ forces
+$h^{\ast+}(x)=\OR_{j\in S^\ast}x_j=1$, so the label of $x$ would be $+1$, not
+$-1$. Hence no $i\in S^\ast$ is ever deleted, and $S^\ast\subseteq
+T_{\mathrm{out}}$.
+
+\textbf{(I2) $g$ is consistent with the whole sample.} Consider any sampled
+example $(x,y)$.
+\begin{itemize}
+\item If $y=+1$, then $S^\ast\cap P(x)\neq\emptyset$; by (I1)
+$S^\ast\subseteq T_{\mathrm{out}}$, so $T_{\mathrm{out}}\cap P(x)\neq\emptyset$
+and $g(x)=1=y$.
+\item If $y=-1$, the iteration that processed $(x,-1)$ deleted all of $P(x)$
+from $T$, and elements are never re-added, so
+$T_{\mathrm{out}}\cap P(x)=\emptyset$ and $g(x)=0$, i.e.\ $g$ labels $x$ as
+$-1=y$.
+\end{itemize}
+Thus $g$ agrees with the target on every sampled example.
+
+\textbf{(I3) one-sided dominance.} For every $x\in X$, since
+$S^\ast\subseteq T_{\mathrm{out}}$ we have
+$S^\ast\cap P(x)\subseteq T_{\mathrm{out}}\cap P(x)$, whence
+$h^{\ast+}(x)=1\Rightarrow g(x)=1$. So $g$ never produces a false negative:
+$\{x:g(x)\neq h^{\ast+}(x)\}=\{x:g(x)=1,\ h^{\ast+}(x)=0\}$.
+
+\emph{Generalization (cardinality/Occam bound, realizable case).}
+Let $\mathcal H$ be the class of all monotone disjunctions
+$g_T(x)=\OR_{i\in T}x_i$, $T\subseteq\{1,\dots,n\}$; then
+$|\mathcal H|=2^n$ and the output $g=g_{T_{\mathrm{out}}}\in\mathcal H$. The
+target classifier $h^{\ast+}=g_{S^\ast}\in\mathcal H$, so the learning problem
+is realizable. We use the standard finite-class realizable PAC bound, proved
+here for completeness. Call $g_T\in\mathcal H$ \emph{bad} if
+$\err_{D,h^\ast}(g_T)>\eps$. For a fixed bad $g_T$, the probability that it
+agrees with the target on all $m$ i.i.d.\ sampled examples is
+\[
+  \Pr\bigl[g_T\text{ consistent with the sample}\bigr]
+   =\bigl(1-\err_{D,h^\ast}(g_T)\bigr)^m
+   <(1-\eps)^m\le e^{-\eps m}.
+\]
+By a union bound over the at most $|\mathcal H|=2^n$ bad hypotheses,
+\[
+  \Pr\bigl[\exists\text{ bad } g_T\text{ consistent with the sample}\bigr]
+   \le 2^n e^{-\eps m}.
+\]
+With $m=\lceil\frac1\eps(n\ln2+\ln(1/\delta))\rceil\ge
+\frac1\eps(n\ln2+\ln(1/\delta))$ we get
+$\eps m\ge n\ln2+\ln(1/\delta)$, hence
+$2^n e^{-\eps m}=e^{n\ln2-\eps m}\le e^{-\ln(1/\delta)}=\delta$. By (I2) the
+output $g$ \emph{is} consistent with the sample; therefore, with probability at
+least $1-\delta$, $g$ is not bad, i.e.\ $\err_{D,h^\ast}(g)\le\eps$.
+\end{proof}
+
+\section{Comparison with the filtered sample complexity}\label{sec:lower}
+
+We now show that the labeled count $m$ of Lemma~\ref{lem:upper} matches the
+compatibility-filtered sample complexity up to a polynomial factor, as required
+in clause (b). The point is purely quantitative: $m$ is already a polynomial in
+$n,1/\eps,\log(1/\delta)$, and the filtered complexity is at least a constant
+whenever it is not vacuous; the degenerate (vacuous) case is absorbed by the
+additive ``$+1$''.
+
+\begin{lemma}\label{lem:compare}
+Let $p(n,1/\eps,\log(1/\delta)):=\frac1\eps\bigl(n+\log_2(1/\delta)+1\bigr)$.
+For every distribution $D$ and all $\eps,\delta\in(0,1)$,
+\[
+  m=\Bigl\lceil \tfrac1\eps\bigl(n\ln2+\ln(1/\delta)\bigr)\Bigr\rceil
+  \;\le\; p\bigl(n,1/\eps,\log(1/\delta)\bigr)\cdot
+          \bigl(m_{\mathrm{filt}}(D,\eps,\delta)+1\bigr).
+\]
+\end{lemma}
+
+\begin{proof}
+First bound $m$ from above. Using $\lceil a\rceil\le a+1$, $\ln 2<1$ and
+$\ln(1/\delta)=\ln 2\cdot\log_2(1/\delta)<\log_2(1/\delta)$,
+\[
+  m \le \tfrac1\eps\bigl(n\ln 2+\ln(1/\delta)\bigr)+1
+     \le \tfrac1\eps\bigl(n+\log_2(1/\delta)\bigr)+1
+     \le \tfrac1\eps\bigl(n+\log_2(1/\delta)+1\bigr)
+     = p\bigl(n,1/\eps,\log(1/\delta)\bigr),
+\]
+where in the third inequality we used $1\le \frac1\eps$ (as $\eps<1$). Hence
+\begin{equation}\label{eq:mpoly}
+  m \le p\bigl(n,1/\eps,\log(1/\delta)\bigr).
+\end{equation}
+Since $m_{\mathrm{filt}}(D,\eps,\delta)\ge 0$ always, we have
+$m_{\mathrm{filt}}(D,\eps,\delta)+1\ge 1$, and multiplying the right-hand side of
+\eqref{eq:mpoly} by this quantity only increases it:
+\[
+  m \;\le\; p\bigl(n,1/\eps,\log(1/\delta)\bigr)
+        \;\le\; p\bigl(n,1/\eps,\log(1/\delta)\bigr)\cdot
+                \bigl(m_{\mathrm{filt}}(D,\eps,\delta)+1\bigr).\qedhere
+\]
+\end{proof}
+
+\begin{remark}[On the role of the ``$+1$'' and of $m_{\mathrm{filt}}$]
+The additive ``$+1$'' only matters in the degenerate regime
+$m_{\mathrm{filt}}(D,\eps,\delta)=0$, i.e.\ when a single fixed classifier is
+already $\eps$-good for \emph{every} compatible target on $D$ (for instance when
+$\supp(D)$ is a single point, so all classifiers agreeing there cannot be
+distinguished and zero labeled examples already $\eps$-cover $C_D$). In every
+non-degenerate case $m_{\mathrm{filt}}(D,\eps,\delta)\ge 1$ and the bound
+becomes the clean statement
+$m\le p(n,1/\eps,\log(1/\delta))\cdot m_{\mathrm{filt}}(D,\eps,\delta)$.
+Indeed, a standard PAC lower bound (Ehrenfeucht--Haussler--Kearns--Valiant)
+shows that whenever $C_D$ contains two classifiers at $D$-distance in
+$(\eps,1]$ one in fact needs
+$m_{\mathrm{filt}}(D,\eps,\delta)=\Omega\bigl(\frac1\eps\log\frac1\delta\bigr)$
+labeled examples, so the polynomial factor $p$ is essentially the only loss.
+\end{remark}
+
+\section{Proof of Theorem~\ref{thm:main}}
+
+Take $\mathcal A$ to be Algorithm~\ref{alg:elim} with parameters $\eps,\delta$.
+
+Clause (a): by Lemma~\ref{lem:upper}(1) the running time is $O(mn)$ with
+$m=\lceil\frac1\eps(n\ln2+\ln(1/\delta))\rceil$, which is polynomial in
+$n,1/\eps$ and (since $\log(1/\delta)\le 1/\delta$) in $1/\delta$; thus $\mathcal
+A$ runs in time polynomial in $n,1/\eps,1/\delta$.
+
+Correctness and clause (b): let $D$ be any distribution and
+$h^\ast\in C_D\subseteq C$ any target. By Lemma~\ref{lem:upper}(2),
+$\mathcal A$ outputs a classifier $g$ with
+$\Pr[\err_{D,h^\ast}(g)\le\eps]\ge1-\delta$, using exactly $m$ labeled examples
+and no unlabeled examples. (Lemma~\ref{lem:upper} requires only $h^\ast\in C$,
+which holds since $C_D\subseteq C$; the compatibility of $h^\ast$ with $D$ is a
+strictly stronger hypothesis and is not needed.) By Lemma~\ref{lem:compare}
+this labeled count satisfies
+\[
+  m \le p\bigl(n,1/\eps,\log(1/\delta)\bigr)\cdot
+        \bigl(m_{\mathrm{filt}}(D,\eps,\delta)+1\bigr),
+\]
+with $p(n,1/\eps,\log(1/\delta))=\frac1\eps(n+\log_2(1/\delta)+1)$ a fixed
+polynomial in $n,1/\eps,\log(1/\delta)$. Thus the labeled-sample size matches
+the compatibility-filtered sample complexity up to a factor polynomial in
+$n,1/\eps,\log(1/\delta)$.
+
+Unlabeled sample: $\mathcal A$ uses $0$ unlabeled examples, which is trivially a
+polynomial number.
+
+All three requirements hold, completing the proof. \qed
+
+\begin{remark}[Why the answer is positive ``for free'']
+The semantic content of the result is that, for this concept class, unlabeled
+data is not \emph{necessary} to achieve the polynomially-matched labeled
+complexity: because the classifier of a two-sided disjunction is a single
+monotone disjunction, the \emph{unfiltered} labeled sample complexity of $C$ is
+already $O\bigl(\frac1\eps(n+\log\frac1\delta)\bigr)=
+\mathrm{poly}(n,1/\eps,\log(1/\delta))$, and the filtered complexity, being the
+complexity of the subclass $C_D\subseteq C$, can only be smaller. Matching the
+smaller quantity up to a polynomial factor is therefore automatic once one has
+an efficient learner attaining the polynomial unfiltered bound, which the
+elimination algorithm provides. The compatibility structure and the unlabeled
+sample, which in general (e.g.\ in the Balcan--Blum framework) are what make
+matching possible, are here not required.
+\end{remark}
+
+\end{document}

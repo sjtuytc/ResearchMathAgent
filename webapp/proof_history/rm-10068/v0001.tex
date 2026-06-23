@@ -1,0 +1,523 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+
+\begin{document}
+
+\title{On the computational complexity of maximum--likelihood mixture modeling}
+\maketitle
+
+\begin{abstract}
+We give rigorous complexity results for the maximum--likelihood mixture--modeling
+problem. We prove that, already for the most benign continuous family
+$\mathcal F$ --- isotropic Gaussians with a fixed, prescribed covariance --- the
+natural decision version of the problem is \textbf{NP--hard}, via a
+many--one reduction from Euclidean $k$--means whose numerical parameters are of
+polynomial bit size. As a consequence the optimization problem admits no
+polynomial--time algorithm computing the optimal log--likelihood unless
+$\mathrm{P}=\mathrm{NP}$, and the corresponding additive approximation problem is
+NP--hard. On the positive side we show that for $k=1$ the problem is solvable in
+closed form in polynomial time, and for constant $(d,k)$ it is polynomial; we thus
+delineate precisely which features of the input are responsible for the hardness.
+\end{abstract}
+
+\section{Formalization}
+
+\subsection{The mixture-modeling problem}
+Let $\mathcal F=\{f(\cdot\mid\theta):\theta\in\Theta\}$ be a parametric family of
+probability density functions on $\R^{d}$. Given a finite multiset
+$X=\{x_{1},\dots,x_{n}\}\subset\R^{d}$ and an integer $k\ge1$, a
+\emph{$k$-mixture} is a pair $(\theta,\pi)$ with parameters
+$\theta=(\theta_{1},\dots,\theta_{k})\in\Theta^{k}$ and mixing weights
+$\pi=(\pi_{1},\dots,\pi_{k})$ satisfying $\pi_{j}\ge0$ and
+$\sum_{j=1}^{k}\pi_{j}=1$. Its log-likelihood is
+\begin{equation}\label{eq:loglik}
+L(\theta,\pi)\;=\;\sum_{i=1}^{n}\log\!\Big(\sum_{j=1}^{k}\pi_{j}\,f(x_{i}\mid\theta_{j})\Big),
+\end{equation}
+and we write $L^{\ast}(X,k,\mathcal F)=\sup_{(\theta,\pi)}L(\theta,\pi)$.
+
+\subsection{The family used for the hardness result}
+Fix a scale parameter $\sigma>0$. The \emph{fixed--covariance isotropic Gaussian
+family} $\mathcal G_{\sigma}$ in dimension $d$ is parametrized by the mean
+$\theta=m\in\R^{d}$, with density
+\begin{equation}\label{eq:gauss}
+f(x\mid m)\;=\;c_{\sigma}\,\exp\!\Big(-\tfrac{1}{2\sigma^{2}}\norm{x-m}^{2}\Big),
+\qquad c_{\sigma}:=(2\pi\sigma^{2})^{-d/2},
+\end{equation}
+where $\norm{\cdot}$ is the Euclidean norm. Only the means $m_{1},\dots,m_{k}$ and
+the weights $\pi$ are free; $\sigma$ is part of the input and is held fixed during
+the optimization. Fixing $\sigma$ is both natural and necessary: if the covariance
+scale is also free, the likelihood \eqref{eq:loglik} is unbounded above for
+$k\ge2$ (Remark~\ref{rem:degen}), so the supremum problem would be ill-posed.
+
+\begin{definition}[Mixture--modeling decision problem]\label{def:mmdec}
+\textsc{GMM-MLE} is the following decision problem. \emph{Input:} a finite set
+$X\subset\Z^{d}$ of $n$ points with integer coordinates, an integer $k\ge2$, a
+rational scale $\sigma^{2}>0$, and a rational threshold $\tau$, all encoded in
+binary. \emph{Question:} is $L^{\ast}(X,k,\mathcal G_{\sigma})\ge\tau$?
+Because the additive constant $n\log c_{\sigma}$ is transcendental, we phrase the
+threshold equivalently as a rational comparison on the \emph{normalized}
+log-likelihood $L^{\ast}-n\log c_{\sigma}$; this removes any issue of representing
+$\log$ and changes nothing below.
+\end{definition}
+
+\subsection{The combinatorial problem we reduce from}
+\begin{definition}[Euclidean $k$-means]\label{def:kmeans}
+For $X\subset\R^{d}$ and centers $M=(m_{1},\dots,m_{k})\in(\R^{d})^{k}$ put
+\[
+\mathrm{KM}(X,M)=\sum_{i=1}^{n}\min_{1\le j\le k}\norm{x_{i}-m_{j}}^{2},
+\qquad
+\mathrm{OPT}(X,k)=\inf_{M\in(\R^{d})^{k}}\mathrm{KM}(X,M).
+\]
+The decision problem \textsc{$k$-Means} is: given $X\subset\Z^{d}$, an integer
+$k\ge2$, and a rational $T$, decide whether $\mathrm{OPT}(X,k)\le T$. The
+\emph{integer-threshold} variant \textsc{$k$-Means$_{\Z}$} is the same problem
+restricted to instances in which every achievable partition cost (in the sense of
+Lemma~\ref{lem:centroid}) is an integer and $T\in\Z$.
+\end{definition}
+
+\begin{theorem}[Hardness, after integral scaling]\label{thm:kmnp}
+\textsc{$k$-Means} is NP-hard, already for $k=2$ and unrestricted dimension $d$
+\cite{ADHP}. Moreover \textsc{$k$-Means$_{\Z}$} is NP-hard for $k=2$ and
+unrestricted $d$.
+\end{theorem}
+
+\begin{proof}
+The first statement is \cite{ADHP}. For the second, we reduce \textsc{$k$-Means} to
+\textsc{$k$-Means$_{\Z}$}. Let $(X,k,T)$ be a \textsc{$k$-Means} instance with
+$X\subset\Z^{d}$, $|X|=n$, and $T=a/c$ in lowest terms ($a\in\Z$, $c\in\Z_{>0}$).
+Put
+\[
+N:=\mathrm{lcm}(1,2,\dots,n).
+\]
+By the prime-number theorem $\log N=\sum_{p\le n}\lfloor\log_{p}n\rfloor\log p
+=O(n)$, so $N$ has $O(n)$ bits and is computable in polynomial time. Define the
+scaled data $X':=\{N\,x_{1},\dots,N\,x_{n}\}\subset\Z^{d}$ (still polynomial input
+size, each coordinate gaining $O(n)$ bits) and the integer threshold
+\[
+T'':=\big\lfloor N^{2}T\big\rfloor\in\Z .
+\]
+Scaling all coordinates by $N$ multiplies every squared distance, hence every
+$k$-means cost, by $N^{2}$:
+\(
+\mathrm{OPT}(X',k)=N^{2}\,\mathrm{OPT}(X,k).
+\)
+By Lemma~\ref{lem:sep}, every achievable cost of $X$ is $\sum_{l}A_{l}/|P_{l}|$
+with $A_{l}\in\Z_{\ge0}$ and $|P_{l}|\le n$; hence the corresponding cost of $X'$ is
+$\sum_{l}N^{2}A_{l}/|P_{l}|$, and since $|P_{l}|\mid N$ each summand
+$N^{2}A_{l}/|P_{l}|=A_{l}\,N\,(N/|P_{l}|)$ is an integer. Thus all achievable costs
+of $X'$ are integers, so $(X',k,T'')$ is a valid \textsc{$k$-Means$_{\Z}$}
+instance. Finally
+\[
+\mathrm{OPT}(X,k)\le T
+\iff N^{2}\,\mathrm{OPT}(X,k)\le N^{2}T
+\iff \mathrm{OPT}(X',k)\le \lfloor N^{2}T\rfloor=T'',
+\]
+the last equivalence because $\mathrm{OPT}(X',k)$ is an integer (so
+$\mathrm{OPT}(X',k)\le N^{2}T$ iff $\mathrm{OPT}(X',k)\le\lfloor N^{2}T\rfloor$).
+Hence the reduction is correct and polynomial, and \textsc{$k$-Means$_{\Z}$} is
+NP-hard.
+\end{proof}
+
+\section{Structure of the $k$-means optimum}
+
+\begin{lemma}[Centroid form]\label{lem:centroid}
+Let $X\subset\R^{d}$. For a partition $\{P_{1},\dots,P_{k}\}$ of $\{1,\dots,n\}$
+set $\mu_{l}=\frac{1}{|P_{l}|}\sum_{i\in P_{l}}x_{i}$ for nonempty $P_{l}$. Then
+for any single center $m$ and nonempty $P$,
+\begin{equation}\label{eq:par}
+\sum_{i\in P}\norm{x_{i}-m}^{2}=\sum_{i\in P}\norm{x_{i}-\mu}^{2}+|P|\,\norm{m-\mu}^{2},
+\qquad \mu=\tfrac{1}{|P|}\textstyle\sum_{i\in P}x_{i},
+\end{equation}
+so the cost of any cluster is minimized uniquely at its centroid, and
+\[
+\mathrm{OPT}(X,k)=\min_{\{P_{l}\}}\ \sum_{l=1}^{k}\sum_{i\in P_{l}}\norm{x_{i}-\mu_{l}}^{2},
+\]
+the minimum over all partitions of $\{1,\dots,n\}$ into at most $k$ nonempty parts,
+and it is attained.
+\end{lemma}
+
+\begin{proof}
+Expanding the left side of \eqref{eq:par},
+$\sum_{i\in P}\norm{x_{i}-m}^{2}=\sum_{i\in P}\norm{x_{i}-\mu}^{2}
++2\langle\mu-m,\sum_{i\in P}(x_{i}-\mu)\rangle+|P|\norm{m-\mu}^{2}$, and the middle
+term vanishes since $\sum_{i\in P}(x_{i}-\mu)=0$. This gives \eqref{eq:par} and the
+unique minimizer $m=\mu$. For the global statement, $\mathrm{KM}(X,M)$ equals, for
+the Voronoi partition induced by $M$, the sum $\sum_{l}\sum_{i\in P_{l}}
+\norm{x_{i}-m_{l}}^{2}$, and conversely every partition is a feasible assignment;
+minimizing over centers (centroids) then over the finitely many partitions yields
+the formula, with the infimum attained.
+\end{proof}
+
+\begin{lemma}[Separation of achievable costs]\label{lem:sep}
+Let $X\subset\Z^{d}$ with $|X|=n$. Every partition cost
+$\sum_{l}\sum_{i\in P_{l}}\norm{x_{i}-\mu_{l}}^{2}$ is a rational number of the form
+$\sum_{l}A_{l}/|P_{l}|$ with $A_{l}\in\Z_{\ge0}$, hence its reduced denominator is
+$\le n$. Consequently any two \emph{distinct} achievable partition costs $u\ne v$
+satisfy $|u-v|\ge 1/n^{2}$.
+\end{lemma}
+
+\begin{proof}
+For a nonempty part $P$ with $m:=|P|$, by \eqref{eq:par} with the center equal to
+$0$ rearranged, $\sum_{i\in P}\norm{x_{i}-\mu}^{2}=\sum_{i\in P}\norm{x_{i}}^{2}
+-m\norm{\mu}^{2}$. Using $m\mu=\sum_{i\in P}x_{i}$,
+\[
+\sum_{i\in P}\norm{x_{i}-\mu}^{2}
+=\frac{1}{m}\Big(m\sum_{i\in P}\norm{x_{i}}^{2}-\Big\Vert\sum_{i\in P}x_{i}\Big\Vert^{2}\Big)
+=\frac{A_{P}}{m},
+\]
+where $A_{P}=m\sum_{i\in P}\norm{x_{i}}^{2}-\norm{\sum_{i\in P}x_{i}}^{2}$ is an
+integer (the $x_{i}$ are integer vectors) and nonnegative (it is $m$ times the
+left side, which is nonnegative). Summing over parts, each partition cost is
+$\sum_{l}A_{l}/|P_{l}|$, a rational with denominator dividing
+$\mathrm{lcm}(1,\dots,n)$; after reduction its denominator is at most $n$. Writing
+$u=p/q$, $v=r/s$ in lowest terms with $1\le q,s\le n$, if $u\ne v$ then
+$u-v=(ps-rq)/(qs)$ has a nonzero integer numerator, so $|u-v|\ge1/(qs)\ge1/n^{2}$.
+\end{proof}
+
+\begin{corollary}[Clean integer dichotomy]\label{cor:dich}
+Let $(X,k,T)$ be a \textsc{$k$-Means$_{\Z}$} instance: $X\subset\Z^{d}$, every
+achievable partition cost an integer, $T\in\Z$. Then $\mathrm{OPT}(X,k)\in\Z$, and
+exactly one of the following holds:
+\[
+\textup{(a) } \mathrm{OPT}(X,k)\le T,
+\qquad\text{or}\qquad
+\textup{(b) } \mathrm{OPT}(X,k)\ge T+1 .
+\]
+\end{corollary}
+
+\begin{proof}
+By Lemma~\ref{lem:centroid}, $\mathrm{OPT}(X,k)$ is an achievable partition cost,
+hence an integer by hypothesis. If $\mathrm{OPT}(X,k)>T$ with both integers, then
+$\mathrm{OPT}(X,k)\ge T+1$, giving (b); otherwise (a) holds. The cases are mutually
+exclusive.
+\end{proof}
+
+\section{The likelihood--cost sandwich}
+
+\begin{lemma}[Sandwich]\label{lem:sandwich}
+Fix $\sigma>0$, $k\ge2$, $X\subset\R^{d}$ with $|X|=n$, and
+$c_{\sigma}=(2\pi\sigma^{2})^{-d/2}$. With $\mathcal G_{\sigma}$ as in
+\eqref{eq:gauss},
+\begin{equation}\label{eq:sandwich}
+n\log c_{\sigma}-\frac{\mathrm{OPT}(X,k)}{2\sigma^{2}}-n\log k
+\;\le\;
+L^{\ast}(X,k,\mathcal G_{\sigma})
+\;\le\;
+n\log c_{\sigma}-\frac{\mathrm{OPT}(X,k)}{2\sigma^{2}}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+\emph{Upper bound.} Let $(\theta,\pi)=((m_{1},\dots,m_{k}),\pi)$ be any
+$k$-mixture. For each $i$, since $e^{-t}$ is decreasing in $t\ge0$ and
+$\sum_{j}\pi_{j}=1$ with $\pi_{j}\ge0$,
+\[
+\sum_{j=1}^{k}\pi_{j}\,c_{\sigma}e^{-\norm{x_{i}-m_{j}}^{2}/(2\sigma^{2})}
+\;\le\;c_{\sigma}\Big(\max_{j}e^{-\norm{x_{i}-m_{j}}^{2}/(2\sigma^{2})}\Big)\sum_{j}\pi_{j}
+\;=\;c_{\sigma}\,e^{-\min_{j}\norm{x_{i}-m_{j}}^{2}/(2\sigma^{2})}.
+\]
+Taking logarithms and summing over $i$,
+\[
+L(\theta,\pi)\le\sum_{i=1}^{n}\Big(\log c_{\sigma}-\frac{\min_{j}\norm{x_{i}-m_{j}}^{2}}{2\sigma^{2}}\Big)
+=n\log c_{\sigma}-\frac{\mathrm{KM}(X,M)}{2\sigma^{2}}
+\le n\log c_{\sigma}-\frac{\mathrm{OPT}(X,k)}{2\sigma^{2}},
+\]
+using $\mathrm{KM}(X,M)\ge\mathrm{OPT}(X,k)$. Taking the supremum over mixtures
+gives the right inequality of \eqref{eq:sandwich}.
+
+\emph{Lower bound.} By Lemma~\ref{lem:centroid} there are centers $M^{\star}$ with
+$\mathrm{KM}(X,M^{\star})=\mathrm{OPT}(X,k)$. Use the mixture with means
+$M^{\star}$ and uniform weights $\pi_{j}=1/k$. Keeping only the nearest center
+$j^{\star}(i)\in\arg\min_{j}\norm{x_{i}-m^{\star}_{j}}^{2}$,
+\[
+\sum_{j=1}^{k}\frac1k c_{\sigma}e^{-\norm{x_{i}-m^{\star}_{j}}^{2}/(2\sigma^{2})}
+\;\ge\;\frac{c_{\sigma}}{k}\,e^{-\min_{j}\norm{x_{i}-m^{\star}_{j}}^{2}/(2\sigma^{2})}.
+\]
+Taking logarithms and summing,
+\[
+L^{\ast}\ge L(M^{\star},\pi)\ge n\log c_{\sigma}-n\log k-\frac{\mathrm{OPT}(X,k)}{2\sigma^{2}},
+\]
+the left inequality of \eqref{eq:sandwich}.
+\end{proof}
+
+\section{NP-hardness}
+
+\begin{theorem}[Hardness of mixture modeling]\label{thm:main}
+\textsc{GMM-MLE} (Definition~\ref{def:mmdec}) is NP-hard. Hence, unless
+$\mathrm{P}=\mathrm{NP}$, no polynomial-time algorithm computes
+$L^{\ast}(X,k,\mathcal G_{\sigma})$ (equivalently, the normalized optimum
+$L^{\ast}-n\log c_{\sigma}$) exactly for inputs with $k\ge2$.
+\end{theorem}
+
+\begin{proof}
+We reduce \textsc{$k$-Means$_{\Z}$} (NP-hard by Theorem~\ref{thm:kmnp}) to
+\textsc{GMM-MLE}.
+
+\emph{Reduction.} Let $(X,k,T)$ be a \textsc{$k$-Means$_{\Z}$} instance:
+$X\subset\Z^{d}$, $|X|=n$, $k\ge2$, $T\in\Z$, with all achievable partition costs
+integral. By Corollary~\ref{cor:dich} exactly one of $\mathrm{OPT}(X,k)\le T$ and
+$\mathrm{OPT}(X,k)\ge T+1$ holds; the gap is $\delta:=1$.
+
+\emph{Choice of scale and threshold.} The ideal scale is
+$\sigma^{2}=1/(4n\log k)$. To keep the encoding rational, replace $\log k$ by a
+rational \emph{upper} approximation $L_{k}\in\Q$ with
+\begin{equation}\label{eq:Lk}
+\log k\;\le\;L_{k}\;\le\;2\log k,
+\end{equation}
+obtained by rounding $\log k$ up to $b:=\lceil 2\log_{2}n\rceil$ binary places
+(possible since $\log k>0$ for $k\ge2$). Set
+\[
+\sigma^{2}:=\frac{1}{4\,n\,L_{k}},
+\qquad
+\widehat\tau:=-\big(2nL_{k}\big)\Big(T+\tfrac12\Big),
+\]
+so that, with $1/(2\sigma^{2})=2nL_{k}$,
+\begin{equation}\label{eq:tauform}
+\widehat\tau=-\frac{T+\tfrac12\delta}{2\sigma^{2}}\qquad(\delta=1).
+\end{equation}
+The output of the reduction is the \textsc{GMM-MLE} instance
+$(X,k,\sigma^{2},\widehat\tau)$, asking whether
+$L^{\ast}-n\log c_{\sigma}\ge\widehat\tau$ (the normalized comparison of
+Definition~\ref{def:mmdec}).
+
+\emph{Polynomial size.} $\sigma^{2}=1/(4nL_{k})$ and $\widehat\tau$ are rationals
+of bit length $O(\log n+\mathrm{size}(T))$, computable in polynomial time. The one
+arithmetic fact used below is, from \eqref{eq:Lk} with $\delta=1$,
+\begin{equation}\label{eq:key}
+\frac{\delta}{2\sigma^{2}}=\frac{1}{2}\cdot 4nL_{k}=2nL_{k}\ge 2n\log k .
+\end{equation}
+
+\emph{Correctness.}
+
+\noindent(1) Suppose $\mathrm{OPT}(X,k)\le T$. By the lower bound in
+\eqref{eq:sandwich},
+\[
+L^{\ast}-n\log c_{\sigma}
+\;\ge\;-\frac{\mathrm{OPT}(X,k)}{2\sigma^{2}}-n\log k
+\;\ge\;-\frac{T}{2\sigma^{2}}-n\log k .
+\]
+This is $\ge\widehat\tau=-\dfrac{T+\delta/2}{2\sigma^{2}}$ iff
+$\dfrac{\delta/2}{2\sigma^{2}}\ge n\log k$, i.e.\ iff
+$\dfrac{\delta}{2\sigma^{2}}\ge 2n\log k$, which is exactly \eqref{eq:key}. Hence
+$L^{\ast}-n\log c_{\sigma}\ge\widehat\tau$.
+
+\noindent(2) Suppose $\mathrm{OPT}(X,k)\ge T+\delta$. By the upper bound in
+\eqref{eq:sandwich},
+\[
+L^{\ast}-n\log c_{\sigma}\le-\frac{\mathrm{OPT}(X,k)}{2\sigma^{2}}
+\le-\frac{T+\delta}{2\sigma^{2}}
+<-\frac{T+\delta/2}{2\sigma^{2}}=\widehat\tau,
+\]
+the strict inequality because $\delta>\delta/2$ and $\sigma^{2}>0$.
+
+Cases (1)--(2) give
+\(
+\mathrm{OPT}(X,k)\le T \iff L^{\ast}-n\log c_{\sigma}\ge\widehat\tau,
+\)
+so the map $(X,k,T)\mapsto(X,k,\sigma^{2},\widehat\tau)$ is a correct
+polynomial-time many-one reduction; thus \textsc{GMM-MLE} is NP-hard. If $L^{\ast}$
+(equivalently $L^{\ast}-n\log c_{\sigma}$) were computable in polynomial time,
+comparison with $\widehat\tau$ would decide \textsc{GMM-MLE}, hence
+\textsc{$k$-Means$_{\Z}$}, forcing $\mathrm{P}=\mathrm{NP}$.
+\end{proof}
+
+\begin{remark}
+The rational approximation $L_{k}$ of $\log k$ serves only to keep the encoded
+scale $\sigma^{2}$ and threshold $\widehat\tau$ rational. The choice
+$L_{k}\ge\log k$ is what makes the penalty identity \eqref{eq:key} hold; the
+upper-bound case (2) uses no property of $L_{k}$. Thus the reduction is exact and
+polynomial.
+\end{remark}
+
+\section{Hardness of approximation}
+
+We measure approximation additively on the log-likelihood scale, the intrinsic
+scale of \eqref{eq:loglik}.
+
+\begin{corollary}[Additive inapproximability]\label{cor:approx}
+Unless $\mathrm{P}=\mathrm{NP}$, no polynomial-time algorithm, given
+$(X,k,\sigma^{2})$ with $X\subset\Z^{d}$, $k\ge2$, outputs a value $\widetilde L$
+with $\big|\widetilde L-\big(L^{\ast}(X,k,\mathcal G_{\sigma})-n\log c_{\sigma}\big)\big|
+<\tfrac12 n\log k$; that is, the normalized optimum cannot be approximated within
+additive error $\tfrac12 n\log k$ in polynomial time.
+\end{corollary}
+
+\begin{proof}
+Run the reduction of Theorem~\ref{thm:main} from a \textsc{$k$-Means$_{\Z}$}
+instance $(X,k,T)$ (so $\delta=1$), but halve the scale: set
+$\sigma^{2}:=1/(8nL_{k})$ with $L_{k}\ge\log k$ as in \eqref{eq:Lk}, so
+$\tfrac{1}{2\sigma^{2}}=4nL_{k}$. Write $V:=L^{\ast}-n\log c_{\sigma}$ for the
+normalized optimum. By Corollary~\ref{cor:dich} we are in one of two cases.
+
+If $\mathrm{OPT}(X,k)\le T$: by \eqref{eq:sandwich},
+$V\ge -\tfrac{T}{2\sigma^{2}}-n\log k=:U$.
+
+If $\mathrm{OPT}(X,k)\ge T+1$: by \eqref{eq:sandwich},
+$V\le -\tfrac{T+1}{2\sigma^{2}}=U-\big(\tfrac{1}{2\sigma^{2}}-n\log k\big)$. Since
+$\tfrac{1}{2\sigma^{2}}=4nL_{k}\ge 4n\log k$, we get
+$\tfrac{1}{2\sigma^{2}}-n\log k\ge 3n\log k$, hence $V\le U-3n\log k$.
+
+Thus the two cases are separated by an additive gap of at least $3n\log k$ in $V$,
+around the efficiently computable pivot $U-\tfrac32 n\log k$ (note $U$ is rational
+because the transcendental term $n\log c_{\sigma}$ has been removed). An algorithm
+with additive error $<\tfrac12 n\log k<\tfrac32 n\log k$ on $V$ would, on comparing
+$\widetilde L$ to $U-\tfrac32 n\log k$, correctly distinguish the cases and hence
+decide \textsc{$k$-Means$_{\Z}$}, contradicting $\mathrm{P}\ne\mathrm{NP}$.
+\end{proof}
+
+\begin{remark}[Multiplicative form]
+The affine reparametrization $\Phi:=n\log c_{\sigma}-L^{\ast}
+=\mathrm{OPT}(X,k)/(2\sigma^{2})+E$ with $0\le E\le n\log k$ (from
+\eqref{eq:sandwich}) is a nonnegative quantity whose exact computation is NP-hard
+on the separated instances of Lemma~\ref{lem:sep}. Since on those instances
+$\mathrm{OPT}/(2\sigma^{2})$ values for the two cases differ by a factor bounded
+away from $1$ while $E$ is comparatively negligible, computing $\Phi$ within a
+suitable constant multiplicative factor would recover the boolean
+$\mathrm{OPT}\le T$ and is therefore NP-hard. Hence there is a constant
+approximation threshold below which the (normalized) problem is intractable.
+\end{remark}
+
+\section{The tractable boundary}
+
+\begin{proposition}[$k=1$ is in P]\label{prop:k1}
+Let $k=1$.
+\begin{enumerate}
+\item[(i)] For $\mathcal G_{\sigma}$ the unique optimal mean is the sample mean
+$\bar x=\frac1n\sum_{i}x_{i}$, the only weight is $\pi_{1}=1$, and
+\[
+L^{\ast}(X,1,\mathcal G_{\sigma})=n\log c_{\sigma}-\frac{1}{2\sigma^{2}}\sum_{i=1}^{n}\norm{x_{i}-\bar x}^{2},
+\]
+computable in $O(nd)$ arithmetic operations.
+\item[(ii)] For the full isotropic Gaussian (mean and $\sigma$ free), the MLE is
+$m=\bar x$, $\sigma^{2}=\frac{1}{nd}\sum_{i}\norm{x_{i}-\bar x}^{2}$, provided the
+data are not all equal, with optimal value computable in $O(nd)$ operations.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) With $k=1$ we have $\pi_{1}=1$, so
+$L(m)=n\log c_{\sigma}-\frac{1}{2\sigma^{2}}\sum_{i}\norm{x_{i}-m}^{2}$. By
+\eqref{eq:par} with $P=\{1,\dots,n\}$, $\sum_{i}\norm{x_{i}-m}^{2}
+=\sum_{i}\norm{x_{i}-\bar x}^{2}+n\norm{m-\bar x}^{2}$, minimized uniquely at
+$m=\bar x$. Substituting gives the value, computed in one pass.
+
+(ii) For fixed $\sigma$, the inner maximization over $m$ is at $m=\bar x$ by (i).
+Let $S=\sum_{i}\norm{x_{i}-\bar x}^{2}>0$ and $t=\sigma^{2}$; maximize
+$h(t)=-\tfrac{nd}{2}\log(2\pi t)-\tfrac{S}{2t}$. Then
+$h'(t)=-\tfrac{nd}{2t}+\tfrac{S}{2t^{2}}$, vanishing uniquely at $t=S/(nd)$, where
+$h''(t)=\tfrac{nd}{2t^{2}}-\tfrac{S}{t^{3}}=\tfrac{1}{t^{2}}(\tfrac{nd}{2}-\tfrac{S}{t})
+=\tfrac{1}{t^{2}}(\tfrac{nd}{2}-nd)<0$, so it is the unique maximizer. All
+quantities are computable in $O(nd)$ operations.
+\end{proof}
+
+\begin{proposition}[Constant $(d,k)$ is in P, up to any additive accuracy]\label{prop:dk}
+For fixed $d$ and $k$, $\mathrm{OPT}(X,k)$ is computable exactly in time
+$n^{O(dk)}$, and hence $L^{\ast}(X,k,\mathcal G_{\sigma})$ is determined to within
+the additive slack $n\log k$ of \eqref{eq:sandwich} in time $n^{O(dk)}\cdot
+\mathrm{poly}(\text{input})$.
+\end{proposition}
+
+\begin{proof}
+By Lemma~\ref{lem:centroid}, $\mathrm{OPT}(X,k)$ equals the minimum of the
+within-cluster sum-of-squares (with centroids as centers) over all partitions of
+$X$ into at most $k$ clusters, and an optimal partition is the one induced by the
+Voronoi diagram of the $k$ optimal centroids: each data point is assigned to its
+nearest centroid. Hence it suffices to enumerate all partitions of $X$ that can
+arise as the Voronoi partition of \emph{some} $k$-tuple of points in $\R^{d}$, and
+to take the best.
+
+We bound the number of such partitions. Two centroids $\mu_{l},\mu_{l'}$ separate
+the data along the perpendicular-bisector hyperplane
+$H_{ll'}=\{z:\langle z,\mu_{l}-\mu_{l'}\rangle=\tfrac12(\norm{\mu_{l}}^{2}-\norm{\mu_{l'}}^{2})\}$,
+so the Voronoi partition of $X$ is determined by, for each of the $\binom{k}{2}$
+ordered pairs, the side of $H_{ll'}$ on which each data point lies, i.e.\ by the
+sign pattern of the $n$ data points with respect to $\binom{k}{2}$ hyperplanes in
+$\R^{d}$. The map $(\mu_{1},\dots,\mu_{k})\mapsto$ (this sign pattern) factors
+through the labeling $z\mapsto(\langle z,\mu_{l}-\mu_{l'}\rangle-\tfrac12(\norm{\mu_l}^2-\norm{\mu_{l'}}^2))_{l<l'}$,
+which for fixed $z$ is an affine function of the parameter vector
+$(\mu_{1},\dots,\mu_{k},\norm{\mu_1}^2,\dots,\norm{\mu_k}^2)\in\R^{(d+1)k}$. By the
+classical bound on the number of sign patterns realized by $m$ affine functionals
+in $\R^{p}$ (Warren's / the Sauer--Shelah bound for halfspaces of VC dimension
+$p$), the number of distinct sign patterns --- hence the number of distinct
+Voronoi partitions of $X$ by $k$ centers --- is at most
+$\big(\tfrac{e\,n\binom{k}{2}}{(d+1)k}\big)^{(d+1)k}=n^{O(dk)}$. This is the
+Inaba--Katoh--Imai bound \cite{IKI}.
+
+Therefore: enumerate one representative partition for each realizable sign pattern
+(e.g.\ by sweeping over the $n^{O(dk)}$ combinatorially distinct centroid
+configurations, each a choice of which data points are co-decisive for the
+$\binom{k}{2}$ bisectors), compute its centroid cost via Lemma~\ref{lem:centroid}
+in $O(nd)$ time, and return the minimum; the optimal Voronoi partition is among
+them, so the result equals $\mathrm{OPT}(X,k)$ exactly. The total time is
+$n^{O(dk)}$. Substituting into \eqref{eq:sandwich} determines $L^{\ast}$ to within
+the additive slack $n\log k$.
+\end{proof}
+
+\begin{remark}[Why $\sigma$ must be fixed]\label{rem:degen}
+For $k\ge2$ with \emph{free} per-component covariances the supremum in
+\eqref{eq:loglik} is $+\infty$: take component $1$ with mean $m_{1}=x_{1}$ and
+covariance $s\,I$, $s\to0^{+}$, and a second component with a fixed positive
+covariance whose density is bounded below by a positive constant on the data.
+Then $\pi_{1}f(x_{1}\mid m_{1})=\pi_{1}(2\pi s)^{-d/2}\to+\infty$, so the
+$i=1$ term of \eqref{eq:loglik} $\to+\infty$ while the others stay bounded below.
+Thus a well-posed MLE for $k\ge2$ requires fixing the covariance scale (as in
+$\mathcal G_{\sigma}$) or lower-bounding covariance eigenvalues; our hardness
+applies to the most restrictive such regularization, and therefore is the
+strongest possible in this respect.
+\end{remark}
+
+\section{Summary of the parameter regimes}
+
+\begin{itemize}
+\item \textbf{Number of components $k$.} Intractability appears already at $k=2$
+(Theorem~\ref{thm:main}); $k=1$ is closed-form (Proposition~\ref{prop:k1}). The
+component count is the primary driver of hardness.
+\item \textbf{Dimension $d$.} The reduction needs $d$ unbounded, matching the
+$k=2$ hardness of $k$-means. For constant $(d,k)$ the problem is polynomial
+(Proposition~\ref{prop:dk}); the hardness is a high-dimensional phenomenon.
+\item \textbf{Family $\mathcal F$.} Hardness holds for the most benign smooth
+family --- isotropic Gaussians of a single fixed scale. Enlarging $\mathcal F$ to
+free covariances only makes the problem harder or ill-posed
+(Remark~\ref{rem:degen}); $k=1$ exponential-family fitting is tractable by
+concavity of the single-component log-likelihood.
+\item \textbf{Separation.} The sandwich \eqref{eq:sandwich} localizes the
+difficulty to the regime where the optimal $k$-means partition is ambiguous, i.e.\
+poorly separated components relative to $\sigma$. The slack $n\log k$ (a
+soft-assignment entropy term) is dominated by the inter-cost separation
+$\ge\sigma^{-2}n^{-2}$ on the hard instances, which is precisely what powers the
+reduction; with strong separation the assignment becomes unambiguous and the
+problem is tractable.
+\item \textbf{Approximation threshold.} Computing $L^{\ast}$ within additive error
+$\tfrac12 n\log k$ on the log-likelihood scale is NP-hard
+(Corollary~\ref{cor:approx}); equivalently the normalized optimum admits no
+polynomial-time approximation below a constant multiplicative factor unless
+$\mathrm{P}=\mathrm{NP}$.
+\end{itemize}
+
+\begin{thebibliography}{9}
+\bibitem{ADHP} D.~Aloise, A.~Deshpande, P.~Hansen, P.~Popat,
+\emph{NP-hardness of Euclidean sum-of-squares clustering},
+Machine Learning \textbf{75} (2009), 245--248.
+\bibitem{IKI} M.~Inaba, N.~Katoh, H.~Imai,
+\emph{Applications of weighted Voronoi diagrams and randomization to
+variance-based $k$-clustering}, Proc.\ 10th Annual Symposium on Computational
+Geometry (SoCG), 1994, 332--339.
+\end{thebibliography}
+
+\end{document}

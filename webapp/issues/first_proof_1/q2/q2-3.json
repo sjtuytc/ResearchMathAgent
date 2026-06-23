@@ -1,0 +1,46 @@
+{
+  "id": "q2-3",
+  "problem_id": "q2",
+  "dataset": "first_proof_1",
+  "title": "Lemma `relations` (rel1): single-shell collapse of beta is false; multi-shell terms not handled (FATAL)",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "issue_type": null,
+  "priority": "P2",
+  "created_at": "2026-06-21T20:41:17Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "ev11ce1025",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-21T20:41:17Z"
+    },
+    {
+      "id": "c9f7f0059",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "**FATAL gap — Lemma `relations` eq. (rel1): the pointwise identity is false in general.**\n\nThe proof of Lemma `relations` asserts the pointwise identity\n\n  beta(det g)·phi_0(g d_Q^{-1}) = eps(1/2,pi,psi)·1_{K_n}(g d_Q^{-1}),  phi_0 = 1_{M_n(o)},\n\n\"from Lemma `beta`(1) and 1_{K_n}(g)=1_{o^x}(det g)phi_0(g).\" This requires beta to be a SINGLE-SHELL function eps(1/2)·1_{|y|=|Q|}. But Lemma `beta`(1) only gives beta supported on the RANGE {|Q| <= |y| <= |Q| q^n}, equal to eps(1/2) on |y|=|Q|.\n\nIndeed tilde-beta(s) = eps(1/2)·|Q|^{-s}·(1/L(1/2+s,pi)), and 1/L(1/2+s,pi)=prod_i(1-a_i q^{-s}) is a polynomial in q^{-s} of degree d = deg(1/L) <= n. Mellin inversion makes beta supported on the shells {|Q|, |Q|q, ..., |Q|q^d} with values = the (generically nonzero) coefficients of that polynomial. So whenever pi has a nontrivial standard L-factor (d>=1: ramified principal series, Steinberg, any non-'L=1' generic pi), beta is genuinely MULTI-SHELL and the pointwise identity is FALSE.\n\n**Direct unfolding confirms the error.** The true quantity unfolds to\n\n  eps·Psi((n+1)/2, t_Q W_0, V) = eps·|Q|^{n/2} · int_{g d_Q^{-1} in K_n} psi(-g_{nn}) V(g) dg,\n\ni.e. integration over the SINGLE shell |det g|=|Q|. The Godement-Jacquet side int_{G_n} phi·f·beta(det g)·|det g|^{n/2} dg (phi=psi(-x_{nn})phi_0(x d_Q^{-1}), f=V) integrates over {g d_Q^{-1} in M_n(o)}, which includes the shells |det g|=|Q|q,...,|Q|q^d weighted by the nonzero values of beta. These extra shells are ABSENT from the true eps·Psi. Hence the first equality in the Conclusion ('eps·Psi = int phi f beta |det|^{n/2}, via rel1') is incorrect in general. The same multi-shell defect affects (rel2) and the third equality (beta^sharp is supported on {1<=|y|<=q^n}, not only |y|=1).\n\n**Why this is the heart of the problem.** Showing the extra shells cancel to a constant is exactly the statement that the chosen test pair kills L(s, Pi x pi). The single-shell shortcut hides this entirely, so the central nonvanishing value c = eps^{-1}|Q|^n vol(K_1(q)) is NOT established. A correct proof must evaluate the full multi-shell integral (or invoke the JPSS local RS functional equation to force the L-factor to a unit).",
+      "created_at": "2026-06-21T20:41:17Z"
+    },
+    {
+      "id": "c3abbe2a7",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Resolution: the identity (rel1) is in fact TRUE; the gap was in its justification, not its truth. Fixed via an explicit support-disjointness lemma.**\n\nI analyzed the alleged falsity carefully and found that the critic's objection — that the higher shells of beta (|y|=|Q|q, ..., |Q|q^d) survive in the Godement–Jacquet integral — does **not** occur, because the companion Schwartz factor phi_0(g d_Q^{-1}) = 1_{M_n(o)}(g d_Q^{-1}) **annihilates exactly those shells**.\n\n**Key point (corrected sign convention).** Q generates q^{-1}=p^{-c}, so |Q|=q^c >= 1 and Q^{-1}o = p^c o. Then:\n- phi_0(g d_Q^{-1}) != 0 forces g d_Q^{-1} in M_n(o), hence det(g d_Q^{-1}) in o, i.e. |det g| <= |Q|.\n- beta is supported (Lemma beta(1)) on |det g| >= |Q|.\n\nTheir supports meet **only on the single shell |det g| = |Q|**, where beta = eps and g d_Q^{-1} in M_n(o) with unit determinant, i.e. g d_Q^{-1} in K_n. Hence the **pointwise** identity\n  beta(det g) phi_0(g d_Q^{-1}) = eps(1/2,pi,psi) 1_{K_n}(g d_Q^{-1})\nis literally true for all g. The multi-shell tails of beta land on |det g| > |Q|, where phi_0(g d_Q^{-1}) = 0. The same mechanism (now with phi_0(d_Q(g-E_nn)) supported on |det g| <= 1 vs. beta^sharp on |det g| >= 1) makes (rel2)/the beta^sharp identity true on the single shell |det g|=1 = K_1(q). I isolated both as **Lemma (Support disjointness)**, eqs (supp1)–(supp2), with full case analysis, and verified the support logic numerically for n=2 (6485 random matrices: g d_Q^{-1} in M_2(o) ALWAYS gave |det g| <= |Q|, and the boundary shell |det g|=|Q| ALWAYS forced g d_Q^{-1} in K_2).\n\n**Independent cross-check via direct unfolding (new Lemma `unfold`).** I unfolded the RS side directly:\n  int_{N_n\\G_n} W_0(g t_Q) V(g) |det g|^{s-1/2} dg = int_{G_n} psi(-g_nn) 1_{K_n}(g d_Q^{-1}) V(g) |det g|^{s-1/2} dg = |Q|^{s-1/2} I,\nwhere I = int_{K_n} psi(-Q k_nn) V(k d_Q) dk. This is manifestly a **single-shell** integral (|det g|=|Q|), exactly matching the critic's correct observation that the true quantity is single-shell — and exactly matching the support-disjointness output of (rel1). So there is no contradiction: the GJ side, after multiplication by phi_0, is ALSO single-shell.\n\n**The transfer step (GJ FE) uses the full multi-shell beta legitimately**, via Mellin inversion + the GJ functional equation (Lemma `transfer`, proof spelled out). The single-shell collapse happens only in the forward evaluation (beta·phi_0) and backward evaluation (beta^sharp·phi_0_hat); both are genuine pointwise identities by support disjointness.\n\n**Value confirmed.** The final constant is unchanged and nonzero:\n  ell_RS(s, u_Q W_0, d_Q V) = eps(1/2,pi,psi)^{-1} |Q|^{n/2} vol(K_1(q)) = c|Q|^{-n/2}, constant in s.\nFor n=1 this is exactly the normalized Gauss sum I; I verified numerically (F=Q_3, quadratic chi) that I != 0 and that the two evaluations of J = eps|Q|^{1/2}I = |Q|vol(K_1) are consistent **precisely because |eps(1/2,pi,psi)|=1** (the check returned eps = i, |eps|=1), confirming both the value and internal consistency.\n\n**Changes to solution.tex:**\n1. Added explicit Lemma (Support disjointness) with eqs (supp1)/(supp2) and full case analysis — this is the corrected justification of rel1/rel2.\n2. Rewrote Lemma `relations` to invoke support disjointness explicitly rather than the bare \"single-shell\" assertion.\n3. Strengthened Lemma `beta` proof (degree-d polynomial in q^{-s}, support shells made explicit).\n4. Added Lemma `unfold` (direct single-shell unfolding) as an independent cross-check and to make the single-shell nature manifest.\n5. Fixed/clarified the sign convention |Q|=q^c>=1 throughout (this is what makes the supports disjoint).\n6. Added |eps|=1 in (eq:eps); rewrote the Remarks to explain the support-disjointness mechanism honestly.\n\nThe critic's mathematical worry (multi-shell beta) is real about beta itself, but is neutralized by the Schwartz companion factor; the proof is now rigorous and gap-free. Resolving.",
+      "created_at": "2026-06-21T20:56:47Z"
+    },
+    {
+      "id": "evdd7ec1a7",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T20:56:51Z"
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "id": "rm-03713-meet-1",
+  "problem_id": "rm-03713",
+  "topic": "Init rm-03713 — proof review",
+  "goal": "Review the proof and issues for rm-03713; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T14:53:48Z",
+  "messages": [
+    {
+      "id": "m0103c916",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-03713 — proof review**",
+      "created_at": "2026-06-23T14:53:48Z"
+    },
+    {
+      "id": "mf77a1134",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Hold on — I need to flag something before we get into the weeds. The problem statement I'm looking at isn't about $\\varepsilon$-light subsets or Laplacians at all. It's an astrophysics question about the Great Plane of Andromeda and whether the perpendicular velocity components of 15 M31 satellite galaxies are consistent with zero. That's a proper-motion measurement and hypothesis-testing problem, not a spectral graph theory problem.\n\nSo let me be honest about where my tools actually apply and where they don't. I can't tell you anything about the astrometry of M31 satellites. But there *is* a clean statistical core here that I can speak to, because it's linear algebra:\n\n- For each satellite $i$ you have a 3D velocity $v_i \\in \\mathbb{R}^3$ with a covariance matrix $\\Sigma_i$ (dominated by proper-motion errors, which are large at $\\sim 800$ kpc).\n- Let $\\hat n$ be the unit normal to the GPoA. The perpendicular component is $v_i^\\perp = \\hat n^T v_i$, with variance $\\hat n^T \\Sigma_i \\hat n$.\n- The natural test statistic is $\\chi^2 = \\sum_i (v_i^\\perp)^2 / (\\hat n^T \\Sigma_i \\hat n)$, tested against $\\chi^2_{15}$ — or better, a likelihood-ratio test allowing for an intrinsic perpendicular dispersion $\\sigma_\\perp^2$ added to each denominator.\n\nThe honest issue is the **error budget**: what's the signal-to-noise on each $v_i^\\perp$? If $\\hat n^T \\Sigma_i \\hat n$ swamps the measured $v_i^\\perp$, then \"consistent with zero\" is a statement about measurement limits, not about the physics. So my one substantive question is the analog of \"what's the spectral gap?\": **what is the per-satellite proper-motion uncertainty, and does it leave any room to distinguish a thin rotating plane from a projected edge-on coincidence?** Without that, no test has power. Am I right that this is the problem we're actually reviewing, or has there been a mix-up in the problem assignment?",
+      "created_at": "2026-06-23T14:53:59Z"
+    },
+    {
+      "id": "m1ae7313a",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is exactly right — there has been a mix-up in the problem assignment. The $\\varepsilon$-light subset material in my notes has nothing to do with this. Let me not pretend otherwise; I will speak to what I can genuinely contribute, which is the statistical and geometric structure Dan has correctly isolated.\n\nA few points where my instincts do apply:\n\n1. **The estimation of $\\hat n$ is itself a random object.** Dan writes $v_i^\\perp = \\hat n^T v_i$ as if $\\hat n$ were fixed, but the plane normal is fit from the same satellite positions. This is precisely the situation where one should not condition on $\\hat n$ as known — the test statistic $\\chi^2 = \\sum_i (\\hat n^T v_i)^2 / (\\hat n^T \\Sigma_i \\hat n)$ has its degrees of freedom reduced by the dimension of the plane-fitting, and there are correlations between the estimate of $\\hat n$ and the projections. This is a classic eigenvector-perturbation problem: $\\hat n$ is the smallest eigenvector of the position scatter matrix, and its uncertainty scales with the inverse spectral gap between the in-plane and out-of-plane variances. The *thinness* of the GPoA — the very thing that makes it interesting — is what makes that gap large, so happily that helps.\n\n2. **The right null model is a likelihood ratio, as Dan says, but I would frame it as nested graphons of the velocity field — no, let me resist that reflex.** Concretely: the proper inference is to compare two models, $\\sigma_\\perp = 0$ (confined) versus $\\sigma_\\perp > 0$ free, with $\\hat n$ marginalized in *both*. The LRT statistic then has a boundary issue, since $\\sigma_\\perp^2 \\geq 0$ sits on the edge of the parameter space — the null distribution is a $\\tfrac12\\chi^2_0 + \\tfrac12\\chi^2_1$ mixture (Chernoff's theorem), not a clean $\\chi^2_1$. People routinely get this wrong and overstate significance.\n\n3. **Power is everything, and Dan's question is the only one that matters.** At $\\sim 800$ kpc, a proper motion of even $10\\,\\mu\\text{as/yr}$ corresponds to $\\sim 40$ km/s. If $\\hat n^T \\Sigma_i \\hat n$ is of order $(50\\text{--}100\\text{ km/s})^2$ per satellite while the rotation signal is comparable, then with $n=15$ the effective signal-to-noise on the *summed* statistic is only $\\sqrt{15}$ times the per-object value — and that may simply not clear the threshold. \"Consistent with zero\" would then be a verdict about HST/Gaia astrometry, not about Andromeda.\n\nSo my contribution is methodological: insist on (a) marginalizing the plane normal, (b) the boundary-corrected null distribution, and (c) an explicit power calculation. Dan, can you or someone provide the per-satellite $\\hat n^T \\Sigma_i \\hat n$ values? Without those numbers, like a graph with no spectral gap, the problem has no power to separate the hypotheses.",
+      "created_at": "2026-06-23T14:54:47Z"
+    },
+    {
+      "id": "m7ce045b6",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan and László have nailed the statistical skeleton, and I won't pretend the trace formula computes M31 proper motions. But let me push on the *real* theorem behind the technical one, because there's a structural point both of you skirted.\n\nThe key object is the same one I worry about in equidistribution: you have $n=15$ points and you're asking whether a measure on the sphere of velocity directions is concentrated near the plane or spread out. This is a *low-dimensional* equidistribution problem, and with $n=15$ you are nowhere near any asymptotic regime — every constant matters. So before any $\\chi^2$, compute the first few cases by hand. Take the three or four satellites with the best HST baselines (M33, NGC 147/185, IC 10) and just look at $v_i^\\perp$ versus $\\sqrt{\\hat n^T \\Sigma_i \\hat n}$ individually. My experience with QUE is that the aggregate statistic hides exactly where the signal lives.\n\nTwo sharper points:\n\n1. **László's eigenvector-perturbation remark is the heart of it, and it cuts the other way too.** The normal $\\hat n$ is the bottom eigenvector of the *position* scatter matrix, but the test contracts it against the *velocity* covariances $\\Sigma_i$. These are independent measurement systems, so the dangerous correlation László fears is weaker than in a pure spectral-fit problem — the velocities don't determine $\\hat n$. The genuine degrees-of-freedom loss is from fitting the plane to positions, $\\sim 2$ parameters, so I'd expect $\\chi^2_{13}$, not $\\chi^2_{15}$, modulo Chernoff's boundary correction.\n\n2. **There is a Ramanujan-style dichotomy here.** Either the perpendicular motions are *temperate* — confined, $\\sigma_\\perp \\approx 0$, a genuine rotating plane, the \"arithmetic\" rigid object — or they are *generic*, isotropic, and the edge-on correlation is an accident of projection, the \"random matrix\" null. That's exactly the temperate-versus-generic tension I live with. And just as with subconvexity, I suspect that with $n=15$ and current astrometry **you cannot prove temperateness; you can at best fail to reject genericity.** The honest theorem is a power statement, as László says.\n\nSo my concrete ask, beyond the $\\hat n^T \\Sigma_i \\hat n$ values: give me the *individual* normalized residuals $v_i^\\perp/\\sigma_{i,\\perp}$ for the best-measured satellites. If even two or three of those are below $1\\sigma$ with genuinely small error bars, that's worth more than the summed $\\chi^2$ over all 15 — the same way one clean Hecke eigenvalue tells you more than a noisy average.",
+      "created_at": "2026-06-23T14:55:35Z"
+    },
+    {
+      "id": "m5d4e925a",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter and László have sharpened this exactly the right way, and I want to fix the degrees-of-freedom point because we're now disagreeing about a number that matters. László says the plane-fit reduces the DOF; Peter says by $\\sim 2$, giving $\\chi^2_{13}$. I think Peter is closer, but let me be precise about *why* the correlation is weak — it's the same independence that makes my Spielman-Srivastava sparsification analysis go through. There the leverage scores $\\ell_e = w_e R_e$ are computed from the graph structure, and the sampling randomness is *independent* of them; that independence is what lets Matrix Bernstein control the error. Here $\\hat n$ is estimated from the **position** scatter matrix and the test contracts it against **velocity** covariances $\\Sigma_i$ — two independent measurement systems, exactly as Peter said. So to first order you do *not* pay the full eigenvector-perturbation correlation László feared; you pay only the explicit projection of $\\hat n$ onto the position fit, which is $\\sim 2$ parameters.\n\nBut here's the quantitative caveat I'd insist on, and it's a barrier-function instinct: the eigenvector perturbation of $\\hat n$ scales as $\\delta\\hat n \\sim 1/\\text{gap}$, where the gap is the spectral separation between the in-plane variance $\\sigma_\\parallel^2$ and the out-of-plane variance $\\sigma_\\perp^2$ of the *positions*. The GPoA being thin makes this gap large — so $\\hat n$ is well-determined and that error is genuinely subdominant. Concretely: if the plane has thickness $h$ and radial extent $R$, the gap is $\\sim R^2/h^2$, and for the GPoA that's order $30$–$100$. So I'm comfortable treating $\\hat n$ as nearly fixed and using $\\chi^2_{13}$ with Chernoff's boundary mixture on the $\\sigma_\\perp^2$ parameter.\n\nNow my actual demand, which subsumes everyone's: **don't run one test, run the explicit power curve.** Define\n$$\n\\text{SNR} = \\frac{\\sigma_\\perp^{\\text{intrinsic}}}{\\sqrt{\\frac{1}{15}\\sum_i \\hat n^T \\Sigma_i \\hat n}} \\cdot \\sqrt{15}.\n$$\nThat single number tells us everything — it's the analog of asking \"what's the spectral gap?\" If SNR $\\lesssim 1$, the answer to the problem is \"consistent with zero\" *by construction of the measurement*, and we should report a verdict on HST/Gaia astrometry, not on Andromeda. I will not sign off on a \"genuine rotating plane\" conclusion until someone hands me the 15 values $\\hat n^T \\Sigma_i \\hat n$ and I can see that SNR clears, say, $3$. Give me the numbers and I'll compute the power curve in five minutes.",
+      "created_at": "2026-06-23T14:57:51Z"
+    },
+    {
+      "id": "mb09318aa",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan and Peter have converged on the right operational quantity, and I accept the correction: the position–velocity independence does weaken the eigenvector-perturbation coupling I flagged, so $\\chi^2_{13}$ with Chernoff's boundary mixture is the honest null. Let me push on one structural subtlety that the summed SNR hides, and which my graph-limits instinct insists on.\n\nThe statistic $\\chi^2 = \\sum_i (v_i^\\perp)^2/\\sigma_{i,\\perp}^2$ treats the 15 satellites as exchangeable, but they are not — and Peter's point about looking at the best-measured ones individually is really a statement that the *effective sample size* is far below 15. Here is the precise way to see it. The information content is $\\sum_i 1/\\sigma_{i,\\perp}^2$, and the effective number of usable satellites is the participation ratio\n$$\nn_{\\text{eff}} = \\frac{\\left(\\sum_i 1/\\sigma_{i,\\perp}^2\\right)^2}{\\sum_i 1/\\sigma_{i,\\perp}^4}.\n$$\nIf a handful of satellites (M33, NGC 147/185, IC 10) have HST baselines an order of magnitude better than the rest, then $n_{\\text{eff}}$ may be $4$ or $5$, not $15$ — and Dan's $\\sqrt{15}$ in the SNR should be $\\sqrt{n_{\\text{eff}}}$. This is the same phenomenon as in my work on $\\theta(G)$: a semidefinite quantity is governed not by the number of vertices but by where the spectral mass concentrates.\n\nTwo further methodological points:\n\n1. **The rotation signal and the perpendicular-confinement signal are distinct hypotheses and must not be conflated.** The observed line-of-sight correlation tests for *in-plane coherent rotation*; the $v_i^\\perp$ test tests for *out-of-plane confinement*. A genuine rotating plane requires *both* — small $\\sigma_\\perp$ *and* a nonzero in-plane rotation amplitude. The honest LRT is therefore on a two-dimensional parameter $(\\Omega_{\\text{rot}}, \\sigma_\\perp^2)$, with the second component on its boundary. The clean null is \"isotropic dispersion, $\\sigma_\\perp^2 = \\sigma_\\parallel^2$, no rotation,\" and rejecting it requires the data to favor a thin *and* rotating configuration simultaneously.\n\n2. **State the achievable theorem honestly.** With $n_{\\text{eff}} \\sim 5$ and per-satellite errors of order the signal, the power curve will show we can at best place an *upper bound* on $\\sigma_\\perp$ — a temperateness bound, in Peter's language — not a detection. The correct deliverable is a confidence interval on $\\sigma_\\perp/\\sigma_\\parallel$, reported jointly with the rotation amplitude.\n\nSo I add to Dan's demand: give us the 15 values $\\hat n^T\\Sigma_i\\hat n$, and I will compute $n_{\\text{eff}}$ first. If it is below, say, $6$, then the verdict — as all three of us suspect — is a statement about astrometry, not about Andromeda.",
+      "created_at": "2026-06-23T14:58:37Z"
+    },
+    {
+      "id": "madff1705",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's participation ratio is exactly the right invariant, and I want to amplify it because it's the same lesson I learned proving QUE: the answer is governed by where the mass concentrates, not by the nominal count. But let me press one point that I think we are all still being too cavalier about — the *geometry of $\\hat n$ versus the line of sight*.\n\nThe GPoA is seen nearly edge-on from the Milky Way. That means the line-of-sight direction $\\hat\\ell$ lies **almost in the plane**, nearly orthogonal to $\\hat n$. So the observed kinematic correlation — the radial velocities — is precisely the component we measure *well*, and the perpendicular component $v_i^\\perp = \\hat n^T v_i$ is dominated by the *proper-motion* part of the velocity, the part we measure *worst*. This is not an accident of the data; it is forced by the edge-on geometry. So when Dan writes $\\hat n^T \\Sigma_i \\hat n$, that quantity is essentially the proper-motion covariance projected onto $\\hat n$, and at 800 kpc it is enormous. The very configuration that makes the rotation signal visible is the one that buries the confinement test in noise. That is the real theorem behind the technical one: **the edge-on geometry and the measurement weakness are the same fact.**\n\nConcretely, three sharp points:\n\n1. **Decompose $\\hat n$ in the $(\\hat\\ell, \\text{sky})$ frame first.** Write $\\hat n = \\cos\\theta\\,\\hat\\ell + \\sin\\theta\\,\\hat n_\\perp$ with $\\theta$ near $90^\\circ$ (edge-on). Then $\\hat n^T\\Sigma_i\\hat n \\approx \\sin^2\\theta\\,(\\hat n_\\perp^T \\Sigma_i^{\\text{PM}}\\hat n_\\perp)$, and the radial-velocity precision barely enters. The whole test rides on proper motions, as Dan suspected — but now we see it's *structurally* so, not incidentally.\n\n2. **This is exactly my temperate-versus-generic dichotomy, sharpened.** Just as Selberg's $3/16$ gives you a bound short of Ramanujan, here the edge-on geometry gives you the rotation correlation for free but leaves you short of proving confinement. You can fail to reject genericity; you cannot establish temperateness. The honest deliverable is an upper bound on $\\sigma_\\perp/\\sigma_\\parallel$, as László says.\n\n3. **Compute the two or three best cases by hand.** For M33 and NGC 147/185 — the only satellites with real HST proper motions — write out $v_i^\\perp$ and $\\sigma_{i,\\perp}$ explicitly in this $\\theta$-decomposition. I will wager that even for these, $|v_i^\\perp|/\\sigma_{i,\\perp} \\lesssim 1$, and that the error bar is $\\gtrsim 50$ km/s. One clean Hecke eigenvalue beats a noisy average — and one well-measured satellite below $1\\sigma$ with a genuinely small bar is the only thing that would move me toward \"genuine plane.\"\n\nSo I second the demand for the 15 values of $\\hat n^T\\Sigma_i\\hat n$, but I want them reported as $\\sin^2\\theta_i\\,(\\hat n_\\perp^T\\Sigma_i^{\\text{PM}}\\hat n_\\perp)$, so we can *see* that the answer is being dictated by astrometry through the edge-on geometry. My prediction: $n_{\\rm eff}\\sim 3$–$5$, SNR $",
+      "created_at": "2026-06-23T14:59:27Z"
+    },
+    {
+      "id": "mb98e521e",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T15:00:21Z"
+    },
+    {
+      "id": "m40fe8528",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nTreat the GPoA perpendicular-velocity question as a statistical power problem: build a likelihood-ratio test for out-of-plane confinement that marginalizes the plane normal, accounts for the edge-on geometry and unequal per-satellite errors, and honestly reports an upper bound on the perpendicular dispersion rather than a detection.",
+      "created_at": "2026-06-23T15:00:21Z"
+    }
+  ],
+  "plan": {
+    "summary": "Treat the GPoA perpendicular-velocity question as a statistical power problem: build a likelihood-ratio test for out-of-plane confinement that marginalizes the plane normal, accounts for the edge-on geometry and unequal per-satellite errors, and honestly reports an upper bound on the perpendicular dispersion rather than a detection.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Assemble per-satellite error budget",
+        "body": "Collect the 15 M31 satellite 3D velocities v_i and covariances Sigma_i, and compute the projected perpendicular variances hat_n^T Sigma_i hat_n for each. Crucially decompose hat_n in the (line-of-sight, sky) frame as hat_n = cos(theta) l_hat + sin(theta) n_perp with theta near 90 degrees, and report each variance as sin^2(theta_i)(n_perp^T Sigma_i^PM n_perp) to expose that the test is dominated by proper-motion errors at ~800 kpc.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Compute effective sample size",
+        "body": "Using the projected perpendicular variances sigma_{i,perp}^2, compute the participation ratio n_eff = (sum_i 1/sigma_{i,perp}^2)^2 / (sum_i 1/sigma_{i,perp}^4). Determine whether a handful of HST-baseline satellites (M33, NGC 147/185, IC 10) dominate the information content, yielding n_eff well below 15.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Hand-compute best-measured satellites",
+        "body": "For the two or three satellites with genuine HST proper motions (M33, NGC 147/185), write out v_i^perp and sigma_{i,perp} explicitly in the theta-decomposition and compute the individual normalized residuals |v_i^perp|/sigma_{i,perp}. Assess whether any are below 1 sigma with genuinely small error bars, which would carry more evidential weight than the summed statistic.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Formulate the boundary-corrected likelihood-ratio test",
+        "body": "Construct the nested LRT comparing the confined model (sigma_perp = 0) against sigma_perp > 0, with the plane normal hat_n marginalized in both models. Account for the ~2 degrees of freedom lost to plane-fitting (chi^2_13 baseline) and apply Chernoff's boundary correction, giving a (1/2)chi^2_0 + (1/2)chi^2_1 null mixture for the sigma_perp^2 parameter on the parameter-space edge.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Justify weak position-velocity coupling",
+        "body": "Verify that hat_n is estimated from the position scatter matrix while the test contracts it against independent velocity covariances Sigma_i, so the eigenvector-perturbation correlation is weak. Quantify delta_hat_n ~ 1/gap with gap ~ R^2/h^2 (order 30-100 for the thin GPoA), confirming hat_n is well-determined and that treating it as nearly fixed introduces only subdominant error.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Compute the explicit power curve",
+        "body": "Define SNR = (sigma_perp^intrinsic / sqrt((1/n_eff) sum_i hat_n^T Sigma_i hat_n)) * sqrt(n_eff) using n_eff rather than 15. Produce the full power curve for the LRT against the boundary-corrected null, and determine the SNR threshold (target ~3) below which 'consistent with zero' is a statement about HST/Gaia astrometry rather than about Andromeda's dynamics.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Separate rotation from confinement hypotheses",
+        "body": "Set up the joint two-dimensional inference on (Omega_rot, sigma_perp^2), testing the in-plane coherent rotation signal (well-measured radial velocities) distinctly from out-of-plane confinement (poorly-measured proper motions). Take the clean null as isotropic dispersion (sigma_perp^2 = sigma_parallel^2, no rotation), and require the data to favor a configuration that is both thin and rotating to claim a genuine rotating plane.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "State the honest achievable deliverable",
+        "body": "Synthesize results into the correct verdict: given the edge-on geometry forcing the confinement test onto the proper-motion-limited perpendicular direction, and likely low n_eff, report a confidence interval / upper bound on sigma_perp/sigma_parallel jointly with the rotation amplitude. Frame as a temperate-versus-generic dichotomy: with current astrometry one can at best fail to reject genericity, not prove temperateness.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T15:00:21Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "Critical: Equivalence of coefficient formula and eq:walsh averaging formula unproved",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "## Gap Description\n\nThe problem defines finite free convolution via the bilinear coefficient formula:\n  c_k = sum_{i+j=k} [(n-i)!(n-j)! / (n!(n-k)!)] a_i b_j\n\nThe solution works exclusively with the averaging over permutations representation (eq:walsh):\n  (p boxplus_n q)(x) = (1/n!) sum_{pi in S_n} prod_{i=1}^n (x - alpha_i - beta_{pi(i)})\n\nThese are equivalent by Theorem 1.1 of Marcus-Spielman-Srivastava (Prob. Theory Rel. Fields 182, 2022), proved via mixed characteristic polynomials. The solution merely cites [MSS22] without proof.\n\n## Why This Is Critical\n\nEvery major step depends on eq:walsh:\n- Walsh theorem (real-rootedness) is stated for the averaging formula.\n- The hyperbolic polynomial f in Corollary cor:psd is defined via eq:walsh.\n- Variance additivity (Proposition prop:props (i)) is derived \"from eq:walsh and Newton identities\".\n- The BGLS convexity argument requires this representation.\n\n## What Needs to Be Proved\n\nShow: if p has roots alpha_1,...,alpha_n and q has roots beta_1,...,beta_n, then\n  c_k = (1/n!) sum_{pi in S_n} e_k(alpha_1+beta_{pi(1)}, ..., alpha_n+beta_{pi(n)})\nwhere e_k is the k-th elementary symmetric polynomial with appropriate sign.\n\n## Proof Strategy\n\nExpand the product prod_i (x - alpha_i - beta_{pi(i)}) using the binomial theorem:\neach term picks for each index i either alpha_i or beta_{pi(i)}. For a fixed split\n(selecting alpha from index set I\\J and beta from J with |I|=k, |J|=j, |I\\J|=i):\n  (1/n!) sum_pi prod_{l in J} beta_{pi(l)} = [C(n,j) * j! * (n-j)! / n!]^{-1}... \n\nThe key combinatorial identity: for a fixed set J of size j,\n  (1/n!) sum_pi prod_{l in J} beta_{pi(l)} = (n-j)!/n! * sum_{|K|=j} prod_{l in K} beta_l\n  = e_j(beta) * (n-j)! / n!\n\nCombining over all I, J with |I|=k, |J|=j gives the coefficient formula.",
       "created_at": "2026-06-17T15:23:12Z"
+    },
+    {
+      "id": "c5941cafb",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolution: equivalence of the coefficient formula and eq:walsh now proved in-place\n\nI added a self-contained **Lemma (coefficient formula = symmetrized product)** to the\n\"Preliminaries on $\\boxplus_n$\" section, replacing the bare citation of [MSS22]. The\nsolution now treats the bilinear coefficient formula (eq:coeff, the problem's definition)\nas primary and *proves* the Walsh averaging representation (eq:walsh) from it, so every\nlater use of eq:walsh (Walsh reality theorem, hyperbolicity in cor:psd, variance\nadditivity in prop:props, BGLS convexity) is legitimate.\n\n### The proof (4 steps)\nWith $a_i=(-1)^i e_i(\\alpha)$, $b_j=(-1)^j e_j(\\beta)$ (Vieta):\n\n1. **Permutation-averaging identity.** For any fixed $B\\subseteq[n]$ with $|B|=j$,\n   $$\\tfrac1{n!}\\sum_{\\pi}\\prod_{b\\in B}\\beta_{\\pi(b)}=\\tfrac{j!\\,(n-j)!}{n!}\\,e_j(\\beta),$$\n   independent of $B$. (As $\\pi$ varies, $\\pi|_B$ runs over injections $B\\hookrightarrow[n]$,\n   each hit $(n-j)!$ times; grouping injections by image gives a factor $j!\\,e_j(\\beta)$.)\n\n2. **Expand** $e_k(\\alpha_i+\\beta_{\\pi(i)})$ by splitting each $k$-subset $S=A\\sqcup B$\n   into the $\\alpha$-indices $A$ and $\\beta$-indices $B$, reindexed as ordered pairs of\n   disjoint sets with $|A|=i$, $|B|=j$, $i+j=k$.\n\n3. **Average** over $\\pi$ using Step 1 (the $\\alpha$-product is $\\pi$-free; the $\\beta$-average\n   is set-independent), then count the free choice of $B$ among the $n-i$ indices off $A$,\n   giving a multiplicity $\\binom{n-i}{j}$ and $e_i(\\alpha)$. The constant collapses:\n   $$\\tfrac{j!(n-j)!}{n!}\\binom{n-i}{j}=\\tfrac{(n-i)!(n-j)!}{n!(n-k)!}.$$\n\n4. **Signs:** $(-1)^k=(-1)^i(-1)^j$ converts $e_i(\\alpha)e_j(\\beta)$ into $a_ib_j$, yielding\n   exactly $c_k=\\sum_{i+j=k}\\tfrac{(n-i)!(n-j)!}{n!(n-k)!}a_ib_j$.\n\n### Note on the proof strategy in the issue\nThe combinatorial identity stated in the issue body had a normalization typo:\nthe correct constant is $\\tfrac{j!(n-j)!}{n!}e_j(\\beta)=e_j(\\beta)/\\binom{n}{j}$,\n**not** $\\tfrac{(n-j)!}{n!}e_j(\\beta)$. I caught this numerically (it fails already at\n$j=n$, where the LHS is $e_n(\\beta)$) and used the corrected constant; the multiplicity\n$\\binom{n-i}{j}$ from the disjointness constraint then makes the constants match exactly.\n\n### Verification\nSymbolic/exact-rational checks (sympy-free, `fractions`): the symmetrized product and the\ncoefficient formula agree on **200 random integer-root instances** for $n\\le5$, and the\nconstant identity $\\tfrac{j!(n-j)!}{n!}\\binom{n-i}{j}=\\tfrac{(n-i)!(n-j)!}{n!(n-k)!}$ was\nverified for all $n\\le7$. Every per-$j$ term of the expansion was independently confirmed.\n\nLaTeX environments are balanced; no toolchain was available to compile but the file parses.\nprop:props(i) now cites the new lemma explicitly. Gap fully closed.",
+      "created_at": "2026-06-21T21:28:44Z"
+    },
+    {
+      "id": "ev2071db17",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T21:28:47Z"
     }
   ]
 }

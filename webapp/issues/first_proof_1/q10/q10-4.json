@@ -1,0 +1,46 @@
+{
+  "id": "q10-4",
+  "problem_id": "q10",
+  "dataset": "first_proof_1",
+  "title": "SPD of the normal-equation operator and the psd (singular) kernel case",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "issue_type": null,
+  "priority": "P2",
+  "created_at": "2026-06-22T23:01:27Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "ev3e6121c4",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-22T23:01:27Z"
+    },
+    {
+      "id": "ccc7f099c",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "**Gap G3 (Lemma L1).** The solver must prove $\\mathcal A=(Z\\otimes K)^TSS^T(Z\\otimes K)+\\lambda(I_r\\otimes K)$ is symmetric and positive (semi)definite, which is the prerequisite for CG.\n\n$\\mathcal A\\succeq0$ always (sum of a Gram term and $\\lambda(I_r\\otimes K)$ with $K\\succeq0$). **Strict positive definiteness requires $K\\succ0$ and $\\lambda>0$.** RKHS kernel matrices may be only psd / rank-deficient; then $I_r\\otimes K$ is singular and $\\mathcal A$ can be singular, so plain CG is not guaranteed to converge.\n\n**Required:** prove symmetry and PSD; state the explicit hypothesis ($K\\succ0,\\lambda>0$) for SPD; handle the singular-$K$ boundary case (range/consistency argument or a $K+\\epsilon I$ regularization). The $\\lambda\\to0$ limit should also be noted as singular.",
+      "created_at": "2026-06-22T23:01:27Z"
+    },
+    {
+      "id": "cdfd31238",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Resolved Gap G3 (Lemma L1): SPD of the normal-equation operator + singular-$K$ boundary case.**\n\nI wrote `solution.tex` with four results (numerically verified, see below). With $\\mathcal A=(Z\\otimes K)^TSS^T(Z\\otimes K)+\\lambda(I_r\\otimes K)=M^TM+\\lambda(I_r\\otimes K)$, $M=S^T(Z\\otimes K)$:\n\n- **Lemma (symmetry + PSD), for all $K\\succeq0,\\lambda\\ge0$:** $\\mathcal A=\\mathcal A^T$ since $M^TM$ and $(I_r\\otimes K)^T=I_r\\otimes K$ are symmetric; and $x^T\\mathcal A x=\\|Mx\\|^2+\\lambda\\,\\|(I_r\\otimes L)^Tx\\|^2\\ge0$ using $K=LL^T$ and $I_r\\otimes K=(I_r\\otimes L)(I_r\\otimes L)^T$.\n\n- **Lemma (SPD), explicit hypothesis $K\\succ0$ AND $\\lambda>0$:** then $x^T\\mathcal A x\\ge\\lambda\\mu_{\\min}(K)\\|x\\|^2>0$ (eigenvalues of $I_r\\otimes K$ are those of $K$ with multiplicity $r$). I also prove **necessity**: $\\lambda=0\\Rightarrow\\mathcal A=M^TM$ has rank $\\le q<nr$ (singular); $K$ singular with $Kv=0\\Rightarrow x=e_j\\otimes v\\in\\ker\\mathcal A$ for every $\\lambda$ (singular), via the mixed-product rule.\n\n- **Lemma (singular-$K$ boundary, $\\lambda>0$):** $\\ker\\mathcal A=\\ker(I_r\\otimes K)$ (PSD-sum kernel = intersection of kernels, plus $\\ker(I_r\\otimes K)\\subseteq\\ker M$ since $Z\\otimes K=(Z\\otimes I)(I_r\\otimes K)$), hence $\\mathrm{range}(\\mathcal A)=\\mathrm{range}(I_r\\otimes K)$. The RHS $b=(I_r\\otimes K)\\,\\mathrm{vec}(B)$ lies in $\\mathrm{range}(I_r\\otimes K)=\\mathrm{range}(\\mathcal A)$, so the system is **consistent**; CG from $w_0=0$ keeps iterates in the $\\mathcal A$-invariant subspace $\\mathrm{range}(\\mathcal A)$ and converges to the minimum-norm solution.\n\n- **Remarks:** (a) practical $K_\\varepsilon=K+\\varepsilon I$ shift makes $\\mathcal A_\\varepsilon\\succ0$ with $w_\\star$ recovered as $\\varepsilon\\to0^+$; (b) $\\lambda\\to0$ is genuinely singular AND inconsistent ($b\\notin\\mathrm{range}(M^TM)$ in general) — so $\\lambda>0$ is essential.\n\n**Numerical checks (all passed):** SPD min-eig $>0$ for $K\\succ0,\\lambda>0$; min-eig $\\approx0$ (singular) for rank-deficient $K$; $\\ker\\mathcal A=\\ker(I_r\\otimes K)$ (equal null dims, $\\mathcal A\\cdot\\mathrm{null}(I_r\\otimes K)=0$); consistency residual $\\approx10^{-13}$ and CG residual $\\approx10^{-12}$ in the singular case; at $\\lambda=0$ the lstsq residual $\\approx5.1>0$ confirming inconsistency. Closing as resolved.",
+      "created_at": "2026-06-22T23:04:11Z"
+    },
+    {
+      "id": "evf2ef4029",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-22T23:04:15Z"
+    }
+  ]
+}

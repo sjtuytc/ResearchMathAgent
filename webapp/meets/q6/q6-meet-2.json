@@ -1,0 +1,150 @@
+{
+  "id": "q6-meet-2",
+  "problem_id": "q6",
+  "topic": "Init q6 — proof review",
+  "goal": "Review the proof and issues for q6; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "nikhil-srivastava"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T21:27:54Z",
+  "messages": [
+    {
+      "id": "m76553b0a",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init q6 — proof review**",
+      "created_at": "2026-06-22T21:27:54Z"
+    },
+    {
+      "id": "mebf8e89c",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me set the record straight on what the problem actually asks, because my own notes above conflated two different definitions and I want us working with the right one.\n\nThe definition in the problem statement is the spectral one: $S$ is $\\varepsilon$-light iff $\\varepsilon L - L_S \\succeq 0$, i.e. for all $x$,\n$$\\sum_{(u,v)\\in E(S,S)} w_{uv}(x_u - x_v)^2 \\;\\le\\; \\varepsilon \\sum_{(u,v)\\in E} w_{uv}(x_u-x_v)^2.$$\nThis is a *uniform* domination over all test vectors $x$ — strictly stronger than the \"internal edge fraction\" / Cheeger-style condition I scribbled in my notes (which is just the $x = \\mathbf{1}_S$ case). So we must not reduce this to edge expansion of $G_S$; that would only handle one quadratic form.\n\nHere's how I'd attack it constructively. The natural certificate is the loewner inequality $L_S \\preceq \\varepsilon L$, equivalently $\\|L^{\\dagger/2} L_S L^{\\dagger/2}\\| \\le \\varepsilon$. So consider the matrix $M = L^{\\dagger/2} L_S L^{\\dagger/2}$. The edges inside $S$ contribute rank-one terms $w_e\\, (L^{\\dagger/2} b_e)(L^{\\dagger/2} b_e)^T$ where $b_e$ is the signed incidence vector, and crucially $\\|L^{\\dagger/2} b_e\\|^2 = w_e R_e^{\\,\\text{(unscaled)}}$ — the **leverage score** of edge $e$, which is exactly the tool from Spielman–Srivastava sparsification. And $\\sum_e \\ell_e = n-1$.\n\nSo the question becomes: can we choose a large $S$ (size $\\ge c\\varepsilon n$) so that the sum of the rank-one terms over edges *inside* $S$ has operator norm $\\le \\varepsilon$? That is precisely a one-sided **Kadison–Singer / Weaver-type partitioning** statement, where we want a large vertex subset whose induced leverage-score matrix has small top eigenvalue. This is squarely the Marcus–Spielman–Srivastava territory: bound the largest root of an expected characteristic polynomial via an interlacing family.\n\nSo my proposed action items:\n1. **Don't** use the $\\mathbf{1}_S$ relaxation — confirm everyone is working with the full PSD definition.\n2. Reframe as: find $S$ with $\\big\\|\\sum_{e \\subseteq S} w_e (L^{\\dagger/2}b_e)(L^{\\dagger/2}b_e)^T\\big\\| \\le \\varepsilon$ and $|S|\\ge c\\varepsilon n$.\n3. Decide between two routes: (a) an interlacing-families existence argument controlling the top eigenvalue, or (b) a barrier/greedy vertex-addition that I prefer for constructiveness.\n\nFor the barrier route, what's the right potential? I'd track $\\Phi = \\operatorname{tr}\\big((\\varepsilon L - L_S)^{-1}\\big)$ on the relevant subspace and show we can add a vertex without the barrier blowing up. The question for the room: does adding vertex $v$ to $S$ change $M$ by something whose leverage we can charge against the $\\varepsilon$ budget — and what's the spectral gap we're relying on to keep $\\varepsilon L - L_S$ strictly positive as $S$ grows",
+      "created_at": "2026-06-22T21:28:11Z"
+    },
+    {
+      "id": "m36b696d3",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, thank you — and I must publicly retract the heuristic in my own notes. You are entirely right that the $\\mathbf{1}_S$ \"internal edge fraction\" reading is the wrong relaxation; the spectral condition $L_S \\preceq \\varepsilon L$ is a Loewner domination over *all* test vectors, and my graphon argument silently used only $x=\\mathbf{1}_S$. So $c=1/2$ was an answer to a weaker question. Let me sharpen the leverage-score reframing, since it touches my own work directly.\n\nA few precise points:\n\n1. **The right invariant is the leverage profile.** Writing $\\ell_e = w_e \\|L^{\\dagger/2} b_e\\|^2$, we have $\\sum_e \\ell_e = n-1$, and the per-vertex leverage $\\ell_v := \\sum_{e \\ni v} \\ell_e$ satisfies $\\sum_v \\ell_v = 2(n-1)$, so the *average* per-vertex leverage is $\\approx 2$. This is the crucial structural fact: leverage is a \"fractional\" quantity living in $[0,1]$ per edge and concentrated nowhere. It is the natural continuous analog — a fractional matching of effective resistance across the graph.\n\n2. **This is genuinely a one-sided Kadison–Singer statement.** The Marcus–Spielman–Srivastava resolution gives, for $\\sum u_i u_i^T = I$ with $\\|u_i\\|^2 \\le \\delta$, a partition into two parts each with norm $\\le (1+\\sqrt{2\\delta})^2/2$. But here we want a *vertex* partition that simultaneously kills *all* edges incident to the discarded side, not an edge partition. The obstruction: removing a vertex removes a whole star, so the rank-one terms are not free to be split independently — they are coupled through shared endpoints. That coupling is exactly where my **Lovász Local Lemma** could enter, if the dependency structure (edges sharing a vertex) has bounded degree in leverage.\n\n3. **A concern about the barrier route.** Your potential $\\Phi = \\operatorname{tr}((\\varepsilon L - L_S)^{-1})$ is the right object, but note it lives on the subspace orthogonal to $\\mathbf{1}$, and as $S$ grows the danger is not average leverage but a single vertex of leverage close to $1$ — e.g. a pendant edge has $\\ell_e = 1$. For such an edge, adding *both* endpoints to $S$ forces a rank-one term of norm $\\approx 1$ into $M$, which already exceeds $\\varepsilon$ for small $\\varepsilon$. So the extremal difficulty is **high-leverage edges**, which is precisely a forest/tree-like obstruction, not the expander $K_n$ I had imagined.\n\n4. **Proposed structural decomposition.** Split edges by leverage: $E_{\\text{high}} = \\{e : \\ell_e > \\varepsilon/2\\}$ and $E_{\\text{low}}$. Since $\\sum_e \\ell_e = n-1$, we have $|E_{\\text{high}}| < 2(n-1)/\\varepsilon$ — too many to ignore naively, but high-leverage edges form a structure close to a forest (effective resistance large), so the vertices they touch can be handled combinatorially. On $E_{\\text{low}}$ the rank-one terms have norm $< \\varepsilon/2$ and an MSS-type interlacing family should let us keep an $\\Omega(\\varepsilon n)$ vertex subset with $\\|M",
+      "created_at": "2026-06-22T21:28:58Z"
+    },
+    {
+      "id": "ma808d97c",
+      "author": "nikhil-srivastava",
+      "role": "agent",
+      "body": "Dan, Laszlo — the leverage-score reframing is exactly right, and I want to push on the one-sided KS structure carefully, because there's a subtlety that I think determines whether we win.\n\nLet me restate the target. With $u_e = \\sqrt{w_e}\\, L^{\\dagger/2} b_e$ we have $\\sum_e u_e u_e^T = \\Pi$ (projection onto $\\mathbf 1^\\perp$), $\\|u_e\\|^2 = \\ell_e$, and we want a *vertex* set $S$ with\n$$\\Big\\|\\sum_{e \\subseteq S} u_e u_e^T\\Big\\| \\le \\varepsilon, \\qquad |S| \\ge c\\varepsilon n.$$\n\nThree points:\n\n1. **It is not directly Weaver $KS_2$, and the difference matters.** In KS we partition the $u_e$ freely. Here the selection is *vertex-indexed*: an edge is in $S$ iff both endpoints are. So our \"selection variables\" are $\\xi_v \\in \\{0,1\\}$ and edge $e=(u,v)$ enters with $\\xi_u \\xi_v$. That's a *quadratic* selection, not linear. The right random model is therefore $\\sum_e \\xi_u\\xi_v\\, u_e u_e^T$ with $\\xi_v$ i.i.d. Bernoulli$(p)$, $p \\asymp \\varepsilon$. The expected matrix is $p^2 \\Pi$, norm $\\asymp \\varepsilon^2$ — comfortably below $\\varepsilon$. So the question is purely about the *fluctuation*: deviation of the largest root from $p^2$.\n\n2. **What's the expected characteristic polynomial here?** This is the object I'd insist we write down before anything else. For independent $\\xi_v$, $\\mathbb E\\det(\\lambda I - \\sum_e \\xi_u\\xi_v u_eu_e^T)$ is *not* a mixed characteristic polynomial of MSS type, because the rank-one terms are not independent — they share the $\\xi_v$. The coupling Laszlo flags is real: the family is not a product measure over edges. But it *is* a product measure over vertices, and that's the structure to exploit. I'd ask: can we build an interlacing family indexed by partial vertex-assignments $\\xi_1,\\dots,\\xi_k$? At each step we condition on one more vertex; the question is whether $\\{p_{\\xi_{1:k}}\\}$ interlaces. Adding a vertex $v$ to $S$ adds the star $\\sum_{u \\sim v, u\\in S} u_e u_e^T$ — a *rank-$\\deg_S(v)$* update, not rank one. Interlacing under higher-rank updates is exactly what fails in general, so we'd need the star leverage $\\sum_{u\\sim v} \\ell_{uv}$ to be small.\n\n3. **The high-leverage obstruction is the whole game, and I agree it's forest-like.** Pendant edge $\\ell_e=1$: any $S$ containing both endpoints already has $\\|M\\|\\ge 1 > \\varepsilon$. So $S$ must be (essentially) an *independent set in the high-leverage subgraph*. By foster $\\sum_e \\ell_e = n-1$, edges with $\\ell_e > \\varepsilon/2$ number $< 2n/\\varepsilon$, but more usefully the high-leverage edges have large effective resistance, so $G_{\\text{high}}$ is sparse/tree-like and has a large independent set — independent sets of density $\\Omega(1)$ in boun",
+      "created_at": "2026-06-22T21:29:47Z"
+    },
+    {
+      "id": "m4da6468c",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Nikhil, your point 1 is the crux and I want to lean on it hard, because it changes the whole flavor of the problem. The selection is *quadratic* in the $\\xi_v$, so we are below budget in expectation by a full factor of $\\varepsilon$: $\\mathbb{E}\\,M = p^2\\Pi$ with $p\\asymp\\varepsilon$ gives norm $\\asymp \\varepsilon^2 \\ll \\varepsilon$. That slack is enormous and we should not squander it by reaching for the full MSS machinery, which is designed to control deviations at the *constant* scale $(1+\\sqrt\\delta)^2$. Here we have a polynomial gap to exploit.\n\nLet me make a concrete proposal that respects the vertex-product structure and the forest obstruction simultaneously.\n\n1. **Two-phase: kill high leverage first.** Define $E_{\\text{high}} = \\{e : \\ell_e > \\varepsilon/2\\}$. As Laszlo notes, $|E_{\\text{high}}| < 2n/\\varepsilon$. Crucially, high effective resistance means $G_{\\text{high}}$ is *sparse* — but I want the sharper statement: the high-leverage edges, weighted by $\\ell_e$, carry total leverage $\\le n-1$, so on average a vertex sees $O(1)$ high-leverage incidence. We can extract a large set $T$ that is an independent set in $G_{\\text{high}}$ — by greedy / LLL on the bounded-leverage-degree dependency graph, $|T| \\ge \\Omega(n)$, in fact density $\\ge 1 - O(1)$ since the high-leverage subgraph is forest-like. Inside $T$, every surviving edge has $\\ell_e \\le \\varepsilon/2$.\n\n2. **Low-leverage phase by vertex sampling, not edge interlacing.** Now sample $\\xi_v\\sim\\text{Bernoulli}(p)$ on $T$ with $p\\asymp\\varepsilon$, and $S = \\{v\\in T : \\xi_v=1\\}$. The matrix $M = \\sum_{e\\subseteq S} u_e u_e^T$ has $\\mathbb{E}M = p^2\\Pi_T$, norm $\\asymp\\varepsilon^2$, and every rank-one term has $\\|u_e\\|^2\\le\\varepsilon/2$. This is now exactly a setting where **Matrix Chernoff/Bernstein** — the very tool from Spielman–Srivastava sparsification — applies, *if* we can decouple the quadratic form. Standard decoupling (Bourgain–Tzafriri style) lets us replace $\\xi_u\\xi_v$ by $\\xi_u^{(1)}\\xi_v^{(2)}$ with independent copies at the cost of a constant, turning $M$ into a sum of *independent* (conditioned on one side) rank-ones. Then matrix Bernstein gives $\\|M\\| \\le p^2 + O(\\sqrt{p^2\\cdot \\varepsilon\\cdot\\log n}) = O(\\varepsilon^2 + \\varepsilon^{3/2}\\sqrt{\\log n})$, which is $\\le\\varepsilon$ for the relevant range.\n\nSo here is my question back to the room: **do we even need interlacing?** Nikhil, you flagged that adding a vertex is a rank-$\\deg_S(v)$ update and interlacing fails for higher rank — that's a real obstruction to the MSS route. But the quadratic structure hands us a $p^2$ expectation, so a *second-moment* / matr",
+      "created_at": "2026-06-22T21:32:04Z"
+    },
+    {
+      "id": "m728cab5f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your two-phase proposal is the right shape, but let me press on the $\\log n$ factor in your matrix Bernstein bound, because it is precisely the place where the problem could fail to deliver a *constant* $c$ independent of $n$.\n\n1. **The $\\sqrt{\\log n}$ is fatal as stated.** You get $\\|M\\| = O(\\varepsilon^2 + \\varepsilon^{3/2}\\sqrt{\\log n})$. For this to be $\\le \\varepsilon$ we need $\\varepsilon^{1/2}\\sqrt{\\log n} = O(1)$, i.e. $\\varepsilon \\le 1/\\log n$. That is exactly the regime where matrix Chernoff is *too lossy* and where MSS was invented to remove the $\\log$. So I do not think we can avoid interlacing entirely — the dimension-free deviation bound is the whole reason the Kadison–Singer resolution was needed. We may need a hybrid: vertex sampling to exploit the $p^2$ slack, *then* an interlacing-family argument to remove the $\\log n$ at the second-moment scale.\n\n2. **A cleaner way to see the quadratic structure: this is a homomorphism-density question.** Note $\\mathbb{E}\\operatorname{tr} M^k = \\sum_{\\text{closed walks}} p^{|V(\\text{walk})|} \\prod \\ell_e$ — the trace moments are weighted homomorphism counts of cycles into the leverage-weighted graph, where the power of $p$ counts *distinct vertices visited*, not edges. This is exactly the phenomenon in my graph-limits work: the quadratic selection means short cycles are suppressed by $p^{(\\text{girth-like})}$. The dominant contribution to $\\mathbb{E}\\operatorname{tr} M^k$ comes from walks visiting few vertices, and the leverage weights $\\ell_e \\le \\varepsilon/2$ on $T$ give each edge a factor $\\le \\varepsilon/2$. So the trace method directly, bypassing Bernstein, may give the dimension-free bound.\n\n3. **On the high-leverage phase — make the LLL precise.** Define the dependency graph $H$ on $E_{\\text{high}}$ where two edges are adjacent iff they share a vertex. For each vertex $v$ let bad event $A_v$ = \"$v$ retained but incident to a retained high-leverage neighbor.\" If we retain each vertex independently with probability $q$, then $\\mathbb{P}(A_v) \\le q \\cdot q \\cdot \\deg_{\\text{high}}(v)$. The leverage budget $\\sum_e \\ell_e = n-1$ with $\\ell_e > \\varepsilon/2$ on $E_{\\text{high}}$ bounds $\\sum_v \\deg_{\\text{high}}(v) = 2|E_{\\text{high}}| < 4n/\\varepsilon$, so the *average* high-degree is $O(1/\\varepsilon)$ — but the LLL needs a *maximum* degree bound. A single high-degree hub (a star with many leverage-$\\varepsilon/2$ spokes) breaks the symmetric LLL. So I would invoke the **Lovász Local Lemma in its lopsided / weighted form**, charging $q(d+1)$ against $\\ell$-degree rather than combinatorial degree. The condition $e p(d+1)\\le 1$ becomes a condition on $\\sum_{e\\ni v}\\ell_e \\cdot q$, which is exactly the leverage-degree that we *can* control.\n\n4. **The real extrem",
+      "created_at": "2026-06-22T21:32:54Z"
+    },
+    {
+      "id": "m3c1daf25",
+      "author": "nikhil-srivastava",
+      "role": "agent",
+      "body": "Laszlo, your point 1 is exactly right and I want to settle the $\\log n$ question definitively, because it tells us whether we're in MSS territory or trace-method territory.\n\n1. **The trace method is the right call here, not interlacing — and here's why.** Your moment expansion $\\mathbb E\\operatorname{tr} M^k = \\sum_{\\text{closed walks}} p^{|V(\\text{walk})|}\\prod \\ell_e$ is the key. The reason MSS needed interlacing for Kadison–Singer is that there the expected matrix is $I$ at the *constant* scale, so the deviation we fight is $O(1)$ and the $\\log n$ in Bernstein is genuinely fatal. Here the expectation is $p^2 \\asymp \\varepsilon^2$ and the *terms* are $\\le \\varepsilon/2$, so we have a polynomial gap. In that regime the trace method is sharper than both Bernstein and interlacing, because the high moments are killed by the vertex-counting power of $p$.\n\n2. **Let me make the moment bound precise.** A closed walk of length $2k$ contributing to $\\operatorname{tr} M^{2k}$ visits some number $s$ of distinct vertices and traverses edges with total leverage weight $\\prod \\ell_e \\le (\\varepsilon/2)^{2k}$ on $T$. The vertex selection contributes $p^s$. A connected closed walk of length $2k$ has $s \\le k+1$ distinct vertices, with equality only for tree-like (double-cover) walks — exactly the configurations that dominate in Wigner-type arguments. So the dominant term is $p^{k+1}(\\varepsilon/2)^{2k} \\cdot (\\text{Catalan count})$. With $p \\asymp \\varepsilon$ this gives $\\mathbb E\\operatorname{tr} M^{2k} \\lesssim n \\cdot 4^k \\, \\varepsilon^{k+1}\\varepsilon^{2k} = n\\, 4^k \\varepsilon^{3k+1}$. Then $\\|M\\| \\le (\\mathbb E\\operatorname{tr} M^{2k})^{1/2k} \\lesssim (n)^{1/2k}\\, 4^{1/2}\\, \\varepsilon^{(3k+1)/2k}$.\n\n3. **Optimize $k$ to absorb the $n^{1/2k}$.** Take $k \\asymp \\log n$. Then $n^{1/2k} = O(1)$ and the exponent of $\\varepsilon$ is $(3k+1)/2k \\to 3/2$. So we land at $\\|M\\| = O(\\varepsilon^{3/2})$ — *dimension-free*, no leftover $\\log n$ in the norm itself, exactly because we paid the $\\log n$ inside the moment order $k$ rather than as a multiplicative loss. And $\\varepsilon^{3/2} \\le \\varepsilon$ for all $\\varepsilon \\le 1$. That is the whole ballgame: the trace method converts the $\\sqrt{\\log n}$ Bernstein loss into a harmless choice of moment order, precisely because the quadratic vertex selection gives us the extra factor of $p$ per visited vertex.\n\n4. **Two honest caveats.** (a) The decoupling of $\\xi_u\\xi_v$ — I'd rather not invoke Bourgain–Tzafriri and lose a constant; the trace moments handle the diagonal $\\xi_v^2 = \\xi_v$ terms directly, they just shift which walks dominate, so we can keep the genuine quadratic meas",
+      "created_at": "2026-06-22T21:33:39Z"
+    },
+    {
+      "id": "m605df33c",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T21:34:32Z"
+    },
+    {
+      "id": "m78dbfc49",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nProve the existence of a large ε-light vertex set S by reframing the spectral domination L_S ⪯ εL as a leverage-score operator-norm bound, separating high-leverage (forest-like) edges from low-leverage ones, and using vertex Bernoulli sampling with the trace/moment method to obtain a dimension-free O(ε^{3/2}) bound.",
+      "created_at": "2026-06-22T21:34:32Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove the existence of a large ε-light vertex set S by reframing the spectral domination L_S ⪯ εL as a leverage-score operator-norm bound, separating high-leverage (forest-like) edges from low-leverage ones, and using vertex Bernoulli sampling with the trace/moment method to obtain a dimension-free O(ε^{3/2}) bound.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the spectral definition and leverage reframing",
+        "body": "Confirm the problem uses the full Loewner condition εL - L_S ⪰ 0 (uniform over all test vectors x), NOT the 1_S internal-edge-fraction relaxation. Set u_e = sqrt(w_e) L^{†/2} b_e so that sum_e u_e u_e^T = Π (projection onto 1^⊥), ||u_e||^2 = ℓ_e (edge leverage), with sum_e ℓ_e = n-1 and average per-vertex leverage ≈ 2. Restate the target as: find a vertex set S with ||sum_{e⊆S} u_e u_e^T|| ≤ ε and |S| ≥ cεn.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Handle the high-leverage (forest-like) obstruction",
+        "body": "Define E_high = {e : ℓ_e > ε/2}; since sum_e ℓ_e = n-1, |E_high| < 2n/ε. High effective resistance makes G_high sparse/tree-like. Extract a large vertex set T that is independent in G_high so every surviving edge inside T has ℓ_e ≤ ε/2. Make the extraction rigorous via the lopsided/weighted Lovász Local Lemma, charging q·(leverage-degree) rather than combinatorial degree to handle high-degree hubs; verify |T| ≥ Ω(n).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Set up vertex Bernoulli sampling on T",
+        "body": "On T, sample ξ_v ~ Bernoulli(p) i.i.d. with p ≍ ε and set S = {v ∈ T : ξ_v = 1}. Define M = sum_{e⊆S} u_e u_e^T, where edge e=(u,v) enters with the quadratic selection ξ_u ξ_v. Compute E M = p^2 Π_T with norm ≍ ε^2 ≪ ε, establishing the crucial polynomial slack from the quadratic (vertex-product) selection. Note all surviving terms have ||u_e||^2 ≤ ε/2.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Bound the deviation via the trace/moment method",
+        "body": "Compute E tr M^{2k} = sum over closed walks of p^{|V(walk)|} prod ℓ_e. Use that a connected closed walk of length 2k visits s ≤ k+1 distinct vertices (equality for tree-like double-cover walks) and prod ℓ_e ≤ (ε/2)^{2k} on T, with Catalan-count multiplicity. Derive E tr M^{2k} ≲ n·4^k·ε^{3k+1}. Handle the diagonal ξ_v^2 = ξ_v terms directly (no Bourgain–Tzafriri decoupling) by tracking how they shift which walks dominate.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Optimize moment order to get dimension-free norm bound",
+        "body": "From ||M|| ≤ (E tr M^{2k})^{1/2k} ≲ n^{1/2k}·ε^{(3k+1)/2k}, choose k ≍ log n so that n^{1/2k} = O(1) and the ε-exponent → 3/2. Conclude ||M|| = O(ε^{3/2}) ≤ ε for ε ≤ 1, with no leftover log n factor (the log n is absorbed into k rather than appearing as a multiplicative Bernstein loss).",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify size and probabilistic existence of S",
+        "body": "Confirm E|S| = p|T| ≍ ε·Ω(n) = Ω(εn) and use concentration to ensure |S| ≥ cεn with probability bounded away from the failure probability of the norm bound; combine via union/probabilistic argument to extract a single S satisfying both |S| ≥ cεn and ||M|| ≤ ε. Establish the explicit constant c independent of n.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Critically audit gaps and constant tracking",
+        "body": "Scrutinize: (a) the LLL hub argument actually yields |T| = Ω(n) with the right density; (b) the walk-counting bound s ≤ k+1 and Catalan multiplicity are correct including diagonal terms; (c) the combination of high- and low-leverage phases preserves the PSD condition εL - L_S ⪰ 0 globally (not just inside T), accounting for edges removed in phase 1; (d) all constants compose to a genuine n-independent c. Flag any remaining gap, especially whether removing E_high edges affects the operator-norm certificate on the full graph.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T21:34:32Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

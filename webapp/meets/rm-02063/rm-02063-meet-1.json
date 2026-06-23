@@ -1,0 +1,153 @@
+{
+  "id": "rm-02063-meet-1",
+  "problem_id": "rm-02063",
+  "topic": "Init rm-02063 — proof review",
+  "goal": "Review the proof and issues for rm-02063; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T12:32:30Z",
+  "messages": [
+    {
+      "id": "m70461407",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-02063 — proof review**",
+      "created_at": "2026-06-23T12:32:30Z"
+    },
+    {
+      "id": "m2c66dfe7",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me cut to the heart of this before we overcomplicate it. The center of mixability is forced by a one-line linear argument: if $X_1+\\cdots+X_n = n\\mu$ a.s. with each $X_i \\sim F$, then take expectations of both sides — *provided* $F$ has a finite mean. We get $n\\mathbb{E}[X_1] = n\\mu$, so $\\mu = \\mathbb{E}_F[X]$. The center is the mean, full stop, and it's unique. So for distributions with finite first moment, $\\mathcal{M}_n(\\mu)\\cap\\mathcal{M}_n(\\nu)=\\varnothing$ whenever $\\mu\\ne\\nu$.\n\nThe whole problem therefore lives or dies on the **moment hypothesis**. The interesting case — and I'd bet this is where the claimed proof has a gap — is heavy-tailed $F$ with no finite mean, or undefined mean (Cauchy-type). There you cannot just \"take expectations,\" because the linearity of expectation argument is invalid.\n\nSo my questions for the room:\n1. Does the problem implicitly assume finite mean? If so, this is trivial and we should say so.\n2. If not, can we construct a *counterexample* with an $F$ of undefined mean that sits in two different $\\mathcal{M}_n(\\mu)$? Think Cauchy: a sum of $n$ i.i.d. Cauchy$(0,\\gamma)$ has the same shape as a single Cauchy scaled by $n$ — that's the right place to look for nonuniqueness, because the \"center\" is then a location parameter not pinned by an expectation.\n3. Even without finite mean, symmetry might pin down a center via the *median* or via characteristic functions: $\\hat F(t)^{?}$ constraints from $\\sum X_i = n\\mu$ a.s. give $|\\hat F(t)|=1$ on a set, which forces lattice-type rigidity.\n\nI want to see exactly which moment assumption the existing proof used. Show me the line where they invoked $\\mathbb{E}[X]$, and tell me whether $F$ was assumed integrable. That's the gap.",
+      "created_at": "2026-06-23T12:32:43Z"
+    },
+    {
+      "id": "md531ceb3",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, you've correctly isolated the live question, but let me sharpen the characteristic-function approach you gestured at in point 3 — it actually resolves the Cauchy worry against you.\n\nSuppose $X_1+\\cdots+X_n = n\\mu$ a.s. with each $X_i\\sim F$. Condition on $X_2,\\dots,X_n$: then $X_1$ equals a constant $n\\mu - (X_2+\\cdots+X_n)$ a.s. — but $X_1$ has distribution $F$, which need not be degenerate, so we cannot localize that way. Instead work with the joint characteristic function. The constraint $\\sum X_i = n\\mu$ a.s. means the joint distribution of $(X_1,\\dots,X_n)$ is supported on the hyperplane $\\sum x_i = n\\mu$. Evaluate the characteristic function along the diagonal direction $t(1,\\dots,1)$:\n$$\\mathbb{E}\\,e^{it\\sum X_j} = e^{itn\\mu}, \\quad\\text{so } |\\mathbb{E}\\,e^{it\\sum X_j}|=1 \\text{ for all } t.$$\nThis is the rigidity I want. Now suppose the *same* $F$ also satisfies $\\sum Y_j = n\\nu$ a.s. for a possibly different coupling. The single-coordinate marginal $\\hat F$ is fixed; what differs is only the coupling.\n\nHere is the clean argument that pins the center, valid **without any moment assumption**. Take the symmetric truncation: let $g(t) = \\arg$ of the characteristic function is not well-defined globally, so instead use $F$'s own symmetrization. Consider $Z = X_1 - X_1'$ with $X_1'$ an independent copy; $Z$ is symmetric and always has a center at $0$. The mixability constraints for $\\mu$ and $\\nu$ both descend to the symmetrization, and the *difference* coupling $\\sum(X_j - X_j') = n(\\mu-\\nu)$... no — both give $0$, so symmetrization loses the center entirely. That tells me the center genuinely lives in the *location* data, exactly your Cauchy intuition.\n\nSo the decisive test is the Cauchy case directly. For Cauchy$(0,\\gamma)$, $\\sum_{i=1}^n X_i$ with i.i.d. copies is Cauchy$(0,n\\gamma)$ — **not** a constant — so the i.i.d. coupling never lies in any $\\mathcal{M}_n(\\mu)$. Complete mixability requires a *dependent* coupling forcing the sum to be deterministic, and Cauchy with its log-concave-failing, slowly decaying tails cannot be made to sum to a constant at all: the tail of $\\sum X_i$ under any coupling dominates the tail of a single $X_i$ (by a Fréchet–Hoeffding / comonotone lower-bound argument on the worst tail), which cannot be a point mass. So Cauchy is simply **not** $n$-completely mixable — it is not a counterexample, it is a non-member.\n\nThis reframes the whole problem the way I like: the question is really about the *structure of the set of mixable $F$*, and within that set whether $\\mu$ is an invariant. My claim: the right invariant is a **trimmed/principal-value mean** that exists precisely on the mixable cone. Concretely, $n$-complete mixability forces $F$ to have controlled tails (the support-rearrangement obstruction of Wang–Wang is exactly a tail-balance condition), and on that cone the principal value",
+      "created_at": "2026-06-23T12:33:30Z"
+    },
+    {
+      "id": "m6618e0d2",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Laci has essentially closed the door on the Cauchy escape, and I think he's right, but let me say *why* he's right in a way that makes the theorem transparent. The key is his observation that the joint distribution sits on the hyperplane $\\sum x_i = n\\mu$. Now here is the clean tail argument, which is really a comonotone lower bound — the same Fréchet–Hoeffding philosophy I use when counting integer points on quadrics with Duke and Rudnick.\n\nClaim: **if $F$ is $n$-completely mixable, then $F$ has a finite mean.** Suppose $\\sum_{i=1}^n X_i = n\\mu$ a.s. Then for each $i$,\n$$ X_i = n\\mu - \\sum_{j\\ne i} X_j. $$\nSo $X_i$ is bounded above by $n\\mu - (n-1)\\,\\mathrm{ess\\,inf}\\, F$ and below by $n\\mu - (n-1)\\,\\mathrm{ess\\,sup}\\,F$ — no, that needs boundedness. Let me instead do it honestly with tails. The right statement is: complete mixability forces $F$ to have a finite mean. Take expectations is *not* allowed a priori, but the constraint gives, for the upper tail, $\\mathbb{P}(X_1 > t) \\le \\mathbb{P}(\\sum_{j\\ge 2} X_j < n\\mu - t) \\le (n-1)\\,\\mathbb{P}(X_2 < (n\\mu-t)/(n-1))$ by a union bound — and symmetrically for the lower tail. Iterating, the surviving tail must decay fast enough that $\\int |x|\\,dF < \\infty$. A distribution with no first moment, like Cauchy, simply violates this — exactly Laci's conclusion.\n\nOnce finite mean is forced, Dan's one-line argument is not a *hypothesis* but a *theorem*: integrability is automatic on the mixable cone, $\\mu = \\mathbb{E}_F[X]$, and uniqueness follows. So the structure is:\n\n1. Mixability $\\Rightarrow$ finite mean (tail/comonotone rigidity — this is the real content);\n2. Finite mean $\\Rightarrow$ $\\mu = \\mathbb{E}_F[X]$ (linearity — trivial).\n\nThe theorem behind the technical one is step (1): **the mixable cone is contained in $L^1$.** That's where Laci's \"trimmed mean\" intuition is actually unnecessary — there's no need for a principal value, because heavy tails are simply expelled from the cone. The action item is to nail the tail iteration rigorously and confirm it forces $L^1$ for every fixed $n\\ge 2$. I'd bet the original proof's gap is precisely that it asserted finite mean rather than *deriving* it.",
+      "created_at": "2026-06-23T12:34:16Z"
+    },
+    {
+      "id": "ma16c3956",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, I love where this is going, but let me stress-test step (1), because I think the union-bound tail argument as written has a sign/quantifier bug that we need to fix before we declare victory.\n\nYou wrote $\\mathbb{P}(X_1 > t) \\le \\mathbb{P}(\\sum_{j\\ge 2} X_j < n\\mu - t)$. That's correct from the hyperplane constraint. But then bounding $\\mathbb{P}(\\sum_{j\\ge 2}X_j < n\\mu-t)$ by $(n-1)\\mathbb{P}(X_2 < (n\\mu-t)/(n-1))$ is the *wrong direction* of a union bound — the event \"sum is small\" is not contained in \"some term is small\"; it's contained in \"*all* terms aren't large,\" which is an intersection, not a union. The correct statement is $\\{\\sum_{j\\ge2} X_j < s\\} \\subseteq \\bigcup_{j\\ge 2}\\{X_j < s/(n-1)\\}$, which gives exactly your inequality — so it *is* a union bound and you're fine. I retract the bug; let me instead point at the real subtlety.\n\nThe real subtlety is whether the iteration *closes*. Define the upper-tail function $\\bar F(t)=\\mathbb P(X_1>t)$. Your inequality reads\n$$\\bar F(t) \\le (n-1)\\, F\\!\\Big(\\frac{n\\mu - t}{n-1}\\Big),$$\ni.e. the *upper* tail at $t$ is controlled by the *lower* tail at a point that goes to $-\\infty$ as $t\\to+\\infty$. So this couples upper and lower tails, and the iteration only forces integrability if the two tails feed each other into geometric decay. For a *symmetric* heavy-tailed $F$ this is clean and you get the contradiction; for a one-sidedly heavy $F$ I want to see the coupled recursion written out. So my concrete ask:\n\n1. Write the recursion as a map on the pair $(\\bar F, F_{\\text{lower}})$ and show its only fixed points decaying slower than $1/t$ are killed — that's the actual content, and it's a contraction-type argument, very much in the spirit of a barrier/potential function: define $\\Phi(t)=t\\cdot(\\bar F(t)+F_{\\text{lower}}(-t))$ and show the constraint forces $\\Phi(t)\\to 0$.\n2. **Here's the cleaner route I'd bet on, and it sidesteps tails entirely.** Use Laci's characteristic-function rigidity *constructively*. The joint c.f. on the diagonal satisfies $|\\hat F(t)|^? $— more precisely, supported on $\\sum x_i = n\\mu$ means $\\prod$-type constraints fail because of dependence, but the marginal $\\hat F$ is fixed. Now the comonotone coupling gives a Fréchet–Hoeffding lower bound on the variance of $\\sum X_i$: for *any* coupling, $\\mathrm{Var}(\\sum X_i)\\ge$ (sum of comonotone correlations), but more usefully, a deterministic sum needs $\\sum X_i$ constant, and the minimal achievable $L^2$ spread of $\\sum X_i$ over all couplings with fixed marginal $F$ is governed by the *mean* of $F$. If $F\\notin L^1$, that minimal spread is infinite, so you can never reach a constant. That's a one-line $L^2$/optimal-transport obstruction rather than a delicate tail iteration.\n\nSo I agree with Peter's two-",
+      "created_at": "2026-06-23T12:36:37Z"
+    },
+    {
+      "id": "mb5271838",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your $L^2$ shortcut is appealing but it has a fatal gap: if $F\\notin L^2$ but $F\\in L^1$, the \"minimal spread is infinite\" claim fails to distinguish the cases you care about — and worse, the optimal-transport spread you invoke is the *variance*, which says nothing when the second moment is infinite but the first is finite. The clean obstruction is finite mean, not finite variance, so we must run the $L^1$ tail argument, not the $L^2$ one. Let me settle step (1) honestly, because Peter's recursion does close — but the clean way is to symmetrize the constraint, not to chase the coupled tail pair.\n\nHere is the decisive observation. Mixability is preserved under a translation: $F\\in\\mathcal M_n(\\mu)$ iff the shifted law $F(\\cdot+\\mu)\\in\\mathcal M_n(0)$. So WLOG $\\mu=0$ and $\\sum_{i=1}^n X_i = 0$ a.s. Now take an independent copy $(X_1',\\dots,X_n')$ of the *same coupling*; then $\\sum_i (X_i - X_i') = 0$ a.s. too, with each $Z_i := X_i - X_i'$ symmetric, $Z_i\\sim G$ where $G$ is the symmetrization of $F$. So $G$ is $n$-completely mixable with center $0$, and crucially **$F\\in L^1 \\iff G\\in L^1$** (symmetrization preserves the $1$-integrability). For the symmetric $G$, Peter's coupled recursion *decouples*: writing $\\bar G(t)=\\mathbb P(Z_1>t)$, the hyperplane bound gives\n$$\\bar G(t)\\le (n-1)\\,\\bar G\\!\\Big(\\tfrac{t}{n-1}\\Big)\\quad\\text{is the wrong direction; the right one is } \\bar G(t)\\le (n-1)\\,G\\big(-\\tfrac{t}{n-1}\\big)=(n-1)\\bar G\\big(\\tfrac{t}{n-1}\\big),$$\nusing symmetry $G(-s)=\\bar G(s)$. This is now a *single* self-referential inequality, and it forces\n$$\\bar G(t)\\le (n-1)\\,\\bar G\\!\\Big(\\tfrac{t}{n-1}\\Big).$$\nIterating $k$ times, $\\bar G(t)\\le (n-1)^k \\bar G(t/(n-1)^k)$ — which alone does **not** decay, so the union bound in this naive form is too lossy. The genuine content (Wang–Wang, *\"The complete mixability and convex minimization problems with monotone marginal densities\"*) is that complete mixability requires the **mean condition**: the support must allow a balanced rearrangement, and the precise tail obstruction comes from the fact that the comonotone *lower* bound on the sum's spread is finite iff $\\mathbb E|X|<\\infty$.\n\nSo I now agree with Peter's two-step skeleton, but the rigorous engine is not a fixed-point contraction on tails — it is the **Fréchet–Hoeffding rearrangement obstruction in $L^1$**:\n- A constant sum $\\sum X_i=0$ means the joint law is the *most negatively dependent* possible in the diagonal direction; the existence of such a coupling with fixed marginal $F$ is exactly Wang–Wang's mixability criterion, and that criterion is vacuous unless $\\int|x|\\,dF<\\infty$.\n- Given $F\\in L^1$, integr",
+      "created_at": "2026-06-23T12:37:25Z"
+    },
+    {
+      "id": "m3ba6b417",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laci, your symmetrization is the right move — it's exactly the device I use when passing from a Maass form to its microlocal lift: kill the location, study the spectrum. But notice what symmetrization *costs* us: it converts the question about the center $\\mu$ into a pure integrability question about $G$, and then the center uniqueness is recovered *afterward* by Dan's linearity. So the logical skeleton is now clean. The one honest gap remaining is that the naive iteration $\\bar G(t)\\le (n-1)\\bar G(t/(n-1))$ is, as you correctly flag, **too lossy** — it's consistent with $\\bar G(t)\\sim t^{-\\alpha}$ for *any* $\\alpha>0$, since $(n-1)\\cdot (t/(n-1))^{-\\alpha} = (n-1)^{1+\\alpha} t^{-\\alpha} \\gg t^{-\\alpha}$. The union bound throws away the dependence structure that is the whole point.\n\nHere is what I think is the *real* theorem, and it's not a tail iteration at all — it's a positivity/duality statement, in the spirit of the explicit formula where one tests against a positive function. Complete mixability with center $0$ says: there is a coupling with $\\sum X_i \\equiv 0$. Test against any **bounded, increasing, odd** function $\\psi$:\n$$0 = \\mathbb{E}\\,\\psi\\!\\Big(\\tfrac{1}{n}\\sum_i X_i\\Big),$$\nand by a Chebyshev/rearrangement (Hardy–Littlewood) inequality the comonotone coupling *maximizes* $\\mathbb{E}[\\psi(\\bar X)\\cdot \\mathrm{sgn}]$ — so the existence of the *vanishing* coupling forces a two-sided balance: $\\int_0^\\infty \\bar F(t)\\,dt = \\int_{-\\infty}^0 F(t)\\,dt$, and **both must be finite**. That last finiteness is exactly $F\\in L^1$, and it is *not* derivable from a single-tail recursion; it requires the Fréchet–Hoeffding *upper* bound (comonotone), which is the dual constraint Dan reached for and Laci correctly anchored in Wang–Wang.\n\nSo my proposed action plan, sharpened:\n1. Drop the tail-iteration approach — it genuinely doesn't close, you both showed that.\n2. Run the **Hardy–Littlewood rearrangement obstruction**: mixability $\\Rightarrow$ the comonotone coupling's diagonal spread is finite $\\iff F\\in L^1$. This is the real content of step (1), and it is Wang–Wang's criterion read correctly.\n3. Then Dan's linearity gives $\\mu=\\mathbb{E}_F[X]$, uniqueness, done.\n\nBut let me ask the provocative question, because I always want the theorem behind the theorem: **is uniqueness of the center really an $L^1$ phenomenon, or is it a convexity phenomenon?** I suspect the cleanest statement is that the map $\\mu\\mapsto \\mathcal{M}_n(\\mu)$ is a *translate* — $\\mathcal{M}_n(\\mu) = \\mu + \\mathcal{M}_n(0)$ — and two translates of a fixed set in distribution-space intersect iff the centers coincide, *because* the linear functional \"mean\" separates them. That makes uniqueness automatic and the only content is that the mean is well-defined on the cone. That's the theorem. Everything else is plumbing.",
+      "created_at": "2026-06-23T12:38:14Z"
+    },
+    {
+      "id": "md63bb681",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T12:39:05Z"
+    },
+    {
+      "id": "m00e42e0a",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nProve uniqueness of the mixability center by showing the n-completely mixable cone lies in L^1 (via a Hardy-Littlewood/Fréchet-Hoeffding rearrangement obstruction rather than a lossy tail iteration), after which linearity of expectation forces the center to equal the mean and gives uniqueness.",
+      "created_at": "2026-06-23T12:39:05Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove uniqueness of the mixability center by showing the n-completely mixable cone lies in L^1 (via a Hardy-Littlewood/Fréchet-Hoeffding rearrangement obstruction rather than a lossy tail iteration), after which linearity of expectation forces the center to equal the mean and gives uniqueness.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish trivial case under finite mean",
+        "body": "Formally prove that if F has a finite first moment and X_1+...+X_n = n*mu a.s. with each X_i ~ F, then taking expectations yields mu = E_F[X], hence the center is the unique mean. Conclude that M_n(mu) ∩ M_n(nu) = ∅ for mu ≠ nu among integrable F. This isolates the entire problem onto the moment hypothesis.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Reduce to centered and symmetrized problem",
+        "body": "Prove the translation invariance F ∈ M_n(mu) iff F(·+mu) ∈ M_n(0), reducing WLOG to mu = 0 with sum X_i = 0 a.s. Then introduce the symmetrization G via Z_i = X_i - X_i' (independent copy of the coupling), showing G is n-completely mixable with center 0 and that F ∈ L^1 iff G ∈ L^1. This sets up the integrability question cleanly.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Document the failure of the naive tail iteration",
+        "body": "Make explicit that the union-bound recursion barG(t) ≤ (n-1)·barG(t/(n-1)) is too lossy: it is consistent with barG(t) ~ t^{-alpha} for any alpha>0, since (n-1)·(t/(n-1))^{-alpha} = (n-1)^{1+alpha} t^{-alpha} >> t^{-alpha}. Confirm this approach cannot force L^1 and should be abandoned, so the team does not waste effort on a non-closing contraction.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove mixability implies finite mean via rearrangement obstruction",
+        "body": "Carry out the Hardy-Littlewood / Fréchet-Hoeffding argument: a vanishing coupling sum_i X_i ≡ 0 forces a two-sided tail balance ∫_0^∞ barF(t) dt = ∫_{-∞}^0 F(t) dt with both integrals finite, which is exactly F ∈ L^1. Anchor this in the Wang-Wang complete mixability criterion (monotone marginal densities), showing the comonotone (most negatively dependent in the diagonal) coupling has finite diagonal spread iff F ∈ L^1, so heavy-tailed F is expelled from the cone.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Confirm Cauchy / heavy-tailed F is a non-member, not a counterexample",
+        "body": "Verify rigorously that distributions with undefined or infinite mean (e.g. Cauchy(0,gamma)) are not n-completely mixable for any center: the i.i.d. sum is Cauchy(0,n*gamma) (never constant) and no coupling can make the deterministic-sum constraint hold given the L^1 obstruction from step 3. This closes the 'Cauchy escape' Dan raised and validates Laci's non-member claim.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Assemble full uniqueness proof",
+        "body": "Combine the steps into the final logical skeleton: (1) mixability ⇒ F ∈ L^1 (rearrangement obstruction), (2) L^1 ⇒ mu = E_F[X] (linearity), hence the center is unique and M_n(mu) ∩ M_n(nu) = ∅ for mu ≠ nu with no moment hypothesis assumed. Optionally state the structural reformulation M_n(mu) = mu + M_n(0), with the mean functional separating translates.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify each inequality and cite the literature precisely",
+        "body": "Independently check the direction of every inequality (especially the hyperplane/union-bound directions flagged in discussion), the symmetrization integrability equivalence, and the exact statement and applicability of the Wang-Wang mixability criterion and the Hardy-Littlewood rearrangement inequality. Confirm no hidden finite-variance assumption sneaks in (Dan's rejected L^2 shortcut must not be used).",
+        "agent": "verifier-agent",
+        "depends_on": [
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T12:39:05Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

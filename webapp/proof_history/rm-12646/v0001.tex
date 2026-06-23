@@ -1,0 +1,593 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\AA}{\mathbb{A}}
+\newcommand{\cO}{\mathcal{O}}
+\DeclareMathOperator{\Spec}{Spec}
+\DeclareMathOperator{\Proj}{Proj}
+\DeclareMathOperator{\trdeg}{trdeg}
+\DeclareMathOperator{\Pic}{Pic}
+\DeclareMathOperator{\dimkv}{\dim_k}
+
+\begin{document}
+
+\title{An algorithm for deciding parametrizability and computing a rational
+parametrization of an algebraic surface}
+\maketitle
+
+\begin{abstract}
+Let $k$ be an algebraically closed field of characteristic zero, given through
+effective field arithmetic, and let $X\subset\PP^n_k$ be an irreducible
+projective surface (an affine surface is handled by taking projective closure).
+We give a complete algorithm that, from defining equations of $X$, decides
+whether $k(X)$ is a purely transcendental extension of $k$ of transcendence
+degree two (i.e.\ whether $X$ is \emph{rational}) and, in the affirmative case,
+outputs an explicit rational parametrization $\varphi\colon\AA^2_k\dashrightarrow
+X$, $\varphi\in k(s,t)^{n+1}$ (resp.\ $k(s,t)^n$ in the affine case).  The
+algorithm is built from four ingredients: (i) resolution of singularities to a
+smooth projective model; (ii) the Castelnuovo rationality criterion, made
+effective through cohomology of pluricanonical sheaves computable by Gr\"obner
+bases; (iii) the minimal-model program for surfaces, which constructively
+reduces a rational surface either to $\PP^2$ or to a conic bundle over $\PP^1$;
+and (iv) rational point search on conics with rational function-field
+coefficients. We prove correctness and termination and give a complexity bound
+that is elementary recursive in the input size, with the dominant cost being
+that of the Gr\"obner-basis computations.
+\end{abstract}
+
+\section{Formalization and conventions}
+
+Throughout, $k$ is an algebraically closed field of characteristic $0$.  We
+assume $k$ is presented \emph{effectively}: its elements appearing in inputs and
+intermediate data lie in a finitely generated subfield
+$k_0=\mathbb{Q}(\alpha_1,\dots,\alpha_r)$ in which we can perform the four field
+operations, decide equality, and factor univariate polynomials (the latter is
+possible: $k_0$ is a finitely generated extension of $\mathbb{Q}$, hence its
+univariate polynomial factorization is reducible to factorization over
+$\mathbb{Q}$ together with primitive-element manipulations, all algorithmic).
+Because $k$ is algebraically closed, whenever the algorithm must adjoin a root
+of a univariate polynomial $f\in k_0[u]$ it does so by passing to
+$k_1=k_0[u]/(g)$ for an irreducible factor $g\mid f$; this $k_1\subset k$ is
+again effective.  We use the phrase ``compute in $k$'' to mean ``perform the
+operation in the current effective subfield, enlarging it by such algebraic
+adjunctions when a root is required.''  All such adjunctions occurring in the
+algorithm are of bounded degree (made explicit below), so the cumulative field
+extension stays effective.
+
+\begin{definition}[Input size]\label{def:size}
+The input is a finite set of homogeneous generators $f_1,\dots,f_m\in
+k[x_0,\dots,x_n]$ of the saturated homogeneous ideal $I(X)$ of an irreducible
+projective surface $X\subset\PP^n_k$.  Let $d=\max_i\deg f_i$ and let $H$ bound
+the bit size (height) of the coefficients of the $f_i$, expressed in the
+effective field $k_0$.  The \emph{input size} is $N=(n,m,d,H)$; complexity is
+measured in $n,m,d,H$.  An affine surface $X^{\mathrm{aff}}\subset\AA^n_k$ with
+ideal $J\subset k[y_1,\dots,y_n]$ is replaced by the projective closure
+$X=\overline{X^{\mathrm{aff}}}\subset\PP^n_k$ (the saturation of the
+homogenization of $J$ with respect to the irrelevant ideal), which is computable
+by a Gr\"obner basis; a parametrization of $X$ restricts to one of
+$X^{\mathrm{aff}}$ by setting $x_0=1$ and clearing denominators.  Hence we treat
+only the projective case.
+\end{definition}
+
+\begin{definition}[Rationality]\label{def:rat}
+$X$ is \emph{rational} (= parametrizable in the sense of the problem) if
+$k(X)\cong k(s,t)$ as $k$-algebras, equivalently if there is a dominant rational
+map $\PP^2_k\dashrightarrow X$.  Since $\dim X=2$ and $X$ is irreducible,
+$\trdeg_k k(X)=2$ automatically; the content of rationality is that the
+extension is \emph{purely} transcendental.
+\end{definition}
+
+We recall the two facts from the theory of algebraic surfaces on which the
+algorithm rests.
+
+\begin{theorem}[Castelnuovo's rationality criterion; char $0$]
+\label{thm:castelnuovo}
+Let $S$ be a smooth projective surface over $k$.  Then $S$ is rational if and
+only if
+\[
+q(S):=h^1(S,\cO_S)=0
+\qquad\text{and}\qquad
+P_2(S):=h^0(S,\cO_S(2K_S))=0 ,
+\]
+where $K_S$ is a canonical divisor.  Both $q(S)$ and $P_2(S)$ are birational
+invariants of smooth projective surfaces.
+\end{theorem}
+
+\begin{proof}
+This is Castelnuovo's theorem; see Beauville, \emph{Complex Algebraic
+Surfaces}, Thm.~V.1, or Barth--Hulek--Peters--Van~de~Ven, \emph{Compact Complex
+Surfaces}, Ch.~VI.  The birational invariance of $q$ and of the plurigenera
+$P_m=h^0(mK_S)$ for smooth projective surfaces is standard (loc.\ cit.,
+Ch.~III); it is exactly what allows us to read these numbers off any smooth
+model.  Castelnuovo's criterion holds over any algebraically closed field of
+characteristic $0$ because the statement is geometric and the surface and its
+relevant cohomology are defined over a finitely generated subfield of $k$ which
+embeds into $\mathbb{C}$; rationality descends and ascends along the extension
+$k_0\hookrightarrow\mathbb{C}$ since it is detected by the geometric invariants
+$q,P_2$ which are insensitive to algebraically closed base change in
+characteristic $0$ (flat base change for coherent cohomology).
+\end{proof}
+
+\begin{theorem}[Structure of rational surfaces via the MMP]
+\label{thm:mmp}
+Let $S$ be a smooth projective rational surface over $k$.  Running the
+minimal-model program (repeatedly contracting $(-1)$-curves) terminates in a
+smooth projective \emph{minimal} model $S_{\min}$ that is either
+\begin{enumerate}
+\item $\PP^2_k$, or
+\item a Hirzebruch surface $\mathbb{F}_e=\PP(\cO_{\PP^1}\oplus\cO_{\PP^1}(e))$
+for some $e\ge0$, $e\ne1$ (a $\PP^1$-bundle over $\PP^1$).
+\end{enumerate}
+Each contraction of a $(-1)$-curve is a birational morphism with an explicit
+inverse (a blow-up), realised by explicit rational maps.  In either terminal
+case $S_{\min}$ carries an explicit birational map to $\PP^2_k$.
+\end{theorem}
+
+\begin{proof}
+The classification of minimal rational surfaces is classical
+(Beauville, Ch.~IV; the statement is the Enriques--Castelnuovo classification of
+relatively minimal rational surfaces).  A $(-1)$-curve is a smooth rational
+curve $E$ with $E^2=-1$; by Castelnuovo's contractibility criterion it is
+contractible to a smooth point, and the contraction is the inverse of a blow-up.
+For a Hirzebruch surface $\mathbb{F}_e$ the bundle projection
+$\mathbb{F}_e\to\PP^1$ has a section, and a fibre together with the section give
+a birational map $\mathbb{F}_e\dashrightarrow\PP^1\times\PP^1\dashrightarrow\PP^2$
+(explicit: $\mathbb{F}_e$ is obtained from $\PP^1\times\PP^1$ or from $\PP^2$ by
+a sequence of explicit elementary transformations / blow-ups, all invertible by
+explicit rational maps).  $\PP^2$ is itself trivially birational to $\AA^2$.
+\end{proof}
+
+\begin{remark}
+We do not need the full force of the Hirzebruch classification.  For the
+algorithm it suffices to know that a smooth projective rational surface admits
+an explicit birational map to a \emph{conic bundle} $C\to\PP^1$ with $C$ a
+geometrically rational surface and generic fibre a conic, or directly to
+$\PP^2$.  We use the adjunction/anticanonical machinery below to reach this form
+constructively.
+\end{remark}
+
+\section{The algorithm}
+
+\subsection{Overview}
+The algorithm has the following stages.
+\begin{enumerate}
+\item[(A)] \textbf{Resolution.}  Compute a smooth projective model $S$ of $X$
+together with an explicit birational map $\pi\colon S\dashrightarrow X$ and its
+inverse.
+\item[(B)] \textbf{Decision.}  Compute $q(S)$ and $P_2(S)$ via sheaf cohomology.
+By Theorem~\ref{thm:castelnuovo}, $X$ is rational iff $q(S)=P_2(S)=0$.  If not,
+output \textsc{Not parametrizable} and halt.
+\item[(C)] \textbf{Reduction to a minimal model.}  When $S$ is rational, run the
+constructive MMP (Theorem~\ref{thm:mmp}) to obtain $S_{\min}\in\{\PP^2,
+\mathbb{F}_e\}$ and an explicit birational map $\beta\colon
+S\dashrightarrow S_{\min}$.
+\item[(D)] \textbf{Parametrization of the minimal model.}  Produce an explicit
+birational map $\gamma\colon\PP^2\dashrightarrow S_{\min}$ (for the
+$\mathbb{F}_e$ case via a conic bundle and a rational point search; for $\PP^2$
+the identity).
+\item[(E)] \textbf{Composition and dehomogenization.}  Set
+$\varphi=\pi\circ\beta^{-1}\circ\gamma\colon\PP^2\dashrightarrow X$, compose the
+explicit rational maps, restrict to the affine chart $\{[s:t:1]\}$ of the source,
+and output $\varphi(s,t)$.
+\end{enumerate}
+
+We now make each stage effective and prove correctness.
+
+\subsection{Stage A: resolution of singularities}
+
+\begin{lemma}[Effective resolution]\label{lem:resolution}
+There is an algorithm that, given $I(X)$ as in Definition~\ref{def:size},
+outputs a smooth projective surface $S\subset\PP^{M}_k$ (for some computed $M$)
+given by its homogeneous ideal, together with an explicit birational morphism
+$\rho\colon S\to X$ given by homogeneous polynomials, an explicit rational
+inverse $\rho^{-1}\colon X\dashrightarrow S$, and the smooth locus certificate.
+\end{lemma}
+
+\begin{proof}
+Hironaka's resolution of singularities in characteristic $0$ is constructive and
+has been turned into explicit algorithms (Bierstone--Milman; Villamayor;
+Bravo--Encinas--Villamayor); for surfaces one may also use the classical
+algorithm by repeated normalized blow-ups of the singular locus, which
+terminates by Zariski's resolution for surfaces.  Concretely:
+\begin{enumerate}
+\item Compute the singular locus $\Sigma=\mathrm{Sing}(X)$ as the (radical of
+the) ideal generated by $I(X)$ and the $3\times3$ minors of the Jacobian of a
+generating set of $I(X)$ in each affine chart; this is a Gr\"obner-basis
+computation.  $\Sigma$ has dimension $\le1$.
+\item Blow up $X$ along $\Sigma$: form the Rees algebra
+$\bigoplus_{j\ge0}\Sigma^j t^j$, present it by generators and relations
+(elimination/Gr\"obner), and take $\Proj$.  This yields $X_1$ with a birational
+morphism $X_1\to X$ given by explicit homogeneous maps; compute it as the closure
+of the graph.
+\item Normalize $X_1$ (compute the integral closure of its coordinate ring by
+the algorithm of de Jong / Greuel--Pfister, again Gr\"obner based), obtaining
+$X_1^{\nu}\to X_1$.
+\item Repeat (1)--(3) on $X_1^{\nu}$.
+\end{enumerate}
+By Zariski's theorem on resolution of surface singularities (valid in char $0$),
+the embedded multiplicity / Hilbert--Samuel data strictly decreases under the
+normalized blow-up of the (reduced) singular locus, so after finitely many
+steps $\mathrm{Sing}$ becomes empty; smoothness is certified by checking that the
+Jacobian has full rank $3$ at every point, i.e.\ that the Jacobian ideal together
+with $I$ is the irrelevant ideal (a Gr\"obner test for the empty vanishing
+locus).  Each step is given by explicit homogeneous maps, so the composite
+$\rho\colon S\to X$ and its rational inverse $\rho^{-1}$ are explicit.
+\end{proof}
+
+\subsection{Stage B: the decision (cohomology of $\cO_S$ and $2K_S$)}
+
+\begin{lemma}[Effective cohomology and plurigenera]\label{lem:cohomology}
+For a smooth projective $S\subset\PP^M_k$ given by its saturated homogeneous
+ideal, the numbers $q(S)=h^1(\cO_S)$ and $P_2(S)=h^0(\cO_S(2K_S))$ are
+computable.
+\end{lemma}
+
+\begin{proof}
+\emph{Computing $h^1(\cO_S)$.}  Sheaf cohomology of a coherent sheaf on $\PP^M$
+presented by a graded module is algorithmic: a finite free resolution of the
+graded module $\bigoplus_d H^0(\PP^M,\cO_S(d))$ (equivalently of the homogeneous
+coordinate ring $R=k[x]/I(X_{\mathrm{model}})$ as a module) is computed by
+iterated syzygy (Gr\"obner) computations, and local cohomology / sheaf
+cohomology is read off via the Bernstein--Gel'fand--Gel'fand correspondence or by
+Eisenbud--Fl\o ystad--Schreyer's ``Tate resolution,'' all implemented as exact
+linear-algebra over $k$ on the graded pieces.  Equivalently, $h^1(\cO_S)$ is
+obtained from the Hilbert polynomial and the dimensions of finitely many graded
+pieces of local cohomology modules $H^i_{\mathfrak m}(R)$, which are computable
+from a free resolution of $R$.  Thus $q(S)$ is computable.
+
+\emph{Computing the canonical sheaf.}  For a smooth surface $S\subset\PP^M$ with
+$\dim S=2$, the canonical sheaf is
+$\omega_S=\mathcal{E}xt^{M-2}_{\cO_{\PP^M}}(\cO_S,\omega_{\PP^M})$, with
+$\omega_{\PP^M}=\cO_{\PP^M}(-M-1)$.  This $\mathcal{E}xt$ is computed from a free
+resolution of $\cO_S$ over $\cO_{\PP^M}$ by dualizing and taking cohomology of the
+dual complex; the result is a graded module $\Omega$ representing $\omega_S$,
+output as a presentation.  All steps are Gr\"obner computations over $k$.
+
+\emph{Computing $P_2$.}  The bicanonical sheaf $\cO_S(2K_S)=\omega_S^{\otimes2}$
+is represented by the symmetric/tensor square module $\Omega^{(2)}$ (compute the
+image of $\Omega\otimes\Omega\to(\omega_S^{\otimes2})$, i.e.\ a presentation of
+the double-dual of $\Omega\otimes_R\Omega$; reflexive hull computed by a further
+$\mathcal{H}om$ into $R$).  Then $P_2(S)=h^0(S,\omega_S^{\otimes2})=
+\dim_k(\Omega^{(2)})_{\mathrm{deg}\,0}$ in the sheafified sense, again read off
+from the BGG/Tate machine, or as
+$h^0(S,\omega_S^{\otimes2})$ via the same local-cohomology computation applied
+to $\Omega^{(2)}$.  Hence $P_2(S)$ is computable.
+\end{proof}
+
+\begin{proposition}[Correctness of the decision]\label{prop:decision}
+$X$ is parametrizable (Definition~\ref{def:rat}) if and only if the smooth model
+$S$ of Lemma~\ref{lem:resolution} satisfies $q(S)=0$ and $P_2(S)=0$.
+\end{proposition}
+
+\begin{proof}
+$X$ is rational iff its smooth model $S$ is rational (rationality is a
+birational invariant and $\rho\colon S\to X$ is birational).  By
+Theorem~\ref{thm:castelnuovo}, $S$ is rational iff $q(S)=P_2(S)=0$.  Both numbers
+are computed in Lemma~\ref{lem:cohomology}.  If either is nonzero the algorithm
+correctly returns \textsc{Not parametrizable}.  (Note: the hypothesis of the
+problem guarantees we are in the rational case, but the algorithm also
+\emph{decides} the question, so we keep the test.)
+\end{proof}
+
+\subsection{Stage C: constructive minimal-model program}
+
+\begin{lemma}[Finding and contracting $(-1)$-curves]\label{lem:mmp}
+There is an algorithm that, given a smooth projective rational surface $S$,
+either certifies $S$ is minimal, or finds an explicit $(-1)$-curve $E\subset S$
+and computes the contraction $c\colon S\to S'$ (a smooth projective surface) with
+its explicit inverse, the blow-up $S=\mathrm{Bl}_{p}S'$ at the computed point
+$p=c(E)$.  Iterating, the algorithm terminates in a minimal model $S_{\min}$.
+\end{lemma}
+
+\begin{proof}
+\emph{Detecting $(-1)$-curves.}  A $(-1)$-curve is an irreducible curve
+$E\subset S$ with $p_a(E)=0$ and $E^2=-1$, equivalently (adjunction)
+$E\cdot K_S=-1$ and $E^2=-1$.  We enumerate candidate curves of bounded degree
+in the fixed projective embedding $S\subset\PP^M$ (the degree of a $(-1)$-curve
+in a fixed very ample $H$ is bounded by $H\cdot E$, and the possible classes of
+$(-1)$-curves with $H\cdot E\le B$ form a finite computable set because the
+N\'eron--Severi lattice $\mathrm{NS}(S)$ is finitely generated and its
+intersection form is computable from the resolution history).  Concretely:
+\begin{enumerate}
+\item Compute a finite generating set of $\mathrm{NS}(S)$ together with the
+intersection pairing.  For a rational surface, $\mathrm{NS}(S)\cong
+\Pic(S)$ is free of rank $\rho=10-K_S^2$ (since $b_1=0$, $b_2=10-K_S^2$ for a
+rational surface), generated by the pullbacks of a hyperplane class of
+$\PP^2$/ruling classes and the exceptional classes recorded during the
+resolution; the intersection numbers among these are known from the blow-up
+combinatorics.  $K_S$ is expressed in this basis via the adjunction formula and
+the recorded blow-ups.
+\item Solve the finite Diophantine system $E^2=-1$, $E\cdot K_S=-1$, $H\cdot
+E>0$, $H\cdot E\le B$ over the lattice for classes $[E]$.  For each solution
+class, test effectivity and irreducibility by computing
+$h^0(S,\cO_S(E))$ (Riemann--Roch plus the cohomology algorithm of
+Lemma~\ref{lem:cohomology}) and inspecting the linear system; a representative
+curve is recovered as a vanishing locus of a section.
+\end{enumerate}
+\emph{Contracting.}  Given $E$ with $E^2=-1$, $p_a(E)=0$, Castelnuovo's
+contractibility criterion provides a birational morphism $c\colon S\to S'$ onto a
+smooth projective surface contracting exactly $E$ to a point $p$.  Effectively,
+$c$ is realised by the linear system $|H'|$ where $H'=mH-(mH\cdot E)E$ chosen so
+that $H'\cdot E=0$ and $H'$ remains very ample on $S\setminus E$; the morphism
+defined by a basis of $H^0(S,\cO_S(H'))$ is computed, its image $S'$ is the
+projective surface defined by the kernel of the corresponding ring map
+(elimination), and $c^{-1}$ is the blow-up of $S'$ at the computed point $p$,
+again explicit.  Smoothness of $S'$ at $p$ is guaranteed by the criterion and is
+verified by the Jacobian test.
+
+\emph{Termination.}  Each contraction drops $\rho(S)=\mathrm{rank}\,
+\mathrm{NS}(S)$ by exactly $1$ and increases $K_S^2$ by $1$.  Since $\rho\ge1$
+always and a non-minimal surface has $\rho\ge2$, after at most
+$\rho(S)-1$ contractions no $(-1)$-curve remains; that surface is minimal,
+$S_{\min}$.  For a rational surface $\mathrm{NS}$ is finitely generated with the
+stated rank, so the loop terminates in $\le\rho(S)-1$ steps, each step finite by
+the bounded enumeration above.
+\end{proof}
+
+\begin{remark}[Why minimal $\Rightarrow$ $\PP^2$ or $\mathbb F_e$]
+A minimal rational surface $S_{\min}$ (no $(-1)$-curves, $q=P_2=0$) is, by the
+Enriques--Castelnuovo classification (Theorem~\ref{thm:mmp}), isomorphic to
+$\PP^2$ or to a Hirzebruch surface $\mathbb F_e$, $e\ne1$.  Algorithmically we do
+not need to identify $e$ abstractly: we distinguish the two cases by $K_S^2$
+($K^2=9$ for $\PP^2$; $K^2=8$ for $\mathbb F_e$) and by the presence of a base-point-free
+pencil $|F|$ with $F^2=0$, $F\cdot K=-2$ (a ruling), which exists iff
+$S_{\min}\cong\mathbb F_e$ and is found by the same linear-system search as in
+Lemma~\ref{lem:mmp}.
+\end{remark}
+
+\subsection{Stage D: parametrizing the minimal model}
+
+\begin{lemma}[Parametrizing $\PP^2$ and $\mathbb F_e$]\label{lem:param-min}
+There is an algorithm producing an explicit birational map
+$\gamma\colon\PP^2_k\dashrightarrow S_{\min}$.
+\end{lemma}
+
+\begin{proof}
+\emph{Case $S_{\min}=\PP^2$.}  Then $\gamma=\mathrm{id}$ (after expressing the
+computed embedding of $S_{\min}\subset\PP^M$ as the $2$-uple--type image of
+$\PP^2$; the very ample system used to embed $S_{\min}$ is a multiple of the
+hyperplane class of $\PP^2$, and reading the embedding backwards gives explicit
+coordinates $[s:t:u]\mapsto S_{\min}$, the Veronese-type map, which is rational
+and birational onto its image).
+
+\emph{Case $S_{\min}=\mathbb F_e$.}  Use the ruling $p\colon S_{\min}\to\PP^1$
+found above; its generic fibre is a smooth conic over the field
+$K=k(\PP^1)=k(\lambda)$ (after restricting to a section's complement one
+realises $S_{\min}$ as a conic bundle).  Concretely the bicanonical / ruling
+data express $S_{\min}$ birationally as the closure of an affine conic
+\[
+Q(\lambda;y,z)=a(\lambda)y^2+b(\lambda)yz+c(\lambda)z^2+d(\lambda)y+e(\lambda)z+f(\lambda)=0,
+\qquad a,\dots,f\in k[\lambda],
+\]
+computed by elimination from the equations of $S_{\min}$ relative to $p$.  A
+$k(\lambda)$-rational point of this conic gives, by stereographic projection
+through that point, a birational parametrization of the conic over $k(\lambda)$,
+hence of $S_{\min}$ over $\PP^1$, i.e.\ a birational map
+$\AA^1_{\lambda}\times\AA^1_{\mu}\dashrightarrow S_{\min}$, which is the desired
+$\gamma$ (with $(s,t)=(\lambda,\mu)$).  A $k(\lambda)$-rational point exists and
+is computable: a smooth conic over $k(\lambda)$ with $k$ algebraically closed of
+characteristic $0$ has a $k(\lambda)$-rational point by Tsen's theorem (the field
+$k(\lambda)$ is a $C_1$ field, so every quadratic form in $\ge3$ variables over
+it is isotropic).  The point is found algorithmically by Tsen's effective
+procedure: writing the conic as a ternary quadratic form
+$\sum q_{ij}(\lambda)w_iw_j=0$ with $q_{ij}\in k[\lambda]$ of degrees $\le D$,
+search for a nonzero isotropic vector $w=(w_0,w_1,w_2)$ with $w_i\in k[\lambda]$,
+$\deg w_i\le D$; substituting unknown coefficients and equating the resulting
+polynomial in $\lambda$ to zero produces a system of polynomial equations over
+$k$ which, by Tsen's theorem, has a solution; since $k$ is algebraically closed
+the solution is found by elimination (Gr\"obner) and root extraction in $k$.
+Stereographic projection from the found point $P_0$ gives explicit rational
+functions parametrizing the conic, hence $\gamma$.
+\end{proof}
+
+\subsection{Stage E: assembly}
+
+\begin{theorem}[Main algorithm]\label{thm:main}
+Algorithm~\ref{alg:main} terminates on every input as in
+Definition~\ref{def:size}; it outputs \textsc{Not parametrizable} iff $X$ is not
+rational, and otherwise outputs $\varphi\in k(s,t)^{n+1}$ defining a dominant
+rational map $\PP^2_k\dashrightarrow X\subset\PP^n_k$ which is birational onto
+$X$ (hence a rational parametrization with Zariski-dense image), or, in the
+affine input case, $\varphi\in k(s,t)^{n}$ with dense image in
+$X^{\mathrm{aff}}$.
+\end{theorem}
+
+\begin{algorithm}
+\caption{Rational parametrization of a surface}\label{alg:main}
+\begin{algorithmic}[1]
+\Require Saturated homogeneous ideal $I(X)\subset k[x_0,\dots,x_n]$ of an
+irreducible projective surface $X$ (affine inputs replaced by projective closure,
+Def.~\ref{def:size}).
+\Ensure \textsc{Not parametrizable}, or $\varphi(s,t)\in k(s,t)^{n+1}$ birational
+$\PP^2\dashrightarrow X$.
+\State Compute a smooth projective model $S$ and birational $\rho\colon S\to X$,
+$\rho^{-1}$ \Comment{Lemma~\ref{lem:resolution}}
+\State Compute $q(S)=h^1(\cO_S)$ and $P_2(S)=h^0(2K_S)$ \Comment{Lemma~\ref{lem:cohomology}}
+\If{$q(S)\ne0$ \textbf{or} $P_2(S)\ne0$}
+  \State \Return \textsc{Not parametrizable} \Comment{Prop.~\ref{prop:decision}}
+\EndIf
+\State $\beta\gets\mathrm{id}$; $T\gets S$
+\While{$T$ has a $(-1)$-curve $E$} \Comment{Lemma~\ref{lem:mmp}}
+  \State Compute contraction $c\colon T\to T'$ and its inverse blow-up
+  \State $\beta\gets c\circ\beta$; $T\gets T'$
+\EndWhile
+\State $S_{\min}\gets T$ \Comment{minimal; $\PP^2$ or $\mathbb F_e$}
+\State Compute birational $\gamma\colon\PP^2\dashrightarrow S_{\min}$
+\Comment{Lemma~\ref{lem:param-min}}
+\State $\varphi\gets\rho\circ\beta^{-1}\circ\gamma$ \Comment{compose explicit
+rational maps; clear denominators}
+\State Dehomogenize source: set $[s:t:1]$ to obtain $\varphi(s,t)$
+\State \Return $\varphi(s,t)$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+\emph{Termination.}  Stage A terminates by Lemma~\ref{lem:resolution}
+(Zariski/Hironaka resolution, finitely many blow-ups).  Stage B terminates by
+Lemma~\ref{lem:cohomology} (finite Gr\"obner computations).  The
+\textbf{while} loop terminates by Lemma~\ref{lem:mmp} after $\le\rho(S)-1$
+iterations.  Stage D terminates by Lemma~\ref{lem:param-min} (finite
+elimination and root finding, justified by Tsen's theorem in the $\mathbb F_e$
+case).  Composition and dehomogenization in Stage E are finite polynomial
+arithmetic.
+
+\emph{Correctness of the decision.}  By Proposition~\ref{prop:decision}, the
+algorithm outputs \textsc{Not parametrizable} exactly when $X$ is not rational.
+
+\emph{Correctness of the parametrization.}  Suppose $q(S)=P_2(S)=0$, so $X$ is
+rational and the algorithm proceeds.  Each map in the chain
+\[
+\PP^2 \xrightarrow{\ \gamma\ } S_{\min}
+\xleftarrow{\ \beta\ } S \xrightarrow{\ \rho\ } X
+\]
+is birational: $\gamma$ by Lemma~\ref{lem:param-min}, $\beta$ as a finite
+composition of blow-downs (each birational) by Lemma~\ref{lem:mmp}, and $\rho$
+by Lemma~\ref{lem:resolution}.  Therefore the composite
+$\varphi=\rho\circ\beta^{-1}\circ\gamma\colon\PP^2\dashrightarrow X$ is
+birational, in particular dominant with Zariski-dense image.  Birationality
+means $\varphi$ induces an isomorphism $k(X)\xrightarrow{\sim}k(\PP^2)=k(s,t)$,
+which both confirms $k(X)\cong k(s,t)$ and gives the explicit parametrization.
+Each constituent map was produced as an explicit tuple of homogeneous
+polynomials (resp.\ rational functions); their composition is computed by
+substitution and denominator clearing, yielding $\varphi$ with entries in
+$k(s,t)$.  Restricting the source to the affine chart $[s:t:1]$ gives
+$\varphi(s,t)$.  In the affine-input case we further set $x_0=1$ in the target
+and discard the $0$-th coordinate, obtaining $\varphi\in k(s,t)^n$ dominating
+$X^{\mathrm{aff}}$, because $X^{\mathrm{aff}}$ is dense in its projective closure
+$X$ and $\varphi$ has dense image in $X$.
+\end{proof}
+
+\section{Complexity analysis}
+
+We measure complexity in the input parameters $n,m,d,H$ (Def.~\ref{def:size}),
+counting field operations in the effective subfield of $k$ and bounding the
+height growth.
+
+\begin{lemma}[Gr\"obner cost]\label{lem:groebner}
+A Gr\"obner basis of an ideal generated by polynomials of degree $\le d$ in $\nu$
+variables can be computed in time bounded by $d^{\,2^{O(\nu)}}$ field operations,
+and the degrees of the output polynomials are bounded by the
+Castelnuovo--Mumford/Bayer--Mumford bound $(2d)^{2^{\nu-1}}$.  Coefficient
+heights grow at most singly exponentially in this degree bound.
+\end{lemma}
+
+\begin{proof}
+These are the standard worst-case bounds for Gr\"obner bases over a field
+(Bayer--Mumford; M\"oller--Mora; Dub\'e's degree bound
+$2\big(\tfrac{d^2}{2}+d\big)^{2^{\nu-1}}$).  Linear algebra on the graded pieces
+up to the degree bound dominates, giving the stated time.
+\end{proof}
+
+\begin{theorem}[Overall complexity]\label{thm:complexity}
+Algorithm~\ref{alg:main} runs in time bounded by a function of the form
+\[
+T(n,m,d,H)\ \le\ \big(d\cdot H\cdot m\big)^{\,2^{O(n)}},
+\]
+i.e.\ doubly exponential in the number of variables and polynomial-in-the-
+exponent in $d,H,m$; equivalently the running time is \emph{elementary recursive}
+in the input size and singly exponential in the data once the ambient dimension
+$n$ is fixed.  The bottleneck is the family of Gr\"obner-basis computations in
+Stages A, B, C, D.
+\end{theorem}
+
+\begin{proof}
+We bound each stage; throughout, all polynomial data stays in $\le n+O(1)$
+variables of degree $\le D^*:=(2d)^{2^{O(n)}}$ (Lemma~\ref{lem:groebner}), with
+heights bounded by $H^*:=H\cdot D^{*\,O(1)}$.
+
+\emph{Stage A (resolution).}  Each blow-up + normalization is a constant number
+of Gr\"obner/elimination/integral-closure computations, each of cost
+$D^{*\,2^{O(n)}}$ by Lemma~\ref{lem:groebner}.  The number of blow-ups needed for
+surface resolution is bounded by a function of the multiplicity and dimension,
+itself bounded by $D^*$ (the resolution invariant strictly decreases and is
+bounded by the input degree data).  Hence Stage A costs $D^{*\,2^{O(n)}}=
+(2d)^{2^{O(n)}}$.
+
+\emph{Stage B (cohomology).}  Computing a free resolution of the coordinate ring
+and the $\mathcal{E}xt$/local-cohomology modules is a bounded number of
+Gr\"obner/syzygy computations on modules with the same degree bounds, cost
+$D^{*\,2^{O(n)}}$.  Reading off $h^1(\cO_S)$ and $P_2(S)$ is linear algebra over
+$k$ on graded pieces of dimension $\le D^{*\,n}$, cost $D^{*\,O(n)}$.
+
+\emph{Stage C (MMP).}  The loop runs $\le\rho(S)-1\le b_2(S)\le D^{*\,O(n)}$
+times; each iteration enumerates $(-1)$-curve classes (a lattice problem in rank
+$\rho\le D^{*\,O(n)}$, solved by bounded search up to the degree bound) and
+performs a contraction (one elimination/Gr\"obner computation). Total cost
+$D^{*\,2^{O(n)}}$.
+
+\emph{Stage D (minimal model).}  Elimination to a conic bundle, then Tsen's
+isotropic-vector search: the conic has coefficients in $k[\lambda]$ of degree
+$\le D^*$, and the resulting polynomial system over $k$ has $O(D^*)$ unknowns and
+degree $O(D^*)$, solvable by Gr\"obner + univariate factorization in
+$D^{*\,2^{O(1)}}$ field operations; root extraction adjoins algebraic numbers of
+degree $\le D^*$.  Cost $D^{*\,2^{O(n)}}$.
+
+\emph{Stage E (assembly).}  Composition of $O(\rho)$ explicit maps of degree
+$\le D^*$ multiplies degrees, giving final entries of degree $\le D^{*\,O(\rho)}=
+D^{*\,D^{*\,O(n)}}$; this is the only place where degrees can compound, but it is
+still bounded by a fixed tower and hence elementary recursive.  (In practice
+Stage E degrees are far smaller; the worst-case tower comes from naive
+composition and can be reduced by simplifying each map before composing.)
+
+Summing, the dominant terms are the Gr\"obner computations, giving
+$T\le(d\,H\,m)^{2^{O(n)}}$ for the decision and reduction stages, with Stage E
+contributing the only super-singly-exponential (but still elementary recursive)
+factor to the size of the output parametrization.  This proves the bound.
+\end{proof}
+
+\begin{remark}[On efficiency]
+For fixed ambient dimension $n$ the cost is singly exponential in $d,H,m$, which
+is essentially optimal in the worst case because even computing the singular
+locus and a single Gr\"obner basis is singly exponential in $d$ for fixed $n$
+(Mayr--Meyer-type lower bounds for ideal membership in growing dimension).  For
+surfaces of bounded degree (quadrics, cubics, etc.) all bounds become polynomial
+in the coefficient height, recovering the classical efficient parametrization
+algorithms (e.g.\ stereographic projection for quadrics, the
+Schicho/Sendra--Sevilla--Villarino conic-bundle methods) as special cases.
+\end{remark}
+
+\section{Verification of the worked invariants}
+
+We record the two numerical sanity checks underlying the algorithm.
+
+\begin{lemma}[Invariants of the terminal cases]\label{lem:invariants}
+For the minimal models we have:
+$\PP^2$: $q=0,\ P_2=0,\ K^2=9,\ \rho=1$;\quad
+$\mathbb F_e$: $q=0,\ P_2=0,\ K^2=8,\ \rho=2$.
+In both cases $-K$ is big and the surface is rational, consistent with
+Castelnuovo's criterion ($q=P_2=0$).
+\end{lemma}
+
+\begin{proof}
+For $\PP^2$, $K_{\PP^2}=\cO(-3)$, $K^2=9$, $h^i(\cO)=\delta_{i0}$ so $q=0$, and
+$2K=\cO(-6)$ has no global sections so $P_2=0$; $\Pic=\mathbb Z$ so $\rho=1$.
+For $\mathbb F_e=\PP(\cO\oplus\cO(e))$ over $\PP^1$, $\Pic=\mathbb Z C_0\oplus
+\mathbb Z F$ with $F^2=0$, $C_0^2=-e$, $C_0\cdot F=1$, so $\rho=2$; the canonical
+class is $K=-2C_0-(e+2)F$, giving $K^2=8$; $h^1(\cO)=0$ (a $\PP^1$-bundle over
+$\PP^1$) so $q=0$; and $2K$ is anti-effective so $P_2=0$.  All values are as
+stated; in particular $K^2$ distinguishes the two cases, justifying the
+case-split in Stage~D.
+\end{proof}
+
+\begin{remark}
+The equality $\rho=10-K^2$ for rational surfaces (used in
+Lemma~\ref{lem:mmp}) follows from Noether's formula
+$12\chi(\cO_S)=K^2+c_2(S)$ with $\chi(\cO_S)=1$ (as $q=p_g=0$) and
+$c_2(S)=2-4q+b_2=2+b_2=2+\rho$ (as $b_1=0$, $\mathrm{NS}=H^2$ for rational
+surfaces), giving $12=K^2+2+\rho$, i.e.\ $\rho=10-K^2$.  This is the bound that
+makes the MMP loop terminate in $\le\rho-1=9-K^2$ steps from a smooth model.
+\end{remark}
+
+\end{document}

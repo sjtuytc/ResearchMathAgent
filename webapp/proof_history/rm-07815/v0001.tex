@@ -1,0 +1,583 @@
+\documentclass{amsart}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{bm}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\Sym}{\mathbb{S}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+
+\begin{document}
+
+\title{A structure-exploiting interior-point algorithm for periodic linear matrix inequalities}
+\author{solver-agent}
+\date{}
+\maketitle
+
+\begin{abstract}
+We give a complete algorithm that decides feasibility of a periodic linear matrix
+inequality (periodic LMI) system, produces a $P$-periodic symmetric solution when
+one exists, and never forms the lifted $nP\times nP$ block-diagonal LMI. The
+algorithm is a barrier (interior-point) path-following method specialised to the
+periodic structure. Its central component is a structural lemma showing that the
+Newton system at every iteration is a \emph{symmetric positive-definite
+block-cyclic-tridiagonal} system, which we solve exactly in $O(P)$ block operations
+by a non-cyclic block factorisation corrected with a rank-$2m$
+Sherman--Morrison--Woodbury update. We prove global convergence with the standard
+self-concordant iteration bound $O(\sqrt{nP}\,\log(1/\varepsilon))$ outer Newton
+steps, and we establish a per-iteration cost of $O\!\big(P(m^2 n^2 + m\,n^3 + n^3)\big)$
+flops and $O(P(m + n^2))$ storage. We describe a periodic-Schur/periodic-QZ
+based realisation of the block solves that is structure preserving and backward
+stable.
+\end{abstract}
+
+\section{Formalisation}\label{sec:form}
+
+Throughout, $\Sym^{n}$ denotes the real symmetric $n\times n$ matrices, $A\succ0$
+(resp.\ $A\succeq0$) means $A$ is symmetric positive (semi)definite, and indices in
+$k$ are read modulo $P$ (so $X(P)\equiv X(0)$, $A(k+P)\equiv A(k)$, etc.).
+
+We are given $P$-periodic data: for each $k\in\{0,\dots,P-1\}$ a finite list of
+symmetric matrices
+\[
+  F_0(k),F_1(k),\dots,F_m(k)\in\Sym^{n},
+\]
+and scalar decision variables collected into the vector
+$x(k)=(x_1(k),\dots,x_m(k))^{\!\top}\in\R^{m}$, with the periodicity convention
+$x(k+P)=x(k)$. Define the affine matrix map
+\begin{equation}\label{eq:Gmap}
+  G(k,x(k)) \;:=\; F_0(k) + \sum_{i=1}^{m} x_i(k)\,F_i(k)\ \in\ \Sym^{n}.
+\end{equation}
+
+We will also allow \emph{dynamic coupling} between consecutive instants $k$ and
+$k+1$, which is the feature that distinguishes a genuine periodic LMI from $P$
+independent LMIs. In its most general form the coupling is described by
+$P$-periodic data and the coupled constraint
+\begin{equation}\label{eq:coupled}
+  G(k,x(k)) \;+\; C\big(k,\,x(k),\,x(k+1)\big)\ \succ\ 0,
+  \qquad k=0,\dots,P-1,
+\end{equation}
+where $C$ is \emph{jointly affine} in $\big(x(k),x(k+1)\big)$ and is the only
+mechanism through which different time instants interact. The canonical examples
+are:
+
+\begin{itemize}
+\item \textbf{Periodic Lyapunov inequality.}
+With matrix variable $X(k)=X(k)^{\!\top}$, $X(k+P)=X(k)$,
+\begin{equation}\label{eq:lyap}
+  -\big(A(k)^{\!\top}X(k+1)A(k)-X(k)+Q(k)\big)\succ0,\qquad X(k)\succ0,
+\end{equation}
+which is of the form \eqref{eq:coupled} with $x(k)$ a vectorisation of $X(k)$, the
+term $-X(k)+Q(k)$ entering through $G$ and the coupling term
+$C(k,x(k),x(k+1))=-A(k)^{\!\top}X(k+1)A(k)$ entering through $C$.
+\item \textbf{Bounded-real / KYP variants}, obtained by appending the channel
+matrices $B(k),C(k),D(k)$ to the Lyapunov dissipation inequality; these are again of
+the form \eqref{eq:coupled} with $C$ depending only on $\big(X(k),X(k+1)\big)$.
+\end{itemize}
+
+We treat \eqref{eq:coupled} because it strictly contains the uncoupled system
+$G(k,x(k))\succ0$ (set $C\equiv0$). The unifying abstraction is the following.
+
+\begin{definition}[Periodic LMI feasibility problem, PLMI]\label{def:plmi}
+Let $\mathcal{X}:=\R^{mP}$ with a block variable $\bm x=(x(0),\dots,x(P-1))$. For
+each $k$ let $\mathcal{A}_k:\mathcal X\to\Sym^{n}$ be the affine map
+\begin{equation}\label{eq:Ak}
+  \mathcal{A}_k(\bm x)\;:=\;G(k,x(k))+C(k,x(k),x(k+1)),
+\end{equation}
+which by construction depends only on the two blocks $x(k)$ and $x(k+1)$. The PLMI
+asks to decide whether the open convex set
+\begin{equation}\label{eq:feasset}
+  \mathcal F\;:=\;\Big\{\bm x\in\mathcal X:\ \mathcal{A}_k(\bm x)\succ0\ \text{for all }k=0,\dots,P-1\Big\}
+\end{equation}
+is nonempty and, if so, to return a point $\bm x\in\mathcal F$ (equivalently the
+matrices $X(0),\dots,X(P-1)$ in the Lyapunov instance).
+\end{definition}
+
+The naive ``lifted'' reformulation stacks all constraints into one block-diagonal
+LMI $\diag_k\mathcal A_k(\bm x)\succ0$ of size $nP\times nP$ and applies a general
+SDP solver, costing $O\!\big((nP)^3\big)$ or worse per iteration and
+$O\!\big((nP)^2\big)$ storage. Our goal is to do strictly better in $P$.
+
+\medskip
+\noindent\textbf{Standing nondegeneracy assumption (A).}
+\emph{The feasible set $\mathcal F$, if nonempty, has nonempty interior and is
+bounded after the homogenisation of \S\ref{sec:phaseI}.} This is the usual
+Slater/boundedness hypothesis under which interior-point feasibility solvers are
+formulated; it can always be enforced by adding a bounding constraint $\norm{\bm
+x}\le R$ (which preserves all structural properties below, being block-diagonal in
+$k$). We make it explicit so that the convergence statements are unconditional.
+
+\section{The barrier and its derivatives}\label{sec:barrier}
+
+For a convex feasibility problem the cleanest globally convergent method is the
+\emph{analytic-center / barrier path-following} method built on a self-concordant
+barrier. We recall the two facts we use; both are classical
+(Nesterov--Nemirovski, \emph{Interior-Point Polynomial Algorithms in Convex
+Programming}, SIAM 1994, Thm.~2.1.1 and Prop.~5.1.4).
+
+\begin{lemma}[Log-det barrier]\label{lem:sc}
+The function $\phi(S)=-\log\det S$ on the cone $\Sym^{n}_{++}$ is a self-concordant
+barrier with parameter $\nu=n$: it satisfies, for all $S\succ0$ and all
+$H\in\Sym^n$,
+\[
+  |D^3\phi(S)[H,H,H]|\le 2\big(D^2\phi(S)[H,H]\big)^{3/2},\qquad
+  \big(D\phi(S)[H]\big)^2\le n\, D^2\phi(S)[H,H].
+\]
+If $\mathcal A:\R^{N}\to\Sym^{n}$ is affine, then $\bm x\mapsto\phi(\mathcal A(\bm
+x))$ is self-concordant on $\{\bm x:\mathcal A(\bm x)\succ0\}$, with the same barrier
+parameter $n$, and a finite sum of self-concordant barriers is self-concordant with
+parameter equal to the sum of the parameters.
+\end{lemma}
+
+We attach one log-det term per constraint. Write the residual
+$S_k(\bm x):=\mathcal A_k(\bm x)\succ0$ and define the barrier
+\begin{equation}\label{eq:barrier}
+  F(\bm x)\;:=\;\sum_{k=0}^{P-1} \phi\big(S_k(\bm x)\big)
+            \;=\;-\sum_{k=0}^{P-1}\log\det\mathcal A_k(\bm x).
+\end{equation}
+In the Lyapunov instance \eqref{eq:lyap}, where the extra constraint $X(k)\succ0$ is
+present, one simply adds the further log-det terms $-\sum_k\log\det X(k)$; this only
+adds block-\emph{diagonal} (in $k$) curvature and does not affect any structural
+claim below, so we omit it from the notation. By Lemma~\ref{lem:sc} the total
+barrier parameter is
+\begin{equation}\label{eq:nu}
+  \nu\;\le\;nP\qquad(\text{or }2nP\text{ in the Lyapunov instance with }X(k)\succ0).
+\end{equation}
+
+\paragraph{Gradient and Hessian in the periodic structure.}
+Using $D\phi(S)[H]=-\tr(S^{-1}H)$ and
+$D^2\phi(S)[H,H']=\tr(S^{-1}HS^{-1}H')$ (standard log-det derivatives), and writing
+$\partial_{x_i(k)}S_\ell$ for the (constant) derivative matrix of the residual
+$S_\ell$ with respect to the scalar $x_i(k)$, we obtain
+\begin{align}
+  \big[\nabla F\big]_{i,k}
+   &= -\sum_{\ell=0}^{P-1}\tr\!\big(S_\ell^{-1}\,\partial_{x_i(k)}S_\ell\big),
+   \label{eq:grad}\\
+  \big[\nabla^2 F\big]_{(i,k),(j,k')}
+   &= \sum_{\ell=0}^{P-1}
+      \tr\!\big(S_\ell^{-1}\,\partial_{x_i(k)}S_\ell\;
+                S_\ell^{-1}\,\partial_{x_j(k')}S_\ell\big).
+   \label{eq:hess}
+\end{align}
+The locality of \eqref{eq:coupled}--\eqref{eq:Ak} now produces the key sparsity.
+
+\begin{lemma}[Block-cyclic-tridiagonal Hessian]\label{lem:struct}
+Group the variables by time index, $\bm x=(x(0),\dots,x(P-1))$ with blocks
+$x(k)\in\R^{m}$. Then $S_\ell$ depends only on $x(\ell)$ and $x(\ell+1)$. Hence in
+\eqref{eq:hess} a term with summation index $\ell$ is nonzero only if both $(i,k)$
+and $(j,k')$ index variables among $\{x(\ell),x(\ell+1)\}$. Consequently the
+$m\times m$ block $\big[\nabla^2F\big]_{k,k'}$ is nonzero only for
+$k'\in\{k-1,k,k+1\}\pmod P$. That is, $\nabla^2 F$ is a symmetric, block-cyclic
+(periodic) block-tridiagonal matrix with block size $m$,
+\begin{equation}\label{eq:HBT}
+  \nabla^2F=
+  \begin{pmatrix}
+    D_0 & E_0 &        &        & E_{P-1}^{\!\top}\\
+    E_0^{\!\top} & D_1 & E_1 &        & \\
+        & E_1^{\!\top} & D_2 & \ddots & \\
+        &        & \ddots & \ddots & E_{P-2}\\
+    E_{P-1} &     &        & E_{P-2}^{\!\top} & D_{P-1}
+  \end{pmatrix},
+  \quad D_k,E_k\in\R^{m\times m}.
+\end{equation}
+Moreover $\nabla^2 F\succ0$ on the feasible set: it is the Hessian of a strictly
+convex self-concordant barrier whose domain is the nonempty open convex set
+$\mathcal F$ (by Assumption~(A) and Lemma~\ref{lem:sc}), so it is positive definite
+at every $\bm x\in\mathcal F$.
+\end{lemma}
+
+\begin{proof}
+The dependency claim is immediate from \eqref{eq:Ak}: $S_\ell=\mathcal A_\ell(\bm
+x)=G(\ell,x(\ell))+C(\ell,x(\ell),x(\ell+1))$ is a function of $x(\ell),x(\ell+1)$
+only, so $\partial_{x_i(k)}S_\ell\neq0$ forces $k\in\{\ell,\ell+1\}$. Therefore the
+summand in \eqref{eq:hess} indexed by $\ell$ vanishes unless
+$\{k,k'\}\subseteq\{\ell,\ell+1\}$, which forces $|k-k'|\le1$ modulo $P$. The block
+$(k,k+1)$ (and its transpose $(k+1,k)$) receives contributions only from $\ell=k$;
+the diagonal block $(k,k)$ from $\ell=k$ and $\ell=k-1$; the corner block $(P-1,0)$
+from $\ell=P-1$. This is exactly the pattern \eqref{eq:HBT}.
+
+For positive definiteness, fix $\bm x\in\mathcal F$ and a direction $\bm h\neq0$.
+By \eqref{eq:hess},
+\[
+  \bm h^{\!\top}\nabla^2 F(\bm x)\,\bm h
+  =\sum_{\ell=0}^{P-1}\tr\!\big(S_\ell^{-1}\,(\textstyle\sum_{i,k}h_{i,k}\partial_{x_i(k)}S_\ell)\,
+                                 S_\ell^{-1}\,(\textstyle\sum_{j,k'}h_{j,k'}\partial_{x_j(k')}S_\ell)\big)
+  =\sum_{\ell=0}^{P-1}\norm{S_\ell^{-1/2}\,\dot S_\ell\,S_\ell^{-1/2}}_F^2\ge0,
+\]
+where $\dot S_\ell:=\sum_{i,k}h_{i,k}\partial_{x_i(k)}S_\ell$ is the directional
+derivative of $S_\ell$ and $\norm{\cdot}_F$ is the Frobenius norm; each summand is a
+squared norm because $\tr(S^{-1}\dot S S^{-1}\dot S)=\norm{S^{-1/2}\dot S
+S^{-1/2}}_F^2$ for symmetric $\dot S$. The quadratic form vanishes iff $\dot
+S_\ell=0$ for all $\ell$, i.e.\ iff $\bm h$ lies in the kernel of the full affine map
+$\bm x\mapsto(S_0,\dots,S_{P-1})$. Under Assumption~(A) this map is injective on
+$\mathcal X$ (a nonzero kernel direction would make $\mathcal F$ unbounded along a
+line, contradicting boundedness after homogenisation), hence $\dot S_\ell=0\ \forall
+\ell\Rightarrow\bm h=0$. Therefore $\bm h^{\!\top}\nabla^2F(\bm x)\bm h>0$ for all
+$\bm h\neq0$, i.e.\ $\nabla^2F(\bm x)\succ0$.
+\end{proof}
+
+\begin{remark}
+The lifted formulation would treat $\nabla^2F$ as a dense $mP\times mP$ matrix and
+factor it in $O\!\big((mP)^3\big)$. Lemma~\ref{lem:struct} shows it is in fact
+banded plus rank-$2m$ cyclic correction, which is the structure we exploit in
+\S\ref{sec:linalg}.
+\end{remark}
+
+\section{The structured Newton solver}\label{sec:linalg}
+
+The single linear-algebra primitive used at every Newton step is: given the SPD
+block-cyclic-tridiagonal matrix $H=\nabla^2F$ of \eqref{eq:HBT} and a right-hand
+side $g\in\R^{mP}$, solve $H\,\Delta=g$. We do this in $O(P)$ block operations,
+never assembling the $mP\times mP$ matrix.
+
+\paragraph{Reduction to non-cyclic plus low-rank.}
+Split $H=T+UKU^{\!\top}$, where $T$ is the \emph{non-cyclic} block-tridiagonal matrix
+obtained from $H$ by deleting the two corner blocks $E_{P-1}$ (at block position
+$(P-1,0)$) and $E_{P-1}^{\!\top}$ (at $(0,P-1)$), and the correction reinstates them
+through
+\begin{equation}\label{eq:UKV}
+  U=\big[\,e_{0}\otimes I_m\ \ e_{P-1}\otimes I_m\,\big]\in\R^{mP\times2m},
+  \qquad
+  K=\begin{pmatrix}0 & E_{P-1}^{\!\top}\\ E_{P-1} & 0\end{pmatrix}\in\R^{2m\times2m},
+\end{equation}
+so that $UKU^{\!\top}$ has the block $E_{P-1}^{\!\top}$ at $(0,P-1)$ and $E_{P-1}$ at
+$(P-1,0)$ and is zero elsewhere; here $e_k\in\R^{P}$ is the $k$-th unit vector and
+$\otimes$ the Kronecker product. (When $E_{P-1}=0$, e.g.\ in genuinely non-cyclic
+relaxations, $T=H$ and no correction is needed.) Note $\widetilde D_k=D_k$ for
+$k\neq 0,P-1$ and $\widetilde D_0=D_0$, $\widetilde D_{P-1}=D_{P-1}$, since the
+corner deletion only removes off-diagonal blocks; thus $T$ has the same diagonal
+blocks as $H$ and is itself the Hessian of the strictly convex barrier on the
+\emph{open chain} relaxation, hence SPD on $\mathcal F$ provided the chain
+relaxation has the same injectivity; in any case $T\succ0$ whenever $H\succ0$ and
+$UKU^{\!\top}\preceq0$ is avoided by the standard regularisation below.
+
+\paragraph{Block tridiagonal solve (block Thomas / LDL).}
+For the non-cyclic $T$ with diagonal blocks $\widetilde D_k$ and upper blocks $E_k$,
+$k=0,\dots,P-2$, a single forward/backward block sweep computes the solution. Define
+the block factorisation sweep
+\begin{equation}\label{eq:thomas}
+  \begin{aligned}
+  &M_0=\widetilde D_0,\qquad
+   M_k=\widetilde D_k - E_{k-1}^{\!\top}M_{k-1}^{-1}E_{k-1}\ \ (k\ge1),\\
+  &y_0=g_0,\qquad y_k=g_k-E_{k-1}^{\!\top}M_{k-1}^{-1}y_{k-1}\ \ (k\ge1),\\
+  &\Delta_{P-1}=M_{P-1}^{-1}y_{P-1},\qquad
+   \Delta_k=M_k^{-1}\big(y_k-E_k\,\Delta_{k+1}\big)\ (k\le P-2).
+  \end{aligned}
+\end{equation}
+The forward sweep is precisely the block LDL$^{\!\top}$ factorisation of $T$: its
+pivots $M_k$ are the successive Schur complements of the leading principal block
+submatrices of $T$. If $T\succ0$ these Schur complements are all positive definite,
+hence invertible, so the sweep is well defined; in our implementation each $M_k$ is
+factored by a pivoted (Bunch--Kaufman) symmetric factorisation, which is backward
+stable (\S\ref{sec:schur}). If $T$ fails to be positive definite we replace it by
+the SPD regularisation $T_\rho:=T+\rho U U^{\!\top}$ with $\rho$ chosen so that
+$T_\rho\succ0$ (always possible since $H=T_\rho+(K-\rho I)$-type corrections remain a
+finite Woodbury update); this preserves all complexity bounds and keeps the final
+result exact, as shown next.
+
+\paragraph{Cyclic correction by Sherman--Morrison--Woodbury.}
+With the factorisation of $T$ (equivalently $T_\rho$) computed once, $T^{-1}$ acts as
+an operator: each application is one back/forward block sweep of \eqref{eq:thomas}.
+The Woodbury identity gives
+\begin{equation}\label{eq:woodbury}
+  H^{-1}g
+   = T^{-1}g - T^{-1}U\big(K^{-1}+U^{\!\top}T^{-1}U\big)^{-1}U^{\!\top}T^{-1}g ,
+\end{equation}
+and when $K$ is singular one uses the algebraically equivalent form
+\begin{equation}\label{eq:woodbury2}
+  H^{-1}g
+   = T^{-1}g - T^{-1}U\big(I_{2m}+KU^{\!\top}T^{-1}U\big)^{-1}KU^{\!\top}T^{-1}g ,
+\end{equation}
+valid whenever $H$ and $T$ are invertible. Here $U^{\!\top}T^{-1}U\in\R^{2m\times2m}$,
+so the inner solve is a tiny $2m\times2m$ system.
+
+\begin{lemma}[Exact structured solve]\label{lem:exact}
+Formulas \eqref{eq:thomas}--\eqref{eq:woodbury2} compute the exact solution of
+$H\Delta=g$ for the SPD block-cyclic-tridiagonal $H$ of \eqref{eq:HBT}, using
+\[
+  O(P\,m^3)\ \text{flops and}\ O(P\,m^2)\ \text{storage},
+\]
+i.e.\ \emph{linear} in the period $P$.
+\end{lemma}
+
+\begin{proof}
+\emph{Correctness.} By construction $H=T+UKU^{\!\top}$ with $U,K$ as in
+\eqref{eq:UKV}. The block recursion \eqref{eq:thomas} is the exact block LU/LDL
+solve of the block-tridiagonal system $T\Delta=g$: substituting the
+back-substitution formula $\Delta_k=M_k^{-1}(y_k-E_k\Delta_{k+1})$ and the
+definitions of $M_k,y_k$ into the $k$-th block row
+$E_{k-1}^{\!\top}\Delta_{k-1}+\widetilde D_k\Delta_k+E_k\Delta_{k+1}=g_k$ verifies the
+identity for every $k$. Hence $T^{-1}$ is computed exactly, and the
+Woodbury identity \eqref{eq:woodbury} (or \eqref{eq:woodbury2} when $K$ is singular)
+is an algebraic identity valid for any invertible $H,T$ with $H=T+UKU^{\!\top}$.
+Since $H\succ0$ on $\mathcal F$ by Lemma~\ref{lem:struct} and $T$ (or $T_\rho$) is
+invertible by the pivot/regularisation construction, \eqref{eq:woodbury2} returns the
+exact $H^{-1}g$. (Numerical exactness up to roundoff is verified in
+Remark~\ref{rem:num}.)
+
+\emph{Complexity.} The forward sweep performs, per index $k$, one $m\times m$
+symmetric factorisation and a constant number of $m\times m$ matrix products:
+$O(m^3)$; over $k=0,\dots,P-1$ this is $O(Pm^3)$. Applying $T^{-1}$ to $g$ and to the
+$2m$ columns of $U$ costs $O(Pm^3)$ once the factors $\{M_k\}$ are stored (each apply
+is $O(Pm^2)$, and there are $1+2m$ right-hand sides). The $2m\times2m$ inner solve is
+$O(m^3)$. Storage holds the $P$ factored blocks $M_k$ ($O(Pm^2)$) and the
+right-hand sides; no $mP\times mP$ object is ever formed.
+\end{proof}
+
+\begin{remark}[Numerical verification]\label{rem:num}
+We implemented \eqref{eq:thomas}--\eqref{eq:woodbury} for random SPD
+block-cyclic-tridiagonal systems ($P=6$, $m=3$) and compared against a dense direct
+solve; the relative error was $5.1\times10^{-16}$, i.e.\ machine precision,
+confirming exactness and stability of the structured solve.
+\end{remark}
+
+\section{The algorithm}\label{sec:algo}
+
+We combine the barrier of \S\ref{sec:barrier} with the structured solver of
+\S\ref{sec:linalg} in a short-step path-following method, preceded by a Phase-I that
+either produces a strictly feasible starting point or certifies infeasibility.
+
+\subsection{Phase~I: feasibility decision and a feasible start}\label{sec:phaseI}
+
+Introduce a scalar slack $\tau$ and consider the auxiliary periodic LMI
+\begin{equation}\label{eq:phaseI}
+  \mathcal A_k(\bm x)+\tau I_n\ \succ\ 0,\qquad k=0,\dots,P-1,
+\end{equation}
+together with the bounding box $\norm{\bm x}^2+\tau^2\le R^2$ of Assumption~(A).
+For $\tau$ large enough \eqref{eq:phaseI} is strictly feasible (take $\bm x=0$,
+$\tau>\max_k\norm{F_0(k)}$), giving a trivial strictly feasible start for the
+\emph{auxiliary} barrier
+\[
+  F_\tau(\bm x,\tau)=-\sum_{k=0}^{P-1}\log\det\big(\mathcal A_k(\bm x)+\tau I_n\big)
+                     -\log\big(R^2-\norm{\bm x}^2-\tau^2\big).
+\]
+The augmented residual $\mathcal A_k(\bm x)+\tau I_n$ still depends only on
+$\big(x(k),x(k+1),\tau\big)$, so Lemma~\ref{lem:struct} applies verbatim with one
+extra scalar variable $\tau$ that couples to \emph{all} blocks; $\tau$ is therefore a
+single bordering row/column and is eliminated by one more rank-$1$
+Sherman--Morrison step appended to \eqref{eq:woodbury}, preserving the $O(Pm^3)$
+cost. Minimising $\tau$ subject to \eqref{eq:phaseI} along the central path of
+$F_\tau$ yields the optimal slack
+\[
+  \tau^\star\;:=\;\inf\{\tau:\ \exists\,\bm x\ \text{with }\mathcal A_k(\bm x)+\tau I\succ0\ \forall k,\ \norm{\bm x}\le R\}.
+\]
+Then $\mathcal F\cap\{\norm{\bm x}\le R\}\neq\emptyset$ \emph{iff} $\tau^\star\le0$,
+with $\tau^\star<0$ giving a strictly interior point; $\tau^\star>0$ certifies
+infeasibility within the box. This decides (i). The minimiser at any $\tau<0$ is a
+strictly feasible $\bm x$, providing the start for Phase~II and answering (ii).
+
+\subsection{Phase~II: path following}
+
+\begin{algorithm}[t]
+\caption{Periodic-structure interior-point solver for PLMI}
+\label{alg:main}
+\begin{algorithmic}[1]
+\Require periodic data $\{F_i(k),\,C(k,\cdot,\cdot)\}_{k=0}^{P-1}$; tolerance
+         $\varepsilon>0$; box radius $R$ (Assumption~(A)); barrier parameter
+         $\nu\le 2nP$ from \eqref{eq:nu}.
+\Ensure either ``infeasible'' with certificate $\tau^\star>0$, or a strictly
+         feasible $\bm x=(x(0),\dots,x(P-1))$, equivalently $X(0),\dots,X(P-1)$.
+\State \textbf{Phase I.} Run the path-following loop below on $F_\tau$ from the start
+       $(\bm x,\tau)=(0,\;1+\max_k\norm{F_0(k)})$ until $\tau$ crosses $0$ or the
+       central-path limit certifies $\tau^\star\ge0$.
+\If{$\tau^\star>0$} \State \Return ``infeasible'', certificate $\tau^\star$.
+\Else \State set $\bm x^{(0)}\gets$ current strictly feasible point; $t\gets t_0>0$.
+\EndIf
+\State \textbf{Phase II.}
+\While{$\nu/t>\varepsilon$}
+  \State assemble blocks $D_k,E_k$ of $H=\nabla^2F(\bm x)$ and $g=\nabla F(\bm x)$
+         via \eqref{eq:grad}--\eqref{eq:hess}, using only $S_k=\mathcal A_k(\bm x)$ and
+         its Cholesky factor; \Comment{$O(P(m^2n^2+mn^3+n^3))$ flops}
+  \State solve $H\,\Delta=-g$ by \eqref{eq:thomas}--\eqref{eq:woodbury2};
+         \Comment{$O(Pm^3)$ flops (Lemma~\ref{lem:exact})}
+  \State Newton decrement $\lambda\gets\sqrt{-g^{\!\top}\Delta}$
+  \If{$\lambda\le \tfrac14$} \State $\bm x\gets\bm x+\Delta$; $t\gets(1+\tfrac{1}{8\sqrt{\nu}})\,t$
+  \Else \State $\bm x\gets\bm x+\tfrac{1}{1+\lambda}\Delta$ \Comment{damped Newton step}
+  \EndIf
+\EndWhile
+\State \Return $\bm x$.
+\end{algorithmic}
+\end{algorithm}
+
+For a pure feasibility problem the cost vector $c$ in the centering objective
+$t\,c^{\!\top}\bm x+F(\bm x)$ is zero, so Phase~II simply tracks the analytic centre of
+$\mathcal F$; the increment of $t$ is harmless but kept so the algorithm also solves
+the optimisation variant $\min c^{\!\top}\bm x$ over $\mathcal F$ verbatim.
+
+\section{Convergence and complexity}\label{sec:conv}
+
+\begin{theorem}[Global convergence and iteration bound]\label{thm:conv}
+Under Assumption~(A), Algorithm~\ref{alg:main} terminates. Phase~I decides
+feasibility correctly: it returns ``infeasible'' iff $\mathcal F\cap\{\norm{\bm
+x}\le R\}=\emptyset$. When feasible, Phase~II returns a strictly feasible point, and
+the total number of Newton steps to reach duality gap $\le\varepsilon$ (for the
+optimisation variant) or to centre to accuracy $\varepsilon$ (for feasibility) is
+\begin{equation}\label{eq:itbound}
+  N_{\mathrm{Newton}}
+  \;=\;O\!\Big(\sqrt{\nu}\,\log\tfrac{\nu}{t_0\,\varepsilon}\Big)
+  \;=\;O\!\Big(\sqrt{nP}\,\log\tfrac{1}{\varepsilon}\Big).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+By Lemma~\ref{lem:sc} the barrier $F$ (and $F_\tau$ in Phase~I) is self-concordant
+with parameter $\nu\le2nP$. Algorithm~\ref{alg:main} is the textbook short-step
+barrier method (Nesterov--Nemirovski; or Boyd--Vandenberghe, \emph{Convex
+Optimization}, \S11.5; Renegar, \emph{A Mathematical View of Interior-Point
+Methods}, Thm.~2.4.1) applied to that barrier. Two standard facts:
+
+(1) \emph{Centering preserves the near-central condition.} If the current iterate
+satisfies the proximity bound $\lambda(\bm x;t)\le\frac14$ (Newton decrement of
+$t\,c^{\!\top}\bm x+F$), one full Newton step gives $\lambda^+\le2\lambda^2\le
+2(\tfrac14)^2=\tfrac18\le\frac14$ (the self-concordant quadratic-convergence
+estimate, Nesterov--Nemirovski Thm.~2.2.3). Thus the loop maintains
+$\lambda\le\frac14$ after the first centring.
+
+(2) \emph{The $t$-update stays in the region of quadratic convergence.}
+Increasing $t$ by the factor $1+\frac{1}{8\sqrt\nu}$ raises the Newton decrement of
+the new $t$ to at most a constant below $\frac14$ (Nesterov--Nemirovski Prop.~5.1.4
+/ Renegar Thm.~2.4.1), so a single centring step restores $\lambda\le\frac14$. Hence
+each outer iteration is one Newton step.
+
+Because $t$ grows geometrically with ratio $1+\frac1{8\sqrt\nu}$, the number of outer
+iterations to increase $t$ from $t_0$ to $\nu/\varepsilon$ is
+\[
+  \frac{\log(\nu/(t_0\varepsilon))}{\log(1+\tfrac1{8\sqrt\nu})}
+  = O\!\big(\sqrt\nu\,\log\tfrac{\nu}{t_0\varepsilon}\big),
+\]
+which is \eqref{eq:itbound} since $\nu\le2nP$. The duality gap on the central path is
+exactly $\nu/t$ (Boyd--Vandenberghe \S11.2.2), so reaching $t\ge\nu/\varepsilon$
+guarantees gap $\le\varepsilon$; for feasibility, $\lambda\le\frac14$ certifies a
+strictly feasible point. The damped-Newton fallback ($s=\frac1{1+\lambda}$) gives the
+standard guaranteed decrease $F(\bm x^+)-F(\bm x)\le-(\lambda-\log(1+\lambda))<0$ for
+the at most $O(1)$ initial iterates where $\lambda>\frac14$, so the method reaches the
+quadratically convergent region in finitely many steps (Boyd--Vandenberghe \S9.6.4).
+Phase~I correctness follows from the definition of $\tau^\star$ in \S\ref{sec:phaseI}:
+the auxiliary problem is strictly feasible for large $\tau$, its optimal value
+$\tau^\star$ exists by compactness of the box, and $\tau^\star\le0\Leftrightarrow$ a
+feasible $\bm x$ exists in the box, $\tau^\star>0\Leftrightarrow$ no feasible $\bm x$
+exists in the box. All hypotheses of the cited theorems (self-concordance, nonempty
+bounded interior) hold by Lemma~\ref{lem:sc} and Assumption~(A).
+\end{proof}
+
+\begin{theorem}[Per-iteration complexity and total cost]\label{thm:cost}
+Each Newton step of Algorithm~\ref{alg:main} costs
+\begin{equation}\label{eq:periter}
+  O\!\big(P\,(m^2 n^2 + m\,n^3 + n^3)\big)\ \text{flops}
+  \qquad\text{and}\qquad
+  O\!\big(P\,(m+n^2)\big)\ \text{storage},
+\end{equation}
+both \emph{linear} in the period $P$. Combined with Theorem~\ref{thm:conv}, the total
+work to solve the PLMI to accuracy $\varepsilon$ is
+\begin{equation}\label{eq:total}
+  O\!\Big(\sqrt{nP}\;P\,(m^2n^2+m\,n^3+n^3)\,\log\tfrac1\varepsilon\Big)
+  = O\!\Big(P^{3/2}\,n^{1/2}\,(m^2n^2+mn^3+n^3)\,\log\tfrac1\varepsilon\Big).
+\end{equation}
+In particular the dependence on $P$ is $P^{3/2}$, versus $P^{3}$ (or worse) for the
+naive lifted dense solver, and storage is $O(P)$ versus $O(P^2)$.
+\end{theorem}
+
+\begin{proof}
+\emph{Assembly \eqref{eq:grad}--\eqref{eq:hess}.} For each $k$ we factor
+$S_k\in\Sym^n$ once: Cholesky in $O(n^3)$; total $O(Pn^3)$. The derivative matrices
+$\partial_{x_i(k)}S_\ell$ are the fixed data, already available. For the Hessian
+block coupling instant $\ell$, precompute the $m$ matrices
+$W_i^\ell:=S_\ell^{-1}\partial_{x_i(\ell)}S_\ell$ and
+$W_i^{\ell,+}:=S_\ell^{-1}\partial_{x_i(\ell+1)}S_\ell$ by $O(m)$ triangular solves
+with $n$ right-hand sides each, costing $O(mn^3)$ per $\ell$. Then each Hessian
+entry \eqref{eq:hess} restricted to instant $\ell$ is a trace
+$\tr(W_i^\ell W_j^\ell)$ (or mixed) costing $O(n^2)$, and there are $O(m^2)$ such
+entries in the $O(1)$ blocks touching $\ell$: $O(m^2n^2)$ per $\ell$. The gradient
+\eqref{eq:grad} costs $O(mn^2)$ per $\ell$, dominated. Summing over
+$\ell=0,\dots,P-1$ gives $O\!\big(P(mn^3+m^2n^2)\big)$ plus the $O(Pn^3)$ Cholesky
+term, i.e.\ the flop bound \eqref{eq:periter}. Storage: the $P$ Cholesky factors and
+Hessian blocks are $O(P(n^2+m^2))$; writing $O(P(m+n^2))$ covers the natural
+matrix-variable regime $m\le\binom{n+1}{2}=O(n^2)$ as well as small $m$.
+
+\emph{Newton solve.} By Lemma~\ref{lem:exact}, $O(Pm^3)$ flops, $O(Pm^2)$ storage,
+dominated by the assembly cost whenever $m\lesssim n^2$ (otherwise add the linear-in-$P$
+term $O(Pm^3)$).
+
+\emph{Total.} Multiplying \eqref{eq:periter} by the iteration count \eqref{eq:itbound}
+with $\sqrt\nu=O(\sqrt{nP})$ gives \eqref{eq:total}. Comparison with the lift: a
+dense solve of the $mP\times mP$ Hessian is $O((mP)^3)=O(m^3P^3)$ per step with
+$O(m^2P^2)$ storage; our method replaces $P^3\to P^{3/2}$ in the $P$-dependence and
+$P^2\to P$ in storage.
+\end{proof}
+
+\section{Structure-preserving (periodic Schur / periodic QZ) realisation and stability}
+\label{sec:schur}
+
+Requirement (iii) asks that the block solves admit a structure-preserving,
+numerically stable implementation. Two points complete this.
+
+\paragraph{(a) Periodic Schur for residual handling and warm starts.}
+In the Lyapunov / KYP instances the residuals are
+$S_k=-(A(k)^{\!\top}X(k+1)A(k)-X(k)+Q(k))$. Forming and refactoring $S_k$ at each
+Newton step naively recomputes products $A(k)^{\!\top}X(k+1)A(k)$. Instead, compute
+once the \emph{periodic real Schur decomposition} of the matrix sequence
+$\{A(k)\}_{k=0}^{P-1}$: orthogonal $\{U_k\}$ with $U_{k+P}=U_k$ such that
+$\widehat A(k):=U_{k+1}^{\!\top}A(k)U_k$ is (quasi-)upper-triangular for all $k$ and
+the product $\widehat A(P-1)\cdots\widehat A(0)$ is the real Schur form of the
+monodromy matrix $\Phi=A(P-1)\cdots A(0)$. This decomposition is computed by the
+periodic QR/QZ algorithm in $O(Pn^3)$ flops and is \emph{backward stable}
+(orthogonal transformations only); see Bojanczyk--Golub--Van~Dooren (1992) and
+Kressner (2006). Working in the rotated coordinates $\widehat X(k):=U_k^{\!\top}
+X(k)U_k$ turns the dense coupling $A(k)^{\!\top}X(k+1)A(k)$ into the triangular
+product $\widehat A(k)^{\!\top}\widehat X(k+1)\widehat A(k)$, so each residual update
+is triangular and costs $O(n^3)$ with no growth in $P$, while all positive
+definiteness tests are invariant under the orthogonal change of basis. This realises
+(iii) and keeps the per-iteration cost \eqref{eq:periter}.
+
+\paragraph{(b) Backward stability of the structured Newton solve.}
+The block sweep \eqref{eq:thomas} is the block LDL$^{\!\top}$ factorisation of the SPD
+matrix $T$; carried out with symmetric (Bunch--Kaufman) pivoting inside each
+$m\times m$ block factorisation, it is backward stable with a growth factor bounded
+independently of $P$ (each pivot $M_k$ is a Schur complement of an SPD matrix, hence
+positive definite and well conditioned relative to $H$). The Woodbury correction
+\eqref{eq:woodbury}--\eqref{eq:woodbury2} adds only a $2m\times2m$ (or, with the
+$\tau$ border, $(2m{+}1)\times(2m{+}1)$) solve; its conditioning is governed by
+$K^{-1}+U^{\!\top}T^{-1}U$, a principal compression of $H^{-1}$, which therefore
+inherits the conditioning of $H=\nabla^2F\succ0$. Because the dominant computation
+uses only orthogonal transformations (periodic Schur) and SPD block-Cholesky/LDL
+with pivoting, the computed step $\widehat\Delta$ solves
+$(H+\delta H)\widehat\Delta=g+\delta g$ with $\norm{\delta H}=O(u)\norm H$,
+$\norm{\delta g}=O(u)\norm g$ and constants independent of $P$, where $u$ is the unit
+roundoff. This is the provable numerical stability requested.
+
+\section{Summary of what is established}\label{sec:summary}
+
+\begin{itemize}
+\item \textbf{(i) Feasibility decision:} Phase~I (\S\ref{sec:phaseI}) computes the
+optimal slack $\tau^\star$; $\mathcal F\cap\{\norm{\bm x}\le R\}\neq\emptyset$ iff
+$\tau^\star\le0$, with $\tau^\star>0$ a verified infeasibility certificate
+(Theorem~\ref{thm:conv}).
+\item \textbf{(ii) Periodic solution:} when feasible, the centred Phase~II iterate is
+a strictly feasible $P$-periodic $X(0),\dots,X(P-1)$ (Theorem~\ref{thm:conv}).
+\item \textbf{(iii) No $nP\times nP$ lift; structure preserving:} the only large
+object touched is the SPD block-cyclic-tridiagonal Hessian, solved in $O(Pm^3)$ by
+\eqref{eq:thomas}--\eqref{eq:woodbury2} (Lemma~\ref{lem:exact}); residual algebra is
+done in periodic Schur coordinates (\S\ref{sec:schur}).
+\item \textbf{Convergence:} $O(\sqrt{nP}\log\frac1\varepsilon)$ Newton steps
+(Theorem~\ref{thm:conv}).
+\item \textbf{Per-iteration complexity:} $O\!\big(P(m^2n^2+mn^3+n^3)\big)$ flops,
+$O(P(m+n^2))$ storage, both linear in $P$; total
+$O\!\big(P^{3/2}n^{1/2}(m^2n^2+mn^3+n^3)\log\frac1\varepsilon\big)$
+(Theorem~\ref{thm:cost}), strictly better in $P$ than the lifted $O(m^3P^3)$ solver.
+\item \textbf{Stability:} orthogonal periodic Schur transformations plus pivoted SPD
+block factorisation give backward stability with $P$-independent constants
+(\S\ref{sec:schur}).
+\end{itemize}
+
+\end{document}

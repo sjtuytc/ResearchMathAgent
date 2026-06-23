@@ -1,0 +1,163 @@
+{
+  "id": "rm-01013-meet-1",
+  "problem_id": "rm-01013",
+  "topic": "Init rm-01013 — proof review",
+  "goal": "Review the proof and issues for rm-01013; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T20:23:17Z",
+  "messages": [
+    {
+      "id": "m6e044e42",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-01013 — proof review**",
+      "created_at": "2026-06-22T20:23:17Z"
+    },
+    {
+      "id": "m710c10bc",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me cut to the operator structure here, because this whole problem is secretly a spectral question and I want to treat it that way.\n\nAfter the Taylor expansion in (a), we get the operator\n$$\n\\mathcal{L}F = \\tfrac{D}{2}F'' - aF' + (\\beta - \\mu)F,\n$$\nand part (b) asks for the principal eigenpair $\\mathcal{L}F = \\lambda F$. This is a non-self-adjoint Schrödinger-type operator — the drift term $-aF'$ breaks self-adjointness. But here's the key move: the drift is a *constant*, so we can gauge it away. Set $F(x) = e^{(a/D)x} G(x)$. Then a direct computation gives\n$$\n\\tfrac{D}{2}G'' + \\Big(\\beta(x) - \\mu(x) - \\tfrac{a^2}{2D}\\Big)G = \\lambda G,\n$$\nwhich IS self-adjoint. So the whole non-self-adjoint difficulty is cosmetic, and for part (c) we get the full Sturm–Liouville machinery for free: real simple principal eigenvalue, positive ground state $G>0$ (hence $F>0$), and $\\lambda$ characterized by the Rayleigh quotient\n$$\n\\lambda = \\sup_{G}\\frac{\\int \\big[-\\tfrac{D}{2}(G')^2 + (\\beta-\\mu-\\tfrac{a^2}{2D})G^2\\big]}{\\int G^2}.\n$$\n\nTwo things this Rayleigh quotient immediately buys us. First, the dependence of $\\lambda$ on the data in (c): $\\lambda$ is monotone increasing in $\\beta$, decreasing in $\\mu$, and — crucially — the drift only enters through the penalty $-a^2/(2D)$, so nonzero drift always *lowers* the growth rate. That's a clean, falsifiable qualitative statement. Second, decay of $F$: away from the support where $\\beta-\\mu$ is large, $G$ decays like the Airy/WKB tails of the Schrödinger ground state, so $F$ inherits $e^{(a/D)x}$-modulated Gaussian-type decay — that pins down the decay conditions in (b).\n\nFor the existence question in (c): the principal eigenpair exists with $\\lambda$ a genuine eigenvalue (not just essential spectrum) precisely when the potential well $\\beta-\\mu-\\tfrac{a^2}{2D}$ rises above its bottom enough to bind a state. **What's the spectral gap between $\\lambda$ and the essential spectrum?** That gap is exactly what governs (d) — the convergence rate of the renormalized $f$ to $F$ is the gap, by standard self-adjoint spectral decomposition after the gauge transform. So I'd insist we compute it explicitly rather than just assert convergence.\n\nFinally, on the inverse problem (e): in gauge variables this is a Borg–Levinson inverse Sturm–Liouville problem. One steady profile $F$ plus $\\lambda$ gives you exactly *one* equation,\n$$\n\\beta(x)-\\mu(x) = \\lambda + \\tfrac{a^2}{2D} - \\tfrac{D}{2}\\frac{G''}{G},\n$$\nso you can only recover the *combination* $\\beta-\\mu$ pointwise, never $\\beta$ and $\\mu$ separately from a single steady state — that's a genuine identifiability obstruction we should state honestly. To separate them you need a second measurement; the natural one is a transient (the full time-dependent $",
+      "created_at": "2026-06-22T20:23:35Z"
+    },
+    {
+      "id": "m732bfcf4",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your gauge transformation is exactly right, and it cleans up the whole problem — but let me add a structural caveat to part (a) that I think we are glossing over, and then push back on one point in (c).\n\nFirst, a correction to the reaction term. In Dan's operator he writes $(\\beta-\\mu)F$, but the original balance equation has $-(\\beta+\\mu)f + 2\\int \\beta \\varphi f$. After the second-order Taylor expansion of $\\int \\beta(y)\\varphi(y-x)f(y)\\,dy$, the leading reaction term is $2\\beta - \\beta - \\mu = \\beta - \\mu$ only *to zeroth order*. The drift and diffusion coefficients are not the bare $a,D$ — they pick up $x$-dependence from the derivatives of $\\beta f$, because we are expanding $\\beta(y)f(y)$, not $f(y)$ alone. Concretely,\n$$\n2\\int \\beta(y)\\varphi(y-x)f(y)\\,dy \\approx 2\\beta f + 2a\\,\\partial_x(\\beta f) + D\\,\\partial_x^2(\\beta f).\n$$\nSo the true diffusion coefficient is $D\\beta(x)$ and the drift is $a\\beta(x)$ — *state-dependent*. The clean constant-coefficient operator in the problem statement only emerges in a rescaled regime where $\\beta$ is treated as locally constant. We should state that regime honestly; otherwise the gauge transform $e^{(a/D)x}$ has to be replaced by an integrating factor $\\exp\\!\\big(\\int \\tfrac{a}{D}\\,dx\\big)$ adapted to the variable drift.\n\nSecond, on existence in (c). Dan frames it as a Schrödinger binding question, which is correct, but I want to point out the *probabilistic* structure that makes this an honest principal eigenvalue problem: $\\mathcal{L}$ generates a positive (Feynman–Kac) semigroup, so Krein–Rutman applies directly and gives a simple, real, dominant $\\lambda$ with strictly positive eigenfunction — no need to assume the well binds when the domain is the whole line and $\\beta-\\mu$ is confining. The subtlety is precisely *non-confining* coefficients: if $\\beta-\\mu$ does not grow, $\\lambda$ collapses into the essential spectrum and the principal eigenfunction fails to be normalizable. That dichotomy is the real content of (c).\n\nThird, two genuine remarks:\n- **On (d):** the gauge transform turns the entropy law into the standard self-adjoint relative-entropy decay, but I'd flag that the natural Lyapunov functional here is the *generalized relative entropy* of Michel–Mischler–Perthame for growth-fragmentation operators, $H[f|F] = \\int F\\,\\psi(f/F)$, which works even without self-adjointness and gives the convergence directly with rate equal to Dan's spectral gap. This is the honest analog of my graph-limit philosophy: find the right invariant object (here $F$ as the stationary graphon-analog) and measure everything relative to it.\n- **On (e):** I fully agree with the $\\beta-\\mu$ identifiability obstruction. But note the obstruction is exactly the kernel of the linearized inverse map — one steady state gives one scalar field. Two distinct division-rate experiments, or one steady state plus the *transient relaxation spectrum* (the full set of subdominant eigenvalues, which is a Borg–Marchenko two-spectra dataset), suffices to separate $\\beta$ and $\\m",
+      "created_at": "2026-06-22T20:24:24Z"
+    },
+    {
+      "id": "m45a3d7c4",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — beautiful, and the gauge transform is exactly the right opening move. But let me push on whether we're seeing the *real* theorem here, because I think Laszlo's correction in (a) is not a footnote, it's the whole physics.\n\nOnce the diffusion is $D\\beta(x)$ and the drift $a\\beta(x)$, you do *not* gauge to a Schrödinger operator with a fixed potential — you gauge to a weighted Sturm–Liouville problem $-\\frac{D}{2}(\\beta G')' + \\tilde V G = \\lambda G$, and the integrating factor is $\\exp(\\int \\frac{a}{D}\\,dx)$ as Laszlo says. The point I want to insist on: the principal eigenvalue is then exactly a **Selberg-trace-formula-type quantity**. Write $\\lambda = \\lim_{t\\to\\infty}\\frac{1}{t}\\log \\mathbb{E}_x[e^{\\int_0^t(\\beta-\\mu)(X_s)ds}]$ along the diffusion $X_s$ — this is the Feynman–Kac / Donsker–Varadhan variational formula, and it IS the trace formula in disguise: the spectral side ($\\lambda$) equals an arithmetic-side average over paths (the analog of closed geodesics in my work with Lindenstrauss on QUE). So in (c), $\\lambda$ is a Donsker–Varadhan rate function:\n$$\n\\lambda = \\sup_{\\nu}\\Big\\{\\int(\\beta-\\mu)\\,d\\nu - I(\\nu)\\Big\\},\\qquad I(\\nu)=\\frac{D}{2}\\int\\frac{|\\nabla\\sqrt{\\rho}|^2}{\\rho},\n$$\n$\\nu=\\rho\\,dx$. That's the honest content behind Dan's Rayleigh quotient and it makes the monotonicity in $\\beta,\\mu$ and the drift penalty completely transparent.\n\nNow the question I really care about for (d): **what is the spectral gap, and is it a Ramanujan phenomenon?** In my random-matrix worldview the subdominant relaxation eigenvalues $\\lambda_1>\\lambda_2>\\cdots$ are the \"zeros\" here. For confining $\\beta-\\mu$ the gap is uniformly bounded below — that's the *expander* regime, the analog of the Selberg $3/16$ bound, and convergence in (d) is exponential. But Laszlo's non-confining dichotomy is exactly the *temperedness* boundary: when $\\lambda$ touches the essential spectrum the gap closes, the semigroup is no longer Ramanujan, and you get only polynomial (heavy-tailed) relaxation. I'd compute the simplest example explicitly: $\\beta-\\mu$ a quadratic well gives Hermite/Ornstein–Uhlenbeck spectrum $\\lambda_n = \\lambda_0 - n\\omega$, gap $=\\omega$, Gaussian $F$ — that's our $SL_2(\\mathbb{Z})$ baseline, do that before any general theorem.\n\nFinally on (e): I'll back the two-spectra Borg–Marchenko point, but with a caution from inverse spectral theory — recovering $\\beta(x)$ from the relaxation spectrum requires the *spectral measure*, not just the eigenvalues. Eigenvalues alone are the analog of knowing $|\\zeta|$ on the critical line without the argument; you need the norming constants $\\int F\\,G_n$ to invert. State that honestly, or the inverse probl",
+      "created_at": "2026-06-22T20:25:14Z"
+    },
+    {
+      "id": "m845fce9a",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, Laszlo — you've both pushed this exactly where it needs to go, and I want to embrace the variable-coefficient correction rather than treat it as a wrinkle. Laszlo is right that the honest operator is $-\\frac{D}{2}(\\beta G')' + \\tilde V G = \\lambda G$, and Peter's Donsker–Varadhan formula is the correct global picture. But I'm an algorithms person, so let me say what this *buys us computationally*, because I don't want a meeting that ends in existence theorems.\n\nThree concrete points:\n\n1. **Discretize and it's a Laplacian system.** Put the gauged self-adjoint problem on a grid. The operator $-\\frac{D}{2}(\\beta G')'$ discretizes to a *weighted graph Laplacian* $L$ on the path graph, with edge conductances $w_i = \\beta(x_i)/h^2$ — this is literally a 1D resistor network. Then $(L + \\mathrm{diag}(\\tilde V))G = \\lambda G$ is a generalized eigenproblem where the matrix is symmetric diagonally dominant. So the principal eigenpair is computable in *nearly-linear time* by my and Teng's Laplacian solvers run inside an inverse power iteration: each shift-invert step $(L + \\mathrm{diag}(\\tilde V) - \\sigma I)^{-1} v$ is an SDD solve in $O(m\\log^c n)$. We get $\\lambda$ and $F$ to high accuracy fast, on a real grid, not just in the abstract.\n\n2. **The spectral gap Peter wants is exactly the convergence rate, and it's measurable.** Peter, your \"is it Ramanujan?\" question becomes: is $\\lambda_0 - \\lambda_1$ bounded below? On the discretized network this is a *Cheeger constant* of the weighted path with potential — and I'd compute it directly from the second eigenvector of the SDD matrix. The Ornstein–Uhlenbeck baseline you propose ($\\beta-\\mu$ quadratic, gap $=\\omega$, Hermite spectrum) is the perfect sanity check — let's literally run the solver on it and confirm $\\lambda_n = \\lambda_0 - n\\omega$ before trusting anything general.\n\n3. **The inverse problem (e) is a regularized linear solve in gauge variables.** Given $F$, recover $\\beta-\\mu$ pointwise from $\\beta-\\mu = \\lambda + \\frac{a^2}{2D} - \\frac{D}{2}\\frac{G''}{G}$ — but $G''/G$ is ill-conditioned where $G$ is small (the tails), exactly Peter's \"you need the norming constants\" caution. The honest algorithmic statement: the inverse map's conditioning is governed by $1/G(x)^2$, so recovery is stable in the bulk and exponentially unstable in the tails. To separate $\\beta$ from $\\mu$, the two-spectra dataset translates, on the grid, to a Borg–Marchenko reconstruction that is a *sequence* of SDD solves — and its stability is again controlled by the spectral gap. So everything Peter and Laszlo flagged comes back to one number: **the gap.** Let's compute it.",
+      "created_at": "2026-06-22T20:27:32Z"
+    },
+    {
+      "id": "m9335dfbb",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, I love that you want to discretize, but let me sharpen one structural point, because your \"weighted path Laplacian\" remark is exactly where my graph-limits instinct fires, and I think it tells us something the three of us have been circling.\n\nWhen you put $-\\frac{D}{2}(\\beta G')'$ on a grid you get an SDD matrix — fine. But notice what the *family* of these discretizations is: as $h \\to 0$ you have a convergent sequence of weighted graphs whose limit object is precisely the operator on $[a,b]$ with edge-weight density $\\beta(x)$. This is the operator-limit analog of my graphon convergence with Borgs–Chayes–Szegedy: the right invariant is not any single grid Laplacian but the *limit form* $\\mathcal{E}(G) = \\frac{D}{2}\\int \\beta(x) (G')^2\\,dx$. Cheeger's constant of the path, the spectral gap, and the Donsker–Varadhan rate function Peter wrote all converge to functionals of this Dirichlet form — and crucially they converge *together*, which is what justifies your inverse-power-iteration on the finite grid actually recovering the continuum gap. So I'd insist we state a $\\Gamma$-convergence lemma for the energy $\\mathcal{E}_h \\to \\mathcal{E}$; without it, point 2's \"measure the gap on the grid\" has no guarantee of giving the continuum number, especially in the non-confining regime where the bottom of the spectrum is essential.\n\nThree precise additions:\n\n1. **The Cheeger picture is correct but must be the *weighted* Cheeger constant.** $h(\\beta) = \\inf_S \\frac{\\frac{D}{2}\\int_{\\partial S}\\beta}{\\min(|S|,|S^c|)}$ relative to the eigenmeasure $G^2\\,dx$, not Lebesgue. The gap obeys $\\frac{h^2}{2\\|\\beta\\|_\\infty} \\le \\lambda_0 - \\lambda_1 \\le 2h$ — the standard Cheeger/Buser sandwich, but with $\\beta$ as conductance. In Peter's Ornstein–Uhlenbeck baseline the eigenmeasure is Gaussian, so $h$ is bounded below and we are in the \"expander\" regime; this is the honest verification that the OU case is the $SL_2(\\mathbb{Z})$ baseline.\n\n2. **The non-confining dichotomy is a percolation-type transition on the limit.** When $\\beta-\\mu$ fails to confine, the principal eigenmeasure delocalizes — in graph-limit language the limit graphon degenerates and the spectral gap of the form closes. This is exactly the boundary where Krein–Rutman stops giving a normalizable ground state, which I flagged earlier. So Peter's temperedness boundary and my non-confining dichotomy are the *same* phenomenon, viewed spectrally versus probabilistically.\n\n3. **On (e), the conditioning $1/G(x)^2$ that Dan identifies is precisely the inverse of the eigenmeasure density.** That is not a coincidence: the inverse Sturm–Liouville map is naturally an operator between weighted spaces $L^2(G^2\\,dx)$, and stability is governed by where the invariant measure has mass — exactly Peter's norming constants. I'd phrase the honest theorem as: $\\beta-\\mu$ is recoverable in $L^2(G^2\\,dx)$ with conditioning $O(1)$, and the apparent tail blow-up is an artifact of measuring error in",
+      "created_at": "2026-06-22T20:28:20Z"
+    },
+    {
+      "id": "m1bde09e2",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, Dan — the convergence of $\\mathcal{E}_h \\to \\mathcal{E}$ is exactly right, and I want to crystallize what we now have, because I think we've found the real theorem and it has a Ramanujan dichotomy at its heart.\n\nLet me make three points.\n\n**1. The OU baseline — let me actually compute it, because I never trust a theorem until I've done $SL_2(\\mathbb{Z})$.** Take $\\beta-\\mu-\\frac{a^2}{2D} = c - \\frac{1}{2}\\omega^2 x^2/(D/2)$, i.e. a harmonic well. The gauged operator is the quantum harmonic oscillator with $\\mathcal{H} = -\\frac{D}{2}\\partial_x^2 + \\frac{1}{2}k x^2$, frequency $\\Omega = \\sqrt{kD}$. Spectrum $\\lambda_n = \\lambda_0 - n\\Omega$, ground state $G_0 \\propto e^{-\\sqrt{k/D}\\,x^2/2}$, so $F = e^{(a/D)x}G_0$ is a *shifted* Gaussian centered at $x_* = a/\\sqrt{kD}$. The gap is $\\Omega = \\sqrt{kD}$ — it grows with the diffusion! That's the honest content of Dan's \"compute the gap\": more epigenetic noise gives faster relaxation in the confining regime. This is our tempered/Ramanujan baseline, gap bounded below uniformly. Good. Now I trust the machinery.\n\n**2. The dichotomy is genuinely a temperedness phenomenon, and I want to name it precisely.** Define the essential-spectrum bottom $\\Lambda_{ess} = \\limsup_{|x|\\to\\infty}(\\beta-\\mu-\\frac{a^2}{2D})$. Then:\n- If $\\lambda_0 > \\Lambda_{ess}$: discrete principal eigenvalue, normalizable $F$, gap $>0$ — *Ramanujan/expander regime*, exponential relaxation in (d).\n- If $\\lambda_0 = \\Lambda_{ess}$: the eigenvalue dissolves into continuous spectrum, $F$ fails to be $L^1$, relaxation is polynomial. This is precisely the *complementary-series* boundary — the analog of an exceptional eigenvalue dropping below the tempered axis in the Selberg picture. Laszlo's percolation transition and Dan's gap closing are this same wall.\n\nThe Donsker–Varadhan formula I wrote makes this sharp: $\\lambda_0 > \\Lambda_{ess}$ iff the variational problem $\\sup_\\nu\\{\\int(\\beta-\\mu)d\\nu - I(\\nu)\\}$ is attained at a *localized* $\\nu$. That attainment-vs-escape is the whole game.\n\n**3. A warning on (e) that goes beyond conditioning.** Everyone's right that you recover $\\beta-\\mu$ in $L^2(G^2dx)$ and need norming constants to invert. But here's the subtle point: in the *non-confining* regime the spectrum is partly continuous, so the inverse data is no longer two discrete spectra (Borg–Marchenko) — it's a *spectral measure with continuous part*, the Gelfand–Levitan setting. You cannot recover $\\beta$ from countably many numbers anymore; you need the full Weyl–Titchmarsh $m$-function. That's exactly the difference between knowing zeros of $\\zeta$ and knowing $\\ze",
+      "created_at": "2026-06-22T20:29:11Z"
+    },
+    {
+      "id": "m51398039",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-22T20:30:07Z"
+    },
+    {
+      "id": "m200cca78",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nSolve the growth-fragmentation eigenvalue problem rm-01013 by Taylor-expanding to a drift-diffusion operator, gauging it into a self-adjoint (weighted Sturm-Liouville) form, and using spectral/Donsker-Varadhan theory to characterize the principal eigenpair, convergence rate (spectral gap), and inverse-problem identifiability.",
+      "created_at": "2026-06-22T20:30:07Z"
+    }
+  ],
+  "plan": {
+    "summary": "Solve the growth-fragmentation eigenvalue problem rm-01013 by Taylor-expanding to a drift-diffusion operator, gauging it into a self-adjoint (weighted Sturm-Liouville) form, and using spectral/Donsker-Varadhan theory to characterize the principal eigenpair, convergence rate (spectral gap), and inverse-problem identifiability.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Correct the Taylor expansion in part (a)",
+        "body": "Carefully expand the nonlocal reaction term 2∫β(y)φ(y-x)f(y)dy to second order, expanding the full product β(y)f(y) rather than f alone. Confirm that the leading reaction is (β-μ)F to zeroth order but that the true diffusion coefficient is Dβ(x) and the drift aβ(x), giving the state-dependent operator. State explicitly the rescaled regime (β locally constant) under which the clean constant-coefficient operator L F = (D/2)F'' - aF' + (β-μ)F emerges.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Gauge transform to self-adjoint Sturm-Liouville form",
+        "body": "Apply the integrating factor F(x) = exp(∫ a/D dx) G(x). For the constant-coefficient case verify the Schrödinger form (D/2)G'' + (β-μ-a²/(2D))G = λG. For the variable-coefficient case derive the weighted Sturm-Liouville form -(D/2)(βG')' + Ṽ G = λG. Establish the Rayleigh quotient and Dirichlet energy form ℰ(G) = (D/2)∫β(G')² dx as the correct invariant object.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Establish existence and qualitative properties of the principal eigenpair (c)",
+        "body": "Use Krein-Rutman / Feynman-Kac positivity of the semigroup to prove existence of a simple, real, dominant λ with strictly positive eigenfunction in the confining regime. Derive the Donsker-Varadhan variational formula λ = sup_ν{∫(β-μ)dν - I(ν)}. From the Rayleigh quotient prove monotonicity of λ (increasing in β, decreasing in μ) and the drift penalty -a²/(2D) lowering growth. Characterize decay of F (e^{(a/D)x}-modulated Gaussian/WKB tails) to pin down the decay conditions in (b).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Compute the Ornstein-Uhlenbeck baseline explicitly",
+        "body": "Take β-μ-a²/(2D) as a harmonic well, yielding the quantum harmonic oscillator H = -(D/2)∂² + (1/2)kx². Verify spectrum λ_n = λ_0 - nΩ with Ω = √(kD), ground state G_0 ∝ exp(-√(k/D) x²/2), and shifted Gaussian F centered at x_* = a/√(kD). Confirm the spectral gap equals Ω and grows with diffusion D. This serves as the sanity-check baseline for all subsequent general claims.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Characterize the spectral gap and convergence rate (d)",
+        "body": "Define Λ_ess = limsup_{|x|→∞}(β-μ-a²/(2D)). Prove the dichotomy: if λ_0 > Λ_ess there is a discrete principal eigenvalue with positive gap and exponential relaxation; if λ_0 = Λ_ess the eigenvalue dissolves into continuous spectrum with only polynomial relaxation. Bound the gap via the weighted Cheeger inequality h²/(2‖β‖_∞) ≤ λ_0-λ_1 ≤ 2h with conductance β and eigenmeasure G²dx. Establish convergence of renormalized f to F at rate = gap using the generalized relative entropy H[f|F] = ∫F ψ(f/F).",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Prove discretization and Γ-convergence for computation",
+        "body": "Discretize the gauged operator on a grid to a symmetric diagonally dominant weighted graph Laplacian with edge conductances β(x_i)/h². Prove a Γ-convergence lemma ℰ_h → ℰ for the Dirichlet energy as h→0 so the discrete spectral gap and Cheeger constant converge to the continuum values, including in the non-confining regime. Specify the shift-invert inverse-power-iteration scheme using SDD solves to compute the principal eigenpair and gap in nearly-linear time, and validate against the OU baseline.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Resolve the inverse problem and identifiability (e)",
+        "body": "State the identifiability obstruction: one steady state plus λ recovers only the combination β-μ = λ + a²/(2D) - (D/2)G''/G pointwise, never β and μ separately. Establish that the inverse map is well-conditioned in L²(G²dx) with conditioning governed by 1/G(x)², explaining apparent tail instability as a weighting artifact. For separating β and μ, formulate the two-spectra Borg-Marchenko reconstruction in the confining/discrete case, and warn that in the non-confining regime continuous spectrum requires the full Weyl-Titchmarsh m-function (Gelfand-Levitan), not countably many eigenvalues plus norming constants.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Critical review of regime assumptions and edge cases",
+        "body": "Stress-test the overall proof: verify the rescaling regime in step 0 is consistent with the constant-coefficient operator used downstream; check that the gauge transform's normalizability assumptions hold for F (not just G); confirm the Cheeger sandwich and Γ-convergence claims survive in the non-confining boundary case λ_0 = Λ_ess; and ensure the identifiability statements distinguish discrete vs continuous spectral data correctly. Flag any place where confining assumptions are silently invoked.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2,
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T20:30:07Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

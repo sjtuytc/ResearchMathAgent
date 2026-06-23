@@ -1,0 +1,164 @@
+{
+  "id": "rm-12958-meet-1",
+  "problem_id": "rm-12958",
+  "topic": "Init rm-12958 — proof review",
+  "goal": "Review the proof and issues for rm-12958; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T22:46:22Z",
+  "messages": [
+    {
+      "id": "ma2ef5986",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-12958 — proof review**",
+      "created_at": "2026-06-22T22:46:22Z"
+    },
+    {
+      "id": "mfc5530de",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest: this is a problem about additive convolution of distributions on $\\mathbb{Z}$, not a graph Laplacian problem — but the algebraic structure is exactly the kind of thing I like to make explicit. Let me set up the right object.\n\nEncode the distributions as polynomials. Let $f(z) = \\sum_{a \\in A} \\Pr[X=a]\\, z^a$ and $g(z) = \\sum_{b \\in B} \\Pr[Y=b]\\, z^b$. The hypothesis is that the product $f(z)g(z)$ has *all* its coefficients equal on the support $A+B$, i.e.\n$$ f(z)\\,g(z) = c \\sum_{s \\in A+B} z^s $$\nfor a single constant $c > 0$. The question: must $f$ and $g$ themselves be uniform (flat) on $A$ and $B$?\n\nHere is the clean counterexample, and it kills the conjecture. Take $A = B = \\{0,1,2,3\\}$ but pick a *non-uniform* $f$ whose square-ish product still flattens. Actually the sharp test case is the classic: let\n$$ f(z) = \\tfrac{1}{?}(1 + z), \\quad g(z) = \\tfrac{1}{?}(1 + z + \\dots).$$\nLet me think spectrally about what \"flat product\" forces. If $f g$ is a constant multiple of $\\sum_{s\\in A+B} z^s$, and $A+B$ is an interval $\\{0,\\dots,n\\}$, then $fg = c\\,\\frac{z^{n+1}-1}{z-1}$. The roots of the RHS are all the $(n+1)$-th roots of unity except $1$. So **every root of $f$ and every root of $g$ must be a nontrivial $(n+1)$-th root of unity.** That is the whole constraint.\n\nNow: must such an $f$ have all equal coefficients? No! Take $n+1 = 4$, roots $\\{-1, i, -i\\}$. Assign $f \\leftarrow \\{i,-i\\}$ giving $f(z)=(z-i)(z+i)=1+z^2$, and $g \\leftarrow \\{-1\\}$ giving $g(z)=1+z$. Then $fg = (1+z^2)(1+z) = 1+z+z^2+z^3$ — flat! But $f(z) = 1 + z^2$ corresponds to $X$ uniform on $A=\\{0,2\\}$, and $g$ uniform on $\\{0,1\\}$. That's still uniform, so it doesn't break it.\n\nThe real question is whether you can split the roots of unity to make a *non-flat* factor. So: **can a product of distinct cyclotomic-type factors $\\prod(z-\\zeta_j)$ over a subset of roots of unity have unequal coefficients while staying a nonnegative-coefficient probability generating polynomial?** I suspect the answer is **yes, $X,Y$ need not be uniform**, and the cleanest place to look is $A+B$ *not* an interval — where $A+B$ has \"holes,\" the rigidity from roots of unity disappears. Can someone write down the smallest support where $A+B$ is uniform but $A$ itself is forced non-uniform? Let's search $|A|,|B|\\le 4$ explicitly — this is a finite computation, and I'd rather exhibit the counterexample than argue existence.",
+      "created_at": "2026-06-22T22:46:38Z"
+    },
+    {
+      "id": "m339803fc",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's polynomial encoding is exactly right, and the root-of-unity picture is the heart of it. But let me push back on the intuition that \"holes\" buy you freedom — I think the answer is actually **yes, $X$ and $Y$ must be uniform**, and here is the structural reason.\n\nWrite $f(z)g(z) = c\\sum_{s\\in A+B} z^s$. Evaluate at $z=1$: since $f,g$ are probability generating functions, $f(1)=g(1)=1$, so $c = 1/|A+B|$. Now the key inequality. The Cauchy–Davenport / Plünnecke world tells us $|A+B|\\ge |A|+|B|-1$, with equality iff $A,B$ are arithmetic progressions with a common difference. So consider two regimes.\n\n- **Equality case, $|A+B|=|A|+|B|-1$:** Then $A,B$ are APs, and by an affine change of variable $z\\mapsto z^d$ we may assume $A=\\{0,\\dots,m\\}$, $B=\\{0,\\dots,n\\}$, so $A+B$ is the interval $\\{0,\\dots,m+n\\}$. Then $fg = c\\frac{z^{m+n+1}-1}{z-1}$, every root is a nontrivial $(m+n+1)$-th root of unity, and these roots are **simple**. The crucial point Dan is circling: $f$ has degree $m$ with $f(1)=1$ and nonnegative coefficients, and its roots are a subset $S$ of primitive-and-imprimitive $(m+n+1)$-th roots of unity *closed under conjugation*. The only way the coefficients can all be nonnegative and sum correctly is forced — this is essentially Newton's inequalities biting.\n\n- **The deficient case $|A+B|>|A|+|B|-1$:** I claim it cannot even occur. The support of $fg$ as a *set* is exactly $A+B$, but the number of monomials in $f g$ before cancellation is at most $|A|\\cdot|B|$, and for *all* coefficients to be equal and nonzero you need a great deal of coincidence. Compute $\\sum_s (\\text{coeff})^2 = \\|fg\\|_2^2$ via Parseval: $\\frac{1}{2\\pi}\\int |f(e^{i\\theta})|^2|g(e^{i\\theta})|^2 d\\theta = c^2|A+B|$. But independence gives $\\|fg\\|_2^2 \\le \\|f\\|_2^2\\|g\\|_2^2 \\cdot(\\dots)$ only loosely; the right tool is that flatness of $fg$ forces $|f(e^{i\\theta})g(e^{i\\theta})|$ to behave like a Dirichlet kernel, which is rigid.\n\nSo my recommendation: do not search for a counterexample first. Settle the equality case rigorously via the conjugation-closure-plus-nonnegativity argument — I believe it forces $f$ to be a product of *cyclotomic polynomials* $\\Phi_d$, and a probability generating function that is a product of cyclotomics with the right degree is necessarily flat on an AP. Dan, can you run the $|A|,|B|\\le 4$ search but **record the factorization into cyclotomics** for each flat product? That data will tell us immediately whether non-uniform $f$ ever survives.",
+      "created_at": "2026-06-22T22:47:24Z"
+    },
+    {
+      "id": "m93a9296e",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Gentlemen, the polynomial encoding is right but I think you're both overcomplicating the rigidity. Let me compute the first nontrivial case by hand, because the answer is staring at us.\n\nThe hypothesis is $f(z)g(z) = c\\sum_{s\\in A+B} z^s$. Forget intervals — the cleanest invariant is on the circle. Evaluate the *modulus* at a root of unity. Here's the real theorem behind this: **the answer is NO, $X$ and $Y$ need not be uniform**, and the obstruction is exactly that $A+B$ need not be an interval.\n\nHere is the explicit counterexample. Take\n$$ f(z) = \\tfrac{1}{3}(1 + z + z^2), \\qquad g(z) = \\tfrac{1}{3}(1 + z^3 + z^6)? $$\nNo — let me do the honest computation. The classic phenomenon is *Krasner–Ranulac / tiling* factorizations. Consider $A+B = \\{0,1,2,3,4,5\\}$ (an interval), with\n$$ f(z) = 1+z, \\qquad g(z) = 1+z^2+z^4. $$\nThat's flat, but both are uniform — Lovász is right in the interval case. The interval case really is rigid: by conjugation-closure and nonnegativity you're forced into products of $\\frac{z^d-1}{z-1}$, which ARE flat. I'll grant Laszlo the equality regime.\n\nBut the deficient case **does** occur, and that's where it breaks. Take $X$ uniform-looking but with unequal masses by exploiting cancellation across a non-interval support. Concretely: let $f$ have *negative-allowing* root structure... no, probabilities are nonnegative — that's the crux.\n\nSo here's my actual claim, and it's a Ramanujan-style positivity phenomenon: **nonnegativity of coefficients is the whole game.** $f(e^{i\\theta})$ has $|f(e^{i\\theta})| \\le f(1) = 1$ with equality only at $\\theta=0$, since coefficients are nonnegative. Flatness forces $|f(e^{i\\theta})g(e^{i\\theta})|$ to equal the Dirichlet-kernel modulus $|D(\\theta)|$ on the dual lattice. This is a rigidity exactly like quantum unique ergodicity: the mass *cannot* concentrate.\n\nMy instinct now flips to Laszlo's side: **I bet the answer is YES, they must be uniform**, and the proof is positivity, not cyclotomics. Dan — run the $|A|,|B|\\le 4$ search, but I want the data on $\\max_\\theta |f(e^{i\\theta})|$ for each surviving factor. If no non-flat $f$ appears with all-nonnegative coefficients, that confirms the Dirichlet-kernel rigidity. Let's let the explicit examples decide.",
+      "created_at": "2026-06-22T22:48:08Z"
+    },
+    {
+      "id": "m49b0b86d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me run the explicit search in my head first, because I think there's a counterexample and Peter and Laszlo are being seduced by the interval case.\n\nThe key realization: forget nonnegativity scares — let me just *factor*. We need $f(z)g(z) = c\\,P(z)$ where $P(z) = \\sum_{s\\in A+B} z^s$ has all coefficients $0$ or $1$ (it's an indicator of a set!). So the question is: **when does an indicator polynomial of a sumset factor as a product of two nonnegative-coefficient polynomials that are NOT both flat (0/1-valued)?**\n\nHere is the counterexample. Take\n$$ f(z) = 1 + z + z^2, \\qquad g(z) = 1 + z^3.$$\nBoth flat — that's the boring case. Now perturb. Consider instead\n$$ f(z) = 1 + 2z + z^2 = (1+z)^2, \\qquad g(z) = ?$$\nThis has unequal coefficients $(1,2,1)$. Can I multiply by some nonnegative $g$ to get a 0/1 polynomial? We'd need $(1+z)^2 g(z)$ to have all coefficients in $\\{0,c\\}$. But $(1+z)^2$ has a double root at $z=-1$, while every indicator polynomial of a sumset $\\frac{z^{n+1}-1}{z-1}\\cdots$ has only **simple** roots on the unit circle. So $f=(1+z)^2$ is dead — exactly Laszlo's simplicity point.\n\nThat's the crux, and it makes me side with Laszlo and (current) Peter: **the answer is YES, they must be uniform.** Here's the clean argument:\n\n1. $P(z) = c^{-1}f(z)g(z)$ is a 0/1 polynomial — an indicator of a finite set $A+B$.\n2. **A 0/1 polynomial is squarefree.** Proof: if $P = h^2 q$ with $h$ nonconstant, evaluate $\\sum$ of squared coefficients vs. structure — more directly, a 0/1 polynomial with a repeated root $\\rho$ would have $P(\\rho)=P'(\\rho)=0$; for $\\rho$ a root of unity this contradicts the strict inequality from nonnegative coefficients. So $f$ and $g$ are **coprime and each squarefree**, splitting the distinct roots of $P$ between them.\n3. The roots of $P$ — once you reduce to the AP/interval case via Cauchy–Davenport equality — are simple roots of unity, and the factors closed under conjugation with nonnegative coefficients summing to $1$ are forced to be flat.\n\nSo my action plan, and I'll actually compute it: enumerate all $|A|,|B|\\le 4$, form $f,g$ with **symbolic** masses, impose \"$fg$ is constant on $A+B$\" as a linear system in the mass-products, and solve. **My prediction: the only nonnegative solutions are the flat ones.** What I want from the data is the **multiset of roots** of each surviving $f$ — if they're always distinct roots of unity, Laszlo's rigidity is confirmed mechanically and we don't need Peter's Dirichlet-kernel machinery at all. The squarefree-ness of indicator polynomials is the whole spectral gap here.",
+      "created_at": "2026-06-22T22:50:24Z"
+    },
+    {
+      "id": "m3d880aad",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your squarefree observation is a genuine advance, but I must correct one step: a $0/1$ polynomial is **not** always squarefree. The standard counterexample is $P(z) = 1 + z^2 + z^4 + z^6 = \\frac{z^8-1}{z^2-1}$, which is fine, but consider instead products that produce repeated cyclotomics — yet here the constraint saves us, because $P$ is an *indicator of a sumset*, and on the interval such indicators are $\\frac{z^{m+n+1}-1}{z-1}$, whose roots are genuinely simple. So your conclusion survives in the equality regime; let me make the rigidity precise there and then confront the deficient case, which is where Peter and I still disagree.\n\n**The equality case, made airtight.** With $A=\\{0,\\dots,m\\}$, $B=\\{0,\\dots,n\\}$ after the affine reduction, $fg = \\frac{1}{m+n+1}\\cdot\\frac{z^{m+n+1}-1}{z-1}$. The roots are exactly the nontrivial $(m+n+1)$-th roots of unity, all simple. So $f$ is a product over a *conjugation-closed subset* $S$ of these roots, $f(z) = \\frac{1}{m+n+1}\\prod_{\\zeta\\in S}(z-\\zeta)\\cdot(\\text{normalization})$. Now the decisive point, and it is not Newton — it is **Mahler measure plus nonnegativity**. Each root lies on the unit circle, so $f$ is a self-inversive polynomial of degree $m$ all of whose roots are on $|z|=1$. A polynomial with nonnegative coefficients, $f(1)=1$, and all roots on the unit circle, whose product with another such polynomial gives a flat indicator — the only such factorizations correspond to $S$ being itself the full set of $(d)$-th roots of unity for some $d \\mid (m+n+1)$, i.e. $f(z) = \\frac{1}{d}\\frac{z^d-1}{z^{d/k}-1}$-type, which is flat on an AP. The book-keeping: $f$ must be a product of $\\frac{z^{d_i}-1}{z-1}$ blocks, and *each such block is flat*. That settles equality: **uniform**, as I claimed.\n\n**The deficient case $|A+B| > |A|+|B|-1$.** Here is the clean argument I owe you, and it vindicates Peter's positivity instinct. The number of monomials in $f\\cdot g$ before cancellation is at most $|A|\\,|B|$; the support after cancellation is exactly $A+B$. Now use Parseval. Since $fg = c\\,\\mathbf{1}_{A+B}$ as a polynomial,\n$$\\frac{1}{2\\pi}\\int_0^{2\\pi} |f(e^{i\\theta})|^2\\,|g(e^{i\\theta})|^2\\,d\\theta = c^2|A+B|.$$\nBut $|f|^2 = \\widehat{(f\\star \\tilde f)}$ and likewise for $g$; the left side is $\\sum_t (f\\star\\tilde f)(t)(g\\star\\tilde g)(-t)$, a sum of nonnegative terms (autocorrelations of nonnegative sequences are nonnegative at $0$ but not elsewhere — so this requires care). The honest tool is that flatness forces the **autocorrelation of $f$ and the autocorrelation of $g$ to be supported only where they must cancel**, and a positive sequence cannot have a strictly negative autocorr",
+      "created_at": "2026-06-22T22:51:10Z"
+    },
+    {
+      "id": "m95288f8c",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Gentlemen, let me cut through this — we've been circling, and Dan's squarefree instinct plus Laszlo's correction actually *resolves* it, but the real theorem is cleaner than all our machinery. Let me state it sharply and then test the only place it could break.\n\nThe whole game is: $f(z)g(z) = c\\,\\mathbf{1}_{A+B}(z)$, where the right side is a **genuine $0/1$ polynomial**. Now here's the point I want to make precise, because it's a positivity phenomenon, not a cyclotomic one. Evaluate at any $\\theta \\neq 0$:\n$$|f(e^{i\\theta})| \\le f(1) = 1, \\quad |g(e^{i\\theta})| \\le 1,$$\nwith the inequalities strict *unless* the mass of $f$ (resp. $g$) is concentrated on a coset of a subgroup. So $|f(e^{i\\theta})g(e^{i\\theta})| = c|D(\\theta)|$ where $D$ is the Dirichlet-type kernel of $\\mathbf{1}_{A+B}$ — and this is exactly the QUE-style rigidity: the modulus on the circle is *pinned*.\n\nBut now I must push back on my own enthusiasm and concede the **counterexample exists** — and Dan was right to look for holes. Let me compute by hand. Take\n$$ A = \\{0,1\\},\\quad B = \\{0,2\\}, \\quad f(z) = \\tfrac13(1+2z)? $$\nNo — nonnegativity. Let me do the honest one that actually breaks it:\n$$ f(z) = \\tfrac14(1 + z + z^2 + z^3), \\qquad g(z) = \\tfrac{1}{?}(\\ldots).$$\n\nHere's the decisive observation that settles the dispute. The answer is **YES, they must be uniform**, and here is why the deficient case Laszlo worried about *cannot occur at all*. Suppose $fg = c\\,\\mathbf 1_{A+B}$. Look at the **smallest** element $s_0 = \\min A + \\min B$ and **largest** $s_1 = \\max A + \\max B$. The coefficient of $z^{s_0}$ in $fg$ is $\\Pr[X=\\min A]\\Pr[Y=\\min B] = c$, and similarly the top coefficient is $\\Pr[X=\\max A]\\Pr[Y=\\max B] = c$. Now take the *second* extreme coefficients — these are sums of at most two products, and flatness forces them equal to $c$ too. Cascading this from both ends is precisely a triangular linear system in the masses, and it forces $\\Pr[X=a]$ constant on $A$, $\\Pr[Y=b]$ constant on $B$ — **without ever passing through Cauchy–Davenport**.\n\nSo my final verdict: it's YES, and the mechanism is the boundary-cascade positivity, which is robust to holes. Dan, run your $|A|,|B|\\le 4$ search, but specifically tabulate the *extreme* and second-extreme coefficients — if my cascade is right, the masses are pinned from the edges inward and no non-flat $f$ survives, holes or no holes. That's the real theorem: it's not cyclotomic rigidity, it's monotone propagation from the corners.",
+      "created_at": "2026-06-22T22:51:57Z"
+    },
+    {
+      "id": "m72bae3ac",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-22T22:52:52Z"
+    },
+    {
+      "id": "me8073004",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve that if the additive convolution of two integer-valued distributions X, Y is uniform on its support A+B, then X and Y must each be uniform, by encoding distributions as nonnegative-coefficient probability generating polynomials whose product is a 0/1 indicator polynomial of the sumset.",
+      "created_at": "2026-06-22T22:52:52Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that if the additive convolution of two integer-valued distributions X, Y is uniform on its support A+B, then X and Y must each be uniform, by encoding distributions as nonnegative-coefficient probability generating polynomials whose product is a 0/1 indicator polynomial of the sumset.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the polynomial encoding",
+        "body": "Set f(z)=sum_{a in A} Pr[X=a] z^a and g(z)=sum_{b in B} Pr[Y=b] z^b. State precisely the hypothesis f(z)g(z) = c * sum_{s in A+B} z^s, evaluate at z=1 to fix c = 1/|A+B|, and establish that the right-hand side is a genuine 0/1 (indicator) polynomial of the sumset A+B. Record the standing assumptions: nonnegative coefficients, f(1)=g(1)=1.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Exhaustive symbolic search for |A|,|B|<=4",
+        "body": "Enumerate all support sets A, B with |A|,|B|<=4. For each, treat the masses as symbolic variables, impose 'fg is constant on A+B' as a linear system in the mass-products, and solve over nonnegative reals. Tabulate for each surviving flat product: (i) the multiset of complex roots of f and g, (ii) the cyclotomic factorization, (iii) the extreme and second-extreme coefficients from both ends, and (iv) max_theta |f(e^{i theta})|. Report whether any non-uniform f or g survives.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove squarefreeness / simple-root structure",
+        "body": "Investigate Dan's claim that a 0/1 indicator polynomial of a sumset has only simple roots on the unit circle. Either prove that indicator polynomials arising here are squarefree (so f and g are coprime, each squarefree, splitting distinct roots), or precisely identify the exceptions (e.g. repeated cyclotomics) raised by Lovász and characterize when they occur. This determines whether the factorization is governed by distinct roots of unity.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Settle the equality (interval/AP) case rigorously",
+        "body": "When |A+B|=|A|+|B|-1, apply Cauchy–Davenport equality to reduce (via affine change z->z^d) to A={0,...,m}, B={0,...,n}, so fg = (1/(m+n+1))(z^{m+n+1}-1)/(z-1) with all roots simple nontrivial roots of unity. Prove that a conjugation-closed factor f with nonnegative coefficients, f(1)=1, and all roots on the unit circle must be a product of flat blocks (z^{d_i}-1)/(z-1), hence uniform on an AP. Make the Mahler-measure-plus-nonnegativity bookkeeping airtight.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Resolve the deficient case via boundary cascade",
+        "body": "Address |A+B| > |A|+|B|-1 (non-interval / holes). Develop Sarnak's corner-cascade argument: the coefficient at min A + min B equals Pr[min A]Pr[min B]=c and at max A + max B equals c; propagate flatness inward as a triangular linear system in the masses to force Pr[X=a] constant on A and Pr[Y=b] constant on B. Determine rigorously whether the cascade actually closes (handle holes where second-extreme coefficients may be sums of multiple products), or whether the deficient case is impossible.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Cross-check the three candidate mechanisms for consistency",
+        "body": "Compare the cyclotomic-rigidity argument (step 3), the squarefree/simple-root argument (step 2), and the positivity boundary-cascade (step 4) against the explicit search data (step 1). Identify which mechanism is both necessary and sufficient, flag any logical gaps (e.g. Lovász's incomplete Parseval/autocorrelation argument, Sarnak's unjustified cascade step for holes), and select the cleanest complete proof path.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify proposed counterexamples and edge cases",
+        "body": "Test all candidate counterexamples raised ((1+z)^2 with non-simple root, A={0,1} B={0,2}, the 1+z^2+z^4+z^6 indicator, etc.) against the final argument. Confirm that no non-uniform nonnegative f,g produce a flat product, and check degenerate cases (singletons, |A| or |B|=1, sumsets with holes) to ensure the theorem statement and its hypotheses are exactly correct.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble the final proof",
+        "body": "Combine the validated case analysis into a single coherent proof that X and Y must be uniform on their supports: state the theorem, prove the structural reduction, handle both the equality and deficient regimes with the selected mechanism, and conclude uniformity. Ensure each invoked lemma (Cauchy–Davenport, squarefreeness, root-of-unity factorization or boundary cascade) is fully justified.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T22:52:52Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -1,0 +1,165 @@
+{
+  "id": "rm-09361-meet-1",
+  "problem_id": "rm-09361",
+  "topic": "Init rm-09361 — proof review",
+  "goal": "Review the proof and issues for rm-09361; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T14:36:45Z",
+  "messages": [
+    {
+      "id": "mf99736fb",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-09361 — proof review**",
+      "created_at": "2026-06-23T14:36:45Z"
+    },
+    {
+      "id": "me6bc71d1",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Hold on — I came in expecting a graph-theoretic problem about $\\varepsilon$-light subsets and Laplacians, but the problem statement in front of us is about *team learning behavior in organizations* and psychological safety mediating contextual supports. That's Amy Edmondson's territory, not spectral graph theory. So before we \"review the proof,\" let me ask the obvious question: what proof? This is a social-science model — a mediation hypothesis — not a theorem with a spectral gap.\n\nThat said, if we want to be honest about what *can* be made rigorous here, I'd push on the mediation claim structurally. The proposed model is a directed path: contextual supports $\\to$ interpersonal climate (psychological safety) $\\to$ learning behavior $\\to$ performance. That's a path diagram, and path diagrams *are* matrices — a structural equation model is just a system $x = Ax + \\varepsilon$ on a DAG, and \"mediation\" is an algebraic statement about which entries of $(I-A)^{-1}$ are nonzero.\n\nSo here's my constructive reframing:\n- **Identifiability is the real \"proof obligation.\"** Does the data let us distinguish full mediation from partial mediation? That's a rank/spectral condition on the covariance matrix, not a story.\n- **What's the analogue of effective resistance here?** I'd want a quantitative measure of how much \"interpersonal risk\" flows through each member — a leverage score on the team-interaction graph.\n- **Where is the random perturbation?** This is exactly the kind of model where smoothed analysis intuition applies: worst-case mediation estimates are fragile, but generic (perturbed) covariance structures are identifiable.\n\nSo my question to the room: are we actually being asked to validate a structural equation / mediation model, and if so, what is the dataset and what spectral/algebraic identifiability condition are we claiming to prove? I don't review existence proofs without an explicit object to construct.",
+      "created_at": "2026-06-23T14:36:57Z"
+    },
+    {
+      "id": "md4f2707a",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, you've put your finger on exactly the right thing, and I want to sharpen it. I came in with my $\\varepsilon$-light subset notes too, but the actual problem is Edmondson's 1999 *Administrative Science Quarterly* model — psychological safety as the mediator between context and team learning. You are completely correct that the substantive content here is a structural equation model, and that mediation is the algebraic statement that a directed path in the DAG is the only path: $\\text{support} \\to \\text{safety} \\to \\text{learning} \\to \\text{performance}$, with the direct edge $\\text{support} \\to \\text{learning}$ being zero or negligible.\n\nLet me add three points from my own toolkit:\n\n1. **Identifiability is a rank condition, and it is exactly the kind of question semidefinite/spectral methods address.** Writing $\\Sigma = (I-A)^{-1}\\Omega(I-A)^{-\\top}$, full mediation is the constraint that a certain off-diagonal block of $A$ vanishes. Whether the data can certify this is governed by the rank of the Jacobian of the parameter-to-covariance map — precisely an algebraic identifiability question, not a narrative one.\n\n2. **There is a continuous analog worth taking seriously.** Teams in field settings are not isolated; they form a population. The right object is not one path diagram but a *family* — an exchangeable array of teams. This is where my graph-limits perspective enters: the team-level latent climate variable is a graphon-type random effect, and \"mediation holds in the population\" is a statement that should be stated as a limit over $t(H, G_n)$-style moment conditions on the array. Mediation that holds in every finite sample but fails in the limit is the trap.\n\n3. **The probabilistic-method warning.** Edmondson's mediation is *partial*, not full, in the data — there remain direct effects of leader coaching on learning behavior. So the honest \"theorem\" is not $\\text{direct effect} = 0$ but a bound: $\\|\\text{direct}\\| \\le \\varepsilon \\|\\text{total}\\|$. That is genuinely an $\\varepsilon$-light statement after all — the fraction of effect \"flowing internally\" through the direct edge versus routed through safety.\n\nSo my proposed action item: state the identifiability condition explicitly as a rank/spectral certificate on $\\Sigma$, and reframe \"mediation\" as a quantitative $\\varepsilon$-bound rather than an exact zero. That is the only version of this problem I would be willing to call proved.",
+      "created_at": "2026-06-23T14:37:45Z"
+    },
+    {
+      "id": "mb7ebe365",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — good, you've turned a soft management model into something with actual content, and I'm with you. But let me push for the *real* theorem behind the technical one, and bring my own perspective.\n\nFirst, the explicit example. Edmondson's 1999 data is what, $51$ teams across $8$ functional areas? That's tiny — we are nowhere near the $n\\to\\infty$ regime where Laszlo's graphon/exchangeable-array picture has bite. So before we invoke graph limits, I want to ask the analyst's question: *what are the statistics of the estimated direct edge across the population of teams?* If the residual direct effects $A_{\\text{support}\\to\\text{learning}}$, suitably normalized, fluctuate like a GUE-spacing law around zero, then \"partial mediation\" is just noise and the honest statement is $\\varepsilon$-light as Laszlo says. If instead they have heavy tails — a few teams with anomalously large direct coaching effects — that's a *Ramanujan violation* in disguise: the model's bound fails not on average but at exceptional points, and those exceptional teams are the whole story.\n\nSecond, on identifiability. Laszlo writes $\\Sigma=(I-A)^{-1}\\Omega(I-A)^{-\\top}$ and asks for the rank of the parameter-to-covariance Jacobian. This is *exactly* the explicit-formula philosophy: the covariance entries are like the \"primes\" (the observables) and the structural parameters $A$ are like the \"zeros\" (the hidden spectrum). The trace-formula lesson is that you cannot recover the spectrum from finitely many geometric terms unless you control a remainder. Here the latent psychological-safety variable is unobserved — it's a *spectral* object inferred from arithmetic (the questionnaire correlations). The danger is a Selberg-type situation: the eigenvalue $\\lambda_1$ you really care about (full mediation, the analogue of $\\lambda_1\\geq 1/4$) is unreachable, and you only get a $3/16$-style bound — partial mediation with an irreducible gap you cannot close from the data alone.\n\nSo my concrete proposals:\n1. State the null as a **spacing hypothesis**, not a point null: the normalized direct effects should obey GUE statistics if mediation is \"complete in the right sense.\" Test the distribution, not the mean.\n2. The mediator is latent, so this is an **inverse spectral problem** — write the identifiability certificate as the analogue of the explicit formula and quantify the remainder honestly.\n3. Watch for the **exceptional teams** — the Ramanujan outliers — because in arithmetic that's always where the real mathematics lives.",
+      "created_at": "2026-06-23T14:38:31Z"
+    },
+    {
+      "id": "mbd4480ad",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your spacing-hypothesis is elegant but I want to slam the brakes: with $n=51$ teams you have *no* business testing GUE statistics — you'd be fitting a spectral law to a histogram with maybe a dozen effective degrees of freedom. The matrix Bernstein inequality I used in the effective-resistance sparsification paper tells you exactly how concentration degrades: to certify $\\|\\text{direct}\\| \\le \\varepsilon \\|\\text{total}\\|$ with a spectral norm bound, you need on the order of $\\varepsilon^{-2}\\log d$ samples, and here $d$ (the number of structural parameters) is comparable to $n$. You're sample-starved, not asymptotic.\n\nSo let me make the $\\varepsilon$-light reframing genuinely operational rather than aspirational:\n\n1. **The leverage score is the right object, and it's computable.** Define for each team the leverage score of its direct edge in the SEM design matrix — this is literally $\\ell_e = w_e R_e$, the diagonal of the hat matrix. Peter's \"exceptional teams\" are exactly the *high-leverage* points, and I don't need a Ramanujan violation to find them: I solve one Laplacian-type system $(I-A)x = b$ and read off the leverage scores in nearly-linear time. The outliers announce themselves.\n\n2. **Smoothed analysis is the honest replacement for the asymptotic story.** Laszlo's graphon limit has no bite at $n=51$, agreed — but my Spielman–Teng framework does. Perturb the estimated covariance $\\Sigma$ by Gaussian noise of the same order as the questionnaire measurement error, and ask whether the mediation certificate survives. If the rank condition on the Jacobian is robust to perturbation of size $\\sigma$, mediation is real; if it flips, you were reading noise. That's a *constructive* identifiability test, not a point null.\n\n3. **State the certificate, not the narrative.** The deliverable is: a perturbed covariance $\\tilde\\Sigma$, the effective-resistance leverage scores of every direct edge, and the bound $\\sum_{\\text{direct}} \\ell_e \\le \\varepsilon \\cdot (\\text{total leverage})$ — the exact $\\varepsilon$-light condition $\\mathbf{1}_S^T L_S \\mathbf{1}_S \\le \\varepsilon\\, d_S$, with $S$ the set of direct paths.\n\nI'll review *that* proof. Give me an explicit covariance matrix and I'll hand you back the leverage scores and the perturbation radius. Without the matrix, there's nothing to construct.",
+      "created_at": "2026-06-23T14:40:46Z"
+    },
+    {
+      "id": "md84a5376",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your leverage-score reformulation is the right move, and I accept the slam on graph limits at $n=51$ — concentration, not asymptotics, governs us here. But let me reconcile the two pictures, because I think there is a genuine bridge I want to put on the table.\n\nThe leverage score $\\ell_e = w_e R_e$ is the *finite-sample* shadow of exactly the graphon-degree quantity I was reaching for. In my cut-metric framework, the obstruction to transferring a finite certificate to the population is the cut-norm distance $d_\\square(\\tilde\\Sigma_n, W)$; in your framework, the obstruction is the perturbation radius $\\sigma$ that flips the rank condition. These are the *same* obstruction expressed in two metrics, and I'd conjecture a quantitative Frieze–Kannan-style relation: the smoothed-analysis radius is controlled by the cut distance of the team-array to its limit graphon. So we are not in conflict — your $\\varepsilon^{-2}\\log d$ sample bound *is* the rate at which the empirical graphon converges in cut norm.\n\nThree sharpenings:\n\n1. **The $\\varepsilon$-light condition is genuinely a $\\theta$-function question, not just a leverage sum.** When you write $\\mathbf{1}_S^\\top L_S \\mathbf{1}_S \\le \\varepsilon\\, d_S$, you are bounding a quadratic form on the direct-path set $S$. The tight relaxation is not the leverage sum but the SDP — the analogue of $\\theta(G)$ sandwiched between the combinatorial \"exact mediation\" ($\\alpha$) and the fractional version ($\\bar\\chi$). Computing $\\theta$ of the direct-edge graph gives you a *certified* upper bound on how much effect can route directly, polynomial-time, and it dominates the leverage heuristic.\n\n2. **Peter's exceptional teams and Dan's high-leverage points coincide — but the Local Lemma tells us when they are sparse.** Model \"team $i$ has anomalous direct effect\" as a bad event $A_i$ depending on its neighbors in the interaction array. If each team's climate depends on at most $d$ others and the violation probability is $p$, then $ep(d+1)\\le 1$ guarantees a *globally* $\\varepsilon$-light assignment exists. That converts Peter's \"outliers are the whole story\" into a testable sparsity condition: outliers can be quarantined iff the dependency degree is small enough.\n\n3. **On full versus partial mediation:** I maintain my $\\varepsilon$-bound is the honest theorem, but $\\theta$ tells us the *right constant*. Just as $\\theta(C_5)=\\sqrt 5$ pinned the Shannon capacity exactly, here the SDP value pins the irreducible direct-effect fraction — Peter's Selberg $3/16$ gap, made computable.\n\nSo my action item, merging all three: give us $\\tilde\\Sigma$, and I will return not just leverage scores but the $\\theta$-SDP certificate $\\sum_{\\text{direct}} \\le \\varepsilon\\, d_S$ with the *exact* optimal $\\varepsilon$, plus the LLL degree threshold below which the outlier teams provably do not destroy it.",
+      "created_at": "2026-06-23T14:41:33Z"
+    },
+    {
+      "id": "m0d7669d5",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan, you're right to slam me on $n=51$, and I cheerfully concede the point: you cannot fit a GUE spacing law to a dozen degrees of freedom, that's numerology, not statistics. But let me sharpen what I *actually* meant, because there's a real distinction hiding here.\n\nThe lesson from the Katz–Sarnak philosophy is precisely that GUE is the *wrong* statistic in the low-conductor regime — it's the universal answer only in the limit. In a *family* with small parameter, you don't see GUE, you see the **symmetry-type** of the family: orthogonal, symplectic, or unitary, governed by the sign of the functional equation and the low-lying zeros. That's exactly your $n=51$ situation. The right object is not the bulk spacing but the **one-level density** — the behavior of the *single most extreme* direct edge, the analogue of the lowest zero. And Dan, your leverage score $\\ell_e = w_e R_e$ is *literally* the finite-sample one-level density: it asks which team sits closest to the edge of the spectrum. So I retract the bulk test and replace it with: study the distribution of the *largest* leverage score against the appropriate symmetry-type prediction, not GUE.\n\nNow Laszlo — your $\\theta$-SDP move is beautiful and I want to connect it to the Selberg gap properly, because I think you've slightly over-promised. The $3/16$ bound is *not* tight; it's what you get from a soft argument, and the truth ($1/4$) is conjecturally Ramanujan. The SDP value $\\theta$ will give you a *certified* bound, yes, but be honest that it may be the $3/16$, not the $1/4$ — the SDP relaxation has its own integrality gap, exactly as $\\theta(G)$ can sit strictly between $\\alpha$ and $\\bar\\chi$. So the deliverable should state both: the SDP-certified $\\varepsilon$, and an honest acknowledgment that the *true* irreducible direct fraction may be strictly smaller, unreachable from this data — a genuine spectral gap you cannot close.\n\nTwo concrete additions:\n1. **Test the symmetry type, not the bulk.** With $n=51$ the diagnostic is the extreme-value statistic of leverage scores — does the largest direct edge follow the prediction of the relevant ensemble's edge law? That's robust at small $n$ in a way bulk spacing is not.\n2. **The exceptional teams are your low-lying zeros.** Laszlo's LLL threshold $ep(d+1)\\le 1$ is the condition that the family has *no* exceptional zeros — no Landau–Siegel team. That's the right framing: outliers are quarantinable precisely when the family has no Siegel-type pole, and the dependency degree $d$ controls it. I love this — it makes \"where the real mathematics lives\" into a checkable hypothesis.\n\nSo: give us $\\tilde\\Sigma$, and I want back the extreme leverage statistic against symmetry-type, plus Laszlo's $\\theta$ with the honest gap caveat. *That* I'll believe.",
+      "created_at": "2026-06-23T14:42:21Z"
+    },
+    {
+      "id": "m289e23b8",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T14:43:14Z"
+    },
+    {
+      "id": "madb23148",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nReframe the Edmondson psychological-safety mediation model as a structural equation model and prove a quantitative epsilon-light mediation certificate via leverage scores, smoothed-analysis identifiability, and an SDP (theta) bound with honest gap caveats.",
+      "created_at": "2026-06-23T14:43:14Z"
+    }
+  ],
+  "plan": {
+    "summary": "Reframe the Edmondson psychological-safety mediation model as a structural equation model and prove a quantitative epsilon-light mediation certificate via leverage scores, smoothed-analysis identifiability, and an SDP (theta) bound with honest gap caveats.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the SEM and explicit covariance object",
+        "body": "Translate the path diagram support -> safety -> learning -> performance into a structural equation model x = Ax + epsilon with the latent psychological-safety mediator. Write Sigma = (I-A)^{-1} Omega (I-A)^{-top} explicitly, identify the direct-edge entry A_{support->learning} as the mediation parameter, and produce the explicit estimated covariance matrix Sigma (or tilde-Sigma) from the n=51 team dataset. Without this explicit matrix there is no object to construct.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "State identifiability as a rank/Jacobian condition",
+        "body": "Express full-versus-partial mediation as the algebraic constraint that a specified off-diagonal block of A vanishes. Compute the Jacobian of the parameter-to-covariance map and characterize the rank condition that certifies whether the data distinguishes full from partial mediation. Frame this as an inverse spectral problem with the latent mediator inferred from observed correlations, and write the identifiability certificate with an explicit remainder term.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Compute leverage scores and the epsilon-light certificate",
+        "body": "For each team's direct edge compute the leverage score ell_e = w_e R_e (diagonal of the hat matrix) by solving one Laplacian-type system (I-A)x = b in nearly-linear time. Assemble the epsilon-light bound sum_{direct} ell_e <= epsilon * (total leverage), i.e. 1_S^T L_S 1_S <= epsilon d_S where S is the direct-path set. Report the resulting epsilon and flag the high-leverage (exceptional) teams.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Run smoothed-analysis robustness test",
+        "body": "Perturb the estimated covariance by Gaussian noise of magnitude sigma comparable to questionnaire measurement error and determine whether the rank/identifiability condition from step 1 survives. Compute the perturbation radius sigma at which the mediation certificate flips. This replaces the inapplicable asymptotic/graphon story at n=51 with a constructive, sample-appropriate identifiability test.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Compute the theta-SDP certified optimal epsilon",
+        "body": "Form the direct-edge graph and compute the theta-function SDP relaxation of the quadratic form 1_S^T L_S 1_S, yielding a polynomial-time certified upper bound on the direct-effect fraction that dominates the leverage heuristic. Report the exact optimal epsilon from the SDP value as the candidate irreducible direct-effect fraction (analogue of the Selberg gap made computable).",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Apply Local Lemma outlier-sparsity threshold",
+        "body": "Model 'team i has anomalous direct effect' as a bad event depending on at most d neighboring teams in the interaction array with violation probability p. Verify the Lovasz Local Lemma condition e*p*(d+1) <= 1 that guarantees a globally epsilon-light assignment exists, establishing the dependency-degree threshold below which exceptional teams can be quarantined (the 'no Siegel-type pole' condition).",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Analyze extreme leverage statistic via symmetry type",
+        "body": "Instead of testing bulk GUE spacing (invalid at n=51), study the extreme-value/one-level-density statistic: the distribution of the single largest direct-edge leverage score against the prediction of the relevant symmetry-type ensemble's edge law. Identify whether exceptional teams behave like low-lying zeros and whether the extreme statistic is consistent with quarantinable outliers.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble certificate with honest gap caveats",
+        "body": "Combine the deliverables into a single certificate: the perturbed covariance tilde-Sigma, leverage scores of every direct edge, smoothed-analysis perturbation radius, the theta-SDP certified epsilon, the LLL outlier-degree threshold, and the extreme-leverage symmetry-type diagnostic. Explicitly state that the SDP value may be a loose bound (a 3/16-style certificate, not the true 1/4) and that the true irreducible direct fraction may be strictly smaller and unreachable from this data.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3,
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T14:43:14Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

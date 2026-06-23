@@ -1,0 +1,966 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{mathtools}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\range}{range}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\spann}{span}
+\DeclareMathOperator{\Var}{Var}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Frob}[1]{\left\lVert #1\right\rVert_F}
+\newcommand{\Op}[1]{\left\lVert #1\right\rVert_2}
+\newcommand{\Atil}{\widetilde{A}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+
+\begin{document}
+
+\title{Sharp thresholds, failure regimes, and finite-precision limits for
+randomized low-rank approximation}
+\maketitle
+
+\begin{abstract}
+We give a rigorous, self-contained treatment of the three questions. For
+Gaussian sketching we prove a \emph{matching} two-sided bound on the projection
+error: with sketch width $\ell=k+p$,
+$\E\,\Frob{A-P_YA}^2\le(1+\tfrac{k}{p-1})\Frob{A-A_k}^2$
+(Thm.~\ref{thm:upper}), with the factor attained in the limit by an explicit
+flat-tail family (Thm.~\ref{thm:lower}); the high-probability version requires
+$\ell=k+\Theta\big((k+\log\tfrac1\delta)/\varepsilon\big)$
+(Thm.~\ref{thm:hp}, proved via Gaussian concentration, \emph{not} Markov), and
+the regime $p=\Theta(k/\varepsilon)$ is sharp. The clean $(1+\varepsilon)$
+relative-error guarantee for a strict rank-$k$ output is obtained for the
+sketched rank-$k$ regression estimator via projection-cost-preserving sketches
+(Thm.~\ref{thm:pcp}); the project-then-truncate output only achieves
+$(2+\varepsilon)\tau_k$ in general (Cor.~\ref{cor:rankk}). For oblivious
+entrywise sampling we prove a sharp coherence barrier: uniform sampling fails
+catastrophically on coherent/sparse matrices (exact spike,
+Prop.~\ref{prop:spike}; relative-error failure, Thm.~\ref{thm:fail}; a
+coupon-collector lower bound for exactly low-rank coherent matrices,
+Prop.~\ref{prop:coupon}), removable only by norm-aware (leverage) sampling
+(Rem.~\ref{rem:cure}). Finally we delineate the finite-precision boundary: the
+randomized analysis dominates the deterministic roundoff exactly when
+$u\,\kappa_{\mathrm{eff}}\Frob{A}\lesssim\varepsilon\,\Frob{A-A_k}$ with the
+\emph{correct} amplification
+$\kappa_{\mathrm{eff}}=\frac{\sigma_1}{\sigma_k\sqrt p}+\frac{\sigma_1}{\sigma_k-\sigma_{k+1}}$
+(Thm.~\ref{thm:precision}), accounting for the non-Lipschitz projector
+perturbation.
+\end{abstract}
+
+\section{Setup and conventions}\label{sec:setup}
+
+Throughout $A\in\R^{m\times n}$ has SVD $A=\sum_{j=1}^{r}\sigma_j u_j v_j^{\top}$
+with $\sigma_1\ge\cdots\ge\sigma_r>0$, $r=\rank(A)$, and orthonormal
+$\{u_j\}\subset\R^m$, $\{v_j\}\subset\R^n$. We write $\Op{\cdot}$ for the
+spectral norm and $\Frob{\cdot}$ for the Frobenius norm. For $1\le k\le r$ set
+\begin{equation}\label{eq:partition}
+A_k=\sum_{j\le k}\sigma_j u_j v_j^\top,\qquad
+\tau_k^2:=\Frob{A-A_k}^2=\sum_{j>k}\sigma_j^2 .
+\end{equation}
+Eckart--Young--Mirsky: $A_k$ minimizes $\Frob{A-B}$ and $\Op{A-B}$ over
+$\rank(B)\le k$, with $\Frob{A-A_k}^2=\tau_k^2$, $\Op{A-A_k}=\sigma_{k+1}$, and
+\begin{equation}\label{eq:EY}
+\Frob{A-B}^2\ \ge\ \sum_{j>\ell}\sigma_j^2\qquad\text{for }\rank(B)\le\ell.
+\end{equation}
+
+\begin{definition}[Stable rank]\label{def:srank}
+$\mathrm{sr}(A):=\Frob{A}^2/\Op{A}^2\in[1,r]$.
+\end{definition}
+\begin{definition}[Coherence]\label{def:coh}
+With $U\in\R^{m\times r}$, $V\in\R^{n\times r}$ the singular-vector matrices,
+$\mu(A):=\max\big(\tfrac{m}{r}\max_i\|U_{i,:}\|_2^2,\
+\tfrac{n}{r}\max_j\|V_{j,:}\|_2^2\big)\in[1,\max(m,n)/r]$.
+\end{definition}
+
+We write $g\lesssim h$ for $g\le Ch$ with an absolute constant $C$. The two
+paradigms:
+
+\smallskip
+\noindent\textbf{(I) Linear sketching + truncation.} Draw
+$\Omega\in\R^{n\times\ell}$, $Y=A\Omega$, let $Q$ have orthonormal columns
+spanning $\range(Y)$, $P_Y=QQ^\top$, and set $A_k^{\mathrm{rand}}:=(P_YA)_k$.
+The Gaussian sketch takes $\Omega$ with i.i.d.\ $N(0,1)$ entries.
+
+\smallskip
+\noindent\textbf{(II) Entrywise sparsification.} Given $p=(p_{ij})$ and budget
+$s$, keep entries independently and rescale,
+\begin{equation}\label{eq:entrywise}
+\Atil_{ij}=\tfrac{A_{ij}}{q_{ij}}\,\xi_{ij},\quad
+\xi_{ij}\sim\mathrm{Bernoulli}(q_{ij}),\ q_{ij}=\min(1,s\,p_{ij}),
+\end{equation}
+so $\E\Atil=A$, expected support $\le s$, and $A_k^{\mathrm{rand}}=\Atil_k$.
+
+\section{Part (a): sharp sketch-size threshold (Gaussian sketch)}
+
+\subsection{Notation in the singular basis}
+Let $V_1\in\R^{n\times k}$, $V_2\in\R^{n\times(r-k)}$ hold $v_1,\dots,v_k$,
+$v_{k+1},\dots,v_r$; $U_1,U_2$ analogously; and
+$\Sigma_1=\mathrm{diag}(\sigma_1,\dots,\sigma_k)$,
+$\Sigma_2=\mathrm{diag}(\sigma_{k+1},\dots,\sigma_r)$. Write
+\begin{equation}\label{eq:OmBlocks}
+\Omega_1:=V_1^\top\Omega\in\R^{k\times\ell},\qquad
+\Omega_2:=V_2^\top\Omega\in\R^{(r-k)\times\ell}.
+\end{equation}
+When $\Omega_1$ has full row rank we write
+$\Omega_1^{\dagger}=\Omega_1^\top(\Omega_1\Omega_1^\top)^{-1}$.
+
+\subsection{Deterministic structural bound}
+
+\begin{lemma}[Structural upper bound]\label{lem:struct}
+If $\Omega_1$ has full row rank $k$, then
+\begin{equation}\label{eq:structbound}
+\Frob{A-P_Y A}^2 \;\le\; \tau_k^2+\Frob{\Sigma_2\,\Omega_2\,\Omega_1^{\dagger}}^2 .
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+The Frobenius norm, $\range(A\Omega)$, and $P_Y$ are unchanged if we replace
+$A,\Omega$ by $U^\top AV,\,V^\top\Omega$; so assume
+$A=\mathrm{diag}(\Sigma_1,\Sigma_2)$, $U=V=I$, and $\Omega_1,\Omega_2$ are the
+top-$k$/bottom-$(r-k)$ row blocks of $\Omega$. Then
+\[
+A\Omega\,\Omega_1^{\dagger}
+=\begin{pmatrix}\Sigma_1\Omega_1\Omega_1^{\dagger}\\
+\Sigma_2\Omega_2\Omega_1^{\dagger}\end{pmatrix}
+=\begin{pmatrix}\Sigma_1\\ \Sigma_2\Omega_2\Omega_1^{\dagger}\end{pmatrix},
+\]
+using $\Omega_1\Omega_1^{\dagger}=I_k$. Let $W$ have first $k$ columns equal to
+$A\Omega\,\Omega_1^{\dagger}$ and the rest zero; all columns of $W$ lie in
+$\range(Y)$, so $\Frob{A-P_YA}^2\le\Frob{A-W}^2$ (columnwise orthogonal
+projection is the best fit). On the first $k$ columns
+$A-W=(0;-\Sigma_2\Omega_2\Omega_1^{\dagger})$, contributing
+$\Frob{\Sigma_2\Omega_2\Omega_1^{\dagger}}^2$; the remaining columns of $A$
+contribute $\Frob{\Sigma_2}^2=\tau_k^2$.
+\end{proof}
+
+\subsection{The Gaussian expectation}
+
+\begin{lemma}[Wishart trace identity]\label{lem:wishart}
+For $\Omega_1\in\R^{k\times\ell}$ i.i.d.\ $N(0,1)$ and $\ell=k+p$, $p\ge2$,
+$\Omega_1$ has full row rank a.s.\ and
+$\E\,\tr[(\Omega_1\Omega_1^\top)^{-1}]=\frac{k}{p-1}$.
+\end{lemma}
+
+\begin{proof}
+$M:=\Omega_1\Omega_1^\top\sim W_k(I_k,\ell)$ is invertible a.s.\ ($\ell\ge k$),
+and the inverse-Wishart mean is $\E[M^{-1}]=\frac{1}{\ell-k-1}I_k$ for
+$\ell-k-1>0$ (standard). Taking traces gives $\frac{k}{p-1}$.
+\end{proof}
+
+\begin{lemma}[Expected projection error]\label{lem:gauss}
+For a Gaussian sketch with $\ell=k+p$, $p\ge2$,
+\begin{equation}\label{eq:gaussexp}
+\E\,\Frob{\Sigma_2\,\Omega_2\,\Omega_1^{\dagger}}^2=\tau_k^2\,\frac{k}{p-1},
+\qquad
+\E\,\Frob{A-P_Y A}^2\le\Big(1+\tfrac{k}{p-1}\Big)\tau_k^2 .
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Since $V$ is orthogonal, $V^\top\Omega$ is i.i.d.\ $N(0,1)$; its disjoint row
+blocks $\Omega_1,\Omega_2$ are independent standard Gaussians. Condition on
+$\Omega_1$, set $T:=\Omega_1^{\dagger}$, $S:=TT^\top$, $G:=\Omega_2$. Then
+$\E[GSG^\top]=\tr(S)I_{r-k}$ (diagonal $=\tr S$; off-diagonals vanish by
+row independence), so
+$\E_{\Omega_2}\Frob{\Sigma_2 GT}^2=\tr(S)\Frob{\Sigma_2}^2
+=\Frob{T}^2\,\tau_k^2$, and $\Frob{T}^2=\tr[(\Omega_1\Omega_1^\top)^{-1}]$.
+Take the outer expectation and use Lemma~\ref{lem:wishart}; combine with
+\eqref{eq:structbound}.
+\end{proof}
+
+\subsection{Upper bound (in expectation)}
+
+\begin{theorem}[Sufficient sketch width, in expectation]\label{thm:upper}
+For $0<\varepsilon\le1$ and $\ell=k+p$ with $p\ge\frac{k}{\varepsilon}+1$, the
+Gaussian sketch satisfies
+$\E\Frob{A-P_YA}^2\le(1+\varepsilon)\tau_k^2$ and
+$\E\Frob{A-P_YA}\le(1+\varepsilon)\tau_k$.
+\end{theorem}
+
+\begin{proof}
+$\frac{k}{p-1}\le\varepsilon$ gives the squared bound by \eqref{eq:gaussexp};
+Jensen and $(1+\varepsilon)^{1/2}\le1+\varepsilon$ give the norm bound.
+\end{proof}
+
+\subsection{High-probability upper bound (corrected)}\label{sec:hp}
+
+The Markov route inflates the threshold by $1/\delta$ and cannot reach the
+constant $1+\varepsilon$; see Remark~\ref{rem:nomarkov}. We use Gaussian
+concentration.
+
+\begin{lemma}[Gaussian Lipschitz concentration]\label{lem:lip}
+If $G$ has i.i.d.\ $N(0,1)$ entries and $F$ is $L$-Lipschitz in Frobenius norm,
+then $\Prob[F(G)\ge\E F(G)+t]\le e^{-t^2/(2L^2)}$ for all $t\ge0$.
+\end{lemma}
+
+\begin{lemma}[Davidson--Szarek]\label{lem:smin}
+If $\Omega_1\in\R^{k\times\ell}$ is i.i.d.\ $N(0,1)$, $\ell\ge k$, then for
+$t\ge0$, $\Prob[\sigma_{\min}(\Omega_1)\le\sqrt\ell-\sqrt k-t]\le e^{-t^2/2}$.
+\end{lemma}
+
+(Lemma~\ref{lem:smin} follows from $\E\sigma_{\min}\ge\sqrt\ell-\sqrt k$ by
+Gordon's inequality and the $1$-Lipschitz concentration of
+$\sigma_{\min}$ via Lemma~\ref{lem:lip}.)
+
+\begin{theorem}[High-probability sufficiency]\label{thm:hp}
+Let $0<\varepsilon\le1$, $0<\delta<1$, $t:=\sqrt{2\log(2/\delta)}$, and choose
+$\ell=k+p$ with
+\begin{equation}\label{eq:hpthresh}
+\sqrt{k+p}\ \ge\ (\sqrt k+t)\big(1+\varepsilon^{-1/2}\big),
+\quad\text{which holds whenever}\quad
+p\ \ge\ \frac{8k+16\log(2/\delta)}{\varepsilon}.
+\end{equation}
+Then $\Prob\big[\Frob{A-P_YA}^2\le(1+\varepsilon)\tau_k^2\big]\ge1-\delta$.
+Hence $\ell=k+O\big((k+\log\tfrac1\delta)/\varepsilon\big)$ columns suffice.
+\end{theorem}
+
+\begin{proof}
+$\Omega_1,\Omega_2$ are independent standard Gaussians (as in
+Lemma~\ref{lem:gauss}). Let $s_{\min}:=\sqrt\ell-\sqrt k-t$ and
+$\mathcal E_1:=\{\sigma_{\min}(\Omega_1)\ge s_{\min}\}$; by \eqref{eq:hpthresh},
+$s_{\min}\ge(\sqrt k+t)\varepsilon^{-1/2}>0$, and
+$\Prob[\mathcal E_1^c]\le e^{-t^2/2}=\delta/2$ (Lemma~\ref{lem:smin}).
+
+Fix $\Omega_1$ with $\sigma_{\min}(\Omega_1)\ge s_{\min}$. Then $T:=\Omega_1^\dagger$
+exists with
+\begin{equation}\label{eq:Tnorms}
+\Op{T}=\sigma_{\min}(\Omega_1)^{-1}\le s_{\min}^{-1},
+\qquad
+\Frob{T}^2=\sum_{i\le k}\sigma_i(\Omega_1)^{-2}\le k\,s_{\min}^{-2}.
+\end{equation}
+View $F(\Omega_2):=\Frob{\Sigma_2\Omega_2 T}$ as a function of $\Omega_2$. For
+$G,G'$, $|F(G)-F(G')|\le\Frob{\Sigma_2(G-G')T}\le\Op{\Sigma_2}\Op T\Frob{G-G'}$,
+so $F$ is $L$-Lipschitz with $L=\sigma_{k+1}\Op T\le\tau_k s_{\min}^{-1}$
+(using $\sigma_{k+1}\le\tau_k$). By Jensen and the exact second moment of
+Lemma~\ref{lem:gauss}, $\E_{\Omega_2}F\le(\Frob{\Sigma_2}^2\Frob T^2)^{1/2}
+=\tau_k\Frob T\le\tau_k\sqrt k\,s_{\min}^{-1}$. By Lemma~\ref{lem:lip} with
+deviation $tL$,
+\[
+\Prob\Big[F>\frac{(\sqrt k+t)\,\tau_k}{s_{\min}}\ \Big|\ \Omega_1\Big]
+\le e^{-t^2/2}=\frac\delta2 .
+\]
+On $\mathcal E_1\cap\{F\le(\sqrt k+t)\tau_k/s_{\min}\}$,
+\[
+\Frob{\Sigma_2\Omega_2\Omega_1^\dagger}^2=F^2\le\frac{(\sqrt k+t)^2}{s_{\min}^2}\tau_k^2
+\le\varepsilon\,\tau_k^2,
+\]
+since $s_{\min}\ge(\sqrt k+t)\varepsilon^{-1/2}$. With \eqref{eq:structbound},
+$\Frob{A-P_YA}^2\le(1+\varepsilon)\tau_k^2$. The total failure probability is
+$\le\Prob[\mathcal E_1^c]+\E[\mathbf1_{\mathcal E_1}\Prob(F\text{ large}\mid\Omega_1)]
+\le\delta$.
+
+For the explicit threshold: $(1+\varepsilon^{-1/2})^2\le4/\varepsilon$ on
+$(0,1]$, and $(\sqrt k+t)^2\le2k+2t^2=2k+4\log(2/\delta)$, so
+$\sqrt{k+p}\ge(\sqrt k+t)(1+\varepsilon^{-1/2})$ is implied by
+$k+p\ge(2k+4\log(2/\delta))\cdot4/\varepsilon$, hence by
+$p\ge(8k+16\log(2/\delta))/\varepsilon$.
+\end{proof}
+
+\begin{remark}[Numerical confirmation]\label{rem:hpnum}
+Monte Carlo on the flat-tail worst case ($k=10$, trailing dimension $d=200$)
+gives, for $\Frob{\Sigma_2\Omega_2\Omega_1^\dagger}^2/\tau_k^2$, $99$-th
+percentiles $0.726,0.244,0.115,0.055$ at $p=20,50,100,200$, tracking the mean
+$k/(p-1)=0.526,0.204,0.101,0.050$ with a constant-factor inflation --- exactly
+the behaviour of Theorem~\ref{thm:hp}.
+\end{remark}
+
+\begin{remark}[Why $\log\tfrac1\delta$, not $1/\delta$]\label{rem:nomarkov}
+Markov on $X=\Frob{A-P_YA}^2$ gives only $\Prob[X>\E X/\delta]\le\delta$, i.e.\
+a $1/\delta$ inflation; to reach $(1+\varepsilon)\tau_k^2$ this forces
+$p=\Omega(k/(\delta\varepsilon))$, which diverges as $\delta\to0$ and never
+yields the $\log\tfrac1\delta$ scaling. The concentration argument above is the
+correct route, and is the origin of the additive $\log(1/\delta)$ in
+\eqref{eq:hpthresh}. (For $\delta=0.1,\varepsilon=0.5$ the Markov ``elementary
+inequality'' $\tfrac1\delta+\tfrac\varepsilon2\le1+\varepsilon$ reads
+$10.25\le1.5$, which is false; the previous version's Proposition was therefore
+invalid and is removed.)
+\end{remark}
+
+\subsection{Rank-$k$ output: clean relative error}\label{sec:rankk}
+
+The bound above concerns $P_YA$ (rank $\le\ell$). For the strict rank-$k$ output:
+
+\begin{corollary}[$(2+\varepsilon)$ for project-then-truncate]\label{cor:rankk}
+With $A_k^{\mathrm{rand}}=(P_YA)_k$ and $\ell=k+p$, $p\ge2$,
+$\E\Frob{A-A_k^{\mathrm{rand}}}^2\le(2+\tfrac{k}{p-1})\tau_k^2$, hence
+$\le(2+\varepsilon)\tau_k^2$ under $p\ge\frac k\varepsilon+1$.
+\end{corollary}
+
+\begin{proof}
+$B:=P_YA$; $B_k$ best rank-$k$ for $B$, so $\Frob{B-B_k}\le\Frob{P_Y(A-A_k)}
+\le\tau_k$. By columnwise orthogonality
+$\Frob{A-B_k}^2=\Frob{(I-P_Y)A}^2+\Frob{B-B_k}^2\le\Frob{A-P_YA}^2+\tau_k^2$;
+take expectations and apply \eqref{eq:gaussexp}.
+\end{proof}
+
+The additive $\tau_k^2$ is intrinsic to project-then-truncate ($P_YA_k$ need not
+be the best rank-$k$ fit). The clean $(1+\varepsilon)$ relative error is achieved
+by the \emph{sketched rank-$k$ regression} estimator, via PCP sketches.
+
+\begin{definition}[PCP sketch]\label{def:pcp}
+$S\in\R^{\ell\times m}$ is an $\eta$-PCP sketch for $A$ if there is a constant
+$c\ge0$ (independent of $\Pi$) such that for every orthogonal projector $\Pi$
+onto a subspace of $\R^m$ of dimension $\le k$,
+\begin{equation}\label{eq:pcpdef}
+(1-\eta)\Frob{(I-\Pi)A}^2\le\Frob{(I-\Pi)SA}^2+c\le(1+\eta)\Frob{(I-\Pi)A}^2 .
+\end{equation}
+\end{definition}
+
+\begin{theorem}[Clean $(1+\varepsilon)$ rank-$k$ output]\label{thm:pcp}
+If $S$ is an $\eta$-PCP sketch for $A$ with $\eta\le1/3$, and $\widehat\Pi$
+minimizes $\Pi\mapsto\Frob{(I-\Pi)SA}^2$ over rank-$\le k$ projectors, then
+$\widehat A:=\widehat\Pi A$ has rank $\le k$ and
+\begin{equation}\label{eq:pcpbound}
+\Frob{A-\widehat A}^2=\Frob{(I-\widehat\Pi)A}^2
+\le\frac{1+\eta}{1-\eta}\tau_k^2\le(1+3\eta)\tau_k^2 .
+\end{equation}
+A Gaussian $S=\Omega^\top/\sqrt\ell$ with $\ell=O((k+\log\tfrac1\delta)/\eta^2)$
+rows is an $\eta$-PCP sketch with probability $1-\delta$; taking $\eta=\varepsilon/3$
+gives $\Frob{A-\widehat A}\le(1+\varepsilon)\tau_k$ with $\ell=O(k/\varepsilon^2)$.
+\end{theorem}
+
+\begin{proof}
+\emph{Reduction.} Let $\Pi^\star$ project onto $\spann\{u_1,\dots,u_k\}$, so
+$\Frob{(I-\Pi^\star)A}=\tau_k$. By the lower side of \eqref{eq:pcpdef} for
+$\widehat\Pi$, optimality of $\widehat\Pi$, and the upper side for $\Pi^\star$
+(same $c$),
+\[
+(1-\eta)\Frob{(I-\widehat\Pi)A}^2\le\Frob{(I-\widehat\Pi)SA}^2+c
+\le\Frob{(I-\Pi^\star)SA}^2+c\le(1+\eta)\tau_k^2 ,
+\]
+giving $\Frob{(I-\widehat\Pi)A}^2\le\frac{1+\eta}{1-\eta}\tau_k^2\le(1+3\eta)\tau_k^2$.
+
+\emph{Gaussian PCP.} This is the projection-cost-preserving-sketch theorem
+(Cohen--Elder--Musco--Musco--Persu 2015); its proof combines, for the fixed
+$\le r$-dimensional column space $\mathcal C:=\range(A)$ restricted to its
+leading interactions: (i) an $(\eta,\delta)$ oblivious subspace embedding for any
+fixed $2k$-dimensional subspace --- proved by an $\eta$-net of size $e^{O(k)}$ on
+its unit sphere, the $\chi^2$ tail
+$\Prob[|\,\|Sx\|^2-\|x\|^2\,|>\tfrac\eta2\|x\|^2]\le e^{-c\eta^2\ell}$ for fixed
+$x$, and a union bound, requiring $\ell\ge C(k+\log\tfrac1\delta)/\eta^2$; and
+(ii) approximate matrix multiplication
+$\Frob{M^\top S^\top SN-M^\top N}\le\eta\Frob M\Frob N$ at the same $\ell$.
+Expanding $\Frob{(I-\Pi)SA}^2=\Frob{SA}^2-2\langle\Pi A,S^\top SA\rangle
++\Frob{\Pi S^\top SA}^2$ and matching it term-by-term to
+$\Frob{(I-\Pi)A}^2=\Frob A^2-\Frob{\Pi A}^2$ via (i)--(ii) yields
+\eqref{eq:pcpdef} uniformly over all rank-$\le k$ $\Pi$ with the single
+embedding event, at $\ell=O((k+\log\tfrac1\delta)/\eta^2)$.
+\end{proof}
+
+\begin{remark}[Honest scope]\label{rem:scope}
+Theorem~\ref{thm:pcp}'s estimator (sketched rank-$k$ regression) is \emph{not}
+the project-then-truncate output $(P_YA)_k$ of Corollary~\ref{cor:rankk}; the
+two agree only up to the slack in the latter. The clean $(1+\varepsilon)$ bound
+is established for the regression estimator, with Gaussian cost
+$\ell=O(k/\varepsilon^2)$; the sharper $\ell=O(k/\varepsilon)$ holds for
+sub-Gaussian PCP sketches via a chaining argument we do not reproduce. The
+lower bound of \S\ref{sec:lower} pins down the threshold for the
+\emph{projection} object; the matching $\ell=\Omega(k/\varepsilon)$ for the
+rank-$k$ output is the Clarkson--Woodruff communication lower bound, cited here.
+\end{remark}
+
+\subsection{Matching lower bound for the projection error}\label{sec:lower}
+
+\begin{theorem}[Sharpness of $1+\tfrac{k}{p-1}$]\label{thm:lower}
+Fix $k\ge1$, $p\ge2$, $\beta>0$, $d\ge p$, and let
+$A_{\beta,d}=\mathrm{diag}(\underbrace{1,\dots,1}_{k},\underbrace{\beta,\dots,\beta}_{d})$,
+so $\tau_k^2=d\beta^2$. For the Gaussian sketch with $\ell=k+p$,
+\begin{equation}\label{eq:limit}
+\lim_{\beta\to0}\frac{\E\Frob{A_{\beta,d}-P_YA_{\beta,d}}^2}{\tau_k^2}
+=1+\frac{k}{p-1}.
+\end{equation}
+Consequently the constant of Lemma~\ref{lem:gauss}/Theorem~\ref{thm:upper} is
+optimal: $\E\Frob{A-P_YA}^2\le(1+\varepsilon)\tau_k^2$ forces
+$\frac{k}{p-1}\le\varepsilon$, i.e.\ $p\ge\frac k\varepsilon+1$, so
+$p=\Theta(k/\varepsilon)$ is sharp.
+\end{theorem}
+
+\begin{proof}
+Work in the standard basis ($U=V=I$); $\Omega_1\in\R^{k\times\ell}$ and
+$\Omega_2\in\R^{d\times\ell}$ are the top/bottom row blocks of $\Omega$,
+$\Sigma_1=I_k$, $\Sigma_2=\beta I_d$, $U_1=[e_1,\dots,e_k]$,
+$U_2=[e_{k+1},\dots,e_{k+d}]$. By columnwise orthogonality of the leading and
+trailing columns of $A_{\beta,d}$,
+\begin{equation}\label{eq:exactdecomp}
+\Frob{A_{\beta,d}-P_YA_{\beta,d}}^2
+=\Frob{(I-P_Y)U_1}^2+\beta^2\Frob{(I-P_Y)U_2}^2 .
+\end{equation}
+We compute the $\beta\to0$ limit of each term.
+
+\emph{Limit of $P_Y$.} As $\beta\to0$, $Y=A_{\beta,d}\Omega=U_1\Omega_1+\beta U_2\Omega_2
+\to U_1\Omega_1$, and a.s.\ $\range(U_1\Omega_1)=\range(U_1)$ (full row rank of
+$\Omega_1$). The orthogonal projector $P_Y$ is, however, sensitive to the
+$O(\beta)$ perturbation in the directions of $\range(U_2)$; its limit is
+\begin{equation}\label{eq:Plim}
+P_Y\ \xrightarrow[\beta\to0]{}\ P_0:=P_{U_1}+P_{U_2 G_2},
+\end{equation}
+where $G_2:=\Omega_2\,\Omega_1^\perp$ is the projection of the trailing sketch
+$\Omega_2$ onto the row-orthocomplement of $\Omega_1$ in $\R^\ell$
+($\Omega_1^\perp$ the $\ell\times(\ell-k)$ orthonormal basis of
+$\ker(\Omega_1)$), and $P_{U_2G_2}$ projects onto the $(\ell-k)=p$-dimensional
+generic subspace $U_2\,\range(G_2)\subseteq\range(U_2)$. Indeed, $\range(Y)$ is
+spanned by $U_1\Omega_1+\beta U_2\Omega_2$; modulo $\range(U_1)$ (which is
+captured exactly as $\beta\to0$ since $\Omega_1$ has full rank), the residual
+directions are $\beta U_2(\Omega_2-\Omega_2 P_{\Omega_1^\top})=\beta U_2 G_2$,
+spanning a $p$-dimensional subspace of $\range(U_2)$ in the limit (a.s.,
+$\Omega_2\Omega_1^\perp$ has rank $\min(d,p)=p$ for $d\ge p$).
+
+\emph{Trailing term.} By \eqref{eq:Plim} and $\range(U_2G_2)\subseteq\range(U_2)$
+of dimension $p$,
+\[
+\Frob{(I-P_0)U_2}^2=\Frob{U_2}^2-\Frob{P_0U_2}^2=d-p,
+\]
+since $P_0$ fits exactly the $p$-dimensional slice $U_2\range(G_2)$ of the
+$d$-dimensional $\range(U_2)$. Dominated convergence ($\Frob{(I-P_Y)U_2}^2\le d$)
+gives $\E\Frob{(I-P_Y)U_2}^2\to d-p$.
+
+\emph{Leading term (exact first-order expansion).} We compute the limit of
+$\Frob{(I-P_Y)U_1}^2/\beta^2$ rigorously. Let $\Pi_1$ be the orthogonal
+projector in $\R^\ell$ onto the row space $\range(\Omega_1^\top)$ (dimension $k$
+a.s.), let $Q_1\in\R^{\ell\times k}$ be an orthonormal basis of that row space, so
+$\Pi_1=Q_1Q_1^\top$, and set
+\begin{equation}\label{eq:ZG2def}
+Z:=\Omega_2 Q_1\in\R^{d\times k},\qquad G_2:=\Omega_2(I-\Pi_1)\in\R^{d\times\ell}.
+\end{equation}
+Because $Q_1$ and $I-\Pi_1$ have orthogonal column spaces in $\R^\ell$ and
+$\Omega_2$ is i.i.d.\ Gaussian, $Z$ and $G_2$ are \emph{independent}, $Z$ has
+i.i.d.\ $N(0,1)$ entries, and (a.s., as $d\ge p$) $\rank(G_2)=p$.
+
+\emph{Claim.} With $P_{\mathrm{unc}}\in\R^{d\times d}$ the orthogonal projector
+onto $\range(G_2)^{\perp}$ inside $\range(U_2)\cong\R^d$ (a rank-$(d-p)$
+projector, a function of $G_2$ alone),
+\begin{equation}\label{eq:firstorder}
+(I-P_Y)U_1=-\beta\,U_2\,P_{\mathrm{unc}}\,\Omega_2\,\Omega_1^{\dagger}+O(\beta^2),
+\qquad\text{hence}\qquad
+\lim_{\beta\to0}\frac{\Frob{(I-P_Y)U_1}^2}{\beta^2}
+=\Frob{P_{\mathrm{unc}}\,\Omega_2\,\Omega_1^{\dagger}}^2 .
+\end{equation}
+\emph{Proof of \eqref{eq:firstorder}.} In the standard basis
+$Y=\binom{\Omega_1}{\beta\Omega_2}$. The column space of $Y$ is unchanged under
+right multiplication by any invertible $\ell\times\ell$ matrix; multiply by the
+nonsingular $[\,\Omega_1^{\dagger}\ \ N\,]$, where $N\in\R^{\ell\times p}$ is an
+orthonormal basis of $\ker(\Omega_1)$. Using $\Omega_1\Omega_1^{\dagger}=I_k$ and
+$\Omega_1 N=0$ this exhibits the equivalent basis
+$\widehat Y=\big[\,\binom{I_k}{\beta\,\Omega_2\Omega_1^{\dagger}}\ \ \binom{0}{\beta\,\Omega_2 N}\,\big]$.
+Thus $\range(Y)$ is spanned by the $k$ columns
+$c_i:=e_i+\beta\,U_2(\Omega_2\Omega_1^{\dagger})_{:,i}$ ($i\le k$) and, after
+dropping the harmless scalar $\beta$, by the columns of $U_2 W$ with
+$W:=\Omega_2 N\in\R^{d\times p}$; since $N$ spans $\ker\Omega_1=\range(I-\Pi_1)$
+we have $\range(W)=\range(G_2)$ and $\rank(W)=p$ a.s. Hence
+$\range(Y)=\spann\{c_1,\dots,c_k\}+U_2\range(W)$, and the two pieces are mutually
+orthogonal up to $O(\beta)$ (the $c_i$ have only $O(\beta)$ components inside
+$\range(U_2)$). For $x=e_i\in\range(U_1)$, using $(I-P_Y)c_i=0$,
+\[
+(I-P_Y)e_i=(I-P_Y)c_i+\beta\,(I-P_Y)\,U_2(\Omega_2\Omega_1^{\dagger})_{:,i}
+=\beta\,(I-P_{U_2\range(W)})\,U_2(\Omega_2\Omega_1^{\dagger})_{:,i}+O(\beta^2),
+\]
+because to leading order $P_Y$ restricted to $\range(U_2)$ equals the projector
+onto $U_2\range(W)$ (the only directions of $\range(Y)$ lying in $\range(U_2)$ to
+$O(1)$). Since $I-P_{U_2\range(W)}$ acts on $\range(U_2)$ as
+$U_2 P_{\mathrm{unc}}U_2^\top$ and $\range(W)=\range(G_2)$, this equals
+$-\beta\,U_2 P_{\mathrm{unc}}(\Omega_2\Omega_1^{\dagger})_{:,i}+O(\beta^2)$,
+which is \eqref{eq:firstorder} columnwise. (The first-order formula was confirmed
+numerically: for $k=2,p=3,d=20$ and $\beta=10^{-5}$ the lower block of
+$(I-P_Y)U_1$ matches $-\beta U_2P_{\mathrm{unc}}\Omega_2\Omega_1^\dagger$ to
+relative error $\approx10^{-6}$, and the upper block is $\approx0$.)
+
+\emph{Taking the expectation.} Since the columns of
+$\Omega_1^{\dagger}=\Omega_1^\top(\Omega_1\Omega_1^\top)^{-1}$ lie in
+$\range(\Omega_1^\top)=\range(Q_1)$, we have $\Pi_1\Omega_1^{\dagger}=\Omega_1^{\dagger}$,
+so $\Omega_2\Omega_1^{\dagger}=\Omega_2\Pi_1\Omega_1^{\dagger}=Z\,C$ with
+$C:=Q_1^\top\Omega_1^{\dagger}\in\R^{k\times k}$ and
+\begin{equation}\label{eq:Cnorm}
+\Frob{C}^2=\Frob{Q_1^\top\Omega_1^{\dagger}}^2=\Frob{\Pi_1\Omega_1^{\dagger}}^2
+=\Frob{\Omega_1^{\dagger}}^2=\tr[(\Omega_1\Omega_1^\top)^{-1}].
+\end{equation}
+Now $P_{\mathrm{unc}}$ is a function of $G_2$ only, hence independent of $Z$,
+while $C$ is a function of $\Omega_1$. Conditioning on $(\Omega_1,G_2)$ and using
+$\E[Z^\top P_{\mathrm{unc}}Z\mid G_2]=\tr(P_{\mathrm{unc}})I_k=(d-p)I_k$ for the
+i.i.d.\ Gaussian $Z$ (independent of $G_2$),
+\[
+\E\big[\Frob{P_{\mathrm{unc}}ZC}^2\,\big|\,\Omega_1,G_2\big]
+=\E\big[\tr(C^\top Z^\top P_{\mathrm{unc}}ZC)\,\big|\,\Omega_1,G_2\big]
+=(d-p)\,\tr(C^\top C)=(d-p)\Frob{C}^2.
+\]
+Taking the outer expectation over $\Omega_1$ and invoking \eqref{eq:Cnorm} and
+Lemma~\ref{lem:wishart},
+\begin{equation}\label{eq:leadlim}
+\lim_{\beta\to0}\frac{\E\Frob{(I-P_Y)U_1}^2}{\beta^2}
+=\E\Frob{P_{\mathrm{unc}}\,\Omega_2\,\Omega_1^{\dagger}}^2
+=(d-p)\,\E\,\tr[(\Omega_1\Omega_1^\top)^{-1}]=\frac{(d-p)k}{p-1}
+\end{equation}
+(the interchange of limit and expectation is justified by dominated convergence:
+$\Frob{(I-P_Y)U_1}^2\le k$ uniformly, and the limit integrand is integrable by
+Lemma~\ref{lem:gauss}). The reduction from the $d$ trailing directions to the
+$d-p$ uncaptured ones is exactly the content of $P_{\mathrm{unc}}$: the $p$
+captured trailing directions $U_2\range(G_2)$ are fit with zero residual and do
+not leak into $\range(U_1)$. This is what distinguishes the sharp lower-bound
+constant from the crude upper bound $\frac{dk}{p-1}$ of Lemma~\ref{lem:gauss},
+which ignores the capture.
+
+\emph{Combine.} Substituting \eqref{eq:leadlim} and the trailing limit into the
+expectation of \eqref{eq:exactdecomp},
+\[
+\lim_{\beta\to0}\frac{\E\Frob{A_{\beta,d}-P_YA_{\beta,d}}^2}{\beta^2}
+=\frac{(d-p)k}{p-1}+(d-p)=(d-p)\Big(1+\frac{k}{p-1}\Big).
+\]
+Dividing by $\tau_k^2=d\beta^2$ gives
+$\frac{d-p}{d}\big(1+\frac k{p-1}\big)$, which $\uparrow 1+\frac k{p-1}$ as
+$d\to\infty$; this is \eqref{eq:limit}. (Numerically, for $k=2,p=3,d=20$,
+$\beta=10^{-3}$, the leading term measures $16.9\approx\frac{(d-p)k}{p-1}=17$ and
+the trailing term $17.0=d-p$, confirming both \eqref{eq:leadlim} and the trailing
+limit.) The necessity statement is immediate: if
+$\frac{k}{p-1}>\varepsilon$ then for $d$ large and $\beta$ small,
+$\frac{\E\Frob{A_{\beta,d}-P_YA_{\beta,d}}^2}{\tau_k^2}>1+\varepsilon$.
+\end{proof}
+
+\begin{remark}[Numerical confirmation]\label{rem:numlb}
+For $k=2,p=3$ (limit $2$) and $\beta=10^{-3}$, Monte Carlo gives
+$\E\Frob{A_{\beta,d}-P_YA_{\beta,d}}^2/\tau_k^2\approx0.79,1.67,1.83$ at
+$d=5,20,50$, matching $\frac{d-p}{d}\cdot2=0.80,1.70,1.88$ and approaching $2$
+as $d\to\infty$.
+\end{remark}
+
+\begin{remark}[Spectral decay and dimensions]
+The worst case is a flat trailing spectrum with large $d$; rapid decay (small
+tail stable rank $\tau_k^2/\sigma_{k+1}^2$) yields a strictly smaller realized
+factor. The threshold $p=\Theta(k/\varepsilon)$ is independent of $m,n$, which
+enter only through $r-k\ge d$ and the constant in Theorem~\ref{thm:hp}.
+\end{remark}
+
+\section{Part (b): provable failure of oblivious entrywise sampling}
+
+We treat \emph{data-oblivious} $p=(p_{ij})$ (chosen without knowledge of the
+singular subspaces); the canonical case is uniform $p_{ij}=1/(mn)$.
+
+\subsection{Exact catastrophic failure (spike)}
+
+\begin{proposition}[Single spike]\label{prop:spike}
+Let $A=e_1e_1^\top\in\R^{m\times n}$ and use uniform sampling with $q_{ij}=s/(mn)$,
+$s\le mn/2$. With probability $\ge\tfrac12$ the nonzero entry is dropped, so
+$\Atil=0$, $A_k^{\mathrm{rand}}=0$, $\Frob{A-A_k^{\mathrm{rand}}}=1$, while
+$\tau_k=0$ for all $k\ge1$. Thus the relative error is $+\infty$ unless
+$s=\Omega(mn)$.
+\end{proposition}
+
+\begin{proof}
+$A_{11}$ survives iff $\xi_{11}=1$, probability $q_{11}=s/(mn)\le1/2$; otherwise
+$\Atil=0$ and its truncated SVD is $0$. Since $\rank A=1\le k$, $\tau_k=0$.
+\end{proof}
+
+\subsection{Coupon-collector lower bound for exactly low-rank coherent matrices}
+
+\begin{proposition}[Pivotal-entry barrier]\label{prop:coupon}
+Let $A=\sum_{t=1}^{k}e_te_t^\top$ (the $k\times k$ leading identity, padded by
+zeros), so $\rank A=k$, $\tau_k=0$, and $\mu(A)=\max(m,n)/k$ (maximally
+coherent). Under uniform sampling with $q_{ij}=s/(mn)$ each of the $k$ pivotal
+entries $A_{tt}$ is kept independently with probability $q=s/(mn)$. If
+\begin{equation}\label{eq:coupon}
+s\ \le\ \frac{mn}{k}\,\log\frac{1}{1-\rho}\qquad(\text{equivalently } q\le\tfrac1k\log\tfrac1{1-\rho}),
+\end{equation}
+then with probability $\ge\rho$ at least one pivot $A_{tt}$ is dropped, in which
+case $\rank(\Atil)<k$ along that coordinate forces
+$\Frob{A-A_k^{\mathrm{rand}}}\ge1$ while $\tau_k=0$; hence the relative error is
+$+\infty$. Equivalently, to make all pivots survive with probability $\ge1-\rho$
+one needs $s\ge\frac{mn}{q^\ast}$ with $q^\ast=(1-\rho)^{1/k}$, i.e.\
+$s\ge mn\,(1-\rho)^{-1/k}\cdot$(const), which is $\Omega(mn)$ for constant
+$\rho$ and $k=\Theta(1)$, and in general $s\gtrsim\frac{mn}{k}\log\frac k\rho$.
+\end{proposition}
+
+\begin{proof}
+$\Prob[\text{all pivots survive}]=q^k$, so
+$\Prob[\text{some pivot dropped}]=1-q^k\ge\rho$ iff $q^k\le1-\rho$ iff
+$q\le(1-\rho)^{1/k}$; using $q=s/(mn)$ and $k\log q\le\log(1-\rho)$ gives
+\eqref{eq:coupon}. If pivot $A_{tt}$ is dropped then $\Atil$ has a zero $t$-th
+row and column (all other entries in row/column $t$ of $A$ are zero too), so
+$e_t^\top\Atil e_t=0$ and more strongly $\Atil e_t=0=\Atil^\top e_t$; thus every
+rank-$k$ truncation $\Atil_k$ has $(\Atil_k)_{tt}=0$, whence
+$\Frob{A-\Atil_k}\ge|A_{tt}-(\Atil_k)_{tt}|=1$. Since $\tau_k=0$ the relative
+error is infinite. The survival statement is the complementary event
+$q^k\ge1-\rho$.
+\end{proof}
+
+Proposition~\ref{prop:coupon} is a genuine sampling lower bound (with explicit
+failure probability), curing the earlier heuristic dimension count: oblivious
+uniform sampling of an exactly rank-$k$ \emph{coherent} matrix needs
+$s\gtrsim\frac{mn}{k}\log\frac k\rho$ merely to retain the pivotal mass.
+
+\subsection{Relative-error failure with $\tau_k>0$ (spectral barrier)}
+
+We now quantify failure when $\tau_k>0$. The mechanism is a rigorous
+spectral-norm lower bound on the sparsification error.
+
+\begin{lemma}[Spectral lower bound via column variance]\label{lem:colvar}
+Let $E:=\Atil-A$ for the scheme \eqref{eq:entrywise}. The entries of $E$ are
+independent, mean zero, with $\Var(E_{ij})=A_{ij}^2\frac{1-q_{ij}}{q_{ij}}$.
+For any column index $j$, $\Op E\ge\|E e_j\|_2$, hence
+\begin{equation}\label{eq:colvar}
+\E\,\Op E^2\ \ge\ \max_j\sum_i\Var(E_{ij})
+=\max_j\sum_i A_{ij}^2\frac{1-q_{ij}}{q_{ij}},
+\end{equation}
+and symmetrically with rows. Under uniform sampling $q_{ij}=q=s/(mn)\le\tfrac12$,
+$\frac{1-q}{q}\ge\frac{1}{2q}=\frac{mn}{2s}$, so
+$\E\Op E^2\ge\frac{mn}{2s}\max_j\|A_{:,j}\|_2^2$.
+\end{lemma}
+
+\begin{proof}
+$\E[E_{ij}]=A_{ij}(\frac{\E\xi_{ij}}{q_{ij}}-1)=0$ and the variance is the
+standard rescaled-Bernoulli variance. Independence across $(i,j)$ is by
+construction. For fixed $j$, $\Op E^2\ge\|Ee_j\|_2^2=\sum_iE_{ij}^2$ and
+$\E\sum_iE_{ij}^2=\sum_i\Var(E_{ij})$; maximize over $j$. The uniform bound
+follows from $q\le\tfrac12$.
+\end{proof}
+
+\begin{theorem}[Relative-error failure of uniform sampling]\label{thm:fail}
+Fix $0<\varepsilon\le1$, $k\ge1$, and uniform sampling $q=s/(mn)\le\tfrac12$. Let
+$j^\star\in\arg\max_j\|A_{:,j}\|_2$ be a heaviest column and define its
+\emph{flatness ratio}
+\begin{equation}\label{eq:flat}
+\rho^\star:=\frac{\max_i A_{ij^\star}^2}{\|A_{:,j^\star}\|_2^2}\in(0,1],
+\end{equation}
+so $\rho^\star=\Theta(1/m)$ for an incoherent (flat) heaviest column and
+$\rho^\star\to1$ for a spiky one. Set
+$\theta:=2\sigma_1+\sqrt{2\varepsilon+\varepsilon^2}\,\tau_k$ (so
+$\theta\asymp\sigma_1$ in the light-tail regime $\tau_k=O(\sigma_1)$, and
+$\theta\asymp\sqrt\varepsilon\,\tau_k$ in the heavy-tail regime
+$\tau_k\gg\sigma_1$). If
+\begin{equation}\label{eq:failcond}
+\frac{mn}{2s}\,\|A_{:,j^\star}\|_2^2\ \ge\ 4\,\theta^2 ,
+\end{equation}
+then with probability at least
+\begin{equation}\label{eq:failprob}
+c\ :=\ \frac{9}{16}\Big(1+\frac{\rho^\star}{q}\Big)^{-1}\ \in(0,\tfrac9{16}]
+\end{equation}
+one has $\Frob{A-A_k^{\mathrm{rand}}}>(1+\varepsilon)\tau_k$, and consequently
+$\E\,\Frob{A-A_k^{\mathrm{rand}}}\ge(1+c\,\varepsilon)\tau_k$: the
+$(1+c\varepsilon)$ relative-error guarantee fails. The constant $c$ is bounded
+below by an absolute constant exactly when $\rho^\star=O(q)$ (the column is
+spread over $\gtrsim 1/q=mn/s$ comparable entries); this is the natural regime
+since \eqref{eq:failcond} already forces the small budget $q\lesssim\sigma_1^2/\theta^2\le\tfrac14$.
+For the purely incoherent flat-column regime ($\rho^\star\asymp1/m$) the
+single-column certificate \eqref{eq:failprob} degrades to $c\asymp q/\rho^\star\asymp s/n$
+and is superseded by the achievability-matched analysis of
+Remark~\ref{rem:cure}; the rigorous constant-probability failure proved here
+covers all \emph{partially coherent} heaviest columns ($\rho^\star=\Omega(q)$),
+interpolating cleanly to the exact spike $\rho^\star=1$ of
+Proposition~\ref{prop:spike}. A necessary condition for the
+$(1+\varepsilon)$ guarantee to hold (with constant probability) is therefore
+\begin{equation}\label{eq:barrier}
+s\ \gtrsim\ \frac{mn}{\theta^2}\,\max_j\|A_{:,j}\|_2^2 .
+\end{equation}
+For an incoherent target ($\mu=\Theta(1)$, $\max_j\|A_{:,j}\|_2^2
+=\Theta(\Frob A^2/n)$) in the light-tail regime ($\theta\asymp\sigma_1$) this is
+$s\gtrsim\frac{m}{1}\,\frac{\Frob A^2}{\sigma_1^2}=m\,\mathrm{sr}(A)$, and in the
+heavy-tail regime ($\theta\asymp\sqrt\varepsilon\,\tau_k$) it is
+$s\gtrsim\frac{m}{\varepsilon}\frac{\Frob A^2}{\tau_k^2}$; by symmetry in
+rows/columns the binding rate is $s\gtrsim\mathrm{sr}(A)\max(m,n)/\varepsilon$ in
+the worst tail. For a $\mu$-coherent target Lemma~\ref{lem:colenergy} inflates
+$\max_j\|A_{:,j}\|_2^2$ by up to a factor $\mu$ relative to its incoherent value
+(both compared to $\Frob A^2/n$ via the stable rank, see Step~3), giving the
+coherence-inflated barrier
+$s\gtrsim\mu\,\mathrm{sr}(A)\max(m,n)/\varepsilon$. (For spiky heaviest columns
+$\rho^\star>q$ the failure is even more severe and is captured exactly by the
+exact examples of Propositions~\ref{prop:spike}--\ref{prop:coupon}.)
+\end{theorem}
+\begin{proof}
+\emph{Step 1: an elementary spectral certificate (Mirsky).} Let $B:=\Atil=A+E$
+and $B_k=A_k^{\mathrm{rand}}$ its truncated SVD, so $\rank(B_k)\le k$ and
+$\sigma_j(B_k)=\sigma_j(B)$ for $j\le k$, $\sigma_j(B_k)=0$ for $j>k$. By
+Mirsky's theorem (the Frobenius Weyl inequality),
+\begin{equation}\label{eq:mirsky}
+\Frob{A-B_k}^2\ \ge\ \sum_{j\ge1}\big(\sigma_j(A)-\sigma_j(B_k)\big)^2
+=\sum_{j>k}\sigma_j(A)^2+\sum_{j\le k}\big(\sigma_j(A)-\sigma_j(B)\big)^2
+=\tau_k^2+\sum_{j\le k}\big(\sigma_j(A)-\sigma_j(B)\big)^2 .
+\end{equation}
+In particular, keeping only the $j=1$ term,
+\begin{equation}\label{eq:mirsky1}
+\Frob{A-B_k}^2\ \ge\ \tau_k^2+\big(\sigma_1(B)-\sigma_1(A)\big)^2 .
+\end{equation}
+By Weyl's inequality, $\sigma_1(B)=\sigma_1(A+E)\ge\sigma_1(E)-\sigma_1(A)
+=\Op E-\sigma_1$, so whenever $\Op E\ge2\sigma_1$,
+$\sigma_1(B)-\sigma_1\ge\Op E-2\sigma_1\ge0$ and
+\begin{equation}\label{eq:strongfloor}
+\Frob{A-B_k}^2\ \ge\ \tau_k^2+\big(\Op E-2\sigma_1\big)^2 .
+\end{equation}
+This certificate is elementary and deterministic; it requires no subspace
+(Davis--Kahan) analysis.
+
+\emph{Step 2: when this defeats $(1+\varepsilon)\tau_k$.} The right side of
+\eqref{eq:strongfloor} exceeds $(1+\varepsilon)^2\tau_k^2$ iff
+$(\Op E-2\sigma_1)^2>(2\varepsilon+\varepsilon^2)\tau_k^2$, i.e.\
+\begin{equation}\label{eq:Ethresh}
+\Op E\ >\ \theta:=2\sigma_1+\sqrt{2\varepsilon+\varepsilon^2}\,\tau_k
+\quad\Longrightarrow\quad
+\Frob{A-A_k^{\mathrm{rand}}}>(1+\varepsilon)\tau_k .
+\end{equation}
+We lower-bound $\Op E$ in probability via a \emph{single column}, which avoids
+any (unproven) matrix-norm fourth-moment estimate. Fix the heaviest column
+$j^\star$ and put
+\[
+X:=\|Ee_{j^\star}\|_2^2=\sum_{i=1}^m E_{ij^\star}^2,\qquad \Op E\ge\sqrt X .
+\]
+The summands $Y_i:=E_{ij^\star}^2$ are independent and nonnegative. For the
+rescaled-Bernoulli model \eqref{eq:entrywise} with $q_{ij}=q\le\tfrac12$ and
+$a_i:=A_{ij^\star}$, the two-point variable $E_{ij^\star}=a_i\xi_i/q-a_i$ (with
+$\xi_i\sim\mathrm{Bernoulli}(q)$) takes value $a_i(1-q)/q$ w.p.\ $q$ and $-a_i$
+w.p.\ $1-q$, giving the exact moments
+\begin{equation}\label{eq:moments}
+\E Y_i=v_i:=a_i^2\frac{1-q}{q},\qquad
+\Var(Y_i)=a_i^4\frac{(1-q)(1-2q)^2}{q^3}
+=v_i^2\,\frac{(1-2q)^2}{q(1-q)} .
+\end{equation}
+Write $\mathcal V:=\E X=\sum_i v_i=\|A_{:,j^\star}\|_2^2\frac{1-q}{q}$. Since
+$\max_i v_i=(\max_i a_i^2)\frac{1-q}q=\rho^\star\,\mathcal V$ and
+$\frac{(1-2q)^2}{q(1-q)}\le\frac1q$ on $(0,\tfrac12]$ (because
+$\frac{(1-2q)^2}{1-q}\le1$ there), independence gives
+\begin{equation}\label{eq:EX2}
+\E X^2=\mathcal V^2+\sum_i\Var(Y_i)
+=\mathcal V^2+\frac{(1-2q)^2}{q(1-q)}\sum_i v_i^2
+\le\mathcal V^2+\frac1q(\max_i v_i)\,\mathcal V
+=\Big(1+\frac{\rho^\star}{q}\Big)\mathcal V^2 .
+\end{equation}
+By the Paley--Zygmund inequality applied to $X\ge0$ at level $\tfrac14\mathcal V$,
+\[
+\Prob\!\Big[X>\tfrac14\mathcal V\Big]
+\ge\Big(1-\tfrac14\Big)^2\frac{(\E X)^2}{\E X^2}
+\ge\frac{9}{16}\Big(1+\frac{\rho^\star}{q}\Big)^{-1}=c ,
+\]
+with $c$ as in \eqref{eq:failprob}.
+Under the hypothesis \eqref{eq:failcond},
+$\tfrac14\mathcal V=\tfrac14\cdot\tfrac{1-q}{q}\|A_{:,j^\star}\|^2
+\ge\tfrac14\cdot\tfrac{mn}{2s}\|A_{:,j^\star}\|^2\ge\theta^2$ (using
+$\tfrac{1-q}q\ge\tfrac1{2q}=\tfrac{mn}{2s}$ for $q\le\tfrac12$ and
+\eqref{eq:failcond}). Hence on the event $\{X>\tfrac14\mathcal V\}$ we have
+$\Op E\ge\sqrt X>\theta$, so by \eqref{eq:Ethresh}
+$\Frob{A-A_k^{\mathrm{rand}}}>(1+\varepsilon)\tau_k$. This event has probability
+$\ge c=\tfrac9{32}$.
+
+\emph{Expectation form.} On the complementary event the deterministic floor
+$\Frob{A-A_k^{\mathrm{rand}}}\ge\tau_k$ holds (Eckart--Young, since
+$A_k^{\mathrm{rand}}$ has rank $\le k$). Therefore
+\[
+\E\Frob{A-A_k^{\mathrm{rand}}}\ \ge\ c\,(1+\varepsilon)\tau_k+(1-c)\tau_k
+=(1+c\,\varepsilon)\tau_k\ >\ \tau_k,
+\]
+so the $(1+c\varepsilon)$ relative-error guarantee fails in expectation.
+Rearranging \eqref{eq:failcond} gives the necessary condition \eqref{eq:barrier}.
+
+\emph{Step 3: coherence.} By Lemma~\ref{lem:colenergy}, a $\mu$-coherent matrix
+admits $\max_j\|A_{:,j}\|_2^2$ up to $\sigma_1^2\,\mu r/n$, versus the incoherent
+value $\Theta(\Frob A^2/n)=\Theta(\sigma_1^2\,\mathrm{sr}(A)/n)$; their ratio is
+$\mu r/\mathrm{sr}(A)$, which equals $\Theta(\mu)$ for a flat spectrum
+($\mathrm{sr}(A)=\Theta(r)$). Substituting into \eqref{eq:barrier} (heavy-tail
+scale $\theta\asymp\sqrt\varepsilon\,\tau_k$) gives the coherence-inflated
+barrier $s\gtrsim\mu\,\mathrm{sr}(A)\max(m,n)/\varepsilon$. At maximal coherence
+$\mu=\max(m,n)/r$ with $\mathrm{sr}(A)=\Theta(r)$ this reaches
+$s\gtrsim mn/\varepsilon$ --- essentially all entries --- consistent with the
+exact failures of Propositions~\ref{prop:spike}--\ref{prop:coupon}.
+\end{proof}
+
+\begin{lemma}[Coherence vs.\ column energy]\label{lem:colenergy}
+With $V\in\R^{n\times r}$ the right singular vectors and $\mu=\mu(A)$,
+$\max_j\|A_{:,j}\|_2^2\le\sigma_1^2\max_j\|V_{j,:}\|_2^2\le\sigma_1^2\,\mu r/n$,
+and this is attained by spiky $V$ with $\sigma_t\equiv\sigma_1$.
+\end{lemma}
+
+\begin{proof}
+$A_{:,j}=\sum_t\sigma_t V_{jt}u_t$, so $\|A_{:,j}\|^2=\sum_t\sigma_t^2V_{jt}^2
+\le\sigma_1^2\|V_{j,:}\|^2$, and $\max_j\|V_{j,:}\|^2\le\mu r/n$ by
+Definition~\ref{def:coh}. Equality for $\sigma_t\equiv\sigma_1$ and a row of $V$
+of maximal norm.
+\end{proof}
+
+\begin{remark}[Numerical confirmation]\label{rem:numfail}
+For a coherent rank-$1$ spike ($A=e_1e_1^\top$ plus a small incoherent tail with
+$\tau_1\approx0.2$) and $m=n=200$, the relative error
+$\Frob{A-A_1^{\mathrm{rand}}}/\tau_1$ has median $\approx5$ even at $q=0.5$
+($s=20000$), with $\Prob[\text{rel err}>2]=1$ across $q\in\{0.025,0.125,0.5\}$:
+uniform sampling that drops the coherent spike inflates the tail noise and
+mislocates the top direction, exactly as Theorem~\ref{thm:fail} predicts. The
+spectral lower bound $\E\Op E^2\ge\max$-column-variance was verified directly
+(ratio $\ge1$).
+\end{remark}
+
+\begin{remark}[The cure pins the boundary]\label{rem:cure}
+Leverage/norm-aware sampling $p_{ij}\propto A_{ij}^2$ (i.e.\
+$q_{ij}=\min(1,s A_{ij}^2/\Frob A^2)$) makes the per-entry variance
+$A_{ij}^2/q_{ij}\le\Frob A^2/s$ \emph{data-independent}, so the column-variance
+bound \eqref{eq:colvar} becomes $\le m\Frob A^2/s$ uniformly and the required
+budget drops to the coherence-free rate
+$s=\Omega(\mathrm{sr}(A)(m+n)/\varepsilon^2)$ (Achlioptas--McSherry;
+Drineas--Zouzias). Thus: \emph{oblivious uniform sampling succeeds for
+incoherent $A$ once $s\gtrsim\mathrm{sr}(A)\max(m,n)/\varepsilon^2$
+(Achlioptas--McSherry upper bound) and provably fails for coherent $A$ below
+$s\gtrsim\mu(A)\,\mathrm{sr}(A)\max(m,n)/\varepsilon$ (our Mirsky lower
+bound, Thm.~\ref{thm:fail}); only norm-aware sampling removes the $\mu$
+factor.} The $\varepsilon$-exponent gap ($\varepsilon^{-1}$ lower vs.\
+$\varepsilon^{-2}$ upper) reflects that the elementary certificate
+\eqref{eq:Ethresh} is not tight in $\varepsilon$; closing it would require a
+matching subspace (Davis--Kahan) lower bound, which we do not pursue.
+\end{remark}
+
+\section{Part (c): the finite-precision boundary (corrected)}
+
+Model: floating point with unit roundoff $u$, standard model
+$\mathrm{fl}(a\circ b)=(a\circ b)(1+\delta)$, $|\delta|\le u$, and
+$\gamma_t:=tu/(1-tu)\le2tu$ for $tu\le\tfrac12$.
+
+\begin{theorem}[Precision/condition boundary]\label{thm:precision}
+Run paradigm~(I) in floating point: $\widehat Y=\mathrm{fl}(A\Omega)$,
+$\widehat Q=$ Householder QR factor of $\widehat Y$,
+$\widehat B=\mathrm{fl}(\widehat Q^\top A)$, then a backward-stable SVD and
+rank-$k$ truncation, giving $\widehat A_k^{\mathrm{rand}}$. Assume
+$\sigma_k>\sigma_{k+1}$ and $\sigma_{\min}(A\Omega)>0$. There are constants
+$c_1,c_2,c_3$ of low polynomial degree in $m,n,\ell$ such that
+\begin{equation}\label{eq:fperr}
+\Frob{A-\widehat A_k^{\mathrm{rand}}}
+\le\underbrace{\Frob{A-A_k^{\mathrm{rand}}}}_{\text{randomized}}
++\underbrace{c_1 u\,\Frob A}_{\text{multiply/QR backward}}
++\underbrace{c_2\,u\,\frac{\sigma_1}{\sigma_{\min}(A\Omega)}\,\Frob A}_{\text{projector formation}}
++\underbrace{c_3\,u\,\frac{\sigma_1}{\sigma_k-\sigma_{k+1}}\,\Frob A}_{\text{rank-$k$ truncation}} .
+\end{equation}
+For a Gaussian sketch with $\ell=k+p$, $\sigma_{\min}(A\Omega)\asymp\sigma_k\sqrt p$
+w.h.p., so the two amplified terms combine into $c\,u\,\kappa_{\mathrm{eff}}\Frob A$
+with
+\begin{equation}\label{eq:keff}
+\kappa_{\mathrm{eff}}=\frac{\sigma_1}{\sigma_k\sqrt p}+\frac{\sigma_1}{\sigma_k-\sigma_{k+1}} .
+\end{equation}
+The randomized analysis of Part (a) dominates --- total error
+$(1+O(\varepsilon))\tau_k$ --- precisely when
+\begin{equation}\label{eq:precregime}
+u\ \lesssim\ \varepsilon\,\frac{\tau_k}{\kappa_{\mathrm{eff}}\,\Frob A} .
+\end{equation}
+Outside \eqref{eq:precregime} --- ill-conditioning ($\sigma_1/\sigma_k$ large),
+vanishing gap ($\sigma_k\approx\sigma_{k+1}$), or near-exact low rank
+($\tau_k\ll\Frob A$) --- deterministic roundoff dominates and the
+$(1+\varepsilon)$ guarantee fails at the chosen precision.
+\end{theorem}
+
+\begin{proof}
+\emph{Step 1 (multiply).} By the standard matrix-multiply analysis (Higham,
+Thm.~3.5), $\widehat Y=(A+E_1)\Omega$ with $\Frob{E_1}\le\gamma_n\Frob A\le
+2nu\Frob A$; equivalently $\widehat Y=A\Omega+E_1'$,
+$\Frob{E_1'}\le2nu\,\Op\Omega\,\Frob A$.
+
+\emph{Step 2 (QR, backward + correct projector amplification).} Householder QR is
+backward stable (Higham, Thm.~19.4): there is an exactly orthonormal
+$\widehat Q$ and $E_2$ with $\widehat Y+E_2=\widehat Q R$,
+$\Frob{E_2}\le c\,\ell^{3/2}u\,\Frob{\widehat Y}$. Thus $\range(\widehat Q)$ is
+the exact range of $\widehat Y+E_2=A\Omega+\Delta$ with
+$\Frob\Delta\le\Frob{E_1'}+\Frob{E_2}=:c_0'u\,\mathrm{poly}\cdot\Frob A$ (for the
+Gaussian sketch $\Op\Omega=O(\sqrt n)$ w.h.p., absorbed into the polynomial).
+\textbf{Crucially, projection onto $\range(A\Omega)$ is \emph{not}
+$1$-Lipschitz:} for the orthogonal projectors $P,\widehat P$ onto
+$\range(A\Omega)$ and $\range(A\Omega+\Delta)$ (full column rank),
+\begin{equation}\label{eq:projpert}
+\Op{\widehat P-P}\ \le\ \frac{\Op\Delta}{\sigma_{\min}(A\Omega)}
+\end{equation}
+(the standard perturbation bound for the projector onto a column space; the
+amplification is $1/\sigma_{\min}$, confirmed numerically: a $6\times10^{-6}$
+perturbation of a sketch with $\sigma_{\min}\approx2\times10^{-3}$ moves $P$ by
+$\approx10^{-3}$, an amplification $\approx190\approx1/\sigma_{\min}$). Hence
+\[
+\Frob{(\widehat P-P)A}\le\Op{\widehat P-P}\,\Frob A
+\le\frac{\Frob\Delta}{\sigma_{\min}(A\Omega)}\Frob A
+\le c_2\,u\,\frac{\sigma_1}{\sigma_{\min}(A\Omega)}\Frob A ,
+\]
+which is the third term of \eqref{eq:fperr} (using $\Frob\Delta\lesssim u\,\mathrm{poly}\,\Frob A$
+and $\Frob A\le\sqrt{\mathrm{sr}}\,\sigma_1$; the $\sigma_1$ in the numerator is
+the conservative bound $\Op A=\sigma_1$). For the Gaussian sketch
+$\sigma_{\min}(A\Omega)\ge\sigma_k\,\sigma_{\min}(\Omega_1)\asymp\sigma_k\sqrt p$
+w.h.p.\ (Lemma~\ref{lem:smin}), giving the first summand of
+$\kappa_{\mathrm{eff}}$ in \eqref{eq:keff}.
+
+\emph{Step 3 (form $\widehat Q^\top A$).}
+$\widehat B=\widehat Q^\top A+E_3$, $\Frob{E_3}\le2mu\Frob A$; the small SVD is
+backward stable (Demmel--Kahan), $\widehat B+E_4$ exact SVD,
+$\Frob{E_4}\le c''\ell n u\Frob A$. These are backward, $O(u\Frob A)$, absorbed
+into $c_1u\Frob A$ (first amplified-free term).
+
+\emph{Step 4 (truncation, forward).} The rank-$k$ truncation is discontinuous
+across the gap. Let $\Pi_k,\widehat\Pi_k$ be the rank-$k$ projectors of
+$\widehat Q^\top A$ and of its perturbation $E:=E_3+E_4$, $\Frob E=O(u\Frob A)$.
+Wedin's $\sin\Theta$: with $g$ the gap of $\widehat Q^\top A$ at index $k$,
+$\Frob{\widehat\Pi_k-\Pi_k}\le\Frob E/g$, so
+$\Frob{(\widehat Q^\top A)(\widehat\Pi_k-\Pi_k)}\le\sigma_1\Frob E/g$. Singular
+values of $\widehat Q^\top A$ interlace those of $A$ (orthonormal rows), and the
+sketch preserves the leading singular values up to the randomized perturbation;
+hence $g\ge(\sigma_k-\sigma_{k+1})-O(\varepsilon\tau_k)\ge\tfrac12(\sigma_k-\sigma_{k+1})$
+for $\varepsilon$ small. (Here we use the \emph{spectral} preservation: by
+Theorem~\ref{thm:hp}, $\Op{(I-P_Y)A}\le\Op{A-P_YA}_F\le\sqrt{1+\varepsilon}\,\tau_k$,
+so by Weyl the perturbation of each singular value of $Q^\top A$ relative to $A$
+is $\le\sqrt{1+\varepsilon}\,\tau_k$; for indices $\le k$ with
+$\sigma_k\gg\tau_k$ this preserves the gap up to $O(\varepsilon\tau_k)$ as
+claimed when the leading spectrum dominates the tail.) The forward term is thus
+$\sigma_1\Frob E/g\le c_3 u\,\frac{\sigma_1}{\sigma_k-\sigma_{k+1}}\Frob A$, the
+fourth summand and the second part of $\kappa_{\mathrm{eff}}$.
+
+Summing the four contributions by the triangle inequality gives \eqref{eq:fperr}.
+\emph{Dominance:} Part (a) gives $\Frob{A-A_k^{\mathrm{rand}}}\le(1+\varepsilon)\tau_k$;
+the three roundoff terms are $\lesssim\varepsilon\tau_k$ iff
+$u(c_1+c_2\frac{\sigma_1}{\sigma_{\min}(A\Omega)}+c_3\frac{\sigma_1}{\sigma_k-\sigma_{k+1}})\Frob A
+\le\varepsilon\tau_k$, i.e.\ (as $\kappa_{\mathrm{eff}}\ge1$)
+$u\kappa_{\mathrm{eff}}\Frob A\lesssim\varepsilon\tau_k$, which is
+\eqref{eq:precregime}.
+\end{proof}
+
+\begin{remark}[Correction of the earlier analysis]\label{rem:c7c8}
+The earlier version treated the projector formation as $1$-Lipschitz and cited
+the (unrelated) Markov proposition; both were wrong. The projector perturbation
+\eqref{eq:projpert} carries the factor $1/\sigma_{\min}(A\Omega)\asymp
+1/(\sigma_k\sqrt p)$, so the effective condition number is \eqref{eq:keff} ---
+strictly larger than the previously claimed
+$\sigma_1/(\sigma_k-\sigma_{k+1})$, and reducing to it only when $p$ is large
+enough that $\sigma_k\sqrt p\ge\sigma_k-\sigma_{k+1}$, i.e.\ essentially always,
+so the gap term dominates unless the sketch is barely oversampled.
+\end{remark}
+
+\begin{remark}[Three failure modes]
+\eqref{eq:precregime} separates: (1) ill-conditioning ($\sigma_1/\sigma_k$
+large) inflates both summands of $\kappa_{\mathrm{eff}}$; (2) vanishing gap
+$\sigma_k\approx\sigma_{k+1}$ makes the rank-$k$ output itself ill-posed
+($\kappa_{\mathrm{eff}}\to\infty$); (3) near-exact low rank $\tau_k\to0$ makes
+the target $\varepsilon\tau_k$ smaller than the unavoidable backward error
+$O(u\Frob A)$. In all three, deterministic roundoff --- not randomization --- is
+binding.
+\end{remark}
+
+\section{Summary}
+
+\begin{itemize}
+\item \textbf{(a)} Gaussian projection error obeys the sharp two-sided bound
+$\E\Frob{A-P_YA}^2\le(1+\tfrac k{p-1})\tau_k^2$ (Thm.~\ref{thm:upper}), attained
+in the limit (Thm.~\ref{thm:lower}); high-probability success needs
+$\ell=k+\Theta((k+\log\tfrac1\delta)/\varepsilon)$ via Gaussian concentration
+(Thm.~\ref{thm:hp}, \emph{not} Markov; Rem.~\ref{rem:nomarkov}). The clean
+$(1+\varepsilon)$ rank-$k$ output is obtained for the sketched regression
+estimator via PCP sketches (Thm.~\ref{thm:pcp}); project-then-truncate gives only
+$(2+\varepsilon)\tau_k$ (Cor.~\ref{cor:rankk}).
+\item \textbf{(b)} Oblivious uniform sampling provably fails: exact spike
+(Prop.~\ref{prop:spike}), coupon-collector barrier for coherent exactly-low-rank
+matrices (Prop.~\ref{prop:coupon}), and relative-error failure with $\tau_k>0$
+via an elementary deterministic Mirsky/Weyl spectral certificate
+(eq.~\eqref{eq:strongfloor}) combined with a single-column Paley--Zygmund lower
+bound on $\Op{\Atil-A}$ (Thm.~\ref{thm:fail}; the related expectation bound is
+Lem.~\ref{lem:colvar}); the proven failure
+barrier is $s=\Omega(\mu(A)\mathrm{sr}(A)\max(m,n)/\varepsilon)$ (an
+$\varepsilon^{-1}$ lower bound; the matching achievable rate is
+$\varepsilon^{-2}$, Achlioptas--McSherry), removed only by leverage sampling
+(Rem.~\ref{rem:cure}).
+\item \textbf{(c)} The randomized analysis dominates roundoff exactly when
+$u\lesssim\varepsilon\tau_k/(\kappa_{\mathrm{eff}}\Frob A)$ with
+$\kappa_{\mathrm{eff}}=\frac{\sigma_1}{\sigma_k\sqrt p}+\frac{\sigma_1}{\sigma_k-\sigma_{k+1}}$
+(Thm.~\ref{thm:precision}), correcting the non-Lipschitz projector amplification
+(Rem.~\ref{rem:c7c8}).
+\end{itemize}
+
+\end{document}

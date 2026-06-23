@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-DEFAULT_REGION = "us-east5"  # primary Anthropic-on-Vertex region
+DEFAULT_REGION = "global"  # this project's live Anthropic-on-Vertex quota is on the global endpoint
 DEFAULT_MODEL = "claude-opus-4-8"
 
 # USD per million tokens (estimates — Vertex list prices, may differ from your contract).

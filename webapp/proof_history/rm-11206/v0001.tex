@@ -1,0 +1,367 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\eps}{\varepsilon}
+\DeclareMathOperator{\VCdim}{VCdim}
+\DeclareMathOperator*{\err}{err}
+\DeclareMathOperator{\poly}{poly}
+
+\begin{document}
+
+\title{An efficient semi-supervised learner for Boolean disjunctions}
+\maketitle
+
+\section{Statement and answer}
+
+We use the notation of the problem. The instance space is
+$X=\{0,1\}^n\times\{0,1\}^n$. The concept class $C$ is the class of Boolean
+disjunctions on $n$ variables (the monotone case is a sub-case of the general
+case, and our argument covers both); for $h\in C$ and $x=(x_1,x_2)$ we set
+$h(x):=h(x_1)$, and $h$ is \emph{compatible} with $x$ iff $h(x_1)=h(x_2)$. The
+distribution $D$ on $X$ is fully compatible with a target $h^*\in C$, i.e.
+\begin{equation}\label{eq:compat}
+\Pr_{(x_1,x_2)\sim D}[\,h^*(x_1)=h^*(x_2)\,]=1 .
+\end{equation}
+For a hypothesis $h$ we write its error as
+\[
+\err_D(h):=\Pr_{(x_1,x_2)\sim D}[\,h(x_1)\neq h^*(x_1)\,].
+\]
+
+Throughout, a \emph{general Boolean disjunction} on the base variables
+$y_1,\dots,y_n$ is a function determined by a set $L$ of literals, where each
+literal is one of the $2n$ symbols $y_i$ or $\lnot y_i$, via
+\begin{equation}\label{eq:disjdef}
+h_L(y)=1 \iff \text{some literal in } L \text{ is satisfied by } y .
+\end{equation}
+A monotone disjunction is the special case in which $L$ contains only positive
+literals. We write $C$ for the class of general disjunctions; $|C|=2^{2n}$ and we
+will use only the elementary facts about $C$ established below.
+
+\medskip
+
+\noindent\textbf{Answer.} \emph{Yes.} We exhibit a single algorithm
+(Algorithm~\ref{alg:learn}) that runs in time $\poly(n,1/\eps,1/\delta)$, uses
+\[
+m=O\!\Big(\tfrac1\eps\big(n\ln\tfrac1\eps+\ln\tfrac1\delta\big)\Big)
+\]
+labeled examples, uses \emph{no} unlabeled pairs at all, and outputs a
+disjunction $\hat h\in C$ with $\err_D(\hat h)\le\eps$ with probability at least
+$1-\delta$. We then show (Proposition~\ref{prop:mstar}) that the
+compatibility-based information-theoretic baseline satisfies
+\[
+m^*(\eps,\delta,n)=\Theta\!\Big(\tfrac{n+\ln(1/\delta)}{\eps}\Big),
+\]
+so the number of labeled examples used by Algorithm~\ref{alg:learn} is
+$\poly\big(m^*(\eps,\delta,n)\big)$ (indeed $O\big(m^*(\eps,\delta,n)\,\ln(1/\eps)\big)$).
+This answers the question affirmatively.
+
+\begin{remark}
+The point of the result is that, although the unlabeled pairs can in principle
+shrink the version space and thereby reduce the \emph{information-theoretic}
+labeled sample complexity for particular distributions $D$, the
+\emph{worst-case} baseline $m^*(\eps,\delta,n)$ (a function of $\eps,\delta,n$
+only, hence a guarantee that must hold for every compatible $D$) is already
+$\Theta((n+\ln(1/\delta))/\eps)$. The class $C$ of disjunctions is properly and
+\emph{efficiently} PAC-learnable from labeled data alone with exactly this many
+examples. Consequently no computational obstruction arises: the ordinary
+supervised proper learner for disjunctions already meets the baseline, even
+ignoring the unlabeled pairs.
+\end{remark}
+
+\section{The algorithm}
+
+\begin{algorithm}[h]
+\caption{Efficient semi-supervised learner for disjunctions}
+\label{alg:learn}
+\begin{algorithmic}[1]
+\Require Parameters $\eps,\delta\in(0,1)$, dimension $n$; access to the labeled
+oracle returning i.i.d.\ pairs $\big((x_1,x_2),\,h^*(x_1)\big)$ with
+$(x_1,x_2)\sim D$.
+\Ensure A disjunction $\hat h\in C$.
+\State Set $m:=\big\lceil \tfrac{8}{\eps}\big((n+1)\ln\tfrac{16}{\eps}+\ln\tfrac{2}{\delta}\big)\big\rceil$.
+\State Draw $m$ labeled examples; from each, keep the first component and its
+label, obtaining $S=\{(y^{(1)},b^{(1)}),\dots,(y^{(m)},b^{(m)})\}$ with
+$y^{(t)}\in\{0,1\}^n$ and $b^{(t)}=h^*(y^{(t)})$.
+\State Initialize $L:=\{\,y_i : 1\le i\le n\,\}\cup\{\,\lnot y_i : 1\le i\le n\,\}$
+  \Comment{all $2n$ literals}
+\For{$t=1$ \textbf{to} $m$}
+  \If{$b^{(t)}=0$}
+    \State Remove from $L$ every literal satisfied by $y^{(t)}$.
+  \EndIf
+\EndFor
+\State \Return $\hat h:=h_L$, the disjunction defined by the surviving literal
+set $L$ via \eqref{eq:disjdef}.
+\end{algorithmic}
+\end{algorithm}
+
+\section{Correctness, termination, and complexity}
+
+We first record two elementary structural facts about disjunctions.
+
+\begin{lemma}[Consistency of the elimination rule]\label{lem:consistent}
+Let $S=\{(y^{(t)},b^{(t)})\}_{t=1}^m$ be a set of labeled points in
+$\{0,1\}^n\times\{0,1\}$ that is \emph{realizable} by some disjunction, i.e.\
+there is $g\in C$ with $g(y^{(t)})=b^{(t)}$ for all $t$. Let $L$ be the literal
+set produced by the loop of Algorithm~\ref{alg:learn} on $S$. Then $h_L$ is
+consistent with $S$: $h_L(y^{(t)})=b^{(t)}$ for every $t$.
+\end{lemma}
+
+\begin{proof}
+\emph{Negative points.} Let $(y^{(t)},0)\in S$. Every literal that is satisfied
+by $y^{(t)}$ is removed from $L$ in the iteration handling index $t$, and
+literals are never re-added; hence no literal of $L$ is satisfied by $y^{(t)}$,
+so by \eqref{eq:disjdef} we have $h_L(y^{(t)})=0=b^{(t)}$.
+
+\emph{Positive points.} Let $(y^{(t)},1)\in S$, and let $g=h_{L^*}$ be a
+disjunction (with literal set $L^*$) realizing $S$. Since $g(y^{(t)})=1$, by
+\eqref{eq:disjdef} there is a literal $\ell\in L^*$ satisfied by $y^{(t)}$. We
+claim $\ell\in L$, i.e.\ $\ell$ is never removed. Indeed, $\ell$ is removed only
+if some negative point $(y^{(s)},0)\in S$ satisfies $\ell$; but then $\ell\in
+L^*$ is satisfied by $y^{(s)}$, so by \eqref{eq:disjdef} $g(y^{(s)})=1\neq
+0=b^{(s)}$, contradicting that $g$ realizes $S$. Hence $\ell\in L$ and $\ell$ is
+satisfied by $y^{(t)}$, so $h_L(y^{(t)})=1=b^{(t)}$.
+\end{proof}
+
+\begin{lemma}[VC dimension of disjunctions]\label{lem:vc}
+The class $C$ of general Boolean disjunctions on $n$ variables, viewed as a class
+of functions $\{0,1\}^n\to\{0,1\}$, satisfies
+\[
+n\le \VCdim(C)\le n+1 .
+\]
+\end{lemma}
+
+\begin{proof}
+\emph{Lower bound.} Consider the $n$ standard basis points $e_1,\dots,e_n\in
+\{0,1\}^n$, where $e_i$ has a $1$ in coordinate $i$ and $0$ elsewhere. For any
+target labeling $\sigma\in\{0,1\}^n$, the monotone disjunction with literal set
+$L_\sigma=\{\,y_i:\sigma_i=1\,\}$ satisfies, by \eqref{eq:disjdef},
+$h_{L_\sigma}(e_i)=1$ iff $y_i\in L_\sigma$ iff $\sigma_i=1$, because among the
+positive literals only $y_i$ is satisfied by $e_i$. Thus
+$h_{L_\sigma}(e_i)=\sigma_i$ for all $i$, so $\{e_1,\dots,e_n\}$ is shattered and
+$\VCdim(C)\ge n$.
+
+\emph{Upper bound.} Every $h_L\in C$ can be written as a linear threshold
+function: with $w_i=+1$ if $y_i\in L$ and $w_i=0$ otherwise, $u_i=+1$ if
+$\lnot y_i\in L$ and $u_i=0$ otherwise, we have for $y\in\{0,1\}^n$
+\[
+h_L(y)=1\iff \sum_{i=1}^n w_i\,y_i+\sum_{i=1}^n u_i\,(1-y_i)\ge 1
+\iff \sum_{i=1}^n (w_i-u_i)\,y_i \ge 1-\sum_{i=1}^n u_i .
+\]
+Hence $C$ is a subclass of the class $H_n$ of halfspaces (linear threshold
+functions) in $\R^n$, which has $\VCdim(H_n)=n+1$. Since VC dimension is
+monotone under inclusion of classes, $\VCdim(C)\le n+1$.
+\end{proof}
+
+We now invoke the standard PAC guarantee for consistent learners. We state the
+version we use precisely.
+
+\begin{theorem}[Sample complexity of consistent learning; Blumer--Ehrenfeucht--Haussler--Warmuth;
+Anthony--Bartlett, Thm.~4.8]
+\label{thm:pac}
+Let $\mathcal H$ be a concept class on a domain $Z$ with $\VCdim(\mathcal
+H)=d<\infty$. Fix $\eps,\delta\in(0,1)$, a target $h^\star\in\mathcal H$, and any
+distribution $P$ on $Z$. If
+\[
+m\ \ge\ \frac{8}{\eps}\Big(d\,\ln\frac{16}{\eps}+\ln\frac{2}{\delta}\Big),
+\]
+then with probability at least $1-\delta$ over an i.i.d.\ sample $T$ of size $m$
+drawn from $P$ and labeled by $h^\star$, every hypothesis $h\in\mathcal H$ that
+is consistent with $T$ satisfies $\Pr_{z\sim P}[h(z)\neq h^\star(z)]\le\eps$.
+\end{theorem}
+
+\begin{lemma}[Reduction of the pair-error to a one-sided error]\label{lem:reduce}
+Let $P$ denote the marginal distribution of the first component $x_1$ under
+$(x_1,x_2)\sim D$. Then for every hypothesis $h$,
+\[
+\err_D(h)=\Pr_{(x_1,x_2)\sim D}[\,h(x_1)\neq h^*(x_1)\,]
+=\Pr_{y\sim P}[\,h(y)\neq h^*(y)\,].
+\]
+Moreover, the labeled sample $S$ kept by Algorithm~\ref{alg:learn} consists of
+i.i.d.\ draws $y\sim P$ labeled by the true value $h^*(y)$.
+\end{lemma}
+
+\begin{proof}
+The first identity is immediate from the definitions: $\err_D(h)$ depends on
+$(x_1,x_2)$ only through $x_1$, whose law is $P$ by definition of the marginal.
+For the second statement, each labeled example from the oracle is a triple
+$\big((x_1,x_2),h^*(x_1)\big)$ with $(x_1,x_2)\sim D$ i.i.d.; the algorithm
+keeps $\big(x_1,h^*(x_1)\big)$. Since the map $(x_1,x_2)\mapsto x_1$ pushes $D$
+forward to $P$, the kept first components are i.i.d.\ $\sim P$, and the kept
+label is exactly $h^*$ evaluated on the kept point. (Note that the
+compatibility assumption \eqref{eq:compat} is \emph{not} needed here; it only
+guarantees that the labels are produced by a member $h^*$ of $C$, i.e.\ that the
+labeled problem is realizable.)
+\end{proof}
+
+\begin{theorem}[Main correctness theorem]\label{thm:main}
+On any compatible distribution $D$ with target $h^*\in C$, Algorithm~\ref{alg:learn}
+runs in time $\poly(n,1/\eps,1/\delta)$, uses
+$m=O\big(\tfrac1\eps(n\ln\tfrac1\eps+\ln\tfrac1\delta)\big)$ labeled examples and
+no unlabeled pairs, and outputs $\hat h\in C$ with $\err_D(\hat h)\le\eps$ with
+probability at least $1-\delta$.
+\end{theorem}
+
+\begin{proof}
+Let $P$ be the marginal of $x_1$ under $D$, as in Lemma~\ref{lem:reduce}. By
+Lemma~\ref{lem:reduce}, the kept sample $S=\{(y^{(t)},b^{(t)})\}_{t=1}^m$ is an
+i.i.d.\ $P$-sample of size $m$ with $b^{(t)}=h^*(y^{(t)})$; in particular $S$ is
+realized by $h^*\in C$, so the hypothesis of Lemma~\ref{lem:consistent} holds.
+
+By Lemma~\ref{lem:consistent}, the output $\hat h=h_L\in C$ is consistent with
+$S$: $\hat h(y^{(t)})=b^{(t)}=h^*(y^{(t)})$ for all $t$.
+
+Apply Theorem~\ref{thm:pac} with $\mathcal H=C$, domain $Z=\{0,1\}^n$,
+distribution $P$, target $h^\star=h^*$, and $d=\VCdim(C)\le n+1$ by
+Lemma~\ref{lem:vc}. The sample size chosen in Algorithm~\ref{alg:learn},
+\[
+m=\Big\lceil \tfrac{8}{\eps}\big((n+1)\ln\tfrac{16}{\eps}+\ln\tfrac{2}{\delta}\big)\Big\rceil
+\ \ge\ \frac{8}{\eps}\Big(d\,\ln\frac{16}{\eps}+\ln\frac{2}{\delta}\Big),
+\]
+satisfies the hypothesis of Theorem~\ref{thm:pac}. Hence, with probability at
+least $1-\delta$ over $S$, \emph{every} hypothesis in $C$ consistent with $S$
+has $P$-error at most $\eps$. Since $\hat h\in C$ is consistent with $S$, we get
+$\Pr_{y\sim P}[\hat h(y)\neq h^*(y)]\le\eps$ with probability at least
+$1-\delta$. By the first identity of Lemma~\ref{lem:reduce}, this is exactly
+$\err_D(\hat h)\le\eps$.
+
+\emph{Termination and complexity.} The loop runs $m$ times; each iteration scans
+the $\le 2n$ literals against an $n$-bit point, costing $O(n^2)$, and evaluating
+or outputting $h_L$ costs $O(n)$. With
+$m=O\big(\tfrac1\eps(n\ln\tfrac1\eps+\ln\tfrac1\delta)\big)=\poly(n,1/\eps,1/\delta)$,
+the total running time is $O(m\,n^2)=\poly(n,1/\eps,1/\delta)$, the number of
+labeled examples is $m=O\big(\tfrac1\eps(n\ln\tfrac1\eps+\ln\tfrac1\delta)\big)$,
+and no unlabeled pairs are used. The algorithm clearly halts.
+\end{proof}
+
+\section{The baseline \texorpdfstring{$m^*$}{m*} and the comparison}
+
+It remains to compare the label count of Algorithm~\ref{alg:learn} with the
+information-theoretic baseline $m^*(\eps,\delta,n)$.
+
+For an i.i.d.\ multiset $U$ of unlabeled pairs drawn from $D$, write
+\[
+C(U):=\big\{\,h\in C : h(a)=h(b)\ \text{for all pairs } (a,b)\in U\,\big\}
+\]
+for the subclass of disjunctions \emph{consistent with the unlabeled pairs}, as
+in the problem statement. The compatibility-based (information-theoretic)
+learner restricts attention to $C(U)$ and then learns within $C(U)$ from labeled
+data using a consistent learner; by the standard compatibility-based PAC bound
+(Theorem~\ref{thm:pac} applied to the class $C(U)$), its labeled sample
+complexity for a fixed $D$ is
+\begin{equation}\label{eq:perD}
+O\!\Big(\tfrac1\eps\big(\VCdim(C(U))\,\ln\tfrac1\eps+\ln\tfrac1\delta\big)\Big),
+\end{equation}
+and this many labels suffice to output, with probability $\ge1-\delta$, a member
+of $C(U)$ of error $\le\eps$ (and
+$\Omega\big(\tfrac1\eps(\VCdim(C(U))+\ln\tfrac1\delta)\big)$ labels are necessary,
+by the VC lower bound below).
+
+\begin{proposition}\label{prop:mstar}
+The baseline $m^*(\eps,\delta,n)$, regarded as a function of $\eps,\delta,n$
+only --- i.e.\ as a guarantee that must hold uniformly over all compatible
+distributions $D$ --- satisfies
+\[
+\Omega\!\Big(\frac{n+\ln(1/\delta)}{\eps}\Big)\ \le\ m^*(\eps,\delta,n)\ \le\
+O\!\Big(\frac{n\ln(1/\eps)+\ln(1/\delta)}{\eps}\Big).
+\]
+Consequently the labeled sample count
+$m=O\big(\tfrac1\eps(n\ln\tfrac1\eps+\ln\tfrac1\delta)\big)$ used by
+Algorithm~\ref{alg:learn} is $\poly\big(m^*(\eps,\delta,n)\big)$; in fact
+$m=O\big(m^*(\eps,\delta,n)\cdot\ln(1/\eps)\big)$.
+\end{proposition}
+
+\begin{proof}
+\emph{Upper bound.} For every $D$ and every unlabeled multiset $U$, we have
+$C(U)\subseteq C$, hence $\VCdim(C(U))\le\VCdim(C)\le n+1$ by
+Lemma~\ref{lem:vc}. Plugging into \eqref{eq:perD}, the per-$D$ baseline is at
+most $O\big(\tfrac1\eps(n\ln\tfrac1\eps+\ln\tfrac1\delta)\big)$, uniformly in
+$D$. Thus $m^*(\eps,\delta,n)\le O\big(\tfrac1\eps(n\ln\tfrac1\eps+\ln\tfrac1\delta)\big)$.
+
+\emph{Lower bound.} We exhibit a compatible distribution $D$ for which the
+unlabeled pairs carry no information, forcing the baseline to be as large as
+ordinary supervised learning of $C$. Let $Q$ be any distribution on
+$\{0,1\}^n$, fix any target disjunction $h^*\in C$, and let $D$ be the law of
+$(x,x)$ with $x\sim Q$ (the two coordinates of each pair are identical). Then
+\eqref{eq:compat} holds trivially, since $h^*(x)=h^*(x)$ always, so $D$ is
+compatible with $h^*$. For \emph{any} multiset $U$ of pairs drawn from $D$,
+every pair has the form $(a,a)$, and for every $h\in C$ we have $h(a)=h(a)$;
+hence
+\[
+C(U)=C\qquad\text{(with probability $1$ over the draw of } U).
+\]
+Therefore, on this family of distributions the compatibility restriction does
+nothing, and the baseline reduces to learning the full class $C$ from labeled
+$Q$-examples. By the standard VC lower bound on PAC sample complexity
+(Ehrenfeucht--Haussler--Kearns--Valiant; Anthony--Bartlett, Thm.~5.3), learning a
+class of VC dimension $d$ to error $\eps$ with confidence $1-\delta$ requires at
+least $\Omega\big(\tfrac1\eps(d+\ln\tfrac1\delta)\big)$ labeled examples in the
+worst case over targets and distributions. Taking the witness distribution $Q$
+and target $h^*$ from that lower bound (which live on $\{0,1\}^n$ and in $C$,
+since $\VCdim(C)\ge n$ by Lemma~\ref{lem:vc}), and mapping each instance $x$ to
+the pair $(x,x)$ as above, we obtain a compatible $D$ on which the baseline
+learner needs $\Omega\big(\tfrac1\eps(n+\ln\tfrac1\delta)\big)$ labeled examples.
+A guarantee uniform over all compatible $D$ must therefore satisfy
+$m^*(\eps,\delta,n)\ge\Omega\big(\tfrac1\eps(n+\ln\tfrac1\delta)\big)$.
+
+\emph{Comparison.} Combining the two bounds,
+\[
+\frac{m}{m^*(\eps,\delta,n)}
+\ \le\ \frac{O\big(\tfrac1\eps(n\ln\tfrac1\eps+\ln\tfrac1\delta)\big)}
+       {\Omega\big(\tfrac1\eps(n+\ln\tfrac1\delta)\big)}
+\ =\ O(\ln(1/\eps)),
+\]
+so $m=O\big(m^*(\eps,\delta,n)\,\ln(1/\eps)\big)=\poly\big(m^*(\eps,\delta,n)\big)$,
+as claimed.
+\end{proof}
+
+\section{Conclusion}
+
+\begin{theorem}
+There is a learning algorithm (Algorithm~\ref{alg:learn}) running in time
+$\poly(n,1/\eps,1/\delta)$ that uses $\poly\big(m^*(\eps,\delta,n)\big)$ labeled
+examples and $\poly(n,1/\eps,1/\delta)$ unlabeled pairs (in fact none), and that,
+with probability at least $1-\delta$, outputs a hypothesis with error at most
+$\eps$ in the semi-supervised model of the problem. Hence the answer to the
+question is \emph{yes}.
+\end{theorem}
+
+\begin{proof}
+Theorem~\ref{thm:main} shows that Algorithm~\ref{alg:learn} runs in time
+$\poly(n,1/\eps,1/\delta)$, uses
+$m=O\big(\tfrac1\eps(n\ln\tfrac1\eps+\ln\tfrac1\delta)\big)$ labeled examples and
+no unlabeled pairs, and outputs $\hat h\in C$ with $\err_D(\hat h)\le\eps$ with
+probability at least $1-\delta$, on every compatible $D$. By
+Proposition~\ref{prop:mstar}, $m=O\big(m^*(\eps,\delta,n)\,\ln(1/\eps)\big)
+=\poly\big(m^*(\eps,\delta,n)\big)$. All requirements of the question are met, so
+the answer is affirmative.
+\end{proof}
+
+\begin{remark}[Why there is no computational gap here]
+The natural intuition behind such questions --- that unlabeled data together with
+a compatibility notion can create a regime where matching the
+information-theoretic labeled complexity is computationally hard --- does not
+apply to the class of disjunctions, for two independent reasons exhibited above.
+First, the baseline $m^*(\eps,\delta,n)$, as a function of $\eps,\delta,n$ only,
+is already $\Theta((n+\ln(1/\delta))/\eps)$ up to a $\ln(1/\eps)$ factor: there
+exist compatible distributions (e.g.\ those supported on diagonal pairs $(x,x)$)
+on which the unlabeled pairs are uninformative, so the worst-case baseline cannot
+beat ordinary supervised learning of $C$. Second, disjunctions are properly and
+efficiently learnable from labeled data alone by the literal-elimination rule
+(Lemma~\ref{lem:consistent}) together with the finite VC dimension
+(Lemma~\ref{lem:vc}); this already meets the baseline. Thus no NP-hard
+consistency problem needs to be solved, and the affirmative answer is achieved
+without ever using the unlabeled sample.
+\end{remark}
+
+\end{document}

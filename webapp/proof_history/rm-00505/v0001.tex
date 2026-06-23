@@ -1,0 +1,588 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\DeclareMathOperator{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\one}{\mathbf{1}}
+
+\begin{document}
+
+\title{Resolving the zero-prior obstruction to confirming universal hypotheses}
+\maketitle
+
+\begin{abstract}
+We give a complete and rigorous resolution of the zero-prior obstruction. We
+prove that the obstruction is \emph{exactly} an artifact of restricting to
+priors that are absolutely continuous with respect to Lebesgue measure on the
+parameter space, and we characterize the class of priors for which the
+universal hypothesis $H=\{\theta=1\}$ is confirmable. The admissible class is
+the class of \emph{spike-and-slab} (mixed discrete--continuous) priors that put
+a strictly positive atom on $\theta=1$. For every prior in this class we show
+that (i) $P(H)>0$, (ii) the posterior probability of $H$ after $n$ consecutive
+successes is strictly positive and increases to $1$ as $n\to\infty$, and (iii)
+the framework is an ordinary Bayesian model (hence coherent under conditioning),
+is invariant under reparametrizations of $\theta$, and reduces to the
+Bayes--Laplace predictive rule in the non-universal regime. We then prove a
+converse: an exchangeable model confirms $H$ in the sense of (ii) if and only if
+its de~Finetti mixing measure has an atom at $\theta=1$. Finally we exhibit the
+algorithmic-probability (Solomonoff) realization of the same construction and
+show it satisfies (i)--(iii), explaining why a Solomonoff-style universal prior
+escapes the obstruction automatically.
+\end{abstract}
+
+\section{Setup and the obstruction restated}\label{sec:setup}
+
+\subsection{The model}
+Fix the parameter space $\Theta=[0,1]$. For $\theta\in\Theta$ let $P_\theta$ be
+the law on $\{0,1\}^\N$ under which $X_1,X_2,\dots$ are i.i.d.\ Bernoulli$(\theta)$;
+thus for every $n$ and every $x_1,\dots,x_n\in\{0,1\}$,
+\begin{equation}\label{eq:likelihood}
+  P_\theta(X_1=x_1,\dots,X_n=x_n)=\theta^{\,s_n}(1-\theta)^{\,n-s_n},
+  \qquad s_n:=\sum_{i=1}^n x_i .
+\end{equation}
+A prior is a Borel probability measure $\mu$ on $\Theta$. The Bayesian model it
+generates is the measure
+\begin{equation}\label{eq:joint}
+  P(\,\cdot\,)=\int_{\Theta}P_\theta(\,\cdot\,)\,d\mu(\theta)
+\end{equation}
+on $\Theta\times\{0,1\}^\N$ (with $\theta$ the first coordinate). This is the
+standard exchangeable Bayesian model; by de~Finetti's theorem every
+exchangeable law on $\{0,1\}^\N$ arises this way for a unique $\mu$
+(Theorem~\ref{thm:converse} below uses this).
+
+The universal hypothesis is the event
+\begin{equation}\label{eq:H}
+  H=\{\theta=1\}\subseteq\Theta .
+\end{equation}
+We write $A_n=\{X_1=\dots=X_n=1\}$ for the event of $n$ consecutive successes,
+and $A_\infty=\bigcap_{n\ge1}A_n=\{X_i=1\ \forall i\}$.
+
+\subsection{The obstruction}
+We restate the problem's premise precisely, to fix exactly what must be
+circumvented.
+
+\begin{proposition}[The zero-prior obstruction]\label{prop:obstruction}
+If $\mu$ is absolutely continuous with respect to Lebesgue measure on $[0,1]$,
+then $P(H)=0$ and $P(H\mid A_n)=0$ for every finite $n$.
+\end{proposition}
+
+\begin{proof}
+If $\mu\ll\mathrm{Leb}$ then $\mu(\{1\})=0$ because $\{1\}$ is Lebesgue-null;
+hence $P(H)=\mu(H)=\mu(\{1\})=0$. For the posterior, by~\eqref{eq:joint}
+and~\eqref{eq:likelihood},
+\[
+  P(A_n)=\int_0^1\theta^{\,n}\,d\mu(\theta),\qquad
+  P(H\cap A_n)=\int_{\{1\}}\theta^{\,n}\,d\mu(\theta)=1^n\cdot\mu(\{1\})=0 .
+\]
+Since $\mu\ll\mathrm{Leb}$ is not the point mass at $0$, $\mu$ charges some
+subinterval of $(0,1]$, so $P(A_n)=\int_0^1\theta^n\,d\mu(\theta)>0$ and
+conditioning is well defined; thus
+$P(H\mid A_n)=P(H\cap A_n)/P(A_n)=0$.
+\end{proof}
+
+The proof isolates the sole mechanism of the obstruction: $\mu(\{1\})=0$. The
+likelihood ratio in favour of $H$ over any $\theta<1$ after $n$ successes is
+$1/\theta^n\to\infty$, so the data are maximally favourable to $H$; the only
+reason the posterior of $H$ cannot rise is that the \emph{prior} assigns it
+measure zero, and Bayesian updating can never lift an event of prior measure
+zero. The cure is therefore forced: give $H$ positive prior mass. The content
+of the theorems below is that doing so can be done while preserving every
+desirable feature of the continuous model.
+
+\section{The admissible class: spike-and-slab priors}\label{sec:class}
+
+\begin{definition}[Spike-and-slab prior]\label{def:spikeslab}
+A \emph{spike-and-slab prior} is a measure of the form
+\begin{equation}\label{eq:prior}
+  \mu = p\,\delta_{1} + (1-p)\,\nu,
+\end{equation}
+where $p\in(0,1)$, $\delta_1$ is the unit point mass at $\theta=1$, and $\nu$ is
+a Borel probability measure on $[0,1]$ with $\nu(\{1\})=0$ (the ``slab'').
+We call $p$ the \emph{spike weight} and $\nu$ the \emph{slab law}. We say the
+slab is \emph{non-degenerate} if $\nu([1-\varepsilon,1))>0$ for every
+$\varepsilon>0$, i.e.\ $1\in\operatorname{supp}\nu$; the canonical choice is
+$\nu=\mathrm{Beta}(a,b)$ with $a,b>0$, and in particular the
+Bayes--Laplace slab $\nu=\mathrm{Unif}[0,1]$.
+\end{definition}
+
+Throughout, $P$ denotes the model~\eqref{eq:joint} built from~\eqref{eq:prior}.
+This is an ordinary prior (a probability measure on $[0,1]$), so the entire
+machinery of Bayesian conditioning applies verbatim; in particular requirement
+(iii)'s coherence is automatic. We record the elementary integrals once.
+
+\begin{lemma}[Marginal likelihood of a success run]\label{lem:marginal}
+For every $n\ge0$,
+\begin{equation}\label{eq:Pan}
+  P(A_n)=p+(1-p)\,m_n,\qquad m_n:=\int_{[0,1)}\theta^{\,n}\,d\nu(\theta),
+\end{equation}
+with the convention $A_0$ the whole space and $m_0=1$. Moreover $m_n$ is
+non-increasing in $n$ and $\lim_{n\to\infty}m_n=0$.
+\end{lemma}
+
+\begin{proof}
+By~\eqref{eq:joint}, \eqref{eq:likelihood} and~\eqref{eq:prior},
+\[
+  P(A_n)=\int_{[0,1]}\theta^n\,d\mu(\theta)
+  =p\cdot 1^n+(1-p)\int_{[0,1]}\theta^n\,d\nu(\theta).
+\]
+Since $\nu(\{1\})=0$, the last integral equals $\int_{[0,1)}\theta^n\,d\nu=m_n$,
+giving~\eqref{eq:Pan}. For $\theta\in[0,1)$ the sequence $\theta^n$ is
+non-increasing in $n$, so $m_n$ is non-increasing by monotonicity of the
+integral. Finally $\theta^n\to 0$ pointwise on $[0,1)$ and $0\le\theta^n\le1$,
+so by dominated convergence (dominating function $\one$, which is
+$\nu$-integrable) $m_n\to\int_{[0,1)}0\,d\nu=0$.
+\end{proof}
+
+\section{Confirmation: properties (i) and (ii)}\label{sec:confirm}
+
+\begin{theorem}[Positive prior and convergent posterior]\label{thm:main}
+Let $\mu=p\,\delta_1+(1-p)\,\nu$ be any spike-and-slab prior
+(Definition~\ref{def:spikeslab}). Then:
+\begin{enumerate}
+\item[\textup{(i)}] $P(H)=p>0$.
+\item[\textup{(ii)}] For every $n\ge0$ the posterior of $H$ given $n$ consecutive
+successes is
+\begin{equation}\label{eq:posterior}
+  P(H\mid A_n)=\frac{p}{p+(1-p)\,m_n}\in(0,1],
+\end{equation}
+this quantity is non-decreasing in $n$, and
+\[
+  \lim_{n\to\infty}P(H\mid A_n)=1.
+\]
+\item[\textup{(iii)}] Conditioned on the full success sequence,
+$P(H\mid A_\infty)=1$; i.e.\ the model gives the correct answer in the limit.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(i) $P(H)=\mu(\{1\})=p\,\delta_1(\{1\})+(1-p)\,\nu(\{1\})=p+0=p>0$.
+
+(ii) The event $A_n$ has $P(A_n)=p+(1-p)m_n\ge p>0$ by
+Lemma~\ref{lem:marginal}, so the conditional probability is defined. The
+contribution of $H$ to $A_n$ is the spike, whose likelihood is $1^n=1$:
+\[
+  P(H\cap A_n)=\int_{\{1\}}\theta^n\,d\mu(\theta)=p\cdot 1^n=p .
+\]
+Therefore
+\[
+  P(H\mid A_n)=\frac{P(H\cap A_n)}{P(A_n)}=\frac{p}{p+(1-p)\,m_n},
+\]
+which is~\eqref{eq:posterior}. Because $p>0$ and $(1-p)m_n\ge0$ the value lies
+in $(0,1]$. The map $t\mapsto p/(p+(1-p)t)$ is strictly decreasing in
+$t\ge0$, and $m_n$ is non-increasing in $n$ (Lemma~\ref{lem:marginal}); hence
+$P(H\mid A_n)$ is non-decreasing in $n$. Finally, since $m_n\to0$,
+\[
+  \lim_{n\to\infty}P(H\mid A_n)=\frac{p}{p+(1-p)\cdot 0}=\frac{p}{p}=1 .
+\]
+
+(iii) The events $A_n$ decrease to $A_\infty$, and by~\eqref{eq:joint}
+\[
+  P(H\cap A_\infty)=\int_{\{1\}}P_\theta(A_\infty)\,d\mu(\theta)=p\cdot 1=p,
+\]
+because $P_1(A_\infty)=1$. Also
+$P(A_\infty)=\int_{[0,1]}P_\theta(A_\infty)\,d\mu
+=p\cdot1+(1-p)\int_{[0,1)}\big(\lim_n\theta^n\big)\,d\nu$, and
+$\lim_n\theta^n=0$ for $\theta\in[0,1)$ while the point $\theta=1$ is
+excluded by $\nu(\{1\})=0$; by dominated convergence the slab integral is $0$, so
+$P(A_\infty)=p$. Hence $P(H\mid A_\infty)=p/p=1$. (Consistently, by downward
+continuity of measure $P(H\mid A_\infty)=\lim_n P(H\mid A_n)=1$.)
+\end{proof}
+
+This settles (i) and (ii) for the entire admissible class, with no restriction
+on $\nu$ beyond $\nu(\{1\})=0$: the slab may be uniform, any Beta law, or any
+other continuous prior on $[0,1)$. In particular the spike weight $p$ may be
+taken arbitrarily small, so the resolution does not require committing strong
+prior belief in $H$.
+
+\section{Coherence, reparametrization invariance, and predictive behaviour: (iii)}
+\label{sec:coherence}
+
+\subsection{Coherence under updating}
+The model $P$ of~\eqref{eq:joint} is a genuine probability measure on
+$\Theta\times\{0,1\}^\N$ and $H$ a genuine event with $P(H)=p>0$. All the
+posteriors above are ordinary conditional probabilities of positive-probability
+events, so Bayes coherence (the chain rule, conglomerability over the discrete
+data, and sequential consistency: $P(H\mid A_{n+1})$ is the one-step update of
+$P(H\mid A_n)$) holds automatically. Explicitly, the sequential update factor is
+\begin{equation}\label{eq:sequential}
+  \frac{P(H\mid A_{n+1})}{P(H\mid A_n)}
+  =\frac{P(A_n)}{P(A_{n+1})}
+  =\frac{p+(1-p)m_n}{p+(1-p)m_{n+1}}\ \ge 1,
+\end{equation}
+which is exactly Bayes' rule applied to the single new observation
+$X_{n+1}=1$ (the inequality holds because $m_{n+1}\le m_n$), confirming that the
+increasing posterior of Theorem~\ref{thm:main}(ii) is produced by lawful
+conditioning and not by any extra-Bayesian device.
+
+\subsection{Invariance under reparametrization}
+A reparametrization is a relabelling of the parameter by a Borel isomorphism
+$\phi:[0,1]\to[0,1]$; we write $\eta=\phi(\theta)$ for the new coordinate and
+$\psi:=\phi^{-1}$ for its inverse, so $\theta=\psi(\eta)$. A reparametrization
+must leave the actual statistical model unchanged: the trial that has success
+probability $\theta$ in the old chart has success probability $\psi(\eta)$ in
+the new chart, so the likelihood of a success run becomes
+$\eta\mapsto\psi(\eta)^n$, and the prior is transported by push-forward,
+$\tilde\mu:=\phi_\#\mu$. The hypothesis $H=\{\theta=1\}$ becomes
+$\tilde H:=\phi(H)=\{\eta=\phi(1)\}$. We require $\phi(1)=1$ (equivalently
+$\psi(1)=1$): the value ``success probability $=1$'', which \emph{defines} the
+universal hypothesis, is identified across charts.
+
+\begin{proposition}[Reparametrization invariance]\label{prop:invariance}
+Let $\phi:[0,1]\to[0,1]$ be a Borel isomorphism with $\phi(1)=1$, let
+$\psi=\phi^{-1}$, and let $\tilde P$ be the model in the new chart: prior
+$\tilde\mu=\phi_\#\mu$ and likelihood $\tilde P_\eta(A_n)=\psi(\eta)^n$.
+\begin{enumerate}
+\item[\textup{(a)}] \textup{(Class is closed.)} If $\mu=p\delta_1+(1-p)\nu$ is a
+spike-and-slab prior then $\tilde\mu=p\,\delta_1+(1-p)\,\tilde\nu$ with
+$\tilde\nu=\phi_\#\nu$, and $\tilde\nu(\{1\})=\nu(\psi(\{1\}))=\nu(\{1\})=0$;
+so $\tilde\mu$ is again spike-and-slab with the same spike weight $p$.
+\item[\textup{(b)}] \textup{(Posterior is invariant.)} For every $n$,
+\[
+  \tilde P(\tilde H\mid A_n)=P(H\mid A_n).
+\]
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(a) Push-forward of a sum of measures is the sum of push-forwards, and
+$\phi_\#\delta_1=\delta_{\phi(1)}=\delta_1$. Since $\phi$ is a bijection with
+$\phi(1)=1$ we have $\psi(\{1\})=\{1\}$, so
+$\tilde\nu(\{1\})=(\phi_\#\nu)(\{1\})=\nu(\psi(\{1\}))=\nu(\{1\})=0$.
+
+(b) We compute every quantity in the new chart and invoke the change-of-variables
+(image-measure) formula $\int g\,d(\phi_\#\mu)=\int (g\circ\phi)\,d\mu$.
+The new marginal of a success run is
+\[
+  \tilde P(A_n)=\int_{[0,1]}\psi(\eta)^n\,d\tilde\mu(\eta)
+  =\int_{[0,1]}\psi(\eta)^n\,d(\phi_\#\mu)(\eta)
+  =\int_{[0,1]}\psi(\phi(\theta))^n\,d\mu(\theta)
+  =\int_{[0,1]}\theta^n\,d\mu(\theta)=P(A_n),
+\]
+using $\psi\circ\phi=\mathrm{id}$. Likewise the new joint mass of the universal
+hypothesis is, since $\tilde H=\{\eta=1\}$ and $\psi(1)=1$,
+\[
+  \tilde P(\tilde H\cap A_n)
+  =\int_{\{1\}}\psi(\eta)^n\,d\tilde\mu(\eta)
+  =\psi(1)^n\,\tilde\mu(\{1\})
+  =1^n\cdot p=p=P(H\cap A_n).
+\]
+Dividing, $\tilde P(\tilde H\mid A_n)=p/P(A_n)=P(H\mid A_n)$.
+\end{proof}
+
+\begin{remark}[What invariance does and does not mean]\label{rem:invariance}
+Proposition~\ref{prop:invariance} shows the framework is genuinely
+coordinate-free: both the admissible class and the entire posterior trajectory
+$\{P(H\mid A_n)\}_n$ are invariant under any relabelling of $\theta$ that fixes
+the success-endpoint. This is exactly the structural feature the obstruction
+\emph{lacked} for continuous priors. Absolute continuity is \emph{not} a
+coordinate-free property capable of charging $H$: no Borel isomorphism can turn a
+Lebesgue-null point into a positive-Lebesgue-measure set, so a prior with
+$\mu\ll\mathrm{Leb}$ can never be transported into one with $\tilde\mu(\{1\})>0$.
+By contrast an \emph{atom} at the success-endpoint is intrinsic: a point mass
+pushes forward to a point mass of the same weight, and the image of the
+success-endpoint under any admissible relabelling is again the success-endpoint.
+Hence ``$P(H)>0$'' is invariant under reparametrization, whereas
+``$\mu\ll\mathrm{Leb}$'' is the chart-dependent constraint responsible for the
+obstruction.
+\end{remark}
+
+\subsection{Predictive behaviour in the non-universal regime}
+We verify that away from the pure-success path the model behaves like an
+ordinary, well-calibrated continuous Bayesian learner, and in particular
+recovers the Bayes--Laplace rule of succession.
+
+\begin{proposition}[Reduction to standard predictive behaviour]\label{prop:predictive}
+Use the spike-and-slab prior~\eqref{eq:prior} with a slab $\nu$ that charges
+$(0,1)$.
+\begin{enumerate}
+\item[\textup{(a)}] \emph{(Falsification.)} If at any stage some $X_i=0$ is
+observed, then on that event the posterior of $H$ is $0$ and stays $0$ forever;
+formally $P(H\mid X_1=x_1,\dots,X_n=x_n)=0$ whenever $s_n<n$.
+\item[\textup{(b)}] \emph{(Continuous learning off the spike.)} Conditional on
+any data string containing a $0$, the posterior over $\theta$ is the ordinary
+Bayesian posterior of the slab model $\nu$; the spike contributes nothing.
+\item[\textup{(c)}] \emph{(Rule of succession; recovery of Bayes--Laplace.)}
+With the uniform slab $\nu=\mathrm{Unif}[0,1]$ one has $m_n=\frac1{n+1}$ and
+\[
+  P(X_{n+1}=1\mid A_n)=\frac{p+(1-p)\frac{1}{n+2}}{\,p+(1-p)\frac{1}{n+1}\,}.
+\]
+As $p\downarrow0$ this equals $\tfrac{n+1}{n+2}$, Laplace's rule of succession,
+for every $n$; for fixed $p\in(0,1)$ it lies strictly above $\tfrac{n+1}{n+2}$
+and increases to $1$, the (mild) optimism induced by the spike.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(a) If $s_n<n$ then $x_j=0$ for some $j\le n$, and the spike's likelihood is
+$P_1(X_1=x_1,\dots,X_n=x_n)=1^{s_n}(1-1)^{n-s_n}=0$ because $n-s_n\ge1$. Thus
+$P(H\cap\{X_1=x_1,\dots,X_n=x_n\})=p\cdot0=0$, while the slab gives the data
+positive probability because $\nu$ charges $(0,1)$, where
+$\theta^{s_n}(1-\theta)^{n-s_n}>0$; so the posterior of $H$ is
+$0/(\text{positive})=0$. As $H$ has posterior $0$, all further conditioning keeps
+it at $0$ (an event of conditional probability $0$ cannot be revived).
+
+(b) On data with $s_n<n$ the spike has zero likelihood by (a), so in the
+posterior decomposition
+$d\mu_{\text{post}}(\theta)\propto\theta^{s_n}(1-\theta)^{n-s_n}\,d\mu(\theta)$
+the atom at $1$ receives weight $0$ and the surviving mass is
+$\propto\theta^{s_n}(1-\theta)^{n-s_n}\,d\nu(\theta)$, which is precisely the
+posterior obtained from the slab prior $\nu$ alone. Hence all predictions
+coincide with those of the continuous model $\nu$.
+
+(c) For $\nu=\mathrm{Unif}[0,1]$, $m_n=\int_0^1\theta^n\,d\theta=\frac1{n+1}$.
+By the chain rule and Lemma~\ref{lem:marginal},
+\[
+  P(X_{n+1}=1\mid A_n)=\frac{P(A_{n+1})}{P(A_n)}
+  =\frac{p+(1-p)\frac{1}{n+2}}{p+(1-p)\frac{1}{n+1}} .
+\]
+Setting $p=0$ gives $\frac{1/(n+2)}{1/(n+1)}=\frac{n+1}{n+2}$, Laplace's rule.
+For $p\in(0,1)$: writing the predictive value as $f(p)$, one has $f(0)=\frac{n+1}{n+2}$
+and $f(1)=1$; since $\frac1{n+1}>\frac1{n+2}>0$, cross-multiplication shows
+$p+(1-p)\frac1{n+2}$ and $p+(1-p)\frac1{n+1}$ are both increasing in $p$ but the
+ratio $f(p)$ is strictly increasing in $p$ on $[0,1]$ (its derivative has the sign
+of $\frac1{n+1}-\frac1{n+2}>0$), so $f(p)>\frac{n+1}{n+2}$ for $p\in(0,1)$; and
+as $n\to\infty$ both numerator and denominator tend to $p$, so $f(p)\to1$.
+\end{proof}
+
+Parts (a)--(b) deliver the philosophically essential feature: the spike is a
+\emph{falsifiable} hypothesis in the Popperian sense---a single counterexample
+($X_i=0$) annihilates its posterior---yet it accrues confirmation under a
+growing run of confirming instances. This is exactly the asymmetry one wants for
+``all ravens are black'': one non-black raven refutes it; many black ravens
+progressively confirm it.
+
+\section{Characterization: a converse}\label{sec:converse}
+
+We now show that the spike is not merely \emph{sufficient} but \emph{necessary}:
+within the entire class of exchangeable Bernoulli models, confirmability of $H$
+in the sense of Theorem~\ref{thm:main}(ii) is equivalent to the presence of an
+atom at $\theta=1$. This is what makes the admissible class a genuine
+\emph{characterization}.
+
+\begin{theorem}[Confirmability $\iff$ atom at the success-endpoint]\label{thm:converse}
+Let $\mu$ be any prior on $[0,1]$, with associated exchangeable model $P$
+of~\eqref{eq:joint}, and suppose $\mu\ne\delta_0$ so that $P(A_n)>0$ for all $n$.
+Set $p:=\mu(\{1\})$. Then for all $n$
+\begin{equation}\label{eq:general}
+  P(H\mid A_n)=\frac{p}{\int_{[0,1]}\theta^n\,d\mu(\theta)} ,
+\end{equation}
+and consequently:
+\begin{enumerate}
+\item[\textup{(a)}] $P(H\mid A_n)>0$ for some (equivalently every) $n$ $\iff$
+$p>0$;
+\item[\textup{(b)}] $\displaystyle\lim_{n\to\infty}P(H\mid A_n)=1 \iff p>0$.
+\end{enumerate}
+In particular, an exchangeable Bernoulli model confirms the universal hypothesis
+$H$ (in the sense of property (ii): posterior strictly positive and converging to
+$1$ along a success run) \emph{if and only if} its de~Finetti mixing measure
+$\mu$ places strictly positive mass on $\theta=1$. Every such $\mu$ with $p<1$
+is a spike-and-slab prior (Definition~\ref{def:spikeslab}) with slab
+$\nu=(\mu-p\delta_1)/(1-p)$, and $\mu=\delta_1$ when $p=1$.
+\end{theorem}
+
+\begin{proof}
+By~\eqref{eq:likelihood}, $P(A_n)=\int_{[0,1]}\theta^n\,d\mu(\theta)$, and
+$P(H\cap A_n)=\int_{\{1\}}\theta^n\,d\mu=p$, which gives~\eqref{eq:general}; the
+denominator is positive since $\mu\ne\delta_0$ implies $\mu$ charges $(0,1]$,
+where $\theta^n>0$.
+
+(a) If $p=0$ then the numerator of~\eqref{eq:general} is $0$, so
+$P(H\mid A_n)=0$ for every $n$. If $p>0$ the numerator is positive and the
+denominator finite and positive, so $P(H\mid A_n)>0$ for every $n$. (The
+``some/every'' equivalence holds because the numerator does not depend on $n$.)
+
+(b) If $p=0$ then $P(H\mid A_n)\equiv0\not\to1$. Suppose $p>0$. If $p=1$ then
+$\mu=\delta_1$, $P(A_n)=1$ and $P(H\mid A_n)=1$ for all $n$. If $0<p<1$, write
+$\mu=p\,\delta_1+(1-p)\nu$ with $\nu=(\mu-p\delta_1)/(1-p)$, a probability
+measure with $\nu(\{1\})=(\mu(\{1\})-p)/(1-p)=0$. Then
+$\int_{[0,1]}\theta^n\,d\mu=p+(1-p)m_n$ with $m_n=\int_{[0,1)}\theta^n\,d\nu\to0$
+by dominated convergence exactly as in Lemma~\ref{lem:marginal}. Hence
+$P(H\mid A_n)=p/(p+(1-p)m_n)\to p/p=1$. The displayed iff statements combine (a)
+and (b).
+
+The identification of $\mu$ with the unique mixing measure of an exchangeable law
+is the classical de~Finetti representation theorem for $\{0,1\}$-valued
+exchangeable sequences; uniqueness of $\mu$ makes ``$\mu(\{1\})>0$'' a
+well-defined, model-intrinsic criterion, independent of any parametrization.
+\end{proof}
+
+Theorem~\ref{thm:converse} is the precise sense in which the spike-and-slab
+class is \emph{the} answer: no exchangeable Bayesian model outside this class can
+confirm $H$, and every model inside it does, with the convergence rate governed
+entirely by the slab through $m_n$ (faster mass concentration of $\nu$ near $1$
+gives slower confirmation, and vice versa). The continuous Bayes--Laplace prior
+fails precisely and only because it is the degenerate case $p=0$.
+
+\section{The Solomonoff / algorithmic-probability realization}\label{sec:solomonoff}
+
+We now show that the same resolution arises canonically, without an \emph{ad hoc}
+choice of spike weight, when one replaces the parametric prior by a universal
+(Solomonoff) prior on hypotheses; this answers the algorithmic-probability part
+of the problem and explains \emph{why} algorithmic induction is immune to the
+obstruction.
+
+\subsection{Construction}
+Work directly on the space of \emph{hypotheses} rather than on $[0,1]$. Let
+$\mathcal M=\{Q_1,Q_2,\dots\}$ be a countable class of computable measures on
+$\{0,1\}^\N$, chosen to contain
+\begin{equation}\label{eq:Qstar}
+  Q_\star:=\delta_{(1,1,1,\dots)}\quad\text{(the deterministic ``all successes'' law)},
+\end{equation}
+i.e.\ $Q_\star(A_n)=1$ for all $n$ and $Q_\star(\{X_i=0\})=0$; this $Q_\star$ is
+the algorithmic incarnation of the universal hypothesis $H$. Fix a prefix-free
+universal description and let $K(\cdot)$ denote prefix Kolmogorov complexity;
+define the universal mixture (a Solomonoff-style prior over $\mathcal M$)
+\begin{equation}\label{eq:Mprior}
+  M(\cdot)=\sum_{k\ge1} w_k\,Q_k(\cdot),\qquad
+  w_k:=\frac{2^{-K(Q_k)}}{Z},\quad
+  Z:=\sum_{j\ge1}2^{-K(Q_j)}\in(0,1] .
+\end{equation}
+Each $w_k>0$ because $K(Q_k)<\infty$ (every $Q_k$ is computable, hence has a
+finite description), and $\sum_k w_k=1$. Let $w_\star:=w_{k_\star}>0$ be the
+weight of $Q_\star$ in~\eqref{eq:Mprior}.
+
+The Solomonoff posterior on the hypothesis $Q_\star$ is the ordinary Bayesian
+posterior of the discrete prior $(w_k)_k$:
+\begin{equation}\label{eq:solpost}
+  M(Q_\star\mid A_n)=\frac{w_\star\,Q_\star(A_n)}{\sum_k w_k\,Q_k(A_n)}
+  =\frac{w_\star}{\sum_k w_k\,Q_k(A_n)} .
+\end{equation}
+
+\begin{theorem}[Solomonoff confirmation of the universal hypothesis]\label{thm:sol}
+With $M$ as in~\eqref{eq:Mprior} and $Q_\star$ as in~\eqref{eq:Qstar}:
+\begin{enumerate}
+\item[\textup{(i)}] $M$ assigns the universal hypothesis strictly positive prior
+weight: the prior probability of $Q_\star$ is $w_\star>0$.
+\item[\textup{(ii)}] $M(Q_\star\mid A_n)\in(0,1]$ is non-decreasing in $n$. It
+strictly exceeds $w_\star$ once some $Q_k$ with positive weight has $Q_k(A_n)<1$,
+and
+$\lim_{n\to\infty}M(Q_\star\mid A_n)
+=\dfrac{w_\star}{\sum_k w_k\,Q_k(A_\infty)}$;
+this limit equals $1$ if and only if $Q_\star$ is the only law in $\mathcal M$
+with $Q_k(A_\infty)>0$ (e.g.\ when every other $Q_k$ produces a $0$ eventually,
+$Q_k$-almost surely).
+\item[\textup{(iii)}] The scheme is coherent (it is plain Bayesian conditioning
+of the discrete prior $(w_k)$), it is invariant under the choice of universal
+machine up to a multiplicative $O(1)$ factor in the weights (hence does not
+affect the limit in (ii)), and in the non-universal regime it reduces to the
+ordinary Solomonoff predictor, which predicts consistently.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(i) The prior probability of $Q_\star$ under~\eqref{eq:Mprior} is by definition
+$w_\star=2^{-K(Q_\star)}/Z>0$, since $Q_\star=\delta_{(1,1,\dots)}$ is computable
+($K(Q_\star)<\infty$).
+
+(ii) From~\eqref{eq:solpost}, $Q_\star(A_n)=1$, and for each $k$,
+$Q_k(A_n)\in[0,1]$ is non-increasing in $n$ (because $A_{n+1}\subseteq A_n$).
+Hence the denominator $D_n:=\sum_k w_k Q_k(A_n)$ is non-increasing in $n$ and
+bounded below by $w_\star Q_\star(A_n)=w_\star>0$, so
+$M(Q_\star\mid A_n)=w_\star/D_n$ is non-decreasing and lies in $(0,1]$; it
+exceeds $w_\star=M(Q_\star)$ as soon as $D_n<1$, which occurs once some
+positively-weighted $Q_k$ has $Q_k(A_n)<1$. By monotone convergence
+(equivalently dominated convergence with summable dominating sequence $(w_k)$),
+\[
+  D_n=\sum_k w_k Q_k(A_n)\ \longrightarrow\ \sum_k w_k\,Q_k(A_\infty),
+\]
+since $Q_k(A_n)\downarrow Q_k(A_\infty)$ for each $k$. Therefore
+$M(Q_\star\mid A_n)\to w_\star/\sum_k w_k Q_k(A_\infty)$. As
+$Q_\star(A_\infty)=1$, this limit is $1$ iff
+$\sum_{k:Q_k\ne Q_\star} w_k Q_k(A_\infty)=0$, i.e.\ iff every other $Q_k$ has
+$Q_k(A_\infty)=0$; this is the algorithmic analogue of the condition
+$\nu(\{1\})=0$ in Theorem~\ref{thm:converse}.
+
+(iii) Coherence holds because~\eqref{eq:solpost} is Bayes' rule for the discrete
+prior $(w_k)$. Machine-independence is the Invariance Theorem of Kolmogorov
+complexity: for two universal prefix machines $U,U'$ there is a constant
+$c=c(U,U')$ with $|K_U(Q)-K_{U'}(Q)|\le c$ for all $Q$; hence the unnormalized
+weights satisfy $2^{-c}\le 2^{-K_U(Q)}/2^{-K_{U'}(Q)}\le 2^{c}$, a bounded
+multiplicative perturbation that leaves $w_\star>0$ and (being a fixed positive
+factor up to normalization) does not change the limit
+$M(Q_\star\mid A_n)\to1$ in (ii). Finally, on data containing a $0$ the term
+$Q_\star(A_n)=0$ kills $Q_\star$'s posterior, and $M$ reverts to the standard
+Solomonoff mixture over $\mathcal M\setminus\{Q_\star\}$, whose predictive
+consistency (Solomonoff's theorem: $M(X_{n+1}=1\mid X_{1:n})$ converges, with
+probability one, to the true conditional probability for any computable data
+source) gives reasonable behaviour in the non-universal regime.
+\end{proof}
+
+\subsection{Why algorithmic probability resolves the obstruction
+``for free''}
+The parametric model required us to insert the spike by hand because the
+continuum $[0,1]$ contains the universal hypothesis as a measure-zero point and
+the only translation-/scale-natural continuous measures (Lebesgue and its
+absolutely continuous cousins) cannot charge it. In the algorithmic setting the
+hypothesis space is the \emph{countable} class of computable laws, on which the
+universal prior~\eqref{eq:Mprior} is necessarily \emph{discrete}; \emph{every}
+computable hypothesis, including the deterministic $Q_\star$, automatically
+receives positive weight $\propto2^{-K(Q)}$. Thus the algorithmic prior is a
+spike-and-slab prior in disguise---a discrete mixture with an atom on the
+universal law---and the obstruction simply never arises. The complexity weighting
+$2^{-K(Q_\star)}$ additionally supplies a non-arbitrary value for the spike
+weight: simple universal regularities (such as ``always $1$'') are short to
+describe, hence are \emph{a priori} preferred, which is precisely Occam's razor
+operating in favour of confirmable universal generalizations.
+
+\section{Summary: adequacy of the resolution}\label{sec:summary}
+
+We collect the resolution and its justification.
+
+\begin{enumerate}
+\item \textbf{The obstruction is exactly absolute continuity}
+(Proposition~\ref{prop:obstruction}): it depends only on $\mu(\{1\})=0$, a
+chart-dependent constraint, not on any structural feature of confirmation.
+
+\item \textbf{Admissible class.} The spike-and-slab priors
+$\mu=p\delta_1+(1-p)\nu$, $p\in(0,1)$, $\nu(\{1\})=0$
+(Definition~\ref{def:spikeslab}), give $P(H)=p>0$ and posterior
+$P(H\mid A_n)=p/(p+(1-p)m_n)\uparrow1$
+(Theorem~\ref{thm:main}); this is requirements (i)--(ii).
+
+\item \textbf{Coherence and invariance} (requirement (iii)):
+the model is an ordinary Bayesian model, so updating is coherent
+(\eqref{eq:sequential}); the admissible class is closed under reparametrization
+and the entire posterior trajectory is invariant
+(Proposition~\ref{prop:invariance}, Remark~\ref{rem:invariance}); and the model
+reduces to the Bayes--Laplace rule of succession in the non-universal regime,
+with one observed counterexample falsifying $H$ outright
+(Proposition~\ref{prop:predictive}).
+
+\item \textbf{Characterization} (Theorem~\ref{thm:converse}): among
+\emph{all} exchangeable Bernoulli models, confirmability of $H$ holds if and only
+if the de~Finetti mixing measure has an atom at $\theta=1$. The class of item~2
+is therefore not one device among many but the complete solution set.
+
+\item \textbf{Algorithmic realization} (Theorem~\ref{thm:sol}): a
+Solomonoff-style universal prior over computable hypotheses is automatically a
+discrete mixture charging the deterministic ``all successes'' law $Q_\star$ with
+weight $2^{-K(Q_\star)}>0$; it confirms $Q_\star$ with posterior tending to $1$,
+is machine-independent up to $O(1)$, and reduces to the consistent Solomonoff
+predictor off the success path. Here the spike weight is fixed canonically by
+Occam's razor rather than chosen by hand.
+\end{enumerate}
+
+\noindent\textbf{Philosophical adequacy.} The construction reconciles three
+desiderata usually thought to be in tension. (a) \emph{Confirmability}: $H$ is
+genuinely learnable, with monotone increasing posterior tending to certainty
+under accumulating positive instances. (b) \emph{Falsifiability}: a single
+counterexample drives the posterior of $H$ to $0$ irreversibly
+(Proposition~\ref{prop:predictive}(a)), so $H$ remains an empirical, refutable
+claim and the framework is not credulous. (c) \emph{Open-mindedness}: the slab
+$\nu$ keeps positive belief on every $\theta<1$, so before decisive evidence the
+model entertains the possibility that $H$ is false and predicts in a calibrated,
+Laplace-like manner. The zero-prior obstruction is thus revealed as an avoidable
+artifact of an over-restrictive (merely-continuous) prior class; once the
+genuinely universal hypothesis is admitted as a first-class atom---whether by an
+explicit spike or, canonically, through algorithmic probability---standard
+Bayesian conditioning confirms it exactly as scientific practice demands.
+\end{document}

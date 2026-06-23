@@ -16,8 +16,31 @@
       "id": "c46ac2c09",
       "author": "verifier-agent",
       "role": "agent",
-      "body": "**From external verification report Jun 21 \u2014 Critical error**\n\n**Issue:** The Godement-Jacquet (GJ) functional equation is applied to Whittaker functions \nin the Rankin-Selberg unfolding. The GJ functional equation is ONLY valid for matrix coefficients \n(vectors in the representation space), NOT for Whittaker functions.\n\n**Verification:** \n- The GJ FE holds for matrix coefficients f(g) = \u27e8\u03c0(g)v, \u1e7d\u27e9 via bi-equivariance\n- A Whittaker function W(g) = \u222b f(ug)\u03c8\u207b\u00b9(u)du is NOT a matrix coefficient\n- Left-(N,\u03c8\u207b\u00b9)-equivariance makes W lie outside the matrix-coefficient/bi-equivariant structure\n- The dual \u0303W(g) = W(w\u2099\u00b7\u1d57g\u207b\u00b9) is in no Whittaker model (n\u22652)\n\n**Required fix:** Either:\n(a) Reformulate using the Whittaker functional equation (local functional equation for the \n    Rankin-Selberg L-function), or\n(b) Reduce to matrix coefficients first, then apply GJ\n\n**Reference:** Verification report Jun 21, Problem 2, Critical issue 1 (conf. high).",
+      "body": "**From external verification report Jun 21 — Critical error**\n\n**Issue:** The Godement-Jacquet (GJ) functional equation is applied to Whittaker functions \nin the Rankin-Selberg unfolding. The GJ functional equation is ONLY valid for matrix coefficients \n(vectors in the representation space), NOT for Whittaker functions.\n\n**Verification:** \n- The GJ FE holds for matrix coefficients f(g) = ⟨π(g)v, ṽ⟩ via bi-equivariance\n- A Whittaker function W(g) = ∫ f(ug)ψ⁻¹(u)du is NOT a matrix coefficient\n- Left-(N,ψ⁻¹)-equivariance makes W lie outside the matrix-coefficient/bi-equivariant structure\n- The dual ̃W(g) = W(wₙ·ᵗg⁻¹) is in no Whittaker model (n≥2)\n\n**Required fix:** Either:\n(a) Reformulate using the Whittaker functional equation (local functional equation for the \n    Rankin-Selberg L-function), or\n(b) Reduce to matrix coefficients first, then apply GJ\n\n**Reference:** Verification report Jun 21, Problem 2, Critical issue 1 (conf. high).",
       "created_at": "2026-06-21T18:19:34Z"
+    },
+    {
+      "id": "c71dc156f",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Mathematical Review (critic-agent)\n\nI reviewed solution.tex against problem q2 and the prior docs (overview/progress/strategies/timeline). Full write-up linked as 'Critic Analysis'.\n\n**Verdict on the answer:** The claimed answer YES is correct, and the high-level strategy is the right one: (i) choose a pi-independent Whittaker datum W_0 supported on a single det-shell so that homogeneity forces Psi(s) = c·|Q|^s (a monomial, hence finite & nonzero for all s iff c != 0); (ii) compute c != 0 via the Godement-Jacquet functional equation, converting the psi-twisted unipotent shift into a K_1(q) integral.\n\n**Sound parts:** W_0's single-shell support {det g in o^x} is correct (x in N_n has det 1); the homogeneity reduction to a constant is correct; finiteness for all s is then automatic (integration over a compact-mod-N_n set); Lemma `beta` is internally correct; the matching to the problem's integrand (problem-W = W_0, problem-V = d_Q V) is fine modulo notation.\n\n**Gaps found (new issues q2-3, q2-4, q2-5; q2-2 already covers the GJ/Whittaker concern = my GAP 4):**\n\n- **q2-3 (FATAL):** The pointwise identity in Lemma `relations` (rel1), beta(det g)phi_0(g d_Q^{-1}) = eps·1_{K_n}(g d_Q^{-1}), requires beta to be a single shell eps·1_{|y|=|Q|}. But Lemma `beta`(1) gives beta supported on the RANGE {|Q|<=|y|<=|Q|q^n}: indeed tilde-beta(s)=eps·|Q|^{-s}/L(1/2+s,pi) and 1/L is a degree-d (<=n) polynomial in q^{-s}, so beta is multi-shell {|Q|,...,|Q|q^d} with generically nonzero coefficients whenever pi has a nontrivial standard L-factor. Direct unfolding shows the true eps·Psi integrates only over the single shell |det g|=|Q|, while the GJ side includes the extra shells |Q|q,...,|Q|q^d. So the first equality of the Conclusion is wrong in general, and the central value c is not established. Showing the extra shells cancel = killing L(s,Pi x pi) to a constant is the real mathematical heart, and it is sidestepped. rel2 has the same defect (beta^sharp supported on {1<=|y|<=q^n}).\n\n- **q2-4:** Lemma `transfer` is proved only for unitary pi, but the theorem is for all generic pi; and the central-line Mellin contour / absolute-convergence step is unjustified (GJ zeta converges only in a right half-plane and has poles).\n\n- **q2-5:** The extension of W_0 to W(Pi) and the off-mirabolic identity W_0(g t_Q)=psi(-g_{nn})W_0(g d_Q^{-1}) (right-translate by u_1 in N_{n+1}) are asserted, not proven.\n\n- **q2-2 (existing):** GJ functional equation applied to Whittaker functions — agrees with my GAP 4: GJ is classically for matrix coefficients and the extension to Whittaker functions / the identification of f^vee as the dual newvector needs to be made precise.\n\n**Recommended path:** Keep the homogeneity reduction; redo the constant honestly with multi-shell beta (evaluate the single-shell unfolded form int_{g d_Q^{-1} in K_n} psi(-g_{nn})V(g)dg directly using Matringe newvector values), or invoke the JPSS local RS functional equation to force the L-factor to a unit; then extend to non-unitary pi by analytic continuation in the parameters.",
+      "created_at": "2026-06-21T20:42:26Z"
+    },
+    {
+      "id": "evff56b62a",
+      "author": "agent",
+      "role": "event",
+      "event_type": "doc_generated",
+      "body": "Document generated: **Critic Analysis**",
+      "created_at": "2026-06-21T20:42:26Z"
+    }
+  ],
+  "documents": [
+    {
+      "title": "Critic Analysis",
+      "path": "questions/q2/analysis.md",
+      "created_at": "2026-06-21T20:42:26Z",
+      "created_by": "agent"
     }
   ]
 }

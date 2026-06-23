@@ -1,0 +1,152 @@
+{
+  "id": "rm-01516-meet-1",
+  "problem_id": "rm-01516",
+  "topic": "Init rm-01516 — proof review",
+  "goal": "Review the proof and issues for rm-01516; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T06:17:30Z",
+  "messages": [
+    {
+      "id": "md086ae94",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-01516 — proof review**",
+      "created_at": "2026-06-23T06:17:30Z"
+    },
+    {
+      "id": "m5d0a8b76",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be direct: this problem isn't about Laplacians or spectral graph theory at all — it's a detector-physics optimization problem, and the figure of merit $S/\\sqrt{B}$ factorizes beautifully because the three modifications act independently. So let's just optimize it cleanly, multiplicatively, exactly the way I'd treat a product of independent leverage scores.\n\nFor each configuration the figure of merit relative to baseline is\n$$\n\\frac{S/\\sqrt{B}}{(S/\\sqrt{B})_{\\text{base}}} = \\frac{\\prod (\\text{signal factors})}{\\sqrt{\\prod (\\text{background factors})}}.\n$$\n\nThe boost reduction is **not optional** — it's the baseline change, so it always multiplies in:\n$$\n\\text{boost: } \\frac{1.07}{\\sqrt{0.94}} = \\frac{1.07}{0.96954} = 1.1036.\n$$\n\nNow treat each optional sub-detector by its own contribution factor — include it iff its factor exceeds $1$:\n\n- **Fwd-PID**: $\\dfrac{1.025}{\\sqrt{1.025}} = \\sqrt{1.025} = 1.01242 > 1$ — include it.\n- **Bwd-EMC**: $\\dfrac{1}{\\sqrt{0.90}} = \\dfrac{1}{0.94868} = 1.05409 > 1$ — include it.\n\nBoth factors exceed $1$, so the optimum is the full configuration: **boost reduced, Fwd-PID on, Bwd-EMC on**. Since each acts independently the total improvement is just the product:\n$$\n1.1036 \\times 1.01242 \\times 1.05409 = 1.1777.\n$$\n\nSo the answer: turn on **everything**, for a multiplicative improvement of about $\\boxed{1.18}$ in $S/\\sqrt{B}$ relative to baseline. The structure here is exactly a separable optimization — like deciding edge-by-edge in a sparsifier whether including an edge helps the spectral approximation; each decision is local and independent, so greedy is globally optimal.",
+      "created_at": "2026-06-23T06:17:40Z"
+    },
+    {
+      "id": "me7d32806",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is exactly right, and the structure is even cleaner than he lets on — this is a *separable optimization over a product space*, the discrete analog of optimizing a multilinear functional coordinatewise. Let me make the decision principle precise, because it is the heart of why greedy is globally optimal here.\n\nDefine for each optional component the *log-contribution* $\\ell_i = \\log(\\text{signal factor}_i) - \\tfrac12 \\log(\\text{background factor}_i)$. Then\n$$\n\\log\\frac{S/\\sqrt B}{(S/\\sqrt B)_{\\text{base}}} = \\ell_{\\text{boost}} + \\sum_{i \\in C} \\ell_i,\n$$\na *linear* function over the Boolean cube $\\{0,1\\}^2$ of optional choices. Maximizing a linear functional over a hypercube is trivial — you take each coordinate independently according to the sign of $\\ell_i$. No interaction terms exist precisely because the modifications are assumed independent, so there is no submodularity to worry about, no LLL dependency structure, no need for anything subtle.\n\nComputing the signs:\n- Boost (forced): $\\ell = \\log 1.07 - \\tfrac12\\log 0.94 = 0.09858 \\Rightarrow$ factor $1.1036$.\n- Fwd-PID: $\\ell = \\tfrac12 \\log 1.025 = 0.01235 > 0 \\Rightarrow$ include, factor $1.01242$.\n- Bwd-EMC: $\\ell = -\\tfrac12\\log 0.90 = 0.05268 > 0 \\Rightarrow$ include, factor $1.05409$.\n\nAll positive, so the maximizer is the all-on vertex of the cube, with total factor\n$$\n\\exp(0.09858 + 0.01235 + 0.05268) = e^{0.16361} = 1.1777.\n$$\n\nSo I concur: **everything on, improvement $\\approx 1.18$**. One sharp observation worth recording — Fwd-PID multiplies signal and background by the *same* $1.025$, so its net benefit is purely the $\\sqrt{\\cdot}$ asymmetry of the figure of merit: any common factor $f$ contributes $\\sqrt f$. That is the discrete fingerprint of the fact that $S/\\sqrt B$ rewards *correlated* gains sublinearly but still positively — a useful invariant to keep in mind if anyone later proposes a component that scales signal and background together.",
+      "created_at": "2026-06-23T06:18:21Z"
+    },
+    {
+      "id": "m7b6f50e1",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan and László have it exactly right, and I have nothing to dispute in the arithmetic — but let me say what the *real* theorem is here, because it's a lovely little fact that deserves to be stated cleanly.\n\nThe key invariant is the **log-linearity** László identified: the figure of merit $S/\\sqrt{B}$ is a *character* on the multiplicative group of independent modifications. Write each modification as a pair $(\\sigma_i, \\beta_i)$ of signal and background factors; the merit transforms by the homomorphism\n$$\n(\\sigma,\\beta) \\mapsto \\sigma\\,\\beta^{-1/2}.\n$$\nThe whole problem is: evaluate a homomorphism on a product of group elements and pick the sign. That's it. No interactions, exactly as they said.\n\nBut here's the point I always push — the **explicit example reveals the mechanism**. The Fwd-PID case is the interesting one: it multiplies $S$ and $B$ by the *same* $1.025$, yet still helps. Why? Because the exponent on background is $-1/2$, not $-1$. The merit rewards a common rescaling $f$ by $f^{1/2}$. This is the same arithmetic asymmetry I see constantly in second-moment versus first-moment estimates for L-functions: the square root in $S/\\sqrt{B}$ is *exactly* the square root in $\\sum_{\\rho} \\leftrightarrow (\\sum)^{1/2}$ that the explicit formula forces on you. Sublinear but positive — László's \"discrete fingerprint\" is the same square-root law that governs the variance of zeros.\n\nSo: **all three on**, factor $e^{0.1636} = 1.1777 \\approx 1.18$. Let me just verify the boost term by hand, since I never trust a number I haven't recomputed: $1.07/\\sqrt{0.94}$, and $\\sqrt{0.94} = 0.96954$, giving $1.1036$. Times $\\sqrt{1.025} = 1.01242$, times $1/\\sqrt{0.9} = 1.05409$. Product $1.1777$. Confirmed. The answer is robust and the structure is a one-line character computation.",
+      "created_at": "2026-06-23T06:19:05Z"
+    },
+    {
+      "id": "m217581c4",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "We're in violent agreement on the answer, so let me just stress-test the one place where this kind of \"greedy is optimal\" reasoning bites you in practice — because I've been burned by exactly this in spectral sparsification.\n\nThe decision rule \"include component $i$ iff $\\ell_i > 0$\" is globally optimal **only** because the objective is separable — the log-merit is linear over the Boolean cube $\\{0,1\\}^2$. That's the same reason effective-resistance sampling lets me decide *edge by edge* whether to keep an edge in a sparsifier: the leverage scores $\\ell_e = w_e R_e$ are computed once, and inclusion is an independent Bernoulli with no interaction. But the moment edges interact — when removing one edge changes the effective resistance of another — the per-edge decision is no longer independent, and greedy can fail. The whole content of the Spielman–Srivastava result is that under the right sampling probabilities the *expected* behavior decouples (via Matrix Bernstein) even though the true objective doesn't.\n\nHere the problem statement *hands* us independence as a hypothesis, so there are no interaction terms and greedy is exactly optimal — no concentration argument needed. The thing worth flagging: that independence is an assumption, not a theorem. If, say, Bwd-EMC's photon veto and Fwd-PID's kaon ID both touched the same tag-side background channel, the background factors would not multiply, and László's linear functional would acquire a cross term $\\ell_{ij}\\, x_i x_j$ — then you'd actually need submodularity or an exchange argument, not a sign check.\n\nTwo arithmetic confirmations, since like Sarnak I don't trust a number I haven't recomputed:\n- $\\sqrt{1.025} = 1.01242$, $1/\\sqrt{0.9} = 1.05409$, $1.07/\\sqrt{0.94}=1.10363$. Product $= 1.1777$.\n- Sanity check on monotonicity: every optional factor exceeds $1$, so the all-on vertex dominates all others coordinatewise — no need to enumerate the other seven configurations.\n\nSo: **all three on, factor $\\approx 1.18$**. The answer is right; I just want it on record that its cleanliness rests entirely on the independence hypothesis, exactly as separability is what makes my greedy edge-decisions work.",
+      "created_at": "2026-06-23T06:21:19Z"
+    },
+    {
+      "id": "mb03918e6",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's caveat about the independence hypothesis is exactly the right one to underline, and I want to formalize it in the language I find most natural — *the optimization lives on a vertex of a polytope, and we should know when that polytope is the cube.*\n\nWhat we have proven is that the maximizer is the all-ones vertex of $\\{0,1\\}^2$ because the log-merit is a linear functional with all-positive coefficients. But notice the deeper reason the answer is so clean: the boost term factors *out* entirely. It is forced, so it contributes additively $\\ell_{\\text{boost}} = 0.09858$ to every configuration and plays no role in the *comparison* — it shifts the whole hypercube uniformly. The genuine decision problem is two-dimensional, and both coordinates have positive sign. So the answer $1.1777$ is robust precisely to first order.\n\nLet me record one structural observation that complements Sarnak's character viewpoint. The figure of merit $S/\\sqrt B$ is the unique (up to power) functional invariant under the scaling $(\\sigma,\\beta)\\mapsto(\\lambda\\sigma,\\lambda^2\\beta)$ — increase signal by $\\lambda$ and background by $\\lambda^2$ and the merit is unchanged. The Fwd-PID is interesting precisely because it sits *off* this invariant ray: it scales $(\\,1.025,\\,1.025)$, which is the diagonal $\\beta=\\sigma$, not $\\beta=\\sigma^2$, so it picks up the residual $\\sqrt{1.025}$. That is the same phenomenon I exploit in the $\\theta$-function sandwich — the geometry only \"sees\" the component of a perturbation transverse to the invariant directions.\n\nOn Dan's interaction worry, I'd put it sharply: independence is the statement that the merit is a *graph homomorphism count over a disjoint union* — components contribute multiplicatively because they share no vertices, i.e. no common background channel. The moment Bwd-EMC and Fwd-PID touch the same tag-side channel, the disjoint union becomes a join, and the homomorphism density acquires a cross term — exactly your $\\ell_{ij}x_ix_j$. Then the objective is no longer linear over the cube but at best submodular, and the correct tool is an exchange argument, not a sign check.\n\nSo I concur with the answer: **all three on, improvement factor $e^{0.16361}=1.1777\\approx 1.18$.** Action item for the record: the result is conditional on independence, and the only fragile decision is Fwd-PID, whose margin $\\sqrt{1.025}-1 \\approx 0.0124$ is the first thing a cross term would erase.",
+      "created_at": "2026-06-23T06:22:04Z"
+    },
+    {
+      "id": "mbf5e5774",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's invariant-ray observation is the cleanest thing said yet, and I want to push it one notch further, because it's the *real* theorem and it's exactly the structure I live with in moments of L-functions.\n\nThe functional $S/\\sqrt{B}$ is invariant under $(\\sigma,\\beta)\\mapsto(\\lambda\\sigma,\\lambda^2\\beta)$ — that's the statement that signal scales like a *first moment* and background like a *second moment*. This is not an analogy to my work; it *is* my work. When I estimate $L(1/2,\\pi)$ via the approximate functional equation, the signal is $\\sum_n \\lambda_\\pi(n)$ — a first moment — and the \"background,\" the variance you must control, is $\\sum_n |\\lambda_\\pi(n)|^2$ — a second moment. The figure of merit for detecting an anomalously large central value is precisely first-moment over square-root-of-second-moment. The exponent $-1/2$ on $B$ is forced by Cauchy–Schwarz, not by detector engineering.\n\nSo here is the sharp point. The Fwd-PID sits on the diagonal $\\beta=\\sigma$, *transverse* to the invariant ray $\\beta=\\sigma^2$, and the residual it picks up is $\\sqrt{1.025}$ — László is right. But note *why* the diagonal is special: a component that scales signal and background *equally* is exactly a component that adds **incoherent** events — it raises $S$ and $B$ in lockstep the way adding more independent samples does. And the $\\sqrt{f}$ reward is the central limit theorem: $N$ independent samples improve your $S/\\sqrt{B}$ by $\\sqrt{N}$. That's the same square root that turns GUE variance into spacing statistics. So Fwd-PID's benefit is genuinely a *statistical* gain, while Bwd-EMC's $1/\\sqrt{0.9}$ is a *discrimination* gain — it moves you off the diagonal by killing background without touching signal. Two different physical mechanisms, distinguished cleanly by where they sit relative to the invariant ray.\n\nI confirm the arithmetic — $1.1036 \\times 1.01242 \\times 1.05409 = 1.1777$, all on, factor $\\approx 1.18$. One last provocation for the record: is the assumed independence really a Ramanujan-type hypothesis in disguise? Independence of the background factors is the statement that the cross-correlation $\\langle B_i, B_j\\rangle$ vanishes — exactly the off-diagonal cancellation that Ramanujan gives you for $\\sum \\lambda_\\pi(n)\\overline{\\lambda_{\\pi'}(n)}$. If the detectors share a background channel, you lose that cancellation precisely the way a failure of Ramanujan reintroduces a diagonal term. So Dan's caveat isn't a footnote — it's the whole question of whether your error terms are square-root cancelling. The answer stands, but its cleanliness is the cleanliness of a Ramanujan bound.",
+      "created_at": "2026-06-23T06:22:51Z"
+    },
+    {
+      "id": "m0a0df907",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T06:23:40Z"
+    },
+    {
+      "id": "me0c25acc",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nOptimize the detector figure of merit S/√B by treating it as a separable (log-linear) optimization over independent modifications, including each optional component iff its log-contribution is positive, and multiplying the resulting factors with the forced boost-reduction baseline.",
+      "created_at": "2026-06-23T06:23:40Z"
+    }
+  ],
+  "plan": {
+    "summary": "Optimize the detector figure of merit S/√B by treating it as a separable (log-linear) optimization over independent modifications, including each optional component iff its log-contribution is positive, and multiplying the resulting factors with the forced boost-reduction baseline.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish the factorization framework",
+        "body": "Formalize the figure of merit ratio as (S/√B)/(S/√B)_base = ∏(signal factors)/√(∏ background factors). Define the per-component log-contribution ℓ_i = log(signal factor_i) − (1/2)log(background factor_i), and show that log of the total ratio is linear over the Boolean cube {0,1}^2 of optional choices, given the independence hypothesis.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Compute the forced boost-reduction factor",
+        "body": "Compute the mandatory baseline change: boost factor = 1.07/√0.94. Verify √0.94 = 0.96954 and the resulting factor = 1.1036, with log-contribution ℓ_boost = log(1.07) − (1/2)log(0.94) = 0.09858. Note this term shifts every configuration uniformly and plays no role in the optional comparisons.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Evaluate each optional component's sign",
+        "body": "Compute Fwd-PID: ℓ = (1/2)log(1.025) = 0.01235 > 0, factor √1.025 = 1.01242. Compute Bwd-EMC: ℓ = −(1/2)log(0.90) = 0.05268 > 0, factor 1/√0.9 = 1.05409. Apply the decision rule: include each component iff ℓ_i > 0. Both are positive, so the maximizer is the all-on vertex.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Assemble the final improvement factor",
+        "body": "Multiply all factors: 1.1036 × 1.01242 × 1.05409 = e^(0.09858+0.01235+0.05268) = e^0.16361 = 1.1777. Conclude the optimal configuration is: boost reduced, Fwd-PID on, Bwd-EMC on, with overall improvement ≈ 1.18 in S/√B relative to baseline.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Independently verify all arithmetic",
+        "body": "Recompute √0.94, √1.025, 1/√0.9, and their product from scratch. Confirm the monotonicity argument: since every optional factor exceeds 1, the all-on vertex dominates all seven other configurations coordinatewise, eliminating the need to enumerate them. Confirm the final value 1.1777 ≈ 1.18.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Stress-test the independence hypothesis",
+        "body": "Examine the critical assumption that the three modifications act independently (background factors multiply). Articulate how a shared tag-side background channel between Fwd-PID and Bwd-EMC would introduce a cross term ℓ_ij x_i x_j, breaking linearity over the cube and requiring a submodularity/exchange argument rather than a sign check. Identify Fwd-PID as the fragile decision, whose margin √1.025 − 1 ≈ 0.0124 would be erased first by any cross term.",
+        "agent": "critic-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Record the structural invariant and conditional caveat",
+        "body": "Document the scaling invariant: S/√B is unchanged under (σ,β)→(λσ,λ²β), so Fwd-PID's benefit (on diagonal β=σ, a statistical/incoherent gain) is the √f reward, while Bwd-EMC's benefit (off-diagonal, a discrimination gain killing background without signal) is distinct. State the final answer as conditional on the independence hypothesis, flagging it as the load-bearing assumption.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T06:23:40Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -3,7 +3,7 @@
   "problem_id": "q1",
   "dataset": "first_proof_1",
   "title": "[Jun-21] Critical: c_{N,2} defined via wrong expectation (identically 0 by parity)",
-  "status": "open",
+  "status": "in_progress",
   "labels": [
     "verification-report-jun21"
   ],
@@ -16,8 +16,30 @@
       "id": "c7243bb06",
       "author": "verifier-agent",
       "role": "agent",
-      "body": "**From external verification report Jun 21 \u2014 Critical error**\n\n**Issue:** The constant c_{N,2} in the renormalization is defined via an expectation that is \nidentically 0 by parity symmetry of the Gaussian measure, making the definition vacuous.\n\n**Verification:** The expectation E[\u03c6^2 \u00b7 (odd function)] = 0 by symmetry of the Gaussian. \nThe constant is defined as this expectation, so c_{N,2} = 0 identically, which contradicts \nthe intended non-zero renormalization constant.\n\n**Required fix:** Use the correct definition for c_{N,2} \u2014 likely the Wick-ordered version \nor a second-order moment that is genuinely non-zero. Check the Hairer reference for the \nprecise definition of the mass renormalization constant.\n\n**Reference:** Verification report Jun 21, Problem 1, Critical issue 2.",
+      "body": "**From external verification report Jun 21 — Critical error**\n\n**Issue:** The constant c_{N,2} in the renormalization is defined via an expectation that is \nidentically 0 by parity symmetry of the Gaussian measure, making the definition vacuous.\n\n**Verification:** The expectation E[φ^2 · (odd function)] = 0 by symmetry of the Gaussian. \nThe constant is defined as this expectation, so c_{N,2} = 0 identically, which contradicts \nthe intended non-zero renormalization constant.\n\n**Required fix:** Use the correct definition for c_{N,2} — likely the Wick-ordered version \nor a second-order moment that is genuinely non-zero. Check the Hairer reference for the \nprecise definition of the mass renormalization constant.\n\n**Reference:** Verification report Jun 21, Problem 1, Critical issue 2.",
       "created_at": "2026-06-21T18:19:34Z"
+    },
+    {
+      "id": "cd17ff444",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "**Critic-agent confirms this is a genuine, serious error, with the parity argument made precise.**\n\nUnder the reflection $l\\mapsto -l$ (a measure-preserving symmetry of the Gaussian law of the stationary linear solution): $:\\!l^2\\!:=H_2(l;c)$ is **even**, while $C$, the solution of $(\\partial_t+1-\\Delta)C=\\,:\\!l^3\\!:$, is **odd** (driven by the odd field $:\\!l^3\\!:$, and the equation is linear). Hence $:\\!l^2\\!:_N C_N$ is **odd**, so $c_{N,2}=\\mathbb E[:\\!l^2\\!:_N C_N]=0$ identically — vacuous, contradicting $c_{N,2}\\gtrsim\\log N$ in Lemma logdiv.\n\n**Diagnosis:** the object that genuinely diverges like $\\log N$ is the **local resonance contraction** appearing in the renormalized resonant product $:\\!l^2\\!:\\,C$ (a partial Wick contraction of two legs), **not** the full expectation $\\mathbb E[:\\!l^2\\!:C]$. The definition in eq. (cN2) must be replaced by that contraction (equivalently, the diagonal kernel sum used in the Lemma logdiv sketch), and then re-checked for sign/positivity. This is entangled with the unproven Lemma std(ii) constant (q1-4) and with the leftover-divergence computation (q1-5).",
+      "created_at": "2026-06-21T19:49:34Z"
+    },
+    {
+      "id": "c85cd8f49",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**solver-agent: fixed the c_{N,2} definition; also corrected a downstream combinatorial error. Important incident report below.**\n\n## What was wrong (confirmed)\nThe verifier/critic are correct. The previous eq. (cN2) tried to define c_{N,2} via a quantity tied to E[:l^2:_N C_N], which vanishes identically: :l^2:_N is even and C_N is odd under l -> -l (a law-preserving reflection), so the product is odd and has zero mean. The old (cN2) was also literally malformed (an indicator `1{p2+p3 = q-(.)}|_diag` that has no meaning).\n\n## The correct definition (now in solution.tex, eq. (cN2), boxed)\nc_{N,2} is the **local diagonal self-contraction constant** of the resonance :l^2:_N o C_N, NOT a full expectation. Expanding the pointwise product of a 2nd- and 3rd-chaos field by the Wick product formula gives chaos components of orders 5, 3, 1 (k=0,1,2 contracted legs). The genuinely log-divergent piece is the **double contraction** (k=2), which lands in the **first chaos** and equals a constant times l_N:\n\n  c_{N,2} := 6 * sum_{|q1|,|q2|<=N} s(q1) s(q2) K(-q1,-q2,0)\n           = 3 * sum_{|q1|,|q2|<=N} 1 / ( <q1>^2 <q2>^2 ( <q1>^2 + <q2>^2 + 1 ) ).\n\nThis is manifestly **positive**, explicit, deterministic, and escapes the parity vanishing because it is a *partial* (single/double-leg) contraction, not the full expectation.\n\nI verified numerically that c_{N,2} ~ c*log N (increment per unit log N converges to a positive constant ~600-700 in my normalization), and gave a clean radial-integral proof of c_- log N <= c_{N,2} <= c_+ log N in Lemma logdiv.\n\n## A second, related error I had to correct\nThe old Lemma std claimed the counterterm was `3 c_{N,2} C_N` (proportional to **C**, third chaos). That is combinatorially wrong: the single-leg (k=1, order-3) contraction has surviving kernel sum_q s(q) K(-q,d,e) which is **absolutely summable** in 3D (O(<q>^-4)) and therefore **finite** per output mode -- it does NOT diverge and is NOT proportional to C_N (its kernel is independent of the free leg). The ONLY log-divergence is the double contraction, i.e. a **mass-type counterterm c_{N,2} * l_N**. I rewrote Lemma std accordingly (renormalized resonance = :l^2:_N o C_N - c_{N,2} l_N), including a corrected uniqueness-of-constant argument. This is entangled with q1-4 (the eq:resLL constant) and q1-5 (leftover divergence), flagged in a Remark.\n\n## INCIDENT: workspace data loss + reconstruction\nWhile editing I made a faulty str.replace that caused a runaway duplication, blowing solution.tex up to 126 MB of one repeated lemma and **destroying the original file**; there was no backup. I reconstructed the document from the verbatim text I had captured earlier in this session (Statement, Notation, the new c_{N,2} paragraph, Proposition decomp + proof, Lemmas logdiv/std, paracontrolled toolbox, bibliography). \n\n**Honestly: some originally-present material could NOT be reconstructed verbatim**, specifically (i) the tail of the Prop-decomp Step-3 measurable-projection argument (now folded into a cited Lemma borel), and (ii) the original closing \"distinguishing event => mutual singularity\" argument, which I could only restate as a clearly-marked Reconstruction-note skeleton, not a full verbatim proof. Reference/label/equation/environment counts are balanced and all \\ref targets are defined; no LaTeX toolchain is available to compile-test.\n\n## Status\nThe specific issue q1-3 (vacuous/parity-zero definition of c_{N,2}) is **resolved**: c_{N,2} now has a correct, nonzero, explicit, log-divergent definition with a verified lower/upper bound. However, because (a) the fix exposes/changes the downstream renormalization (mass-type counterterm, entangled with q1-4/q1-5) and (b) I had to partially reconstruct the document and the closing argument is now only a skeleton, I am marking this **in_progress** rather than resolved so that the reconstructed sections and the downstream coupling can be re-verified.",
+      "created_at": "2026-06-21T20:25:18Z"
+    },
+    {
+      "id": "ev65415d54",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "🟡 Status changed: **open** → **in_progress**",
+      "created_at": "2026-06-21T20:25:22Z"
     }
   ]
 }

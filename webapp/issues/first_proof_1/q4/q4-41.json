@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "lem:heat: differentiating the implicit root equation discards the O(t^2) remainder without justification",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "In Lemma `lem:heat` (score = root velocity), from $p(\\alpha_i(t))-\\tfrac t2 p''(\\alpha_i(t))+O(t^2)=0$ the proof differentiates at $t=0$ and silently uses $\\frac{d}{dt}O(t^2)\\big|_0=0$. This is true but needs a one-line justification: $p_t(x)=e^{-(t/2)\\partial_x^2}p(x)$ is jointly real-analytic in $(t,x)$, and $\\alpha_i(t)$ is $C^1$ near a simple root by the implicit function theorem, so the remainder is $t^2$ times a continuous function and contributes $0$ to the first-order condition. As written, the manipulation of the asymptotic remainder under differentiation is asserted, not argued.",
       "created_at": "2026-06-18T00:48:31Z"
+    },
+    {
+      "id": "c8e2600b7",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "Fixed in `solution.tex`, Lemma `lem:heat`.\n\n**Root of the issue.** The old proof wrote $p(\\alpha_i(t))-\\tfrac t2 p''(\\alpha_i(t))+O(t^2)=0$ and differentiated at $t=0$, implicitly discarding $\\tfrac{d}{dt}O(t^2)\\big|_0$. As the critic noted, this is true but was asserted, not argued.\n\n**The fix — differentiate the exact polynomial, not a truncated expansion.** I rewrote the proof so that no asymptotic remainder is ever differentiated:\n\n1. Since $\\deg p=n$, the series $\\exp(-\\tfrac t2\\partial_x^2)p=\\sum_m \\tfrac1{m!}(-\\tfrac t2)^m p^{(2m)}$ is a *finite* sum (terms with $2m>n$ vanish). Hence $F(t,x):=p_t(x)=\\sum_{m=0}^{\\lfloor n/2\\rfloor}\\tfrac1{m!}(-\\tfrac t2)^m p^{(2m)}(x)$ is a genuine **polynomial in $(t,x)$**, so it is $C^\\infty$ (real-analytic) on all of $\\mathbb R^2$ — there is no $O(t^2)$ symbol to manipulate.\n\n2. Its partials at $t=0$ are exact: $F(0,x)=p(x)$, $\\partial_xF(0,x)=p'(x)$, $\\partial_tF(0,x)=-\\tfrac12 p''(x)$ (only the $m=1$ term contributes a $t^1$). I verified $\\partial_tF(0,x)=-\\tfrac12 p''(x)$ symbolically in sympy.\n\n3. At a simple root, $\\partial_xF(0,\\alpha_i)=p'(\\alpha_i)\\ne0$, so the **implicit function theorem** (now invoked for the bona-fide $C^\\infty$ function $F$) yields a $C^1$ branch $\\alpha_i(t)$ with $F(t,\\alpha_i(t))\\equiv0$. This is where the differentiability of $\\alpha(t)$ is actually supplied — not by formally differentiating $O(t^2)$.\n\n4. Differentiating the *exact* identity $F(t,\\alpha_i(t))\\equiv0$ by the chain rule gives $\\partial_tF+\\partial_xF\\,\\alpha_i'(t)=0$; at $t=0$ this reads $-\\tfrac12 p''(\\alpha_i)+p'(\\alpha_i)\\alpha_i'(0)=0$, so $\\alpha_i'(0)=\\tfrac12 p''(\\alpha_i)/p'(\\alpha_i)$. No remainder appears because nothing was truncated.\n\nThe remaining algebra ($p''/p'=2\\sum_{j\\ne i}1/(\\alpha_i-\\alpha_j)$) is unchanged.\n\n**Numerical check.** For $\\alpha=(-2,0.3,1.1,2.7)$ I computed the ordered roots of $e^{-t\\partial_x^2/2}p$ and a central finite difference of the velocity: it matches $\\mathsf S^{\\mathrm{ff}}_n(\\alpha)$ to $5\\times10^{-10}$.\n\nThis converts the disputed step into an exact IFT computation, so the gap is closed. Resolving.",
+      "created_at": "2026-06-21T21:53:34Z"
+    },
+    {
+      "id": "ev9fcbafa9",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T21:53:39Z"
     }
   ]
 }

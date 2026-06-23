@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import time
 from datetime import datetime, timezone
@@ -56,6 +57,8 @@ def _find_solution_tex(exp_dir: Path, problem_id: str) -> Path | None:
 
     # Primary: <exp>/<pid>_solution.tex
     _add(exp_dir / f"{problem_id}_solution.tex")
+    # Batch-solver format: <exp>/<pid>/solution.tex
+    _add(exp_dir / problem_id / "solution.tex")
     # Old format: <exp>/<pid>_proof.tex
     _add(exp_dir / f"{problem_id}_proof.tex")
     # Refinements (prefer later/larger)
@@ -224,10 +227,70 @@ def consolidate_best(dataset: str = "first_proof_1",
     return result
 
 
+_UNDEF_RE = re.compile(r"Undefined control sequence")
+_CS_RE = re.compile(r"\\([a-zA-Z]+)")
+_ENV_RE = re.compile(r"Environment (\w+) undefined")
+
+# Common amsthm-style environments solver proofs assume but may not declare.
+_COMMON_THM_ENVS = [
+    "theorem", "lemma", "proposition", "corollary", "definition",
+    "remark", "claim", "conjecture", "example", "notation", "fact",
+]
+
+
+def _missing_from_log(log_text: str) -> tuple[str, str] | None:
+    """Return ("cs", name) for the first undefined control sequence or
+    ("env", name) for the first undefined environment in a TeX log."""
+    lines = log_text.splitlines()
+    for i, ln in enumerate(lines):
+        env = _ENV_RE.search(ln)
+        if env:
+            return ("env", env.group(1))
+        if _UNDEF_RE.search(ln):
+            # TeX breaks the source line at the offending token; the undefined
+            # macro is the last \cs on the following "l.<n> ..." context line.
+            for ctx in lines[i + 1:i + 4]:
+                if ctx.lstrip().startswith("l."):
+                    names = _CS_RE.findall(ctx)
+                    if names:
+                        return ("cs", names[-1])
+            m = _CS_RE.findall(lines[i + 1]) if i + 1 < len(lines) else []
+            if m:
+                return ("cs", m[-1])
+    return None
+
+
+def _safety_block(cs_stubs: set[str], env_stubs: set[str]) -> str:
+    """Build a guarded preamble block that loads amsthm, defines common (and
+    any explicitly-discovered) theorem environments, and stubs solver-invented
+    macros — all guarded so it never clashes with the real preamble."""
+    parts = [
+        r"\makeatletter",
+        r"\@ifundefined{proof}{\usepackage{amsthm}}{}",
+    ]
+    for env in list(dict.fromkeys(_COMMON_THM_ENVS + sorted(env_stubs))):
+        cap = env[:1].upper() + env[1:]
+        # Guard on the environment macro itself (not c@<env>): theorem envs defined
+        # with a shared counter, e.g. \newtheorem{remark}[theorem]{Remark}, have no
+        # own counter, so a c@<env> guard would wrongly re-declare them.
+        parts.append(
+            rf"\@ifundefined{{{env}}}{{\newtheorem{{{env}}}{{{cap}}}}}{{}}"
+        )
+    parts.append(r"\makeatother")
+    for m in sorted(cs_stubs):
+        parts.append(rf"\providecommand{{\{m}}}{{\operatorname{{{m}}}}}")
+    return "\n".join(parts)
+
+
 def compile_best_pdf(problem_id: str, dataset: str = "first_proof_1") -> bool:
     """Compile best/<pid>/solution.tex to best/<pid>/solution.pdf.
+
+    Solver-generated proofs often use custom macros (e.g. ``\\Hilb``) that the
+    shared preamble does not define, which would otherwise halt tectonic. We
+    iteratively detect each undefined control sequence from the log and inject a
+    ``\\providecommand`` operator stub, retrying until it compiles.
     Returns True if the PDF now exists (compiled or cached)."""
-    from .latex import compile_tex, build_main_tex, latex_available
+    from .latex import build_main_tex, latex_available
     import shutil as _shutil
     import subprocess
     import tempfile
@@ -249,22 +312,68 @@ def compile_best_pdf(problem_id: str, dataset: str = "first_proof_1") -> bool:
     content = tex_path.read_text(encoding="utf-8", errors="replace")
     preamble = REPO_ROOT / "problems" / "preamble.tex"
     has_preamble = preamble.is_file()
+    base_main = build_main_tex(content, has_preamble)
 
+    # Solver proofs commonly use enumitem shortcut labels (e.g. \begin{enumerate}[(i)]);
+    # queue the option before the preamble loads enumitem so they compile cleanly.
+    _pre = "\\PassOptionsToPackage{shortlabels}{enumitem}\n"
+
+    def _with_safety(cs: set[str], envs: set[str]) -> str:
+        block = _safety_block(cs, envs)
+        if "\\begin{document}" in base_main:
+            return _pre + base_main.replace("\\begin{document}", block + "\n\\begin{document}", 1)
+        return _pre + block + "\n" + base_main
+
+    cs_stubs: set[str] = set()
+    env_stubs: set[str] = set()
     try:
         with tempfile.TemporaryDirectory(prefix="rma_best_") as tmp:
             build = Path(tmp)
             if has_preamble:
                 _shutil.copyfile(preamble, build / "preamble.tex")
-            (build / "main.tex").write_text(build_main_tex(content, has_preamble), encoding="utf-8")
-            if "tectonic" in tool:
-                cmd = [tool, "main.tex"]
-            elif _shutil.which("latexmk"):
+            is_tectonic = "tectonic" in tool
+            has_latexmk = bool(_shutil.which("latexmk"))
+            if is_tectonic:
+                cmd = [tool, "--keep-logs", "main.tex"]
+                # forgiving pass: emit a best-effort PDF even on severe errors
+                cmd_force = [tool, "--keep-logs", "-Z", "continue-on-errors", "main.tex"]
+            elif has_latexmk:
                 cmd = ["latexmk", "-pdf", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
+                cmd_force = ["latexmk", "-pdf", "-interaction=nonstopmode", "main.tex"]
             else:
                 cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
-            proc = subprocess.run(cmd, cwd=build, text=True, capture_output=True, timeout=240)
+                cmd_force = ["pdflatex", "-interaction=nonstopmode", "main.tex"]
+
+            for _ in range(24):  # iteratively fix undefined macros/environments
+                (build / "main.tex").write_text(_with_safety(cs_stubs, env_stubs), encoding="utf-8")
+                proc = subprocess.run(cmd, cwd=build, text=True, capture_output=True, timeout=240)
+                out_pdf = build / "main.pdf"
+                if proc.returncode == 0 and out_pdf.is_file():
+                    _shutil.copy2(out_pdf, pdf_path)
+                    return True
+                log_text = ""
+                log_file = build / "main.log"
+                if log_file.is_file():
+                    log_text = log_file.read_text(encoding="utf-8", errors="replace")
+                log_text += "\n" + (proc.stderr or "") + "\n" + (proc.stdout or "")
+                found = _missing_from_log(log_text)
+                if not found:
+                    break  # remaining error isn't a fixable undefined macro/env
+                kind, name = found
+                target = cs_stubs if kind == "cs" else env_stubs
+                if name in target:
+                    break  # no progress — give up on clean compile
+                target.add(name)
+
+            # Forgiving fallback: compile once more skipping past severe errors so
+            # the proof is still viewable (with the macro/env stubs we resolved).
+            (build / "main.tex").write_text(_with_safety(cs_stubs, env_stubs), encoding="utf-8")
+            try:
+                subprocess.run(cmd_force, cwd=build, text=True, capture_output=True, timeout=240)
+            except Exception:
+                pass
             out_pdf = build / "main.pdf"
-            if proc.returncode == 0 and out_pdf.is_file():
+            if out_pdf.is_file():
                 _shutil.copy2(out_pdf, pdf_path)
                 return True
     except Exception:

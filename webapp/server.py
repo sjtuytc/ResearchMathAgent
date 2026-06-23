@@ -14,12 +14,18 @@ import re
 import time
 from pathlib import Path
 
-from fastapi import Body, FastAPI, Query
+from fastapi import Body, FastAPI, Header, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 import threading
 import uuid
+
+# This project's Anthropic-on-Vertex quota lives on the *global* endpoint; the
+# regional (us-east5) quota is dead. Force global regardless of how the process
+# was launched, so model calls don't 429. (See ops notes.)
+if os.environ.get("GOOGLE_CLOUD_REGION", "") in ("", "us-east5"):
+    os.environ["GOOGLE_CLOUD_REGION"] = "global"
 
 from .agent import DEFAULT_MODEL, AgentConfig, run_agent, run_agent_vertex, build_prefix_context
 from .vertex import vertex_status, vertex_adc_project, gcp_console_urls
@@ -64,7 +70,7 @@ from .doc_bundle import build_bundle_pdf, prebuild_bundle_pdf, _bundle_cache_pat
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-_PROBLEM_RE = re.compile(r"^q(?:10|[1-9])$")
+_PROBLEM_RE = re.compile(r"^(?:q(?:10|[1-9])|prob-\d{2})$")
 
 
 def _default_provider() -> str:
@@ -217,7 +223,9 @@ threading.Thread(
     target=ensure_all_concepts, args=(REPO_ROOT, _Q_TITLES), daemon=True
 ).start()
 threading.Thread(target=ensure_fp2_concepts, args=(REPO_ROOT,), daemon=True).start()
-threading.Thread(target=prebuild_bundle_pdf, args=(REPO_ROOT,), daemon=True).start()
+# NOTE: the old indiscriminate context bundle (all raw .tex fragments concatenated)
+# has been retired in favour of per-problem comprehensive Context Reports
+# (see context_report.py + /api/context-report/*). No startup prebuild needed.
 from .issue_loop import run_issue_loop, evolve_once as _evolve_issues_once
 threading.Thread(target=run_issue_loop, args=(REPO_ROOT,), daemon=True).start()
 
@@ -254,12 +262,13 @@ def api_dataset_meta(slug: str) -> JSONResponse:
 @app.get("/api/ds/problems")
 def api_ds_problems(
     dataset: str = Query(None),
-    sort: str = Query("id"),
+    sort: str = Query("solvability_desc"),  # default: rank by AI-solvability
     tags: str = Query(None),          # comma-separated
     min_difficulty: float = Query(None),
     max_difficulty: float = Query(None),
     min_solvability: float = Query(None),
     max_solvability: float = Query(None),
+    tier: str = Query(None),          # solvability category: likely|plausible|hard|open
     search: str = Query(None),
 ) -> JSONResponse:
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
@@ -272,7 +281,7 @@ def api_ds_problems(
         dataset=dataset, sort=sort, tags=tag_list,
         min_difficulty=min_difficulty, max_difficulty=max_difficulty,
         min_solvability=min_solvability, max_solvability=max_solvability,
-        search=search,
+        tier=tier, search=search,
     )
     return JSONResponse({"problems": problems, **_capabilities_payload()})
 
@@ -496,6 +505,20 @@ def issue_pdf_ep(
         return JSONResponse({"error": "issue not found"}, status_code=404)
     result = compile_issue_pdf(REPO_ROOT, issue, force=force)
     return JSONResponse(result)
+
+
+@app.get("/api/all-issues-pdf/{scope}")
+def all_issues_pdf_ep(
+    scope: str,
+    dataset: str = Query(None),
+    force: bool = Query(False),
+) -> JSONResponse:
+    """Render ALL issues for a problem (scope=problem_id) or a whole dataset
+    (scope=_dataset) into one combined PDF."""
+    ds = _ds_from_query(dataset)
+    from .issue_pdf import compile_all_issues_pdf
+    problem_id = None if scope in ("_dataset", "_all", "") else scope
+    return JSONResponse(compile_all_issues_pdf(REPO_ROOT, ds, problem_id, force=force))
 
 
 
@@ -784,6 +807,51 @@ def documents() -> JSONResponse:
     return JSONResponse({"documents": list_documents(REPO_ROOT)})
 
 
+@app.get("/api/context-report/index")
+def context_report_index(dataset: str = Query(None)) -> JSONResponse:
+    """Lightweight per-problem status index for the Documents sidebar."""
+    from .context_report import problem_ids, _issues, _best_proof, _meetings, _profile, _status_label
+    ds = _ds_from_query(dataset)
+    items = []
+    for pid in problem_ids(ds):
+        issues = _issues(REPO_ROOT, pid, ds)
+        best = _best_proof(pid, ds)
+        meetings = _meetings(REPO_ROOT, pid)
+        open_n = sum(1 for i in issues if i.get("status") in ("open", "in_progress"))
+        res_n = sum(1 for i in issues if i.get("status") == "resolved")
+        emoji, status = _status_label(pid, issues, best)
+        prof = _profile(pid)
+        items.append({
+            "scope": pid,
+            "title": prof.get("title", pid.upper()),
+            "area": prof.get("area", ""),
+            "status": status,
+            "status_emoji": emoji,
+            "open_issues": open_n,
+            "resolved_issues": res_n,
+            "meetings": len(meetings),
+            "has_proof": bool(best and best.get("has_solution")),
+        })
+    return JSONResponse({"dataset": ds, "items": items})
+
+
+@app.get("/api/context-report/{scope}")
+def context_report_ep(scope: str, dataset: str = Query(None)) -> JSONResponse:
+    from .context_report import build_report
+    ds = _ds_from_query(dataset)
+    try:
+        return JSONResponse(build_report(REPO_ROOT, scope, ds))
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/context-report/{scope}/pdf")
+def context_report_pdf_ep(scope: str, dataset: str = Query(None), force: bool = Query(False)) -> JSONResponse:
+    from .context_report import compile_report_pdf
+    ds = _ds_from_query(dataset)
+    return JSONResponse(compile_report_pdf(REPO_ROOT, scope, ds, force=force))
+
+
 @app.get("/api/document/{name:path}")
 def document(name: str) -> JSONResponse:
     content = read_document(REPO_ROOT, name)
@@ -822,15 +890,27 @@ def documents_bundle(dataset: str | None = None, question: str | None = None):
 
 
 @app.get("/api/problem-pdf/{problem_id}")
-def problem_pdf(problem_id: str) -> JSONResponse:
+def problem_pdf(problem_id: str, force: bool = Query(False)) -> JSONResponse:
     if not _PROBLEM_RE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    result = compile_problem_pdf(REPO_ROOT, problem_id)
+    # PDF-only Question tab: render the statement via the robust pipeline
+    # (handles custom macros / markdown; never hard-fails). first_proof_1 lives
+    # in the dataset store; fall back to the legacy problems/*.tex if needed.
+    from .problem_pdf import compile_problem_statement_pdf
+    p = ds_get_problem("first_proof_1", problem_id)
+    title = (p or {}).get("title", problem_id)
+    statement = (p or {}).get("tex") or (p or {}).get("statement") or ""
+    if not statement:
+        tex_path = REPO_ROOT / "problems" / f"{problem_id}.tex"
+        if tex_path.is_file():
+            statement = tex_path.read_text(encoding="utf-8", errors="replace")
+    result = compile_problem_statement_pdf(REPO_ROOT, "first_proof_1", problem_id,
+                                           title, statement, force=force)
     return JSONResponse(result)
 
 
 @app.get("/api/ds/problem-pdf/{dataset}/{problem_id}")
-def ds_problem_pdf(dataset: str, problem_id: str) -> JSONResponse:
+def ds_problem_pdf(dataset: str, problem_id: str, force: bool = Query(False)) -> JSONResponse:
     try:
         _validate_slug(dataset)
         _validate_id(problem_id)
@@ -839,13 +919,12 @@ def ds_problem_pdf(dataset: str, problem_id: str) -> JSONResponse:
     p = ds_get_problem(dataset, problem_id)
     if p is None:
         return JSONResponse({"error": "not found"}, status_code=404)
-    tex = p.get("tex") or p.get("statement", "")
-    if not tex:
-        return JSONResponse({"ok": False, "pdf_url": None, "log": "no tex source"})
-    safe_name = re.sub(r"[^A-Za-z0-9_-]", "_", f"{dataset}_{problem_id}")
-    result = compile_tex(REPO_ROOT, tex, safe_name)
-    if result["ok"]:
-        result["pdf_url"] = f"/api/pdf/{result['pdf']}"
+    # PDF-only Question tab: render via the robust pipeline (markdown/LaTeX,
+    # custom macros, never hard-fails).
+    from .problem_pdf import compile_problem_statement_pdf
+    statement = p.get("tex") or p.get("statement") or ""
+    result = compile_problem_statement_pdf(
+        REPO_ROOT, dataset, problem_id, p.get("title", problem_id), statement, force=force)
     return JSONResponse(result)
 
 
@@ -909,35 +988,33 @@ def proof_detail(exp_name: str, problem_id: str) -> JSONResponse:
 
 
 @app.get("/api/best-proofs")
-def best_proofs_list() -> JSONResponse:
-    dataset = "first_proof_1"
+def best_proofs_list(dataset: str = Query("first_proof_1")) -> JSONResponse:
     proofs = list_best_proofs(dataset)
     return JSONResponse({"proofs": proofs, "dataset": dataset})
 
 
 @app.get("/api/best-proof/{problem_id}")
-def best_proof_detail(problem_id: str) -> JSONResponse:
-    data = get_best_proof(problem_id)
+def best_proof_detail(problem_id: str, dataset: str = Query("first_proof_1")) -> JSONResponse:
+    data = get_best_proof(problem_id, dataset)
     if data is None:
         return JSONResponse({"error": "no best proof found — run consolidate or rma solve first"}, status_code=404)
     return JSONResponse(data)
 
 
 @app.post("/api/consolidate-best")
-def consolidate_best_ep() -> JSONResponse:
-    result = consolidate_best("first_proof_1", compile_pdfs=True)
+def consolidate_best_ep(dataset: str = Query("first_proof_1")) -> JSONResponse:
+    result = consolidate_best(dataset, compile_pdfs=True)
     return JSONResponse({"updated": len(result), "problems": list(result.keys())})
 
 
 @app.get("/api/best-proof-pdf/{problem_id}")
-def best_proof_pdf(problem_id: str):
+def best_proof_pdf(problem_id: str, dataset: str = Query("first_proof_1")):
     """Serve the pre-compiled PDF for the best proof, compiling it on demand if needed."""
     if not _PROBLEM_RE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    pdf_path = _best_dir("first_proof_1") / problem_id / "solution.pdf"
+    pdf_path = _best_dir(dataset) / problem_id / "solution.pdf"
     if not pdf_path.is_file():
-        # Compile on demand and store
-        ok = compile_best_pdf(problem_id, "first_proof_1")
+        ok = compile_best_pdf(problem_id, dataset)
         if not ok or not pdf_path.is_file():
             return JSONResponse({"error": "PDF not available — run Consolidate first"}, status_code=404)
     return FileResponse(pdf_path, media_type="application/pdf",
@@ -1498,6 +1575,32 @@ def push_forward_metrics_ep() -> JSONResponse:
     return JSONResponse(load_metrics(REPO_ROOT))
 
 
+@app.get("/api/proof-eval/{problem_id}")
+def proof_eval_get(problem_id: str) -> JSONResponse:
+    """Return cached proof evaluation scores, or {cached:false} if none exist."""
+    from .proof_eval import load_proof_eval
+    data = load_proof_eval(REPO_ROOT, problem_id)
+    if data is None:
+        return JSONResponse({"cached": False})
+    return JSONResponse({"cached": True, **data})
+
+
+@app.get("/api/proof-eval/{problem_id}/run")
+def proof_eval_run_ep(problem_id: str, force: bool = Query(False)):
+    """SSE: run proof evaluation and stream back the result."""
+    from .proof_eval import evaluate_proof
+
+    def _stream():
+        result = evaluate_proof(REPO_ROOT, problem_id, force=force)
+        if "error" in result:
+            yield f"data: {json.dumps({'type': 'error', 'message': result['error']})}\n\n"
+        else:
+            yield f"data: {json.dumps({'type': 'result', **result})}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
 @app.post("/api/eval/solvability/refresh")
 def refresh_solvability_eval(force: bool = Query(False)) -> JSONResponse:
     """Re-evaluate AI solvability for all q1-q10 using Claude Opus (background)."""
@@ -1519,15 +1622,26 @@ def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str, g
         return
 
     problem_path = REPO_ROOT / "problems" / f"{problem}.tex"
-    if not problem_path.is_file():
-        yield send({"type": "error", "message": f"Problem '{problem}' not found."})
-        yield send({"type": "done", "reason": "error"})
-        return
-
     provider = provider or _default_provider()
-    problem_text = _expand_tex_inputs(
-        problem_path.read_text(encoding="utf-8", errors="replace"), REPO_ROOT
-    )
+
+    if problem_path.is_file():
+        # first_proof_1 (q1–q10): load from .tex file
+        problem_text = _expand_tex_inputs(
+            problem_path.read_text(encoding="utf-8", errors="replace"), REPO_ROOT
+        )
+    else:
+        # first_proof_2 (prob-01–prob-10): load from dataset store
+        fp2 = ds_get_problem("first_proof_2", problem)
+        if fp2 is None:
+            yield send({"type": "error", "message": f"Problem '{problem}' not found."})
+            yield send({"type": "done", "reason": "error"})
+            return
+        problem_text = fp2.get("tex") or fp2.get("statement") or ""
+        if not problem_text:
+            yield send({"type": "error", "message": f"Problem '{problem}' has no LaTeX content."})
+            yield send({"type": "done", "reason": "error"})
+            return
+
     prefix_context = build_prefix_context(REPO_ROOT, problem)
 
     cfg = AgentConfig(
@@ -1984,6 +2098,171 @@ def insights_system() -> JSONResponse:
     return JSONResponse(data)
 
 
+@app.get("/api/export/problems-pdf")
+def export_problems_pdf(
+    datasets: str = Query(None),       # comma-separated slugs; default = all
+    max_per_dataset: int = Query(0),   # 0 = no cap
+    offset: int = Query(0),
+):
+    """Compact PDF of all problems across datasets, tagged with dataset/id keys.
+
+    Cached + built in the background: returns the PDF when ready, or a 202
+    ``{"building": true}`` while a large export is still compiling. Poll the
+    same URL until it returns the PDF.
+    """
+    from fastapi.responses import FileResponse
+    from .problem_export import get_or_build_catalogue
+    slugs = [s.strip() for s in datasets.split(",") if s.strip()] if datasets else None
+    try:
+        state, path = get_or_build_catalogue(slugs, max_per_dataset, offset)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    if state == "ready":
+        return FileResponse(str(path), media_type="application/pdf",
+                            filename="rma_problems_catalogue.pdf")
+    return JSONResponse({"building": True,
+                         "message": "Export is compiling in the background; poll this URL again shortly."},
+                        status_code=202)
+
+
+@app.get("/api/export/eval-instructions-pdf")
+def export_eval_instructions_pdf():
+    """PDF instructing the model how to score solvability and what JSON to return."""
+    from fastapi.responses import Response
+    from .problem_export import build_eval_instructions_pdf
+    try:
+        pdf = build_eval_instructions_pdf()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": "inline; filename=rma_eval_instructions.pdf"})
+
+
+@app.post("/api/export/ingest-evaluations")
+def export_ingest_evaluations(payload=Body(...)):
+    """Ingest the model's solvability JSON into each dataset's solvability cache."""
+    from .problem_export import ingest_evaluations
+    try:
+        result = ingest_evaluations(payload)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    return JSONResponse(result)
+
+
+# ── Smoke-test end-to-end solve (async job; survives proxy/tunnel timeouts) ─────
+# Job state lives as a small JSON file in a temp dir (outside the repo so it never
+# trips the dev reloader, and shared across workers) — holds only the final answer
+# + evaluation, never reasoning/tool steps, and is deleted on fetch (NDA).
+import tempfile as _tempfile
+_SMOKE_JOB_DIR = Path(_tempfile.gettempdir()) / "rma_solve_jobs"
+
+
+def _smoke_auth_ok(x_api_key: str | None) -> bool:
+    required = os.environ.get("RMA_SMOKE_KEY")
+    return not required or x_api_key == required
+
+
+def _smoke_job_path(job_id: str) -> Path:
+    return _SMOKE_JOB_DIR / f"{re.sub(r'[^a-zA-Z0-9]', '', job_id)}.json"
+
+
+@app.post("/api/solve")
+def smoke_solve(payload: dict = Body(...), x_api_key: str = Header(None)) -> JSONResponse:
+    """End-to-end solve + evaluation for external use (smoke test).
+
+    A solve takes minutes, longer than most proxies/tunnels hold a connection, so
+    this is an async job by default:
+
+        POST {"id","problem","rounds"(=1),"max_wall_seconds"}
+          -> {"id","job_id","status":"running","poll":"/api/solve/<job_id>"}
+        GET  /api/solve/<job_id>
+          -> {"status":"running"}  ... then once finished (one-shot fetch):
+             {"id","status":"done","answer":"<proof>",
+              "evaluation":{"verdict","score","issues","summary"},"rounds_run"}
+
+    RMA runs its full agentic loop per call — solve -> LLM evaluation, and (when
+    rounds>1 and not yet APPROVED) feeds the evaluation back and refines, i.e.
+    push-forward for several rounds. Pass {"wait": true} to block and get the
+    result in the POST response instead (only for direct callers that can hold a
+    long connection — not through the tunnel).
+
+    Ephemeral: throwaway temp workspace, no stored context, nothing persisted to
+    disk; results live in memory only and are dropped on fetch (per NDA). Set
+    RMA_SMOKE_KEY to require the X-API-Key header.
+    """
+    from .smoke_pipeline import solve_and_evaluate
+
+    if not _smoke_auth_ok(x_api_key):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+
+    pid = str(payload.get("id") or "").strip()
+    problem = (payload.get("problem") or "").strip()
+    if not problem:
+        return JSONResponse({"id": pid, "answer": "", "error": "missing 'problem' text"}, status_code=400)
+
+    try:
+        rounds = int(payload.get("rounds") or 1)
+    except (TypeError, ValueError):
+        rounds = 1
+    try:
+        max_wall = int(payload.get("max_wall_seconds") or 900)
+    except (TypeError, ValueError):
+        max_wall = 900
+
+    # Synchronous mode for direct callers that can hold the connection.
+    if payload.get("wait"):
+        try:
+            result = solve_and_evaluate(REPO_ROOT, problem, rounds=rounds, max_wall=max_wall)
+            return JSONResponse({"id": pid, "status": "done", **result})
+        except Exception as e:  # noqa: BLE001
+            return JSONResponse({"id": pid, "answer": "", "error": str(e)})
+
+    # Async job (default): return immediately, caller polls GET /api/solve/<job_id>.
+    job_id = uuid.uuid4().hex[:12]
+    _SMOKE_JOB_DIR.mkdir(parents=True, exist_ok=True)
+    path = _smoke_job_path(job_id)
+    path.write_text(json.dumps({"id": pid, "status": "running"}), encoding="utf-8")
+
+    def _work():
+        try:
+            res = solve_and_evaluate(REPO_ROOT, problem, rounds=rounds, max_wall=max_wall)
+            data = {"id": pid, "status": "done", **res}
+        except Exception as e:  # noqa: BLE001
+            data = {"id": pid, "status": "error", "answer": "", "error": str(e)}
+        try:
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(data), encoding="utf-8")
+            tmp.replace(path)   # atomic write so a poll never reads a half-written file
+        except Exception:
+            pass
+
+    threading.Thread(target=_work, daemon=True).start()
+    return JSONResponse({"id": pid, "job_id": job_id, "status": "running",
+                         "poll": f"/api/solve/{job_id}"})
+
+
+@app.get("/api/solve/{job_id}")
+def smoke_solve_status(job_id: str, x_api_key: str = Header(None)) -> JSONResponse:
+    """Poll an async solve job. Returns {status:"running"} until done, then the
+    result once (the job file is deleted on terminal fetch — NDA)."""
+    if not _smoke_auth_ok(x_api_key):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    path = _smoke_job_path(job_id)
+    if not path.is_file():
+        return JSONResponse({"error": "unknown or already-fetched job_id"}, status_code=404)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return JSONResponse({"job_id": job_id, "status": "running"})  # mid-write
+    if data.get("status") == "running":
+        return JSONResponse({"job_id": job_id, "id": data.get("id"), "status": "running"})
+    try:
+        path.unlink()   # one-shot retrieval; nothing retained on disk
+    except OSError:
+        pass
+    return JSONResponse({"job_id": job_id, **data})
+
+
 @app.get("/api/design/pdf")
 def design_pdf():
     """Serve the ACL-format RMA supplementary PDF."""
@@ -1995,6 +2274,22 @@ def design_pdf():
         content=pdf_path.read_bytes(),
         media_type="application/pdf",
         headers={"Content-Disposition": "inline; filename=rma_supplementary.pdf"},
+    )
+
+
+@app.get("/api/design/priority-report")
+def design_priority_report():
+    """Build and serve the solvability×value priority report PDF for the Design tab."""
+    from fastapi.responses import Response
+    from .problem_export import build_priority_report_pdf
+    try:
+        pdf = build_priority_report_pdf()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline; filename=rma_priority_report.pdf"},
     )
 
 

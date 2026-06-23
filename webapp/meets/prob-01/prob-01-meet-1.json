@@ -1,0 +1,163 @@
+{
+  "id": "prob-01-meet-1",
+  "problem_id": "prob-01",
+  "topic": "Proof review 2026-06-22 — prob-01",
+  "goal": "Review the generated proof for prob-01. Identify the strongest remaining gaps and agree on a concrete verification strategy.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T19:53:13Z",
+  "messages": [
+    {
+      "id": "m15fc1d4e",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Proof review 2026-06-22 — prob-01**",
+      "created_at": "2026-06-22T19:53:13Z"
+    },
+    {
+      "id": "m9859f138",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "I have to be honest with the room: this problem is not the $\\varepsilon$-light subset problem I know how to attack with effective resistances and barrier functions. The statement here — Kalociński and Slaman on structures with countable automorphism groups, computable $\\AUT$-countability on a cone, and $\\Sigma^{in}_1$-definability of automorphisms — is descriptive set theory and computable structure theory. There's no Laplacian in sight, and my instinct to ask \"what's the spectral gap?\" simply has no referent here.\n\nSo let me be constructive in the way I can be. A few observations from an algorithmic-minded outsider:\n\n1. **What's the actual object we're building?** The question asks for an *existence* of a structure $\\A$ with two properties: (a) computably $\\AUT$-countable on a cone, and (b) for every finite parameter tuple $\\bar a$, some automorphism $\\pi$ that is *not* $\\Sigma^{in}_1$-definable even with the parameters $\\bar a \\cup \\pi(\\bar a)$. The tension is between an automorphism being computable from the structure (cheap, globally) yet not existentially definable from finite local data. That's a separation between a *uniform global* computation and *local finite-parameter* definability.\n\n2. **My one genuine analogy.** In my world, $\\Sigma^{in}_1$-definability \"relative to parameters $\\bar a$\" is like saying the automorphism is determined by a finite local certificate plus existential search. The negation says no finite local certificate suffices — you need the whole structure (the cone). This is exactly the kind of *local-vs-global* gap I do care about, even if the machinery is foreign. So I'd push: where in the proof is the explicit construction that defeats every finite $\\bar a$? Is it diagonalization against the countable list of existential formula families $(\\phi_i)$?\n\n3. **Verification strategy I can vouch for.** Whatever the proof is, the two properties should be checkable as *separate lemmas*: one giving an explicit oracle reduction computing automorphisms from $\\B \\oplus C$ on the cone, the other a diagonalization establishing non-$\\Sigma^{in}_1$-definability for each finite $\\bar a$. I want to see the construction be *explicit*, not a pure existence argument — same standard I hold in my own work, where I always prefer an algorithm over a mere existence proof.\n\nI'll defer to the computable-structure-theorists on the technical core, but I'd ask them to walk us through exactly how the diagonalization handles the dependence on $\\pi(\\bar a)$ — that coupling between the parameter and the witnessing automorphism looks like the subtle point.",
+      "created_at": "2026-06-22T19:53:28Z"
+    },
+    {
+      "id": "medfce0e9",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right to flag this — and I should be equally candid: this is computable structure theory, not the $\\varepsilon$-light subset problem my notes anticipated. My graphon machinery and the $\\theta$-function have no purchase here. So let me engage on the actual mathematics rather than force an analogy.\n\nA few structural observations:\n\n1. **The right way to think about $\\AUT(\\A)$.** The automorphism group of a countable structure is a closed subgroup of $S_\\infty$ in the pointwise convergence topology. \"Computably $\\AUT$-countable\" says the group is not merely countable but every element is computable from $\\A$. The orbit-vs-definability tension Dan identified is genuinely the heart of it: a $\\Sigma^{in}_1$-definable automorphism is one pinned down by an existential formula given finitely many parameters $\\bar a$. The Svenonius-type theorems tell us that *all* automorphisms being so definable forces strong structure; the question asks us to violate this uniformly.\n\n2. **Where the coupling $\\pi(\\bar a)$ bites.** This is the subtle point Dan named. Normally diagonalizing against $(\\phi_i)$ for fixed parameters $\\bar a$ is routine. But here the adversary gets $\\bar a \\cup \\pi(\\bar a)$ — the parameters *and* their images under the very automorphism we are trying to hide. So the construction must ensure that even knowing where $\\pi$ sends $\\bar a$, no existential formula recovers $\\pi$ globally. That means the orbit of $\\bar a$ must \"fan out\" so that local agreement on $\\bar a \\cup \\pi(\\bar a)$ does not propagate.\n\n3. **A concrete proposal for the cone half.** I would look at structures built as a computable \"homogeneous-like\" amalgam where back-and-forth gives every automorphism from $\\B \\oplus C$ — the Fraïssé limit perspective makes the cone uniformity natural, since back-and-forth is a uniform procedure relative to the diagram.\n\n4. **Verification.** I second Dan's two-lemma split, and I want to add a third check: that the two requirements are *compatible* — back-and-forth computability typically gives existential definability of automorphisms, which is exactly what we must defeat. The proof must thread a needle where automorphisms are computable but the witnessing back-and-forth requires unboundedly much of the structure, never a finite existential certificate. Show me precisely the family where back-and-forth length is unbounded over the orbit, and I will believe the non-definability.",
+      "created_at": "2026-06-22T19:53:47Z"
+    },
+    {
+      "id": "m4aa63b12",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me be honest in the same spirit Dan and László were: this is computable structure theory, and my trade is the trace formula, Hecke eigenvalues, and GUE statistics. But I will not pretend there is an $L$-function hiding here. Let me instead say what my instincts genuinely contribute.\n\nThe thing that resonates with me is the *local-vs-global* tension László sharpened — it is exactly the spirit of quantum unique ergodicity. In QUE the whole point is that a Hecke eigenform is pinned down globally by its eigenvalues yet its mass cannot be localized; no finite piece of data — no closed geodesic — captures it. The arithmetic input I supplied in the Lindenstrauss work was precisely a *propagation* statement: the Hecke correspondence forces local information to spread to full measure. Here you want the *opposite* — a structure where automorphisms are globally computable (the cone half, the \"trace formula side\") but local existential certificates $\\bar a \\cup \\pi(\\bar a)$ never propagate (the non-definability side). So my one concrete instinct: control the **propagation rate** of the back-and-forth, exactly as László said.\n\nNow let me push for the real theorem behind the technical one, the way I always do. Two questions:\n\n1. **Where is the explicit example?** I always compute the first few cases by hand. What is the simplest candidate — a tree, a homogeneous graph, an equivalence structure with infinitely refining classes? Before any diagonalization, I want $\\A$ written down so I can hand-check one automorphism $\\pi$ and one tuple $\\bar a$ and *see* the back-and-forth length blow up.\n\n2. **Is the coupling $\\pi(\\bar a)$ really doing work, or is it a red herring?** The adversary knowing $\\pi(\\bar a)$ should be defeatable if the orbit of $\\bar a$ has the right homogeneity — like a Fraïssé limit where the type of $(\\bar a, \\pi(\\bar a))$ is realized by *many* automorphisms, so the existential formula cannot single out $\\pi$. That is the analogue of *spectral degeneracy* breaking definability.\n\nSo my proposed verification: give me the explicit structure, let me verify by hand that $(\\bar a,\\pi(\\bar a))$ has nontrivial stabilizer-orbit so no existential formula pins $\\pi$ — and separately that back-and-forth from $\\B\\oplus C$ terminates uniformly. If the explicit example isn't on the table, I don't believe the existence proof yet.",
+      "created_at": "2026-06-22T19:54:07Z"
+    },
+    {
+      "id": "m8bb8d5e7",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Good — Peter just put his finger on exactly the right operational test, and it matches the standard I always insist on: don't hand me an existence proof, hand me the object and let me run the algorithm. Let me sharpen the verification into something concrete enough to actually check.\n\nThe two requirements are in genuine tension, and I want to name the tension precisely, because it's the same kind of separation I care about in sparsification — *global certificate cheap, local certificate impossible*:\n\n1. **Cone half = a uniform algorithm.** \"Computably $\\AUT$-countable on a cone\" must be witnessed by an *explicit oracle procedure* $\\Phi$ such that $\\Phi^{\\B \\oplus C}$ computes any automorphism of $\\B$. László's back-and-forth on a Fraïssé limit is the natural candidate. But I want the resource accounting written down: at stage $n$, how much of $\\B \\oplus C$ does $\\Phi$ query to decide the image of element $n$? For the cone property this can grow with $n$ — that's *fine*, it's a global computation.\n\n2. **Non-definability = unbounded back-and-forth length.** $\\Sigma^{in}_1$-definability relative to $\\bar a \\cup \\pi(\\bar a)$ is precisely the statement that the back-and-forth needed to determine $\\pi$ has a *finite existential certificate* anchored at $\\bar a \\cup \\pi(\\bar a)$. So the two halves are reconciled exactly when: the query-depth of $\\Phi$ at element $n$ is **unbounded over $n$** even after fixing any finite anchor. That's the needle. Show me a single explicit potential function — call it $\\ell(n)$, the back-and-forth length to settle element $n$ from the anchor — and show $\\ell(n) \\to \\infty$ no matter the finite $\\bar a \\cup \\pi(\\bar a)$.\n\nOn Peter's coupling question: I think $\\pi(\\bar a)$ is *not* a red herring, and here's the algorithmic reason. Giving the adversary $\\pi(\\bar a)$ is like giving them the leverage scores of a few special edges. If the orbit of $(\\bar a, \\pi(\\bar a))$ has rich stabilizer — many automorphisms agreeing on the anchor but diverging globally — then no existential formula can localize $\\pi$, exactly the *degeneracy* Peter wants. So the concrete check I propose:\n\n- **Lemma A (algorithm):** exhibit $\\Phi$ and prove $\\Phi^{\\B\\oplus C}$ computes automorphisms, with explicit query bound $q(n)$.\n- **Lemma B (diagonalization):** for each finite $\\bar a$ and each existential family $(\\phi_i)$, build $\\pi$ in the stabilizer-orbit of $(\\bar a, \\pi(\\bar a))$ that $(\\phi_i)$ misdescribes — i.e., the back-and-forth length $\\ell(n) > $ any bound certifiable by $(\\phi_i)$.\n- **Compatibility:** the same structure must give $q(n) < \\infty$ for all $n$ (so the algorithm halts per element) yet $\\sup_n \\ell(n) = \\infty$ from every anchor.\n\nThat's the falsifiable claim. If someone writes down the structure and the function $\\ell(n)$ explicitly, I can audit whether $q$ stays finite while $\\ell$ diverges — and that's the only thing I'd actually sign off on.",
+      "created_at": "2026-06-22T19:54:45Z"
+    },
+    {
+      "id": "m8e2fa882",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's $\\ell(n)$ versus $q(n)$ split is the right scaffolding, but I want to caution us about a structural obstruction before we build, because I think the naive Fraïssé-limit candidate I floated earlier actually *fails* Lemma B — and seeing why sharpens the construction.\n\n1. **The danger with homogeneous structures.** In an ultrahomogeneous (Fraïssé) limit, every isomorphism of finite substructures extends to an automorphism, and back-and-forth from $\\B\\oplus C$ is uniform — that gives the cone half cleanly. But ultrahomogeneity is precisely what makes types *quantifier-free*, and then automorphisms tend to be $\\Sigma^{in}_1$-definable from a small anchor: fixing $\\bar a\\cup\\pi(\\bar a)$ pins the quantifier-free type, and back-and-forth has *bounded* branching. So pure homogeneity defeats Lemma B. We need homogeneity for the cone but *anti-homogeneity in the propagation*, exactly the needle Dan named.\n\n2. **Where to find unbounded $\\ell(n)$ with finite $q(n)$.** The natural arena is an *equivalence structure with infinitely refining classes* — Peter's instinct was right. Take a tree of equivalence relations $E_0\\supset E_1\\supset E_2\\supset\\cdots$ where each $E_k$-class splits into infinitely many $E_{k+1}$-classes. An automorphism must respect every level; it is computable from $\\B\\oplus C$ by reading the membership predicates level by level (so $q(n)<\\infty$, level-by-level decoding). But to determine $\\pi$ on a *new* element at depth $d$, the back-and-forth must descend $d$ levels — and no finite anchor $\\bar a\\cup\\pi(\\bar a)$ bounds the depths of future elements, so $\\ell(n)\\to\\infty$. That is the divergence Dan wants, made explicit.\n\n3. **Why the coupling $\\pi(\\bar a)$ is genuinely defeated, not a red herring.** Peter asked for spectral degeneracy. Here it is concrete: knowing $\\pi$ on $\\bar a\\cup\\pi(\\bar a)$ fixes $\\pi$ only on the finitely many classes those elements touch. At every deeper level the class structure has a *free transitive action* by an infinite symmetric group on the new sub-classes — the stabilizer of $(\\bar a,\\pi(\\bar a))$ in $\\AUT(\\A)$ still acts with infinite orbits. So infinitely many automorphisms agree with $\\pi$ on the anchor yet disagree below; no existential formula, which can only assert finitely much, singles out $\\pi$. This is exactly the QUE-style non-localization Peter described — local data of measure zero in the orbit.\n\n4. **The remaining gap I do *not* yet believe.** $\\Sigma^{in}_1$-definability allows an *infinite family* $(\\phi_i)_{i\\in\\N}$, not a single existential formula. So \"no finite certificate\" is not automatically enough — the adversary may cover $\\pi$ by infinitely many existential formulas, one per region. Lemma B must defeat the *whole family* simultaneously. This is where a genuine diagonalization is needed: enumerate $(\\phi_i)$, and at stage $i$ commit a piece of the splitting tree that forces $\\phi_i$ to be either incomplete or incorrect for $\\pi$, using the infinite freedom in the deeper classes. The infinite-orbit freedom",
+      "created_at": "2026-06-22T19:55:10Z"
+    },
+    {
+      "id": "m47ceab48",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's level-4 point is the real theorem here, and I want to underline it because it's exactly where my QUE intuition cuts both ways. A $\\Sigma^{in}_1$ definition with an *infinite family* $(\\phi_i)$ is not a single closed geodesic — it is an entire *covering* of the orbit by existential patches. So defeating it is not \"non-localization of one point,\" it is more like proving there is no countable atlas of local certificates that reassembles $\\pi$ globally. That is a genuinely stronger statement, and I no longer believe it falls out of mere infinite-orbit freedom at each level.\n\nLet me push the explicit example, since I promised to compute by hand. Take László's refining-equivalence tree, but I want to track the arithmetic of the splitting. At depth $d$, an element's \"address\" is a finite string $(n_1,\\dots,n_d)$, $n_k \\in \\N$, and $\\AUT(\\A)$ is the *iterated wreath product* $\\cdots \\wr S_\\infty \\wr S_\\infty$ acting on the leaves of the $\\N$-branching tree. Now here is the subtlety: an existential formula $\\phi_i(\\bar a, \\pi(\\bar a), x, y)$ asserts the existence of finitely many witnesses, so it can only constrain $\\pi$ along a *finite subtree* — a finite set of addresses. The infinite family $(\\phi_i)$ can name infinitely many addresses, *but* — and this is the diagonalization László was reaching for — each $\\phi_i$ must be a *correct* total description: $f(x)=y \\iff \\exists i\\, \\phi_i$. So I'd run the construction adversarially: at stage $i$, having committed a finite subtree, find a deeper class on which $\\phi_i$ is silent, and reserve the freedom there. The key quantitative fact to verify is that the wreath stabilizer of any finite subtree *still acts $\\infty$-transitively below* — that is what guarantees stage $i$ never paints us into a corner.\n\nTwo demands before I sign off, in my usual spirit:\n\n1. **Is the cone half really free?** László says read membership predicates level by level, $q(n)<\\infty$. But I want to check $\\Phi^{\\B\\oplus C}$ is *uniform* across the cone — that the address-decoding doesn't secretly need the splitting to be presented computably in a way that fails on some isomorphic copy. Show me the oracle computation halts for *every* $\\B \\cong \\A$, not just the nice presentation.\n\n2. **The needle, stated as a single inequality.** Dan wants $q(n)<\\infty$ for all $n$ yet $\\sup_n \\ell(n)=\\infty$ from every anchor. In the wreath picture $\\ell(n)$ is the depth at which element $n$ first diverges from the anchor's subtree, and depth is manifestly unbounded. So the inequality holds *trivially* per element — the entire weight of the theorem is in **point 4**, defeating the infinite family uniformly. That is the one lemma I'd actually scrutinize line by line, because the iterated wreath product's $\\infty$-transitivity at every finite stage is precisely the \"spectral degeneracy\" that should make it go through.\n\nSo: write down the $\\N$-branching tree, the wreath automorphism group, and the stage-$i$ reservation argument. If the $\\infty$-transitivity of the wreath stabilizer of every finite subtree is genuinely there — and I believe it is — then we have our example.",
+      "created_at": "2026-06-22T19:55:34Z"
+    },
+    {
+      "id": "mb044b635",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-22T19:56:03Z"
+    },
+    {
+      "id": "mfd3c7561",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nConstruct an explicit N-branching iterated-wreath-product equivalence structure (refining equivalence relations) whose automorphisms are computable from B⊕C on a cone yet whose witnessing back-and-forth length diverges from every finite anchor, then prove non-Σ^in_1-definability by diagonalizing against the entire infinite family of existential formulas.",
+      "created_at": "2026-06-22T19:56:03Z"
+    }
+  ],
+  "plan": {
+    "summary": "Construct an explicit N-branching iterated-wreath-product equivalence structure (refining equivalence relations) whose automorphisms are computable from B⊕C on a cone yet whose witnessing back-and-forth length diverges from every finite anchor, then prove non-Σ^in_1-definability by diagonalizing against the entire infinite family of existential formulas.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Write down the explicit structure",
+        "body": "Define A concretely as a tree of infinitely-refining equivalence relations E_0 ⊃ E_1 ⊃ E_2 ⊃ ... where each E_k-class splits into infinitely many E_{k+1}-classes. Represent elements by finite address strings (n_1,...,n_d) with n_k ∈ N, and identify AUT(A) as the iterated wreath product ... ≀ S_∞ ≀ S_∞ acting on the leaves of the N-branching tree. Specify the signature (membership predicates per level) and a computable presentation B of A.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Lemma A: cone-half oracle algorithm with query bound",
+        "body": "Exhibit an explicit oracle procedure Φ such that Φ^{B⊕C} computes any automorphism of B by decoding level-by-level membership predicates. Prove the per-element query depth q(n) is finite for every n, and account for resources: at stage n state how much of B⊕C Φ queries to decide the image of element n. This establishes computable AUT-countability on a cone.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Verify cone uniformity across all isomorphic copies",
+        "body": "Address Sarnak's demand: confirm that Φ^{B⊕C} halts and correctly decodes for EVERY presentation B ≅ A, not just the canonical one. Check that the address-decoding does not covertly rely on the splitting being presented in a particular computable way, so the cone property is genuinely uniform.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Establish unbounded back-and-forth length from any anchor",
+        "body": "Define the potential function ℓ(n) as the depth at which element n first diverges from the anchor's finite subtree. Prove that for every finite parameter tuple ā ∪ π(ā), the anchor only fixes π on finitely many classes, and that depth is unbounded, so sup_n ℓ(n) = ∞ from every anchor. Confirm the needle inequality: q(n) < ∞ for all n while sup_n ℓ(n) = ∞.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          1
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Prove ∞-transitivity of wreath stabilizers of finite subtrees",
+        "body": "Establish the key quantitative fact (the 'spectral degeneracy'): the stabilizer in AUT(A) of any finite subtree still acts ∞-transitively on the sub-classes below it. Show infinitely many automorphisms agree with π on any finite anchor ā ∪ π(ā) yet diverge at deeper levels. This guarantees the stage-i reservation argument never paints itself into a corner.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Lemma B: diagonalize against the infinite existential family",
+        "body": "This is the central gap (László point 4, Sarnak's emphasis). A Σ^in_1 definition is f(x)=y ⟺ ∃i φ_i, an infinite covering of the orbit by existential patches, not a single formula. Enumerate the families (φ_i); at stage i, having committed a finite subtree, locate a deeper class on which φ_i is silent and reserve the ∞-transitive freedom there, forcing φ_i to be incomplete or incorrect for π. Conclude that no countable atlas of existential certificates reassembles π, defeating the whole family simultaneously for every finite ā.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify compatibility of the two requirements",
+        "body": "Confirm the single structure simultaneously satisfies both lemmas: the same A yields q(n) < ∞ for all n (algorithm halts per element, cone half) yet defeats every infinite existential family from every anchor (non-definability half). Check no hidden conflict where back-and-forth computability accidentally yields existential definability of automorphisms.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Audit for structural obstructions and overlooked cases",
+        "body": "Critically re-examine the construction for the failure modes flagged in discussion: ultrahomogeneity collapsing to quantifier-free types with bounded branching (which would defeat Lemma B), the coupling π(ā) being a red herring, and whether infinite-orbit freedom per level truly suffices against an infinite formula family. Identify any remaining gap before final acceptance.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T19:56:03Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -1,0 +1,380 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{amsfonts}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\DeclareMathOperator{\vecop}{vec}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\range}{range}
+\DeclareMathOperator{\nullsp}{null}
+\newcommand{\bR}{\mathbb{R}}
+\newcommand{\tZ}{\tilde Z}
+\newcommand{\tK}{\tilde K}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+\title{Preconditioned CG for the RKHS-Constrained CP Mode Subproblem}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Setup and notation}
+
+We solve the mode-$k$ subproblem of an RKHS-constrained CP decomposition with
+missing data. With $N=\prod_i n_i$, $n=n_k$, $M=\prod_{i\ne k}n_i$ and $q$ the
+number of observed entries, we are given
+\begin{itemize}[nosep]
+\item a symmetric positive semidefinite kernel matrix $K\in\bR^{n\times n}$;
+\item the Khatri--Rao product $Z\in\bR^{M\times r}$;
+\item the mode-$k$ unfolding $T\in\bR^{n\times M}$ of the (zero-filled) tensor;
+\item the selection matrix $S\in\bR^{N\times q}$ picking the $q$ observed entries
+from $\vecop(T)$;
+\item the MTTKRP $B=TZ\in\bR^{n\times r}$.
+\end{itemize}
+The unknown is $W\in\bR^{n\times r}$ (so the RKHS factor is $A_k=KW$), and the
+normal equations are
+\begin{equation}\label{eq:system}
+  H\,\vecop(W)=g,\qquad
+  H:=(Z\otimes K)^{T}SS^{T}(Z\otimes K)+\lambda\,(I_r\otimes K),\qquad
+  g:=(I_r\otimes K)\,\vecop(B),
+\end{equation}
+a linear system of size $nr\times nr$. We assume $d<n,r<q\ll N$ and $n\ll M$.
+Throughout, $\Pi:=SS^{T}\in\bR^{N\times N}$ is the diagonal $0/1$ matrix that zeroes
+all unobserved coordinates.
+
+We index the observed entries by $\ell=1,\dots,q$. The $\ell$-th observed entry of
+the mode-$k$ unfolding sits in row $i_\ell\in\{1,\dots,n\}$ and column
+$j_\ell\in\{1,\dots,M\}$ of $T$; its value is $t_\ell:=T[i_\ell,j_\ell]$. We write
+\[
+  \tZ\in\bR^{q\times r},\quad \tZ[\ell,:]:=Z[j_\ell,:],
+  \qquad
+  \tK\in\bR^{q\times n},\quad \tK[\ell,:]:=K[i_\ell,:],
+\]
+for the row subsets of $Z$ and $K$ indexed by the observations; these are exactly
+the objects denoted $\tilde Z,\tilde K$ in the problem statement. The vectorization
+convention is column stacking, so the $(i,j)$ entry of an $n\times M$ matrix occupies
+position $i+n(j-1)$ of its $\vecop$.
+
+\section{Structural identities}
+
+The efficiency of the method rests on three exact identities. We use repeatedly the
+standard Kronecker--vectorization identity
+\begin{equation}\label{eq:vec}
+  \vecop(AXB)=(B^{T}\otimes A)\,\vecop(X),
+\end{equation}
+valid for conformable real matrices $A,X,B$ (Henderson--Searle); for $A=K$, $X=W$,
+$B=Z^{T}$ it gives $(Z\otimes K)\vecop(W)=\vecop\!\big(KWZ^{T}\big)$.
+
+\begin{lemma}[Model evaluation at observed entries]\label{lem:model}
+For any $W\in\bR^{n\times r}$,
+\[
+  S^{T}(Z\otimes K)\,\vecop(W)=m\in\bR^{q},
+  \qquad
+  m_\ell=\big(K[i_\ell,:]\,W\big)\cdot Z[j_\ell,:]
+        =\sum_{b=1}^{r}\big(KW\big)[i_\ell,b]\,\tZ[\ell,b].
+\]
+\end{lemma}
+\begin{proof}
+By \eqref{eq:vec}, $(Z\otimes K)\vecop(W)=\vecop(KWZ^{T})$, whose $(i,j)$ entry is
+$(KWZ^{T})[i,j]=\big(K[i,:]W\big)\cdot Z[j,:]$. The matrix $S^{T}$ extracts the
+coordinates $i+n(j-1)$ for $(i,j)=(i_\ell,j_\ell)$, $\ell=1,\dots,q$, which are
+exactly the stated values. The last equality is the definition of the matrix product
+$(KW)$ and of $\tZ$.
+\end{proof}
+
+\begin{lemma}[Adjoint scatter]\label{lem:adjoint}
+For any $y\in\bR^{q}$,
+\[
+  (Z\otimes K)^{T}S\,y=\vecop\!\big(K\,R_y\,Z\big)\in\bR^{nr},
+  \qquad
+  R_y:=\sum_{\ell=1}^{q}y_\ell\,e_{i_\ell}e_{j_\ell}^{T}\in\bR^{n\times M},
+\]
+where $e_i$ denotes a standard basis vector. Moreover the $n\times r$ matrix
+$R_yZ=\sum_{\ell}y_\ell\,e_{i_\ell}\,\tZ[\ell,:]$ can be formed without referencing
+$Z$ outside its observed rows.
+\end{lemma}
+\begin{proof}
+$Sy=\vecop(R_y)$ because $Sy$ is the vector with value $y_\ell$ at the coordinate
+$i_\ell+n(j_\ell-1)$ and $0$ elsewhere, which is precisely $\vecop$ of
+$R_y=\sum_\ell y_\ell e_{i_\ell}e_{j_\ell}^{T}$. Then
+$(Z\otimes K)^{T}=(Z^{T}\otimes K^{T})=(Z^{T}\otimes K)$ since $K=K^{T}$, and by
+\eqref{eq:vec} with $A=K$, $X=R_y$, $B=Z$,
+\[
+  (Z^{T}\otimes K)\vecop(R_y)=\vecop(K\,R_y\,Z).
+\]
+Finally $R_yZ=\sum_\ell y_\ell\,e_{i_\ell}\,(e_{j_\ell}^{T}Z)
+=\sum_\ell y_\ell\,e_{i_\ell}\,Z[j_\ell,:]=\sum_\ell y_\ell\,e_{i_\ell}\,\tZ[\ell,:]$,
+which uses only $\tZ$.
+\end{proof}
+
+\begin{proposition}[Matrix--vector product without $M$ or $N$]\label{prop:matvec}
+For any $W\in\bR^{n\times r}$, writing $m\in\bR^q$ as in Lemma~\ref{lem:model},
+\begin{equation}\label{eq:matvec}
+  H\,\vecop(W)=\vecop\!\Big(K\,P\,+\,\lambda\,KW\Big),
+  \qquad
+  P:=\sum_{\ell=1}^{q}m_\ell\,e_{i_\ell}\,\tZ[\ell,:]\ \in\bR^{n\times r}.
+\end{equation}
+This product depends on the data only through $K\in\bR^{n\times n}$,
+$\tZ\in\bR^{q\times r}$ and the index list $\{i_\ell\}_{\ell=1}^q$.
+\end{proposition}
+\begin{proof}
+By definition $H=(Z\otimes K)^{T}SS^{T}(Z\otimes K)+\lambda(I_r\otimes K)$. Apply
+Lemma~\ref{lem:model} to obtain $y:=S^{T}(Z\otimes K)\vecop(W)=m$. Apply
+Lemma~\ref{lem:adjoint} with this $y=m$ to obtain
+$(Z\otimes K)^{T}Sm=\vecop(K R_m Z)$ with $R_mZ=\sum_\ell m_\ell e_{i_\ell}\tZ[\ell,:]=P$.
+For the regularizer, \eqref{eq:vec} with $A=K$, $X=W$, $B=I_r$ gives
+$(I_r\otimes K)\vecop(W)=\vecop(KW)$. Summing the two contributions yields
+\eqref{eq:matvec}. Every quantity appearing ($KW$, $m$, $P$, $KP$, $KW$) is computed
+from $K$, $\tZ$, and $\{i_\ell\}$ only; none touches the $M$ unobserved columns or
+the $N$-dimensional ambient space.
+\end{proof}
+
+\begin{proposition}[Right-hand side and MTTKRP without $M$ or $N$]\label{prop:rhs}
+The MTTKRP satisfies
+$B=TZ=\sum_{\ell=1}^{q}t_\ell\,e_{i_\ell}\,\tZ[\ell,:]\in\bR^{n\times r}$, and the
+right-hand side of \eqref{eq:system} is $g=\vecop(KB)$.
+\end{proposition}
+\begin{proof}
+Since $T$ is zero outside the observed entries, $T=\sum_\ell t_\ell e_{i_\ell}e_{j_\ell}^{T}$,
+so $TZ=\sum_\ell t_\ell e_{i_\ell}(e_{j_\ell}^{T}Z)=\sum_\ell t_\ell e_{i_\ell}\tZ[\ell,:]$,
+using only $\tZ$ and the values $t_\ell$. By \eqref{eq:vec} with $A=K$, $X=B$, $B=I_r$,
+$g=(I_r\otimes K)\vecop(B)=\vecop(KB)$.
+\end{proof}
+
+\section{Symmetry, solvability, and the singular-kernel case}
+
+\begin{lemma}[$H$ is symmetric PSD]\label{lem:psd}
+$H$ in \eqref{eq:system} is symmetric and positive semidefinite. It is positive
+definite if and only if $K$ is nonsingular.
+\end{lemma}
+\begin{proof}
+Write $G:=(Z\otimes K)^{T}SS^{T}(Z\otimes K)=\big(S^{T}(Z\otimes K)\big)^{T}\big(S^{T}(Z\otimes K)\big)$,
+a Gram matrix, hence symmetric PSD. Since $K=K^{T}\succeq0$ and $I_r\otimes K$ is
+symmetric PSD, $H=G+\lambda(I_r\otimes K)\succeq0$ for $\lambda>0$ and is symmetric.
+
+Let $x=\vecop(W)$. If $Hx=0$ then $x^{T}Hx=\|S^{T}(Z\otimes K)x\|^{2}+\lambda\,x^{T}(I_r\otimes K)x=0$,
+forcing $x^{T}(I_r\otimes K)x=0$. Because $I_r\otimes K\succeq0$, this gives
+$(I_r\otimes K)x=0$, i.e.\ $\vecop(KW)=0$, i.e.\ every column of $W$ lies in
+$\nullsp(K)$. Conversely any such $W$ also satisfies $G x=0$ since
+$(Z\otimes K)x=\vecop(KWZ^{T})=0$. Hence
+\begin{equation}\label{eq:null}
+  \nullsp(H)=I_r\otimes\nullsp(K)
+  =\{\vecop(W): \text{every column of }W\in\nullsp(K)\},
+\end{equation}
+which is $\{0\}$ iff $\nullsp(K)=\{0\}$, i.e.\ iff $K$ is nonsingular.
+\end{proof}
+
+\begin{lemma}[Consistency and minimum-norm solution]\label{lem:consistent}
+The system \eqref{eq:system} is always consistent. When $K$ is singular it has a
+unique solution in $\range(H)=\range(I_r\otimes K)$, and conjugate gradients started
+at $0$ converges to exactly that solution.
+\end{lemma}
+\begin{proof}
+$K$ is symmetric, so $\bR^{n}=\range(K)\oplus\nullsp(K)$ orthogonally, hence
+$\bR^{nr}=\range(I_r\otimes K)\oplus(I_r\otimes\nullsp(K))$ orthogonally. By
+\eqref{eq:null}, $\range(H)=\nullsp(H)^{\perp}=\big(I_r\otimes\nullsp(K)\big)^{\perp}
+=\range(I_r\otimes K)$. The right-hand side $g=\vecop(KB)$ lies in
+$\range(I_r\otimes K)=\range(H)$, so the system is consistent. The CG iterates
+started from $x_0=0$ remain in the Krylov subspace
+$\mathrm{span}\{g,Hg,H^{2}g,\dots\}\subseteq\range(H)$, on which $H$ acts as a
+symmetric positive-definite operator (its only zero eigenvalues are confined to
+$\nullsp(H)\perp\range(H)$). Therefore CG converges to the unique solution lying in
+$\range(H)$, which is the minimum-Euclidean-norm solution. (When $K$ is nonsingular,
+Lemma~\ref{lem:psd} makes $H$ SPD and the solution is unique.)
+\end{proof}
+
+\section{Preconditioner}
+
+We precondition with the Kronecker-structured operator
+\begin{equation}\label{eq:precond}
+  P_{\mathrm{c}}:=\big(\tZ^{T}\tZ+\lambda I_r\big)\otimes K
+  \;=\;C\otimes K,\qquad C:=\tZ^{T}\tZ+\lambda I_r\in\bR^{r\times r}.
+\end{equation}
+Here $C\succ0$ (it is $\lambda I_r$ plus a Gram matrix), and $C$ uses only the
+observed rows $\tZ$, costing $O(qr^{2})$ to form. The matrix $C\otimes K$ is the
+exact regularizer block $\lambda(I_r\otimes K)$ \emph{plus} the Gram term obtained by
+replacing the kernel cross-products with the identity, i.e.\ a Kronecker
+factorization of the dominant structure of $H$; equivalently it is the natural
+``observed-data'' Kronecker approximation. It is symmetric PSD and shares the
+nullspace of $H$:
+\[
+  \nullsp(P_{\mathrm{c}})=\nullsp(C\otimes K)=I_r\otimes\nullsp(K)=\nullsp(H),
+\]
+because $C$ is nonsingular. Thus $P_{\mathrm{c}}$ and $H$ are simultaneously SPD on
+the common invariant range $\range(I_r\otimes K)$ where CG operates
+(Lemma~\ref{lem:consistent}), so $P_{\mathrm{c}}$ is a legitimate
+(symmetric positive-definite, on $\range H$) preconditioner.
+
+\begin{proposition}[Preconditioner solve without $M$ or $N$]\label{prop:precsolve}
+Let $K=V\Sigma V^{T}$ be an eigendecomposition with $\Sigma=\diag(\sigma_1,\dots,\sigma_n)$,
+$\sigma_i\ge0$, and set $\sigma_i^{+}=1/\sigma_i$ if $\sigma_i>\tau$ and $0$
+otherwise ($\tau$ a small tolerance, $K^{+}=V\diag(\sigma^{+})V^{T}$ the
+Moore--Penrose pseudoinverse). For $g=\vecop(G)$, $G\in\bR^{n\times r}$, the
+preconditioned vector $z=P_{\mathrm{c}}^{\,\dagger}g$ that CG requires is
+\begin{equation}\label{eq:precapply}
+  z=\vecop\!\big(K^{+}\,G\,C^{-1}\big),
+\end{equation}
+where $C^{-1}\in\bR^{r\times r}$ is computed once. When $K$ is nonsingular,
+$K^{+}=K^{-1}$ and \eqref{eq:precapply} solves $P_{\mathrm{c}}z=g$ exactly; when $K$
+is singular, \eqref{eq:precapply} returns the solution in $\range(I_r\otimes K)$,
+which is all CG ever needs.
+\end{proposition}
+\begin{proof}
+By \eqref{eq:vec}, $P_{\mathrm{c}}\vecop(X)=(C\otimes K)\vecop(X)=\vecop(KXC^{T})=\vecop(KXC)$
+since $C=C^{T}$. Hence solving $P_{\mathrm{c}}z=g$ means $KXC=G$ with $z=\vecop(X)$.
+If $K$ is nonsingular, $X=K^{-1}GC^{-1}$. In general, the Moore--Penrose pseudoinverse
+of $C\otimes K$ is $C^{-1}\otimes K^{+}$ (using $(A\otimes B)^{\dagger}=A^{\dagger}\otimes B^{\dagger}$
+and $C^{\dagger}=C^{-1}$), and $(C^{-1}\otimes K^{+})\vecop(G)=\vecop(K^{+}GC^{-1})$
+by \eqref{eq:vec}. Because $g=\vecop(G)$ produced inside CG always lies in
+$\range(I_r\otimes K)$ (residuals of \eqref{eq:system} stay in $\range H$), the
+pseudoinverse application returns the unique preimage in $\range(I_r\otimes K)$,
+consistent with the subspace on which CG runs. All operations in \eqref{eq:precapply}
+($K^{+}$ via the $n\times n$ eigendecomposition, the $n\times r$ by $r\times r$ and
+$n\times n$ by $n\times r$ products) involve only $K$, $C$, $G$, never $M$ or $N$.
+\end{proof}
+
+\section{Algorithms}
+
+\subsection{Direct symmetric method (baseline)}
+
+We first record an explicit assembly of \eqref{eq:system} that already avoids $O(M)$
+and $O(N)$ work, then solve by a dense symmetric factorization. By
+Proposition~\ref{prop:matvec}'s derivation, the rows of $S^{T}(Z\otimes K)$ are the
+$q$ Kronecker rows $\tZ[\ell,:]\otimes\tK[\ell,:]$ (this is the row of $Z\otimes K$
+at vec-index $i_\ell+n(j_\ell-1)$), so
+\[
+  H=\Phi^{T}\Phi+\lambda(I_r\otimes K),\qquad
+  \Phi\in\bR^{q\times nr},\quad \Phi[\ell,:]=\tZ[\ell,:]\otimes\tK[\ell,:].
+\]
+
+\begin{algorithm}[H]
+\caption{Direct symmetric solve of the mode-$k$ RKHS subproblem}
+\begin{algorithmic}[1]
+\Require kernel $K\in\bR^{n\times n}$ (sym.\ PSD), observed rows $\tZ\in\bR^{q\times r}$,
+row indices $\{i_\ell\}_{\ell=1}^q$, observed values $\{t_\ell\}$, $\lambda>0$
+\Ensure $W\in\bR^{n\times r}$ solving \eqref{eq:system}
+\State $\tK[\ell,:]\gets K[i_\ell,:]$ for $\ell=1,\dots,q$ \Comment{observed kernel rows, $O(qn)$}
+\State Form $\Phi\in\bR^{q\times nr}$ with $\Phi[\ell,:]\gets \tZ[\ell,:]\otimes\tK[\ell,:]$ \Comment{$O(qnr)$}
+\State $H\gets \Phi^{T}\Phi+\lambda(I_r\otimes K)$ \Comment{$O(q\,n^2r^2)$}
+\State $B\gets \sum_{\ell=1}^q t_\ell\,e_{i_\ell}\,\tZ[\ell,:]$;\quad $g\gets\vecop(KB)$ \Comment{Prop.~\ref{prop:rhs}, $O(qr+n^2r)$}
+\If{$K$ nonsingular} \State solve $H\,\vecop(W)=g$ by Cholesky \Comment{$O(n^3r^3)$}
+\Else \State solve in $\range(I_r\otimes K)$ by a symmetric (pseudo)inverse / LDL$^{T}$ \Comment{$O(n^3r^3)$}
+\EndIf
+\State \Return $W$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Correctness and cost.}
+Steps~2--3 reproduce $H$ exactly by the row identity above; step~4 is
+Proposition~\ref{prop:rhs}. The solve is exact (Lemma~\ref{lem:psd}) or returns the
+minimum-norm solution (Lemma~\ref{lem:consistent}). No step references the $M$
+unobserved columns or the $N$-dimensional vectorization, so the cost is
+$O\!\big(q\,n^2r^2+n^3r^3\big)$ time and $O(n^2r^2)$ memory for $H$. The cubic term
+$O(n^3r^3)$ is the stated baseline; assembling $H$ alone is the additional expense the
+problem flags.
+
+\subsection{Preconditioned conjugate gradients}
+
+\begin{algorithm}[H]
+\caption{PCG for the mode-$k$ RKHS subproblem (matrix-free)}
+\begin{algorithmic}[1]
+\Require kernel $K\in\bR^{n\times n}$ (sym.\ PSD), observed rows $\tZ\in\bR^{q\times r}$,
+row indices $\{i_\ell\}_{\ell=1}^q$, observed values $\{t_\ell\}$, $\lambda>0$,
+tolerance $\epsilon$, max iterations $L$
+\Ensure $W\in\bR^{n\times r}$ approximately solving \eqref{eq:system}
+\Statex \textbf{Setup (once):}
+\State $K=V\Sigma V^{T}$ (symmetric eigendecomposition); $K^{+}=V\diag(\sigma^{+})V^{T}$ \Comment{$O(n^3)$}
+\State $C\gets \tZ^{T}\tZ+\lambda I_r$;\quad factor $C=L_cL_c^{T}$ (Cholesky) \Comment{$O(qr^2+r^3)$}
+\State $B\gets \sum_{\ell=1}^q t_\ell\,e_{i_\ell}\,\tZ[\ell,:]$;\quad $g\gets\vecop(KB)$ \Comment{$O(qr+n^2r)$}
+\Statex \textbf{Matrix-free operators} (Props.~\ref{prop:matvec},\ref{prop:precsolve}):
+\Statex \quad $\mathrm{Hmv}(W)$: $G\gets KW$; $m_\ell\gets G[i_\ell,:]\cdot\tZ[\ell,:]$;
+$P\gets\sum_\ell m_\ell e_{i_\ell}\tZ[\ell,:]$; \textbf{return} $KP+\lambda KW$.
+\Statex \quad $\mathrm{Prec}(G)$: \textbf{return} $K^{+}\,G\,C^{-1}$ (apply $C^{-1}$ via $L_c$).
+\Statex \textbf{PCG iteration} (all variables are $n\times r$ matrices, $\langle A,B\rangle=\sum_{ij}A_{ij}B_{ij}$):
+\State $W\gets 0$;\ \ $R\gets \mathrm{reshape}(g)$;\ \ $Y\gets\mathrm{Prec}(R)$;\ \ $D\gets Y$;\ \ $\rho\gets\langle R,Y\rangle$
+\For{$t=1$ \textbf{to} $L$}
+  \State $Q\gets \mathrm{Hmv}(D)$;\quad $\alpha\gets \rho/\langle D,Q\rangle$
+  \State $W\gets W+\alpha D$;\quad $R\gets R-\alpha Q$
+  \If{$\|R\|_F\le \epsilon\,\|g\|$} \textbf{break} \EndIf
+  \State $Y\gets \mathrm{Prec}(R)$;\quad $\rho'\gets\langle R,Y\rangle$;\quad $\beta\gets \rho'/\rho$
+  \State $D\gets Y+\beta D$;\quad $\rho\gets\rho'$
+\EndFor
+\State \Return $W$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Correctness.}
+$\mathrm{Hmv}$ computes $H\vecop(W)$ exactly (Proposition~\ref{prop:matvec}) and
+$\mathrm{Prec}$ applies $P_{\mathrm{c}}^{\dagger}$ exactly
+(Proposition~\ref{prop:precsolve}). The body is textbook preconditioned CG with the
+SPD preconditioner $P_{\mathrm{c}}$ restricted to $\range H$, on which both $H$ and
+$P_{\mathrm{c}}$ are positive definite (Lemmas~\ref{lem:psd},\ref{lem:consistent},
+\eqref{eq:precapply}). Hence the iteration converges to the unique solution in
+$\range(I_r\otimes K)$, the minimum-norm solution of \eqref{eq:system}
+(Lemma~\ref{lem:consistent}); when $K$ is nonsingular this is the unique exact
+solution. Convergence in exact arithmetic occurs in at most
+$\dim\range H=r\cdot\mathrm{rank}(K)\le nr$ steps, and the energy-norm error contracts
+as $2\big(\frac{\sqrt\kappa-1}{\sqrt\kappa+1}\big)^{t}$ with
+$\kappa=\kappa(P_{\mathrm{c}}^{\dagger}H|_{\range H})$, the preconditioned condition
+number on the active subspace.
+
+\paragraph{Termination.}
+The {\bf for} loop runs at most $L$ iterations and exits earlier once the relative
+residual falls below $\epsilon$; both the eigendecomposition and Cholesky in the setup
+terminate (finite direct factorizations), so the algorithm always halts.
+
+\paragraph{Complexity.}
+\emph{Setup:} $O(n^3)$ (eigendecomposition of $K$) $+\,O(qr^2+r^3)$ (form/factor $C$)
+$+\,O(qr+n^2r)$ (RHS) $=O(n^3+qr^2)$ (using $r<q$).
+\emph{Per iteration:} $\mathrm{Hmv}$ costs $O(n^2r)$ for $KW$ and $KP$, plus $O(qr)$
+for the gather/scatter through the observations, i.e.\ $O(n^2r+qr)$. $\mathrm{Prec}$
+costs $O(nr\cdot\min(n,r))$ for $K^{+}G$ via $V$ and $O(nr^2)$ for $GC^{-1}$, i.e.\
+$O(n^2r+nr^2)$. Inner products and {\sc axpy}s cost $O(nr)$. Thus one iteration is
+$O(n^2r+nr^2+qr)$.
+\emph{Total} for $L$ iterations:
+\[
+  O\!\big(n^3+qr^2\big)\;+\;L\cdot O\!\big(n^2r+nr^2+qr\big).
+\]
+Memory is $O(n^2+qr)$: the $n\times n$ factors of $K$, the $r\times r$ factor of $C$,
+the $q\times r$ matrix $\tZ$, the index list, and a constant number of $n\times r$
+work matrices. No object of size $\Theta(M)$, $\Theta(N)$, or $\Theta(nr\times nr)$ is
+ever formed.
+
+\paragraph{Comparison.}
+The direct solver costs $O(n^3r^3)$ (Cholesky on the dense $nr\times nr$ matrix) and
+$O(n^2r^2)$ memory. PCG replaces the cubic-in-$nr$ factorization by $L$ products of
+cost $O(n^2r+nr^2+qr)$ after an $O(n^3+qr^2)$ setup. Because the preconditioner
+\eqref{eq:precond} clusters the spectrum (it captures the exact regularizer and the
+Kronecker backbone of the Gram term), $L$ is small and essentially independent of
+$n,r,q$ for fixed problem geometry, so the iterative method is asymptotically cheaper
+by roughly a factor $\Theta(nr)$ in time and $\Theta(nr)$ in memory.
+
+\begin{remark}[Why only $\tZ,\tK$ are needed]
+Every appearance of $Z$ in \eqref{eq:system} is sandwiched by $S^{T}$ (in the model
+evaluation) or produces an $n\times r$ output via $R_yZ$ (in the adjoint), and in both
+cases only the observed rows $\tZ$ survive (Lemmas~\ref{lem:model},\ref{lem:adjoint});
+the kernel enters either as the small $n\times n$ matrix $K$ or, in the direct
+assembly, through its observed rows $\tK$. This is exactly why the full $M\times r$
+matrix $Z$ and the $N$-vector $\vecop(T)$ never need to be touched.
+\end{remark}
+
+\end{document}

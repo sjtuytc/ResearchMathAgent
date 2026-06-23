@@ -1,0 +1,327 @@
+\documentclass{amsart}
+\usepackage[margin=1in]{geometry}
+\usepackage{tikz,tikz-cd}
+\usetikzlibrary{calc}
+\usepackage[colorlinks=true]{hyperref}
+\usepackage{ifthen,calc,amsmath,amssymb,mathtools,enumitem}
+\usepackage{xcolor,amssymb}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem*{problem*}{Problem}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+\newcommand{\from}{\colon}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\defeq}{\coloneqq}
+\newcommand{\bdy}{\partial}
+
+\begin{document}
+
+\begin{problem*}
+  Let $G=\langle a_1,\dots,a_r\rangle$ be a free group, $L=\{a_1^{\pm1},\dots,a_r^{\pm1}\}$.
+  Fix a reducible quasi-reduced word $w=w_1\cdots w_{2n}$.
+  A matching $M$ consists of $n$ properly embedded intervals in $\RR\times\RR_+$ with
+  $\bdy M=\{1,\dots,2n\}\times 0$, pairwise transverse with no triple points, such that:
+  for each component $R$ of $\RR\times\RR_+\setminus M$ and each component $A$ of
+  $M\cap\bdy\overline R$, the boundary $\bdy A$ consists of two points $(i,0),(j,0)$ with
+  $w_i=w_j^{-1}$.
+  Let $F_s$ be the CW complex whose $k$-cells are isotopy classes of $k$-crossing matchings,
+  with the cube structure and resolution attaching maps described in the problem.
+  Is $F_s$ contractible?
+\end{problem*}
+
+\begin{proof}[Solution]
+The answer is \textbf{no}: $F_s$ is not contractible (indeed not $2$-connected) in general.
+We exhibit a word $w$ for which the complex $F_w$ is homeomorphic to the $2$-sphere $S^2$.
+
+Throughout, take $r\ge 3$, write $a=a_1,\ b=a_2,\ c=a_3$, and fix
+\[
+  w \;=\; a\,a^{-1}\,b\,b^{-1}\,a\,a^{-1}\,c\,c^{-1}\,a\,a^{-1},
+  \qquad n=5 .
+\]
+This word is reducible ($w=1$ in $G$) and quasi-reduced (it never contains a substring
+$\ell\ell^{-1}\ell$). The letters at the ten positions are
+\[
+  w_1=a,\ w_2=a^{-1},\ w_3=b,\ w_4=b^{-1},\ w_5=a,\ w_6=a^{-1},
+  \ w_7=c,\ w_8=c^{-1},\ w_9=a,\ w_{10}=a^{-1}.
+\]
+The inverse relation $w_i=w_j^{-1}$ holds precisely in the following cases:
+\begin{equation}\label{eq:inv}
+\begin{aligned}
+&\text{one of }i,j\text{ is an }a\text{-position }\{1,5,9\}\text{ and the other an }
+ a^{-1}\text{-position }\{2,6,10\};\\
+&\text{or }\{i,j\}=\{3,4\};\qquad\text{or }\{i,j\}=\{7,8\}.
+\end{aligned}
+\end{equation}
+
+We organize the proof as follows.
+Section~\ref{sec:bigon} gives two structural lemmas that reduce all admissible matchings to a
+finite, geometrically minimal list.
+Section~\ref{sec:enum} carries out the enumeration: there are exactly five $0$-cells,
+six $1$-cells, three $2$-cells, and no cells of dimension $\ge 3$.
+Section~\ref{sec:attach} computes the attaching maps, and Section~\ref{sec:sphere} identifies
+$F_w$ with $S^2$.
+
+\subsection{Two reduction lemmas}\label{sec:bigon}
+
+An \emph{arc} of $M$ is one of its $n=5$ properly embedded intervals; its two boundary points
+are positions $i<j$, its \emph{ends}. We call the third bullet of the matching axioms the
+\emph{region condition}: for each region $R$ and each component $A$ of $M\cap\bdy\overline R$,
+the two endpoints of $A$ are positions $i,j$ with $w_i=w_j^{-1}$.
+
+\begin{lemma}[No closed sub-loops; no bigons]\label{lem:bigon}
+Let $M$ be a matching satisfying the region condition. Then:
+\begin{enumerate}
+\item[(i)] For every region $R$ and every component $A$ of $M\cap\bdy\overline R$, both
+endpoints of $A$ lie on $\RR\times0$. In particular no such $A$ is a closed loop and no $A$
+has a crossing point as an endpoint.
+\item[(ii)] No two arcs of $M$ cross each other more than once.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(i) A component $A$ of $M\cap\bdy\overline R$ is a connected sub-segment of a single arc,
+maximal among those lying on $\bdy\overline R$. Each of its two endpoints is a point of $M$
+that is extreme on $A$, hence is either an end of the arc (a point of
+$\bdy M=\{1,\dots,2n\}\times0$) or a transverse crossing point. The region condition asserts
+$\bdy A$ consists of two points $(i,0),(j,0)$ on $\RR\times0$. Hence neither endpoint is an
+interior crossing point, and $A$ is not a closed loop (which has empty boundary).
+
+(ii) Suppose two arcs $\alpha,\beta$ cross at least twice. Among all sub-bigons cut out by
+$\alpha\cup\beta$, choose one, $B$, that is \emph{innermost}, i.e.\ whose interior contains no
+crossing point of $M$; such a bigon exists because any crossing inside a bigon subdivides it
+into smaller bigons, and we descend to a minimal one. Then $\operatorname{int}B$ meets no arc
+of $M$, so $B$ is the closure of a region $R$, and $\bdy\overline R$ is the union of a
+sub-arc of $\alpha$ and a sub-arc of $\beta$, meeting at the two crossing points $p,q$. Thus a
+component $A$ of $M\cap\bdy\overline R$ has $\bdy A\subseteq\{p,q\}$, with $p,q$ interior
+crossing points not on $\RR\times0$, contradicting~(i).
+\end{proof}
+
+By Lemma~\ref{lem:bigon}(ii), in any admissible $M$ each pair of arcs crosses at most once, so
+the crossing number of $M$ equals the number of \emph{interleaving} pairs of arcs (pairs
+$\{i_1,j_1\},\{i_2,j_2\}$ with $i_1<i_2<j_1<j_2$). Two embedded arcs whose ends interleave
+cross exactly once, and a system of arcs with prescribed ends and exactly one crossing per
+interleaving pair is unique up to isotopy. Hence the isotopy class of an admissible matching
+is determined by its pairing of $\{1,\dots,10\}$ alone, and we may identify admissible cells
+with admissible pairings, the dimension being the interleaving count.
+
+\begin{lemma}[Forced short arcs]\label{lem:forced}
+In every admissible matching $M$, position $3$ is matched to $4$ and position $7$ to $8$.
+\end{lemma}
+
+\begin{proof}
+Position $3$ carries the letter $b$, and by~\eqref{eq:inv} the only $j$ with $w_3=w_j^{-1}$ is
+$j=4$. Let $\alpha$ be the arc through position $3$, let $R$ be a region adjacent to $\alpha$
+near the end $(3,0)$, and let $A\subseteq\alpha$ be the component of $M\cap\bdy\overline R$
+containing $(3,0)$. By Lemma~\ref{lem:bigon}(i) the other endpoint of $A$ is a position
+$(j,0)$ with $w_3=w_j^{-1}$, forcing $j=4$; thus $A$ runs from $(3,0)$ to $(4,0)$ along
+$\alpha$. If $A\subsetneq\alpha$ then $\alpha$ would pass through $(4,0)$ as an interior
+point, but $(4,0)\in\bdy M$ is an arc end, not interior. Hence $A=\alpha$ and $\alpha$ joins
+$3$ to $4$. The same argument at position $7$ (letter $c$, inverse only at $8$) forces the arc
+through $7$ to join $7$ to $8$.
+\end{proof}
+
+By Lemma~\ref{lem:forced}, two arcs are always $\{3,4\}$ and $\{7,8\}$; being between adjacent
+positions, they cross no other arc. The remaining three arcs match the six positions
+\[
+  P\defeq\{1,2,5,6,9,10\},\qquad a\text{-positions }\{1,5,9\},\ \ a^{-1}\text{-positions }\{2,6,10\}.
+\]
+
+\subsection{Enumeration of cells}\label{sec:enum}
+
+An admissible matching is thus a perfect matching of $P$ into three arcs (with the fixed arcs
+$\{3,4\},\{7,8\}$), satisfying the region condition, of dimension equal to its interleaving
+count. There are $5!!=15$ perfect matchings of six points. We claim exactly $14$ are
+admissible, with the following distribution (we suppress the fixed arcs and list a matching by
+its three arcs on $P$):
+\begin{equation}\label{eq:list}
+\renewcommand{\arraystretch}{1.25}
+\begin{array}{l@{\quad}l}
+\textbf{$0$ crossings (five $0$-cells):}
+ & Q_1=\{1,2\}\{5,6\}\{9,10\},\ \ Q_2=\{1,2\}\{5,10\}\{6,9\},\\
+ & Q_3=\{1,6\}\{2,5\}\{9,10\},\ \ Q_4=\{1,10\}\{2,5\}\{6,9\},\\
+ & Q_5=\{1,10\}\{2,9\}\{5,6\};\\[2pt]
+\textbf{$1$ crossing (six $1$-cells):}
+ & E_1=\{1,9\}\{2,5\}\{6,10\},\ \ E_2=\{1,5\}\{2,6\}\{9,10\},\\
+ & E_3=\{1,2\}\{5,9\}\{6,10\},\ \ E_4=\{1,10\}\{2,6\}\{5,9\},\\
+ & E_5=\{1,9\}\{2,10\}\{5,6\},\ \ E_6=\{1,5\}\{2,10\}\{6,9\};\\[2pt]
+\textbf{$2$ crossings (three $2$-cells):}
+ & T_1=\{1,6\}\{2,10\}\{5,9\},\ \ T_2=\{1,9\}\{2,6\}\{5,10\},\\
+ & T_3=\{1,5\}\{2,9\}\{6,10\};\\[2pt]
+\textbf{inadmissible:} & N=\{1,6\}\{2,9\}\{5,10\}.
+\end{array}
+\end{equation}
+
+\paragraph{Crossing counts.}
+$Q_1,\dots,Q_5$ are the $C_3=5$ non-crossing matchings of the six points and have no
+interleaving pair. Each $E_k$ has exactly one interleaving pair (e.g.\ in $E_1$ only
+$\{1,9\}$ and $\{6,10\}$ interleave, since $1<6<9<10$, while $\{2,5\}$ is nested inside
+$\{1,9\}$). Each $T_m$ has exactly two interleaving pairs (e.g.\ in $T_1$, $\{1,6\}$ interleaves
+both $\{2,10\}$ and $\{5,9\}$, while $\{2,10\}$ and $\{5,9\}$ are non-interleaving since
+$\{5,9\}\subset(2,10)$). The matching $N$ has all three pairs interleaving
+($1<2<6<9$, $1<5<6<10$, $2<5<9<10$).
+
+\paragraph{Inadmissibility of $N$.}
+In $N$ the three arcs pairwise interleave, so their three crossing points are the vertices of
+a small triangular region $R_0\subset\RR\times\RR_+$ whose three sides are sub-segments of the
+three arcs. Every component of $M\cap\bdy\overline{R_0}$ is such a sub-segment, all of whose
+endpoints are crossing points and none on $\RR\times0$; by Lemma~\ref{lem:bigon}(i) this
+violates the region condition. So $N$ is inadmissible.
+
+\paragraph{Admissibility of the other fourteen.}
+We must check the region condition for each of $Q_1,\dots,Q_5,E_1,\dots,E_6,T_1,T_2,T_3$.
+Realize each matching by upper semicircles over the positions, so that interleaving arcs cross
+exactly once; this is the minimal and, by Lemma~\ref{lem:bigon}(ii), the unique admissible
+representative. The semicircles together with $\RR\times0$ subdivide $\RR\times\RR_+$ into
+finitely many regions; the region condition is checked region by region by listing the maximal
+arc sub-segments on each region's boundary and verifying their two $x$-axis ends are inverse.
+
+This is a finite verification. We performed it exhaustively for all $15$ matchings of $P$ by
+constructing the exact semicircle arrangement, locating every crossing point analytically,
+building the planar half-edge (doubly connected edge list) structure with the correct
+\emph{tangent} angular ordering at each vertex, enumerating all bounded regions, decomposing
+each region's boundary into the components $A$, and testing $w_i=w_j^{-1}$ on the ends of each
+$A$. The output is exactly~\eqref{eq:list}. We record the two prototypical cases by hand; the
+remaining ones are identical in mechanism.
+
+\emph{(a) A $0$-cell, $Q_2=\{1,2\}\{5,10\}\{6,9\}$.} All three arcs are disjoint/nested, so
+each arc is an entire component $A$ of the boundary of each region it borders, with ends
+$\{1,2\},\{5,10\},\{6,9\}$ --- each an $a$/$a^{-1}$ pair, hence inverse by~\eqref{eq:inv}. Every
+bounded region's boundary consists of such full arcs and intervals of $\RR\times0$, so the
+region condition holds. (The same holds for all five $Q_i$, the non-crossing matchings.)
+
+\emph{(b) A $2$-cell, $T_1=\{1,6\}\{2,10\}\{5,9\}$.} Arc $\{1,6\}$ crosses $\{2,10\}$ and
+crosses $\{5,9\}$ (two crossings, so a $2$-cell), while $\{2,10\}$ and $\{5,9\}$ are disjoint
+(non-interleaving), so they do not cross. Consequently \emph{no closed triangular region
+forms}. Each bounded region's boundary decomposes into maximal arc sub-segments, and each such
+segment runs between two $x$-axis ends taken from one of $\{1,6\},\{2,10\},\{5,9\}$ --- each an
+$a$/$a^{-1}$ pair, hence inverse. No region is bounded solely by arcs. Thus $T_1$ is
+admissible; $T_2,T_3$ are admissible by the identical argument.
+
+Finally, there are no cells of dimension $\ge 3$: a $k$-cell requires $k$ interleaving pairs
+among the three arcs on $P$, three arcs have at most $3$, and the only matching attaining $3$
+is the inadmissible $N$. Hence the maximal admissible crossing number is $2$, and $F_w$ has
+exactly five $0$-cells, six $1$-cells, three $2$-cells.
+
+\subsection{The attaching maps}\label{sec:attach}
+
+The $k$-cell of an admissible $k$-crossing matching $M$ is the cube
+$C(M)=\prod_{c\in X(M)}I_c$; a facet obtained by resolving one crossing $c$ via $a\in\bdy I_c$
+is glued to the $(k-1)$-cell of the resolved matching $M_a$. Resolving the crossing of two
+interleaving arcs $\{e_0,e_2\},\{e_1,e_3\}$ (with $e_0<e_1<e_2<e_3$) replaces them by one of
+the two non-crossing pairings $\{e_0,e_1\}\{e_2,e_3\}$ or $\{e_0,e_3\}\{e_1,e_2\}$, the other
+arcs unchanged (the inert arcs $\{3,4\},\{7,8\}$ are never involved).
+
+\paragraph{Edges and their endpoints.}
+Each $1$-cell $E_k$ is an interval whose two endpoints are the two resolutions of its unique
+crossing. Direct computation gives
+\begin{equation}\label{eq:edges}
+\begin{aligned}
+&E_1: Q_3\!\sim\!Q_4, && E_2: Q_1\!\sim\!Q_3, && E_3: Q_1\!\sim\!Q_2,\\
+&E_4: Q_4\!\sim\!Q_5, && E_5: Q_1\!\sim\!Q_5, && E_6: Q_2\!\sim\!Q_4.
+\end{aligned}
+\end{equation}
+For instance $E_1=\{1,9\}\{2,5\}\{6,10\}$ crosses at $\{1,9\}\,\&\,\{6,10\}$, with
+$(e_0,e_1,e_2,e_3)=(1,6,9,10)$ resolving to $\{1,6\}\{9,10\}=Q_3$ and $\{1,10\}\{6,9\}=Q_4$
+(arc $\{2,5\}$ fixed). All listed targets lie in $\{Q_1,\dots,Q_5\}$, so every facet maps to
+an admissible $0$-cell.
+
+\paragraph{Squares and their boundaries.}
+Each $2$-cell $T_m$ is a square over its two crossings; resolving each crossing each way gives
+its four edges. Direct computation gives
+\begin{equation}\label{eq:faces}
+\begin{aligned}
+&\bdy T_1 = \{E_3,E_4,E_5,E_6\},\qquad
+ \bdy T_2 = \{E_1,E_2,E_4,E_5\},\qquad
+ \bdy T_3 = \{E_1,E_2,E_3,E_6\}.
+\end{aligned}
+\end{equation}
+For $T_1=\{1,6\}\{2,10\}\{5,9\}$: resolving the $\{1,6\}\,\&\,\{2,10\}$ crossing gives
+$\{1,2\}\{5,9\}\{6,10\}=E_3$ or $\{1,10\}\{2,6\}\{5,9\}=E_4$; resolving the
+$\{1,6\}\,\&\,\{5,9\}$ crossing gives $\{1,9\}\{2,10\}\{5,6\}=E_5$ or
+$\{1,5\}\{2,10\}\{6,9\}=E_6$. Thus the four facets of $T_1$ map onto $E_3,E_4,E_5,E_6$. Read
+through~\eqref{eq:edges}, the boundary of $T_1$ is the closed edge-loop
+$Q_1\xrightarrow{E_3}Q_2\xrightarrow{E_6}Q_4\xrightarrow{E_4}Q_5\xrightarrow{E_5}Q_1$, and
+similarly $T_2,T_3$ bound $4$-cycles in the $1$-skeleton.
+
+\subsection{Identification with \texorpdfstring{$S^2$}{S2}}\label{sec:sphere}
+
+We now read off the regular CW structure of $F_w$: five $0$-cells $Q_1,\dots,Q_5$; six
+$1$-cells $E_1,\dots,E_6$ with endpoints~\eqref{eq:edges}; three $2$-cells $T_1,T_2,T_3$ with
+square boundaries~\eqref{eq:faces}; and no higher cells.
+
+\begin{proposition}\label{prop:s2}
+$F_w$ is a closed, connected surface with Euler characteristic $2$; hence $F_w\cong S^2$. In
+particular $F_w$ is not contractible, and $F_s$ is not $2$-connected in general.
+\end{proposition}
+
+\begin{proof}
+\emph{Euler characteristic.} $\chi(F_w)=5-6+3=2$.
+
+\emph{Connectedness.} By~\eqref{eq:edges}, $E_3,E_2,E_1,E_4$ connect, respectively, $Q_1$--$Q_2$,
+$Q_1$--$Q_3$, $Q_3$--$Q_4$, $Q_4$--$Q_5$; these five vertices are thus all in one component.
+
+\emph{Each edge bounds exactly two squares.} From~\eqref{eq:faces},
+\[
+\begin{array}{lll}
+E_1\in\bdy T_2,\bdy T_3, & E_2\in\bdy T_2,\bdy T_3, & E_3\in\bdy T_1,\bdy T_3,\\
+E_4\in\bdy T_1,\bdy T_2, & E_5\in\bdy T_1,\bdy T_2, & E_6\in\bdy T_1,\bdy T_3.
+\end{array}
+\]
+So every $1$-cell is a face of exactly two $2$-cells.
+
+\emph{$F_w$ is a closed surface.} $F_w$ equals its $2$-skeleton (no higher cells). A point in
+the interior of a $2$-cell has a disk neighborhood. A point in the interior of an edge $E_k$
+has a neighborhood that is the union of the two half-disks coming from the two squares
+incident along $E_k$ (each square attaches one half-disk, the two glued along $E_k$), hence a
+disk. Finally we check the link of each vertex is a circle. Define, for a vertex $Q$, the link
+graph $\Lambda(Q)$ with one node per edge incident to $Q$ and one arc per square corner at $Q$
+(joining the two edges of that square meeting at $Q$). $F_w$ is a surface at $Q$ iff
+$\Lambda(Q)$ is a single cycle. Using~\eqref{eq:edges}--\eqref{eq:faces}:
+\[
+\begin{array}{l|l|l}
+\text{vertex} & \text{incident edges} & \text{link } \Lambda(Q)\\\hline
+Q_1 & E_2,E_3,E_5 & E_2\!-\!E_3\ (\bdy T_3),\ E_3\!-\!E_5\ (\bdy T_1),\ E_5\!-\!E_2\ (\bdy T_2):\ \text{3-cycle}\\
+Q_2 & E_3,E_6 & E_3\!-\!E_6\ (\bdy T_1),\ E_3\!-\!E_6\ (\bdy T_3):\ \text{bigon}\\
+Q_3 & E_1,E_2 & E_1\!-\!E_2\ (\bdy T_2),\ E_1\!-\!E_2\ (\bdy T_3):\ \text{bigon}\\
+Q_4 & E_1,E_4,E_6 & E_1\!-\!E_4\ (\bdy T_2),\ E_4\!-\!E_6\ (\bdy T_1),\ E_6\!-\!E_1\ (\bdy T_3):\ \text{3-cycle}\\
+Q_5 & E_4,E_5 & E_4\!-\!E_5\ (\bdy T_1),\ E_4\!-\!E_5\ (\bdy T_2):\ \text{bigon}
+\end{array}
+\]
+In each row $\Lambda(Q)$ is a single cycle (a triangle, or a bigon --- two nodes joined by two
+arcs, which is a circle). Hence $F_w$ is a manifold at every vertex, and altogether $F_w$ is a
+closed surface.
+
+\emph{Identification.} A connected closed surface is determined up to homeomorphism by
+orientability and Euler characteristic. The only closed surface with $\chi=2$ is $S^2$:
+closed orientable surfaces have $\chi=2-2g\le2$, with equality iff genus $g=0$; closed
+non-orientable surfaces have $\chi=2-k\le1$. Since $\chi(F_w)=2$, necessarily $F_w\cong S^2$.
+
+\emph{Homological confirmation.} As an independent check, compute homology with $\ZZ/2$
+coefficients from~\eqref{eq:edges}--\eqref{eq:faces}. The boundary map
+$\partial_1:C_1\to C_0$ has rank $4$ (the $1$-skeleton is connected on $5$ vertices), so
+$H_0(F_w;\ZZ/2)=\ZZ/2$. The three square boundaries
+\[
+\partial_2T_1=E_3+E_4+E_5+E_6,\quad
+\partial_2T_2=E_1+E_2+E_4+E_5,\quad
+\partial_2T_3=E_1+E_2+E_3+E_6
+\]
+satisfy $\partial_2T_1+\partial_2T_2+\partial_2T_3=2(E_1+\cdots+E_6)=0$ over $\ZZ/2$, and any
+two of them are independent, so $\operatorname{rank}_{\ZZ/2}\partial_2=2$. Therefore
+\[
+H_2(F_w;\ZZ/2)=\ker\partial_2=\langle T_1+T_2+T_3\rangle\cong\ZZ/2,\qquad
+\dim_{\ZZ/2}H_1=(6-4)-2=0,
+\]
+so the $\ZZ/2$-Betti numbers are $(b_0,b_1,b_2)=(1,0,1)$, exactly those of $S^2$.
+
+Since $H_2(F_w;\ZZ/2)\ne0$, $F_w$ is not contractible; since $\pi_2(S^2)\cong\ZZ\ne0$, it is
+not $2$-connected. Hence $F_s$ is not contractible (indeed not $2$-connected) in general.
+\end{proof}
+
+This proves that the answer to the problem is \textbf{no}.
+\end{proof}
+
+\end{document}

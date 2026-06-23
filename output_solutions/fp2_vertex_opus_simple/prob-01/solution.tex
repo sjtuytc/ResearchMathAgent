@@ -1,0 +1,274 @@
+\section{Solution}
+
+We answer Question~\ref{1.2} in the affirmative by constructing an explicit
+computably represented structure with the required properties.
+
+\begin{theorem}\label{main}
+There is a countable computably-represented structure $\A$ such that:
+\begin{enumerate}
+\item[(a)] $\A$ is computably $\AUT$-countable on a cone; and
+\item[(b)] for every finite tuple $\bar a$ of parameters from $\A$ there is an
+automorphism $\pi$ of $\A$ such that $\pi$ is not $\Sigma^{in}_1$-definable in
+$\A$ relative to the parameters $\bar a\cup\pi(\bar a)$.
+\end{enumerate}
+\end{theorem}
+
+\subsection{The structure}
+
+We work in a language with a single binary relation symbol $E$ (a graph) together
+with finitely many unary ``colour'' predicates that we describe along the way; all
+of these can be coded into a single binary relation, so the structure is a graph,
+and our explicit description gives a computable representation.
+
+\medskip
+
+\noindent\textbf{Building blocks.}
+For each $n\in\N$ we build a finite connected ``gadget'' $G_n$ whose automorphism
+group is the cyclic group $\Z/2\Z$, realized by a single nontrivial automorphism
+$\sigma_n$ of order $2$. We do this so that:
+\begin{enumerate}
+\item[(i)] $G_n$ is rigid except for the involution $\sigma_n$;
+\item[(ii)] $\sigma_n$ swaps two distinguished vertices $p_n,q_n$ of $G_n$
+(its ``poles''), $\sigma_n(p_n)=q_n$;
+\item[(iii)] every vertex $v$ of $G_n$ is moved by $\sigma_n$, i.e.\ $\sigma_n$ is
+fixed-point-free; and
+\item[(iv)] $G_n$ uniformly contains an internal ``distance gadget'' so that the
+following holds: in any representation $\B\cong\A$, in order to compute, on input a
+vertex $x\in G_n$, the value $\sigma_n(x)$, one must decide membership in a fixed
+$\Sigma^{in}_1$-but-not-uniformly-computable relation. We make this precise below
+by encoding a "long path" obstruction. (See the construction of $H_k$ below.)
+\end{enumerate}
+
+A concrete realization of (i)--(iii): let $G_n$ be the graph on vertex set
+$\{p_n,q_n\}\cup\{a_{n,j},b_{n,j}: 0\le j<3\}$ obtained as follows. Put a path
+$p_n - a_{n,0} - a_{n,1} - a_{n,2}$ of length $3$, a path
+$q_n - b_{n,0} - b_{n,1} - b_{n,2}$ of length $3$, and add the single edge
+$a_{n,2}-b_{n,2}$ joining the two endpoints. The map $\sigma_n$ with
+$\sigma_n(p_n)=q_n$, $\sigma_n(a_{n,j})=b_{n,j}$ (and its inverse) is the unique
+nontrivial automorphism: the graph is a path of $8$ vertices, whose only nontrivial
+automorphism is the order-$2$ reflection, which is fixed-point-free and swaps the
+two endpoints $p_n,q_n$. Thus $\AUT(G_n)=\{\mathrm{id},\sigma_n\}\cong\Z/2\Z$.
+
+\medskip
+
+\noindent\textbf{Encoding noncomputability into the action.}
+Fix a set $K\subseteq\N$ that is computably enumerable but not computable (e.g.\ the
+halting set). We attach to each gadget $G_n$ a uniformly given ``marker''. Choose
+two non-isomorphic finite rigid graphs $M^0$ and $M^1$ (markers), say $M^0$ a
+triangle and $M^1$ a $4$-cycle; these are rigid up to the constraint that we only
+allow them as labelled attachments (we attach $M^0$ or $M^1$ to a vertex by an edge
+to a distinguished apex of the marker, and we use a colour predicate to mark the
+attachment vertex of the marker so that markers admit no nontrivial automorphism
+in context). For each $n$, attach a copy of $M^{e_n}$ to the pole $p_n$ and a copy of
+$M^{1-e_n}$ to the pole $q_n$, where $e_n=1$ if $n\in K$ and $e_n=0$ otherwise.
+
+This attachment is asymmetric: $p_n$ carries marker $M^{e_n}$ and $q_n$ carries
+$M^{1-e_n}$. Crucially the involution $\sigma_n$ continues to be an automorphism of
+$G_n$ with markers \emph{only if} the markers attached at $p_n$ and $q_n$ are
+swapped consistently; since $\sigma_n(p_n)=q_n$, the marker at $p_n$ is sent to the
+position of $q_n$, so $\sigma_n$ is an automorphism of the marked gadget iff the
+marker types are swapped under $\sigma_n$. Because $M^{e_n}$ and $M^{1-e_n}$ are
+different graphs, $\sigma_n$ is \emph{not} an automorphism of the marked gadget.
+This would destroy the involution, which we do not want; we therefore use markers
+differently, as follows.
+
+\medskip
+
+\noindent\textbf{Correct encoding: hide the orientation, not destroy the symmetry.}
+We instead attach to \emph{both} poles a single common marker which records,
+\emph{abstractly}, an unordered pair, but place an additional ``orientation tag''
+that is computably accessible only via a $\Sigma^{in}_1$ (but not computable)
+search. Concretely:
+
+\begin{itemize}
+\item Keep $G_n$ (the $8$-vertex path) with its involution $\sigma_n$
+swapping $p_n\leftrightarrow q_n$.
+\item Add to $G_n$ an additional vertex $c_n$ adjacent to \emph{both} $p_n$ and
+$q_n$ (a common ``hub''). Now $\sigma_n$ extends to fix $c_n$ and remains the
+unique nontrivial automorphism (the symmetry of the cycle thus formed is still the
+single reflection).
+\item Attach to $c_n$ a long disjoint pendant path $P_n$ of length $\ell_n+10$,
+where $\ell_n$ is the (finite, since $K$ is c.e.) stage at which $n$ enters $K$ if
+$n\in K$, and where, if $n\notin K$, we instead attach to $c_n$ an \emph{infinite}
+ray $R_n$ (a one-way infinite path).
+\end{itemize}
+
+The pendant attached at $c_n$ is fixed setwise by every automorphism (it is the
+unique pendant path/ray at $c_n$), and it does not affect the existence of
+$\sigma_n$. Thus in the gadget $G_n^\ast$ (gadget plus hub plus pendant) we still
+have $\AUT(G_n^\ast)=\{\mathrm{id},\sigma_n\}$, with $\sigma_n$ swapping
+$p_n\leftrightarrow q_n$ and fixing $c_n$ and the pendant pointwise. The data
+``$n\in K$ vs.\ $n\notin K$'' is encoded in whether the pendant is finite or
+infinite, and \emph{this difference is detectable by a $\Sigma^{in}_1$ search}
+(``does the pendant terminate?'') but not computably.
+
+\medskip
+
+\noindent\textbf{The whole structure.}
+Let $\A$ be the disjoint union $\bigsqcup_{n\in\N} G_n^\ast$, together with a unary
+predicate $U$ marking each hub vertex $c_n$ and a unary predicate $P$ marking each
+pole vertex $p_n,q_n$. The disjoint pieces are distinguished by connectivity. This
+$\A$ is computably represented: we list vertices, edges, and the predicates
+uniformly in $n$ and $j$; the only ``infinite'' object is the ray $R_n$ for
+$n\notin K$, but its vertices and edges are enumerated computably (we always lay
+out a ray, and at the finite stage $\ell_n$ at which $n$ would enter $K$ — for those
+$n$ that do enter — we never actually do, since we decided in advance; precisely, we
+fix once and for all the standard enumeration of $K$ and define the pendant as the
+ray with a ``cap'' vertex added at position $\ell_n$ if $n$ enters $K$ at stage
+$\ell_n$). All of this is uniformly computable. Hence $\A$ has a computable
+representation.
+
+\subsection{Automorphism group and proof of (a)}
+
+\begin{lemma}\label{autgroup}
+For every representation $\B\cong\A$, $\AUT(\B)\cong\prod_{n\in\N}\Z/2\Z$, where the
+$n$-th factor is generated by the involution $\tau_n$ that acts as $\sigma_n$ on the
+copy of $G_n^\ast$ and as the identity elsewhere.
+\end{lemma}
+
+\begin{proof}
+Work in $\A$ itself; the statement is isomorphism-invariant. Each connected
+component of $\A$ is some $G_n^\ast$. An automorphism of $\A$ permutes the
+connected components; but the components are pairwise non-isomorphic: $G_n^\ast$ and
+$G_m^\ast$ for $n\neq m$ differ either by the pendant length (when both are in $K$
+or one is) or by finiteness vs.\ infiniteness of the pendant. Indeed we may arrange
+all pendant lengths $\ell_n+10$ to be distinct (and all $\geq 11$), and the
+no-$K$ ray case to be the unique infinite case for each component, so that
+distinct components are non-isomorphic. Hence every automorphism fixes each
+component setwise, and restricts to an automorphism of that component. Since
+$\AUT(G_n^\ast)=\{\mathrm{id},\sigma_n\}$, the global automorphism group is the
+restricted product\,/\,product $\prod_n\{\mathrm{id},\sigma_n\}\cong(\Z/2\Z)^\N$, with
+each coordinate chosen independently.
+\end{proof}
+
+\begin{lemma}[Proof of (a)]\label{conemany}
+$\A$ is computably $\AUT$-countable on a cone.
+\end{lemma}
+
+\begin{proof}
+Let $C=K$ (the halting set), and let $\B\cong\A$ be arbitrary. We must show every
+automorphism $\pi$ of $\B$ is computable from $\B\oplus K$.
+
+By Lemma~\ref{autgroup}, $\pi$ fixes each component setwise; on the component
+isomorphic to $G_n^\ast$, $\pi$ acts either as the identity or as the involution
+$\sigma_n$. Given a vertex $v\in\B$, we compute $\pi(v)$ as follows. From $\B$ we
+compute the connected component $C_v$ of $v$; this component is a copy of some
+$G_n^\ast$. Using $\B$ we identify the local structure: the predicates $U,P$ and the
+graph metric let us, computably in $\B$, locate the hub $c$, the two poles
+$p,q$, the path skeleton, and the pendant attached at the hub.
+
+The only nontrivial thing $\pi$ can do on $C_v$ is the involution. Whether
+$\pi\restriction C_v$ is the identity or the involution is a single bit
+$b(C_v)\in\{0,1\}$; if we know this bit, then $\pi(v)$ is computable from $\B$
+(apply $\sigma$ or $\mathrm{id}$ according to the local labelling). So it suffices to
+show $b(\cdot)$ is computable from $\B\oplus K$. But $b(C_v)$ is determined by
+$\pi$, and we are merely \emph{computing} the given $\pi$, so we may consult $\pi$:
+to determine $b(C_v)$, compute $\pi(p)$ where $p$ is the (computably located) pole
+of $C_v$; if $\pi(p)=p$ then $b=0$, else $b=1$. Computing $\pi(p)$ requires querying
+$\pi$, which is allowed since $\pi$ is the function we are computing. Indeed the
+function $v\mapsto\pi(v)$ is what we must compute; the reduction is: locate the pole
+$p$ of $C_v$ (computable in $\B$), the value $\pi(p)$ is one of the two poles
+$\{p,q\}$ and is part of the graph of $\pi$. The point is to reduce computing
+$\pi$ everywhere to computing it on the two poles of each component, plus the
+local computable structure. We make this honest by the following: $\pi$, as a set
+of pairs, restricted to the poles, is a function
+$\rho:\{p_n,q_n:n\}\to\{p_n,q_n:n\}$ with $\rho(p_n),\rho(q_n)\in\{p_n,q_n\}$. We
+claim $\rho\le_T\B\oplus K$ — but in fact $\rho$ \emph{is} $\le_T \pi$ trivially and
+we want $\pi\le_T\B\oplus K$.
+\end{proof}
+
+The previous paragraph contains the substantive point and we now state it cleanly,
+since $\pi$ ranges over \emph{all} automorphisms and ``computability of $\pi$''
+means there is a single oracle Turing functional computing $\pi$ from $\B\oplus K$.
+
+\begin{proof}[Proof of Lemma~\ref{conemany}, completed]
+Let $\B\cong\A$ and $\pi\in\AUT(\B)$. We give a $\B\oplus K$-effective procedure that
+computes the graph of $\pi$. Recall $\AUT(\B)=(\Z/2\Z)^\N$, so $\pi$ is determined by
+the bit-sequence $(b_n)_n$, $b_n\in\{0,1\}$, where $b_n=1$ iff $\pi$ acts as the
+involution on the $n$-th component.
+
+The graph of $\pi$ as a \emph{set} is automatically computable from $\B\oplus K$
+\emph{provided} the map $C\mapsto b(C)$ (component $\mapsto$ its bit) is computable
+from $\B\oplus K$ — but this map is not determined by $\B$; it is determined by
+$\pi$. The correct interpretation of Definition~\ref{1.1} is that we are given the
+oracle $\B$ and we must compute the \emph{specific} automorphism $\pi$; thus the
+data of $\pi$ is presented to us through the requirement, and ``$\pi$ is computable
+from $\B\oplus K$'' means: the function $v\mapsto\pi(v)$ is Turing-reducible to
+$\B\oplus K$. Equivalently $\pi\le_T \B\oplus K$ as a function/oracle.
+
+Now fix the particular $\pi$. Its bit-sequence $(b_n)$ is an arbitrary element of
+$2^\N$, hence \emph{a priori} not computable from anything. We must therefore show
+that $(b_n)\le_T \B\oplus K$ for \emph{this} $\pi$ — which is false in general since
+$(b_n)$ can be any real! So we have shown $\A$ is \emph{not} computably
+$\AUT$-countable on a cone with this construction.
+\end{proof}
+
+The honest analysis above shows that the disjoint-union construction \emph{fails}
+condition (a): with infinitely many independent involutions the automorphism group
+is uncountable, contradicting the standing hypothesis (Theorem~\ref{2.2}) that
+$\AUT(\A)$ be countable. We must therefore redesign so that $\AUT(\A)$ is countable
+while retaining the parameter-defeating behaviour.
+
+\subsection{Corrected construction with countable automorphism group}
+
+We now give a construction with $\AUT(\A)$ countable (indeed cyclic of order $2$ on
+each "block" but globally controlled) that satisfies both (a) and (b).
+
+\medskip
+
+\noindent\textbf{Idea.} Use a single global involution that simultaneously swaps two
+``halves'' of the structure, where to recover the swap on far-away parts of the
+structure one needs unboundedly much $K$-information, so that no finite parameter
+tuple makes the involution $\Sigma^{in}_1$-definable, yet on a cone the whole
+involution is computable because $K$ is available as a uniform oracle.
+
+\medskip
+
+\noindent\textbf{Construction.} Let $\A$ consist of two copies of $\N$, called
+$L=\{\ell_n:n\in\N\}$ ("left") and $R=\{r_n:n\in\N\}$ ("right"), with the following.
+For each $n$, attach to $\ell_n$ and to $r_n$ identical finite "address gadgets"
+$A_n$ that uniquely encode the index $n$ rigidly (e.g.\ a rigidly-coloured path of
+length $n+3$ hung off the vertex, using two colours to write $n$ in binary along
+the path; these are rigid). This makes $\ell_n$ and $r_n$ each definable without
+parameters by their address. Add a unary predicate $L$-colour on all of $L$ and an
+$R$-colour on all of $R$. Finally, for each $n$, encode the bit $e_n=[\,n\in K\,]$
+by attaching to $\ell_n$ a pendant triangle if $e_n=1$ and a pendant square if
+$e_n=0$, and to $r_n$ the \emph{opposite} marker (square if $e_n=1$, triangle if
+$e_n=0$).
+
+The structure $\A$ has exactly two automorphisms: the identity, and the global
+involution $\pi$ defined by $\pi(\ell_n)=r_n$, $\pi(r_n)=\ell_n$ for all $n$
+(extended to gadgets in the unique way). Indeed: any automorphism preserves the
+address gadget at each vertex, hence maps the unique vertex of address $n$ to a
+vertex of address $n$; the only two such vertices are $\ell_n,r_n$. The $L/R$
+colours are \emph{not} part of the language (we omit them, otherwise the involution
+would fail): we omit $L$-/$R$-colours. Then an automorphism either fixes the pair
+$\{\ell_n,r_n\}$ pointwise for all $n$ (identity) or swaps it for all $n$; but the
+markers force consistency: at index $n$, the marker at $\ell_n$ (resp.\ $r_n$) is a
+triangle/square depending on $e_n$, and the swap $\pi$ sends the marker at $\ell_n$
+to the position of $r_n$, where the marker is the opposite shape — so $\pi$ would
+need to turn a triangle into a square, which is impossible.
+
+\medskip
+
+This again kills the involution. The fundamental tension is now clear and is the
+content of Theorem~\ref{2.3}: \emph{any} automorphism of a structure that is
+computably $\AUT$-countable on a cone is, by Theorem~\ref{2.3}, $\Sigma^{in}_1$
+definable from \emph{some} finite parameter tuple. Question~\ref{1.2} asks whether
+the parameters can be made to depend on $\pi$ in an essential way, i.e.\ whether one
+\emph{fixed} tuple can fail.
+
+\begin{remark}
+After the analysis above I am unable to produce a correct construction within the
+constraints, and the two natural approaches both collapse: making the involutions
+independent forces an uncountable automorphism group (violating the standing
+countability hypothesis and condition (a)), while making a single global involution
+forces, via the address gadgets, that the involution swaps each pair
+$\{\ell_n,r_n\}$, and Theorem~\ref{2.3} then guarantees a finite parameter set
+defining it. I therefore cannot certify a complete proof of Theorem~\ref{main}.
+\end{remark}
+
+\medskip
+
+\noindent\emph{Honest conclusion.} The arguments above do not constitute a valid
+proof of Theorem~\ref{main}, and I withdraw the claimed theorem.

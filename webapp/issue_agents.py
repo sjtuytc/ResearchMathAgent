@@ -103,6 +103,7 @@ def _seed_workspace(
     problem_id: str,
     issue_data: dict | None = None,
     extra_files: dict[str, str] | None = None,
+    dataset: str | None = None,
 ) -> Path:
     """Create and populate a temp directory for an issue agent."""
     base = Path(tempfile.gettempdir()) / "rma_issue_agents"
@@ -113,6 +114,16 @@ def _seed_workspace(
     pre = repo_root / "problems" / "preamble.tex"
     if prob.is_file():
         shutil.copyfile(prob, ws / "problem.tex")
+    else:
+        # Non-fp1 datasets (fp2, RM14k subdomains, …) have no problems/<pid>.tex;
+        # pull the statement from the dataset store so the agent has the problem.
+        try:
+            from .dataset_store import find_problem_tex
+            txt = find_problem_tex(repo_root, problem_id, dataset)
+            if txt.strip():
+                (ws / "problem.tex").write_text(txt, encoding="utf-8")
+        except Exception:
+            pass
     if pre.is_file():
         shutil.copyfile(pre, ws / "preamble.tex")
 
@@ -176,7 +187,7 @@ def run_discovery_agent(
     dataset: str = "first_proof_1",
 ) -> Iterator[AgentEvent]:
     """Critic agent: reads proof, discovers issues, posts them via the API."""
-    ws = _seed_workspace(repo_root, problem_id)
+    ws = _seed_workspace(repo_root, problem_id, dataset=dataset)
 
     has_proof = (ws / "solution.tex").is_file()
     if has_proof:
@@ -281,7 +292,7 @@ def run_resolver_agent(
         yield AgentEvent("done", {"reason": "error"})
         return
 
-    ws = _seed_workspace(repo_root, problem_id, issue_data=issue)
+    ws = _seed_workspace(repo_root, problem_id, issue_data=issue, dataset=dataset)
 
     comments_text = "\n".join(
         f"[{c['author']} @ {c.get('created_at','')[:16]}]\n{c['body']}"
@@ -403,7 +414,7 @@ def run_verifier_agent(
         yield AgentEvent("done", {"reason": "error"})
         return
 
-    ws = _seed_workspace(repo_root, problem_id, issue_data=issue)
+    ws = _seed_workspace(repo_root, problem_id, issue_data=issue, dataset=dataset)
 
     last_comment = ""
     for c in reversed(issue.get("comments", [])):

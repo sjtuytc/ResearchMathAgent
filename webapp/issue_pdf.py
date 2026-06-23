@@ -34,8 +34,30 @@ _PREAMBLE = r"""\documentclass[11pt]{article}
 \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definition}
 \newtheorem{example}[theorem]{Example}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{assumption}[theorem]{Assumption}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{observation}[theorem]{Observation}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{hypothesis}[theorem]{Hypothesis}
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
+\newtheorem{note}[theorem]{Note}
+% Starred (unnumbered) variants
+\newtheorem*{theorem*}{Theorem}
+\newtheorem*{lemma*}{Lemma}
+\newtheorem*{proposition*}{Proposition}
+\newtheorem*{corollary*}{Corollary}
+\newtheorem*{definition*}{Definition}
+\newtheorem*{remark*}{Remark}
+\newtheorem*{claim*}{Claim}
+\newtheorem*{conjecture*}{Conjecture}
+\newtheorem*{problem*}{Problem}
+\newtheorem*{question*}{Question}
+\newtheorem*{exercise*}{Exercise}
+\newtheorem*{example*}{Example}
 
 \definecolor{agentbg}{rgb}{0.10,0.13,0.18}
 \definecolor{agentborder}{rgb}{0.18,0.25,0.38}
@@ -140,8 +162,28 @@ def _inline_md(s: str) -> str:
     # bold (double stars or double underscores)
     s = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", s)
     s = re.sub(r"__(.+?)__", r"\\textbf{\1}", s)
-    # inline code  `...`
-    s = re.sub(r"`([^`\n]+)`", lambda m: r"\texttt{" + m.group(1) + "}", s)
+    # inline code `...` — escape braces/backslash, then hide from _text_escape via placeholder
+    # (_text_escape's brace-normalisation rules corrupt the closing } of \texttt{})
+    _code_store: dict[str, str] = {}
+
+    def _code_span(m: re.Match) -> str:
+        c = m.group(1)
+        result = []
+        for ch in c:
+            if ch == "\\":
+                result.append(r"\textbackslash{}")
+            elif ch == "{":
+                result.append(r"\{")
+            elif ch == "}":
+                result.append(r"\}")
+            else:
+                result.append(ch)
+        tex = r"\texttt{" + "".join(result) + "}"
+        key = f"\x00CS{len(_code_store)}\x00"
+        _code_store[key] = tex
+        return key
+
+    s = re.sub(r"`([^`\n]+)`", _code_span, s)
     # markdown links [text](url)
     s = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\\href{\2}{\1}", s)
     # bare urls
@@ -150,6 +192,9 @@ def _inline_md(s: str) -> str:
     s = s.replace("->", r"\(\to\)").replace("<->", r"\(\leftrightarrow\)")
     # Escape remaining problem chars in text mode (after all substitutions)
     s = _text_escape(s)
+    # Restore code spans after _text_escape so their braces aren't touched
+    for key, tex in _code_store.items():
+        s = s.replace(key, tex)
     return s
 
 
@@ -367,10 +412,15 @@ def _build_issue_tex(issue: dict) -> str:
     parts = [_PREAMBLE]
     parts.append(r"\begin{document}")
     # Title block
-    safe_title = title.replace("_", r"\_").replace("&", r"\&").replace("#", r"\#").replace("%", r"\%")
+    def _safe(s: str) -> str:
+        return str(s).replace("_", r"\_").replace("&", r"\&").replace("#", r"\#").replace("%", r"\%")
+    safe_title = _safe(title)
+    safe_status = _safe(status)
+    safe_pid = _safe(pid)
+    safe_iid = _safe(issue_id)
     parts.append(rf"""\begin{{center}}
 {{\Large\bfseries {safe_title}}}\\[4pt]
-{{\small\color{{gray}} {pid} / {issue_id} \quad|\quad status: {status}}}
+{{\small\color{{gray}} {safe_pid} / {safe_iid} \quad|\quad status: {safe_status}}}
 \end{{center}}
 \medskip\hrule\bigskip""")
 
@@ -470,3 +520,104 @@ def compile_issue_pdf(repo_root: Path, issue: dict, force: bool = False) -> dict
             hash_file.write_text(cur_hash)
             return {"ok": True, "pdf_url": f"/api/pdf/issue_{problem_id}_{issue_id}.pdf", "log": "OK"}
         return {"ok": False, "pdf_url": None, "log": f"Build failed (exit {rc})\n{log[-3000:]}"}
+
+
+# ── Combined "all issues" PDF (one document for a whole problem/dataset) ────────
+
+def _issue_block(issue: dict) -> str:
+    """Render a single issue (title + body + comments) as a LaTeX section block,
+    WITHOUT preamble/document wrappers, for inclusion in a combined document."""
+    title = issue.get("title", "Issue")
+    status = issue.get("status", "open")
+    pid = issue.get("problem_id", "")
+    iid = issue.get("id", "")
+    safe_title = title.replace("\\", " ").replace("_", r"\_").replace("&", r"\&").replace("#", r"\#").replace("%", r"\%").replace("$", r"\$")
+    parts = [rf"\section*{{{safe_title}}}",
+             rf"{{\small\color{{gray}} {pid} / {iid} \quad|\quad status: {status}}}\par\smallskip"]
+    body = (issue.get("body") or "").strip()
+    if body:
+        parts.append(md_to_latex(body))
+    for c in issue.get("comments", []):
+        cbody = (c.get("body") or "").strip()
+        if not cbody:
+            continue
+        author = str(c.get("author", "")).replace("_", r"\_")
+        role = c.get("role", "")
+        created = (c.get("created_at") or "")[:16].replace("T", " ")
+        role_label = f"[{role}]" if role else ""
+        parts.append(
+            r"\begin{mdframed}[backgroundcolor=white,linecolor=black!25,linewidth=0.8pt,"
+            r"innerleftmargin=8pt,innerrightmargin=8pt,innertopmargin=6pt,innerbottommargin=6pt]")
+        parts.append(rf"{{\small\bfseries\color{{black!70}} {author} {role_label}}} \hfill {{\small\color{{black!50}} {created}}}")
+        parts.append(r"\medskip" + "\n")
+        parts.append(md_to_latex(cbody))
+        parts.append(r"\end{mdframed}" + "\n")
+    return "\n".join(parts)
+
+
+def compile_all_issues_pdf(repo_root: Path, dataset: str, problem_id: str | None = None,
+                           force: bool = False) -> dict:
+    """Compile ALL issues for a problem (or whole dataset) into ONE combined PDF."""
+    from .issues import list_issues, list_all_issues, get_issue
+
+    if problem_id:
+        issues = list_issues(repo_root, problem_id, dataset)
+        scope_label = problem_id
+        key = re.sub(r"[^A-Za-z0-9_-]", "_", f"allissues_{dataset}_{problem_id}")
+    else:
+        issues = list_all_issues(repo_root, dataset)
+        scope_label = dataset
+        key = re.sub(r"[^A-Za-z0-9_-]", "_", f"allissues_{dataset}")
+
+    # Ensure each issue has its comments (some listers return summaries).
+    full: list[dict] = []
+    for it in issues:
+        if "comments" in it:
+            full.append(it)
+        else:
+            gi = get_issue(repo_root, it.get("problem_id") or problem_id or "", it.get("id", ""), dataset)
+            full.append(gi or it)
+    if not full:
+        return {"ok": False, "pdf_url": None, "log": "no issues for this scope"}
+
+    dest = pdf_cache = repo_root / "documents" / "pdf" / f"{key}.pdf"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    hash_file = dest.with_suffix(".hash")
+    cur_hash = hashlib.md5(json.dumps(full, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+    if not force and dest.is_file() and hash_file.is_file() and hash_file.read_text().strip() == cur_hash:
+        return {"ok": True, "pdf_url": f"/api/pdf/{key}.pdf", "log": "cached", "count": len(full)}
+
+    import os
+    tectonic = _TECTONIC if os.path.isfile(_TECTONIC) and os.access(_TECTONIC, os.X_OK) else shutil.which("tectonic") or shutil.which("pdflatex")
+    if not tectonic:
+        return {"ok": False, "pdf_url": None, "log": "No LaTeX toolchain available"}
+
+    header = (rf"\begin{{center}}{{\Large\bfseries All Issues — {scope_label.replace('_', r'\_')}}}\\[2pt]"
+              rf"{{\small\color{{gray}} {len(full)} issue(s)}}\end{{center}}\medskip\hrule\bigskip")
+    sep = "\n\n\\bigskip\\hrule\\bigskip\n\n"
+    body = sep.join(_issue_block(i) for i in full)
+    tex = "\n".join([_PREAMBLE, r"\begin{document}", header, body, r"\end{document}"])
+
+    with tempfile.TemporaryDirectory(prefix="rma_allissues_") as tmp:
+        build = Path(tmp)
+        (build / "main.tex").write_text(tex, encoding="utf-8")
+
+        def run(cmd):
+            try:
+                p = subprocess.run(cmd, cwd=build, capture_output=True, timeout=180)
+                return p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace")
+            except subprocess.TimeoutExpired:
+                return 1, "timed out"
+
+        if "tectonic" in tectonic:
+            rc, log = run([tectonic, "main.tex"])
+            if rc != 0:
+                rc, log = run([tectonic, "-Z", "continue-on-errors", "main.tex"])
+        else:
+            rc, log = run([tectonic, "-interaction=nonstopmode", "main.tex"])
+
+        if (build / "main.pdf").is_file():
+            shutil.copyfile(build / "main.pdf", dest)
+            hash_file.write_text(cur_hash)
+            return {"ok": True, "pdf_url": f"/api/pdf/{key}.pdf", "log": "OK", "count": len(full)}
+        return {"ok": False, "pdf_url": None, "log": f"build failed\n{log[-1500:]}"}

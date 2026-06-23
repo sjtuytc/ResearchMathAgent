@@ -1,0 +1,153 @@
+{
+  "id": "rm-02099-meet-1",
+  "problem_id": "rm-02099",
+  "topic": "Init rm-02099 — proof review",
+  "goal": "Review the proof and issues for rm-02099; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T07:32:34Z",
+  "messages": [
+    {
+      "id": "m223eba3c",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-02099 — proof review**",
+      "created_at": "2026-06-23T07:32:34Z"
+    },
+    {
+      "id": "mb9f3ccf6",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about what I see here: this is a stochastic thermodynamics problem about feedback ratchets, and I was apparently invited because someone confused the \"$\\varepsilon$-light subset\" entropy-reduction language with my Laplacian work. Those are different uses of \"entropy.\" But let me say where my tools *do* have something to contribute, because I don't think the connection is empty.\n\nThe information quantity $I$ in part (a) is a mutual information between a measurement record and the system trajectory. For a discrete-time switching protocol, the controller produces a *sequence* of binary actions (potential on/off) at sampling times — that's exactly a sign pattern, and the relevant object is the joint distribution over a hypercube $\\{0,1\\}^m$ of switching decisions correlated with positions. The non-Markovianity they flag is real: the action at time $t_k$ depends on the whole history.\n\nHere's where I think structure helps. Two concrete suggestions:\n\n1. **The maximum entropy reduction $I_{\\max}$ is a per-step bound.** For a discrete protocol with $m$ measurement steps, $I = \\sum_k I(\\text{action}_k ; \\text{state}_k \\mid \\text{history})$ by the chain rule. Each conditional term is bounded by $\\log 2$ (one bit per binary switch). So $I_{\\max} \\le m \\log 2$ trivially, but the *interesting* tight bound comes from the actual achievable correlation between \"particle is on the steep side\" and \"switch off\" — that's a single-step decision-theoretic quantity. What's the optimal single-step decision rule? That's a Bayes detector, and it saturates when the controller switches off exactly when the instantaneous force would be negative.\n\n2. **For the continuous-time limit, $I$ becomes a rate**, and the right object is a path-space mutual information — a relative entropy between controlled and reference path measures (Girsanov). This is analogous to how I track a *barrier/potential function* that increments monotonically: define $\\Phi(t) = $ accumulated information rate, and the question of saturating $I_{\\max}$ is whether you can keep $d\\Phi/dt$ at its maximal value along the trajectory.\n\nSo before we go further, two questions for the room. **First: is the achievable $I_{\\max}$ per step a constant, $\\log 2$, or is it strictly smaller because the particle's position is not perfectly informative?** Second, and this is the part I actually care about: **is there an explicit optimal protocol, or only an existence/bound?** I don't want a variational characterization that just says \"the optimum exists.\" I want the decision rule written down — switch off iff the local force is in such-and-such a regime — and a proof it saturates $\\langle W_{\\rm ext}\\rangle = -\\Delta F + k_B T\\, I$.",
+      "created_at": "2026-06-23T07:32:51Z"
+    },
+    {
+      "id": "m2dd994fa",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right that I was likely summoned by a collision of vocabularies — my \"entropy reduction\" in the $\\varepsilon$-light problem is a graph-Laplacian quantity, not a Shannon mutual information. Let me set aside the $\\theta$-function and engage where my instincts genuinely transfer: the *limit structure*.\n\nThree points.\n\n1. **On Dan's per-step bound and whether $I_{\\max} = \\log 2$.** I agree the chain-rule decomposition $I = \\sum_k I(\\mathrm{action}_k ; \\mathrm{state}_k \\mid \\mathrm{history})$ is the correct accounting, and that each term is $\\le \\log 2$. But the achievable per-step value is strictly smaller and is precisely the *binary entropy of the optimal Bayes detector's error*. If the controller's decision is to switch off when the particle sits on the steep (rectifying) side, the informative quantity is $H(P_{\\mathrm{on}}) = -P\\log P - (1-P)\\log(1-P)$, where $P$ is the probability mass on the favorable region under the on-potential's stationary-ish distribution. So $I_{\\max}$ per step is $\\le H(P)$, not $\\log 2$, and it equals $\\log 2$ only in the degenerate symmetric-occupancy limit. This is the feedback analog of the simple result that an unbiased coin carries one bit while a biased measurement carries less.\n\n2. **The continuous-time object is a graphon-like limit.** Dan's Girsanov path-measure relative entropy is exactly right, and here is where my graph-limits philosophy says something concrete: the discrete switching records on $\\{0,1\\}^m$ form a sequence of correlation structures whose $m\\to\\infty$ refinement should *converge* in an appropriate cut-type metric to a kernel on path space — the analog of a graphon being the limit of dense adjacency patterns. Just as $t(H,G_n)\\to t(H,W)$ characterizes graph convergence, the convergence of the *finite-dimensional switching correlations* $\\mathbb{E}[\\prod_{k\\in S}\\mathrm{action}_k \\cdot f(x_{t_k})]$ characterizes the continuous protocol limit. The information rate $d\\Phi/dt$ Dan wants is then the cut-norm density of this limiting kernel, and saturating $I_{\\max}$ means achieving the extremal kernel.\n\n3. **The extremal protocol is a \"blow-up\" of a single decision cell.** In extremal combinatorics the optimizer is almost always a blow-up of a small pattern. Here the same heuristic predicts the saturating protocol is *stationary and Markov in disguise*: a single fixed threshold rule, applied identically at every sampling time, whose continuous limit is the on/off switch keyed to the sign of the instantaneous force $-V'(x)$. The non-Markovianity Dan flagged should *collapse* at the optimum — the optimal history-dependent rule reduces to a memoryless threshold, because the position already screens the past (Markov property of the Langevin dynamics). That is the structural claim I would try to prove: the variational optimum over all history-dependent protocols is attained inside the memoryless class.\n\nSo, concretely answering Dan's two questions: (i) $I_{\\max}$ per step is $H(P^\\*) < \\log 2$ with $P^\\*$ the optimal occupancy of the favorable region, not a free bit; (ii) yes, I conjecture an explicit optimal rule — *switch off iff $-V'(x) < 0$* (steep side) — and the",
+      "created_at": "2026-06-23T07:33:40Z"
+    },
+    {
+      "id": "m03e49a7e",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — let me push on the *real* theorem here, because Dan and László are circling the right object but I think the clean statement is being missed.\n\nFirst, a correction of emphasis. László says the optimal rule is \"switch off iff $-V'(x) < 0$.\" That's the *greedy* rule, and it is generically **not** optimal. This is exactly the lesson I learned from quantum unique ergodicity: the instantaneous spectral data (here the local force) does not control the long-time invariant measure. The particle's stationary distribution under the *closed-loop* dynamics is what enters the work, and that distribution is shaped by the protocol itself — a fixed point, not a given. So saturation is a self-consistency condition, not a pointwise threshold. Let me write down what I think $I_{\\max}$ actually is.\n\n1. **The clean form of (a).** For a discrete protocol with outcomes $y_k$ at times $t_k$ and actions $a_k\\in\\{0,1\\}$, the correct information is the *transfer-entropy-type* functional\n$$ I = \\sum_k \\big[ H(a_k \\mid a_{<k}) - H(a_k \\mid x_{\\le t_k}, a_{<k})\\big] = \\sum_k I(a_k ; x_{\\le t_k} \\mid a_{<k}),$$\nwhich is exactly the directed information of Massey, not a single mutual information. This is the point I'd insist on against (a)'s loose phrasing: feedback ratchets need *directed* information $I(X^t \\to A^t)$ because causality matters — the controller cannot use the future. This is the Girsanov relative entropy László and Dan want, but the path-measure must be the *causal* one.\n\n2. **$I_{\\max}$ is a spectral quantity, not $\\log 2$.** László is right it's $H(P^*)<\\log 2$, but $P^*$ is determined by the closed-loop generator. Here is the trace-formula instinct: the closed-loop dynamics is a switched Markov semigroup, $\\mathcal{L} = \\mathbb{1}_{\\text{on}}\\mathcal{L}_{\\text{on}} + \\mathbb{1}_{\\text{off}}\\mathcal{L}_{\\text{off}}$, and the extracted power is a spectral functional of its stationary measure $\\mu_*$. So\n$$ I_{\\max} = \\sup_{\\text{decision rules}} \\int \\mu_*[\\text{action}](x)\\, dx \\cdot (\\text{per-decision bits}),$$\na *variational principle over invariant measures*, just like the entropy/pressure variational principle in thermodynamic formalism. That's the real theorem behind the technical one.\n\n3. **On saturating $\\langle W_{\\rm ext}\\rangle = -\\Delta F + k_B T\\,I$.** This is the Sagawa–Ueda equality, and it saturates *only* in quasi-static, reversible feedback — which for a flashing ratchet running at finite power is **impossible**. So part (c)'s \"tight upper bound on power\" is the crux: there is a tradeoff, power $\\to 0$ as efficiency $\\to$ the information bound. I'd bet the right statement is a tradeoff inequality, $\\text{Power} \\le c\\, (k_BT I - \\langle W\\rangle)$, with the constant a spectral gap of $\\mathcal{L}$ — the analog of how the spectral gap controls equidistribution rates in my QUE work.\n\nSo my two challenges: **(i)** is the optimal rule really memoryless, given the closed-loop measure feeds back? I claim no in general — there's a hysteresis/dwell-time correction.",
+      "created_at": "2026-06-23T07:34:30Z"
+    },
+    {
+      "id": "m47e3aa45",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter just made the crucial correction, and I want to amplify it because it kills László's clean blow-up conjecture in a way I find structurally compelling. The greedy/threshold rule fails for exactly the reason a *greedy* effective-resistance rule can fail in my own work: when I build a spectral sparsifier or an $\\varepsilon$-light subset greedily, the \"importance\" of the next element ($\\ell_e = w_e R_e$) is computed against the *current* configuration, and the configuration shifts as you add elements. The effective resistance $R_e = (e_u-e_v)^T L^\\dagger (e_u-e_v)$ is a fixed-point quantity, not a static label. Peter's closed-loop $\\mu_*$ is the analog of $L^\\dagger$ here: it depends on the whole protocol you've committed to. So I now agree the optimum is a self-consistency condition, and the greedy threshold is the leading-order term, with corrections.\n\nBut I refuse to give up on constructiveness, and here is where I think my Laplacian-solver philosophy gives a genuine *algorithm*, not just a variational existence statement:\n\n1. **Treat the saturation as a fixed-point iteration and prove it converges.** Define the map $\\Psi: \\mu \\mapsto \\mu_*[\\text{Bayes-optimal rule against }\\mu]$ — measure in, optimal switched generator $\\mathcal{L}[\\mu]$ out, stationary measure of that generator out. The optimal protocol is a fixed point $\\mu = \\Psi(\\mu)$. The question I'd insist on: **what is the contraction factor of $\\Psi$?** I claim it is exactly $1 - \\gamma$ where $\\gamma$ is the spectral gap of the closed-loop generator $\\mathcal{L}$ — the very gap Peter conjectures controls his power tradeoff. This is precisely the role the spectral gap plays in my recursive preconditioning: it sets the convergence rate of the iterative solver. So the *same* spectral gap controls both the power–efficiency tradeoff (Peter's point 3) and the rate at which you can compute the optimal protocol.\n\n2. **The directed information is the right object, and it's a leverage-score sum in disguise.** Peter's $I(X^t \\to A^t) = \\sum_k I(a_k; x_{\\le t_k}\\mid a_{<k})$ — each term is the \"information leverage\" of step $k$ against the causal history, structurally identical to $\\sum_e \\ell_e = n-1$. The conditioning on $a_{<k}$ is what makes it the *effective* information given everything already committed, just as effective resistance is conductance given the rest of the graph.\n\nSo two precise asks. **First**, can someone confirm the contraction rate of $\\Psi$ is governed by $\\gamma(\\mathcal{L})$? If so, Peter's power bound $\\text{Power} \\le c(k_BT I - \\langle W\\rangle)$ and the algorithm to *find* the saturating protocol share one constant — that's the clean theorem. **Second**, on the dwell-time/hysteresis correction Peter flags: I'd bet it's a low-leverage perturbation — the memoryless threshold captures all but an $O(\\gamma)$ fraction of $I$, exactly as a sparsifier captures all but $\\varepsilon$ of the spectrum. If true, the optimal protocol is \"memoryless plus a thin spectral correction,\" and we can write it down explicitly.",
+      "created_at": "2026-06-23T07:36:48Z"
+    },
+    {
+      "id": "m059c27c1",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Peter is right to overturn my greedy conjecture, and Dan's fixed-point framing is the correct repair — but let me sharpen the structural claim, because I think we are now within reach of a clean theorem, and I want to be precise about *where* my blow-up intuition was wrong and where it survives.\n\n1. **My error and its correction.** I claimed the optimum is a memoryless threshold keyed to $-V'(x)$. Peter is correct: that is greedy against the *open-loop* measure, while the relevant object is the closed-loop $\\mu_*$. The right analogy from my own work is not the blow-up of a static pattern but the **graph-limit fixed point**: a graphon $W$ that is extremal for a homomorphism-density functional is itself the optimizer of a self-consistent variational problem $W = \\arg\\max_W F(W; \\mu_W)$ where $\\mu_W$ is induced by $W$. Dan's map $\\Psi$ is exactly this. So the blow-up survives, but it is a blow-up of the *fixed-point* cell, not the greedy one.\n\n2. **The memorylessness claim — partially rescued.** Here is the precise statement I would now defend. The optimal *causal* protocol is memoryless **as a function of the augmented state** $(x, a_{\\text{current}})$, not of $x$ alone. The Langevin dynamics is Markov in $x$, but the closed-loop chain is Markov in $(x, a)$ — and Peter's hysteresis/dwell-time correction is precisely the dependence on $a$. So I withdraw \"memoryless in $x$\" and assert \"memoryless in the lifted state.\" That is not a cosmetic distinction: it is the statement that the directed information $I(X^t\\to A^t)$ is computed by a *stationary* policy on the lifted space, which is what makes Dan's $\\Psi$ well-defined on a finite-dimensional measure rather than on full histories.\n\n3. **On Dan's contraction constant.** I believe his conjecture — contraction factor $1-\\gamma(\\mathcal L)$ — but I would warn that the *naive* Picard iteration of $\\Psi$ need not be a contraction in total variation; it is a contraction in the cut-type / Wasserstein metric adapted to $\\mathcal L$. This is exactly my graphon experience: the iteration $G_n \\to W$ converges in $d_\\square$ but oscillates in any naive vertex metric. So the clean statement is: $\\Psi$ is a $d_\\square$-contraction with rate $1-\\gamma$, hence a unique fixed point, hence (i) the optimal protocol exists and is unique, and (ii) Peter's power bound and Dan's solver share the single constant $\\gamma$.\n\n4. **The variational principle, stated cleanly.** Combining Peter's directed information with the closed-loop measure, I would write\n$$\nI_{\\max} \\;=\\; \\sup_{\\pi}\\; \\mathbb E_{\\mu_\\pi}\\big[\\,H\\big(\\pi(\\cdot\\mid x,a)\\big) - H\\big(\\pi(\\cdot\\mid x,a)\\,\\big|\\,\\text{prior}\\big)\\big],\n$$\na pressure-type variational principle over stationary lifted policies $\\pi$, with $\\mu_\\pi$ the closed-loop invariant measure. This is the exact analog of the entropy/pressure variational principle Peter invoked, and the supremum is attained at the unique $\\Psi$-fixed point. The Sagawa–Ueda equality saturates **only** in the $\\gamma\\to 0$, quasi-static limit — confirming",
+      "created_at": "2026-06-23T07:37:37Z"
+    },
+    {
+      "id": "mf5959d4e",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — we've converged on a beautiful structure, and now I want to nail down the *real* theorem and stress-test one place where I think we are still being sloppy. The fixed-point/lifted-state picture is right, and László's pressure variational principle is the correct object. But let me make three sharpenings.\n\n**1. The lifted state is not $(x,a)$ — it's $(x, a, \\tau)$.** László's \"memoryless in $(x,a)$\" is *still* not enough at finite sampling rate. The dwell-time I flagged is a genuine clock variable: the optimal causal policy depends on how long you've held the current action, because the closed-loop measure has not relaxed. This is exactly the QUE lesson again — the microlocal lift lives on the unit cotangent bundle, not the base; you must track the *direction of motion*, not just position. Here $\\tau$ (time-since-switch) is that extra fiber coordinate. The memoryless claim is true only on the full $(x,a,\\tau)$ space, and it collapses to $(x,a)$ precisely in the continuous-monitoring limit where $\\tau\\to 0$. That limit is the analog of the geodesic flow becoming ergodic — and there, and only there, does László's clean policy hold.\n\n**2. Make the contraction constant honest.** Dan and László both want $1-\\gamma(\\mathcal L)$. I believe the *rate*, but I want to warn that $\\gamma$ is the gap of the closed-loop generator $\\mathcal{L}=\\mathbb 1_{\\rm on}\\mathcal L_{\\rm on}+\\mathbb 1_{\\rm off}\\mathcal L_{\\rm off}$, which is **non-self-adjoint** — switching breaks detailed balance, that's the whole point of a ratchet. So \"spectral gap\" means the real part of the leading nontrivial eigenvalue, and contraction in $d_\\square$/Wasserstein, not $L^2$. This is not pedantry: for non-normal generators the resolvent norm can be huge even with a gap (pseudospectrum), and that controls *transient* amplification — which is exactly the regime of high output power. So I'd conjecture the power bound has the sharper form\n$$\\text{Power} \\;\\le\\; c\\,\\kappa(\\mathcal L)\\,\\big(k_BT\\, I - \\langle W\\rangle\\big),$$\nwhere $\\kappa$ is a pseudospectral (Kreiss-type) constant, not just $\\gamma$. The non-normality is the source of finite power.\n\n**3. The actual content of (b).** Let me state $I_{\\max}$ as a clean closed form for the canonical two-state flashing ratchet. With $\\mu_*$ the closed-loop stationary measure and $\\Omega\\subset[0,L)$ the favorable (rectifying) region, the per-decision bound is the binary entropy of the *closed-loop* occupancy:\n$$I_{\\max} = R_s\\cdot H\\big(\\mu_*(\\Omega)\\big),\\qquad \\mu_*=\\Psi(\\mu_*),$$\n$R_s$ the sampling rate. The self-consistency $\\mu_*(\\Omega)=\\Psi(\\mu_*)(\\Omega)$ is the whole theorem; everything else is corollary. And the Sagawa–Ueda equality saturates *only* as $R_s\\to\\infty$ with vanishing power — confirming László's $\\gamma\\to0$ remark but locating it in the sampling rate.\n\nSo my one remaining challenge to the room: **is the optimal $\\mu_*(\\Omega)$ universal, or does it depend on the asymmetry of",
+      "created_at": "2026-06-23T07:38:26Z"
+    },
+    {
+      "id": "maa572523",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T07:39:15Z"
+    },
+    {
+      "id": "m8f7b9cc4",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nEstablish the optimal feedback ratchet protocol as a self-consistent fixed point on a lifted state space, characterizing the maximum information bound via a pressure-type variational principle and proving the power-efficiency tradeoff is governed by the non-normal closed-loop generator's spectral/pseudospectral constants.",
+      "created_at": "2026-06-23T07:39:15Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish the optimal feedback ratchet protocol as a self-consistent fixed point on a lifted state space, characterizing the maximum information bound via a pressure-type variational principle and proving the power-efficiency tradeoff is governed by the non-normal closed-loop generator's spectral/pseudospectral constants.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize directed information functional",
+        "body": "Define the information quantity I in part (a) as the Massey directed information I(X^t -> A^t) = sum_k I(a_k ; x_{<=t_k} | a_{<k}) for the causal feedback ratchet, and identify its continuous-time form as a Girsanov relative entropy between the causal controlled path measure and the reference path measure. Establish the chain-rule decomposition and the per-step bound <= log 2.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Set up closed-loop fixed-point map and lifted state",
+        "body": "Define the switched Markov generator L = 1_on L_on + 1_off L_off and the map Psi: mu -> stationary measure of the Bayes-optimal switched generator against mu. Argue the optimal protocol is a fixed point mu = Psi(mu). Determine the correct lifted state space — test whether (x,a) suffices or whether the dwell-time clock variable tau (time-since-switch) is required at finite sampling rate — and state the policy as memoryless on that lifted space.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Refute greedy threshold, derive self-consistent optimum",
+        "body": "Demonstrate explicitly that the greedy rule 'switch off iff -V'(x) < 0' is suboptimal because it optimizes against the open-loop rather than closed-loop stationary measure. Construct the leading-order memoryless threshold plus the dwell-time/hysteresis correction, and show whether the correction is an O(gamma) low-leverage perturbation as conjectured.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove existence/uniqueness via contraction rate",
+        "body": "Prove Psi is a contraction in the cut-type / Wasserstein metric adapted to L (not L^2 / total variation) with rate 1 - Re(lambda_2) where lambda_2 is the leading nontrivial eigenvalue of the non-self-adjoint closed-loop generator. Conclude existence and uniqueness of the optimal protocol. Address non-normality: distinguish spectral gap from pseudospectral (Kreiss-type) constant kappa.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "State variational principle and closed form for I_max",
+        "body": "Write the pressure-type variational principle I_max = sup_pi E_{mu_pi}[H(pi(.|x,a)) - H(pi(.|x,a)|prior)] over stationary lifted policies. For the canonical two-state flashing ratchet, derive the closed form I_max = R_s * H(mu_*(Omega)) with mu_* = Psi(mu_*) and Omega the rectifying region, where R_s is the sampling rate.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Establish power-efficiency tradeoff inequality",
+        "body": "Prove the Sagawa-Ueda equality <W_ext> = -Delta F + k_B T * I saturates only in the quasi-static R_s -> infinity, gamma -> 0 limit. Derive the finite-power tradeoff bound Power <= c * kappa(L) * (k_B T I - <W>), connecting the pseudospectral constant of the non-normal generator to transient amplification and showing the same constant governs both the tradeoff and the convergence rate of the protocol-finding iteration.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify consistency and universality question",
+        "body": "Verify the shared-constant claim (that gamma/kappa governs both Psi's contraction and the power bound) is rigorous and not circular. Test whether the optimal closed-loop occupancy mu_*(Omega) is universal or depends on the potential asymmetry, by checking limiting cases (symmetric occupancy giving log 2, continuous-monitoring tau -> 0 limit collapsing to (x,a) policy).",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T07:39:15Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

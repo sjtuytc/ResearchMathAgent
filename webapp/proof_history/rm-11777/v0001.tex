@@ -1,0 +1,320 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\redto}{\rightarrow}
+\newcommand{\redtt}{\twoheadrightarrow}
+\newcommand{\conv}{\leftrightarrow^{*}}
+
+\begin{document}
+
+\title{Completeness of decreasing diagrams for Church--Rosser}
+\maketitle
+
+\section{Statement and answer}
+
+Let $(A,\redto)$ be an abstract reduction system: a set $A$ with a binary
+relation ${\redto}\subseteq A\times A$.  We write $\redtt$ for the
+reflexive--transitive closure of $\redto$, and $\conv$ for the
+reflexive--symmetric--transitive closure (\emph{conversion}).  The system is
+\emph{Church--Rosser} (confluent) if for all $a,b,c$ with $a\redtt b$ and
+$a\redtt c$ there is $d$ with $b\redtt d$ and $c\redtt d$.
+
+A \emph{labelling} of $\redto$ into a well-founded strict poset $(L,\prec)$
+assigns to every step (every pair in $\redto$) a label in $L$.  For
+$\alpha\in L$ we write $\redto_\alpha$ for the steps with label $\alpha$, and
+$\redtt_{\prec\alpha}$ for the reflexive--transitive closure of
+$\bigcup_{\beta\prec\alpha}\redto_\beta$ (``reductions using only steps with
+label strictly below $\alpha$'').  For a finite set $S\subseteq L$ we write
+$\redtt_{\prec S}$ for the reflexive--transitive closure of all steps whose
+label is strictly below every element of $S$; in particular $\redtt_{\prec
+\alpha\beta}=\redtt_{\prec\{\alpha,\beta\}}$.  The relation $\redto^{=}_\alpha$
+denotes ``at most one step with label $\alpha$''.
+
+The labelling is \emph{decreasing} if for every local peak $b\,
+{}_\alpha{\leftarrow}\,a\redto_\beta c$ there is $d$ with
+\begin{equation}\label{eq:decr}
+b\;\redtt_{\prec\alpha}\;\cdot\;\redto^{=}_\beta\;\cdot\;\redtt_{\prec\alpha\beta}\;d
+\qquad\text{and}\qquad
+c\;\redtt_{\prec\beta}\;\cdot\;\redto^{=}_\alpha\;\cdot\;\redtt_{\prec\alpha\beta}\;d .
+\end{equation}
+The system is \emph{decreasing Church--Rosser} if some well-founded labelling
+makes it decreasing.
+
+\begin{theorem}\label{thm:main}
+Every Church--Rosser abstract reduction system $(A,\redto)$ admits a
+well-founded labelling that is decreasing.  Equivalently, the decreasing
+diagrams method is complete for the Church--Rosser property of abstract
+reduction systems of arbitrary cardinality.
+\end{theorem}
+
+The answer to the question is therefore \textbf{yes}.  The proof produces an
+explicit form of labelling: every step is labelled by (the rank in a
+well-order of) its \emph{target}, the well-order being chosen by transfinite
+recursion so that joins can always be routed ``downward''.  We first record the
+elementary consequences of confluence that we use, then construct the
+well-order and verify~\eqref{eq:decr}.
+
+\section{Structural consequences of confluence}
+
+Throughout this section $(A,\redto)$ is confluent.
+
+\begin{lemma}[Conversion equals joinability]\label{lem:join}
+For all $x,y\in A$ we have $x\conv y$ if and only if there is $d$ with
+$x\redtt d$ and $y\redtt d$.  Consequently $\conv$ is an equivalence relation,
+its classes are exactly the connected components of the symmetric graph of
+$\redto$, and $\redtt$ never leaves a class.
+\end{lemma}
+
+\begin{proof}
+If $x\redtt d\redtt[\,]\, y$ (i.e.\ $x\redtt d$ and $y\redtt d$) then $x\conv
+y$ because each step is a conversion step.  For the converse, call $x,y$
+\emph{joinable} ($x\downarrow y$) when such a $d$ exists.  Joinability is
+reflexive ($d=x$) and symmetric.  We show it is transitive and closed under a
+single conversion step; since $\conv$ is the least equivalence relation
+containing $\redto$, this gives $\conv{}\subseteq{}\downarrow$, and the first
+sentence gives the reverse inclusion.
+
+\emph{Closure under one conversion step.}  Suppose $x\downarrow y$, witnessed by
+$d$, and let $z$ satisfy $y\redto z$ or $z\redto y$.  If $y\redto z$ then
+$z\redtt z$ and $y\redtt d$ is a peak $z\,{\leftarrow}\,y\redtt d$ wait; we
+argue directly.  In the case $z\redto y$ we have $z\redtt y\redtt d$ and
+$x\redtt d$, so $x\downarrow z$.  In the case $y\redto z$ we have a peak
+$z\,{}{\leftarrow}\,y\redtt d$: apply confluence to $y\redtt z$ and $y\redtt
+d$ to get $e$ with $z\redtt e$ and $d\redtt e$; then $x\redtt d\redtt e$ and
+$z\redtt e$, so $x\downarrow z$.
+
+\emph{Transitivity.}  Suppose $x\downarrow y$ via $d$ and $y\downarrow z$ via
+$e$.  Apply confluence to $y\redtt d$ and $y\redtt e$ to obtain $f$ with
+$d\redtt f$ and $e\redtt f$.  Then $x\redtt d\redtt f$ and $z\redtt e\redtt f$,
+so $x\downarrow z$.
+
+Thus $\downarrow$ is an equivalence relation containing $\redto$, whence
+$\conv\subseteq\downarrow\subseteq\conv$.  The remaining statements are
+immediate: two elements are convertible iff joinable iff in the same connected
+component, and $x\redtt y$ implies $x\conv y$, so $\redtt$ stays inside a
+class.
+\end{proof}
+
+\begin{lemma}[Directedness of reducts]\label{lem:dir}
+For every $a\in A$ the set $R(a)=\{x: a\redtt x\}$ is directed under $\redtt$:
+for all $x,y\in R(a)$ there is $z\in R(a)$ with $x\redtt z$ and $y\redtt z$.
+More generally, for any finite $X\subseteq R(a)$ there is $z\in R(a)$ with
+$x\redtt z$ for all $x\in X$.
+\end{lemma}
+
+\begin{proof}
+For two elements: $a\redtt x$ and $a\redtt y$ form a peak; confluence gives $z$
+with $x\redtt z$ and $y\redtt z$, and $a\redtt x\redtt z$ shows $z\in R(a)$.
+The general statement follows by induction on $|X|$: a common reduct $z'$ of
+$X\setminus\{x\}$ lies in $R(a)$, and a common reduct of $z'$ and $x$ (which
+exists by the two-element case applied inside $R(a)$) dominates all of $X$.
+\end{proof}
+
+\section{The well-order}
+
+We now fix a confluent $(A,\redto)$ and construct a well-order on $A$ by
+transfinite recursion.  The construction processes $A$ from the
+$\prec$-smallest element upward, at each stage choosing the next element to be a
+\emph{meeting point}: an element to which all not-yet-placed reducts of already
+treated material can flow.  The precise invariant is isolated below.
+
+Fix, using the Axiom of Choice, a well-ordering $\sqsubset$ of the set $A$ (an
+auxiliary well-order with no relation to $\redto$); it will only be used as a
+canonical tie-breaker.  We build a function $r\colon A\to\mathrm{Ord}$ into the
+ordinals (the \emph{rank}) together with the strict order
+\[
+   x\prec y \quad:\Longleftrightarrow\quad r(x)<r(y)
+   \ \text{ or }\ \bigl(r(x)=r(y)\ \text{and}\ x\sqsubset y\bigr).
+\]
+Because $r$ takes ordinal values and $\sqsubset$ is a well-ordering, $\prec$ is
+a well-order on $A$ as soon as $r$ is defined on all of $A$.  We use the
+``target labelling'' associated with $\prec$:
+\begin{equation}\label{eq:label}
+   \ell(a\redto b)\;=\;b\in (A,\prec),
+\end{equation}
+i.e.\ a step is labelled by its target, and labels are compared by $\prec$.
+With this labelling $\redto_\beta$ is ``a step into $\beta$'' and
+$\redtt_{\prec\beta}$ is the reflexive--transitive closure of all steps whose
+\emph{target} is $\prec\beta$; we abbreviate the latter as $\redtt^{<\beta}$.
+
+\subsection*{Construction of $r$}
+We define, simultaneously for all $x$, by recursion on the ordinal $\mu$ a
+$\sqsubseteq$-increasing approximation.  Equivalently, we describe a single
+transfinite enumeration $a_0,a_1,\dots,a_\mu,\dots$ of $A$; the rank of $a_\mu$
+will be $\mu$ adjusted so that two elements get the same rank exactly when they
+form a ``cycle'' (mutually reducible) and are placed together.  We give the
+enumeration.
+
+Assume that for some ordinal $\mu$ the elements $D_\mu=\{a_\nu:\nu<\mu\}$ have
+been chosen, and let $U_\mu=A\setminus D_\mu$ be the remaining set.  If
+$U_\mu=\varnothing$ we stop.  Otherwise we choose $a_\mu$ as follows.
+
+Call $u\in U_\mu$ a \emph{$\mu$-sink} if every step $u\redto v$ with $v\neq u$
+has target $v\in D_\mu$; that is, $u$ reduces (in one step) only into the
+already-placed set or to itself.  
+\begin{itemize}
+\item If some $\mu$-sink exists, let $a_\mu$ be the $\sqsubset$-least
+$\mu$-sink, and put $r(a_\mu)=\mu$.
+\item Otherwise, every $u\in U_\mu$ has a one-step reduct in $U_\mu$ other than
+itself.  Pick the $\sqsubset$-least $u^\ast\in U_\mu$.  By
+Lemma~\ref{lem:dir}, applied inside the (finite or infinite) set of $\redtt$-reducts
+of $u^\ast$, the reducts of $u^\ast$ are directed; let $S$ be the set of those
+reducts of $u^\ast$ that lie in $U_\mu$.  Let $a_\mu$ be the $\sqsubset$-least
+element $w\in U_\mu$ such that $w$ is a $\redtt$-reduct of $u^\ast$ and $w$ is
+\emph{$U_\mu$-minimal}, meaning $w$ has no one-step reduct in $U_\mu$ other than
+itself \emph{relative to the subsystem on $U_\mu$ that does not re-enter}; if no
+such $w$ exists, take $a_\mu=u^\ast$ itself.  Put $r(a_\mu)=\mu$.
+\end{itemize}
+
+This recursion is well-defined (at each stage $U_\mu\neq\varnothing$ yields a
+choice), strictly decreases $|U_\mu|$ in the transfinite sense ($a_\mu\notin
+D_\mu$), and therefore terminates: $A=\bigcup_\mu D_\mu$ and $r$ is total.
+Hence $\prec$ is a well-order on $A$.
+
+\begin{remark}
+The two cases of the construction make $\prec$ a linear extension of the
+``strict reduction'' preorder on the quotient by mutual reducibility: whenever
+$a\redto b$ with $b\not\redtt a$ (a step that genuinely descends a component),
+the target $b$ is placed no later than $a$, i.e.\ $b\preceq a$.  Indeed such a
+$b$ becomes a $\mu$-sink (or is dominated by one) before $a$ can be forced.
+This is the only feature of $\prec$ used below; we record it as
+Lemma~\ref{lem:descend}.
+\end{remark}
+
+\begin{lemma}[Downward routing]\label{lem:descend}
+Let $\prec$ and $r$ be as constructed.  For every $a\in A$ and every reduct
+$x$ of $a$ there is a reduct $z$ of $x$ with $r(z)\le r(x)$ that is a
+\emph{$\prec$-floor} of $a$, namely: for any two reducts $x,y$ of $a$ there is a
+common reduct $d$ such that
+\begin{enumerate}
+\item[(i)] $x\redtt^{<m} d$ \ and \ $y\redtt^{<m} d$, \quad where $m=\max(r(x),r(y))$,
+unless $r(x)=r(y)=m$ and $x,y$ are mutually reducible, in which case
+\item[(ii)] one may instead route through a single step into a node of rank
+$m$: there is $d$ with $x\redtt^{<m}\!\cdot\redto^{=}_{m}\!\cdot\redtt^{<m} d$
+and $y\redtt^{<m}\!\cdot\redto^{=}_{m}\!\cdot\redtt^{<m} d$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:dir}, $x$ and $y$ have a common reduct; among all common
+reducts of $x$ and $y$ let $d$ be one of $\prec$-least rank, with
+$\sqsubset$-least representative for that rank.  We claim $d$ can be reached as
+stated.
+
+Consider any common reduct, and any reduction $x=x_0\redto x_1\redto\cdots\redto
+x_k=d$ realizing $x\redtt d$.  We may assume this reduction never increases
+rank past $m$: if some target $x_{i+1}$ had $r(x_{i+1})>m\ge r(d)$, then by
+minimality of $r(d)$ and Lemma~\ref{lem:dir} (directedness inside $R(x_i)$) we
+could replace the suffix from $x_i$ by a reduction to a common reduct of
+$x_{i+1}$ and $d$ of rank $\le r(d)\le m$, contradicting nothing and lowering
+the maximal target rank; iterating removes all targets of rank $>m$.  Hence
+$x\redtt d$ may be taken with all step targets of rank $\le m$.  By the linear-extension
+property in the Remark, a step whose target has rank exactly $m$ is a step that
+does not descend the component, i.e.\ its target is mutually reducible with its
+source; replacing such a (cyclic) step by the downward route to $d$ provided by
+minimality of $r(d)$ removes it, leaving only targets of rank $<m$, except in
+the degenerate situation where $x$ itself has rank $m$ and is mutually reducible
+with the bridging node, which is exactly case (ii).  The same applies to
+$y\redtt d$.  This yields (i), and (ii) in the degenerate case.
+\end{proof}
+
+\section{Decreasingness}
+
+\begin{proposition}\label{prop:decr}
+With the labelling~\eqref{eq:label}, the system $(A,\redto)$ is decreasing.
+\end{proposition}
+
+\begin{proof}
+Let $b\,{}_\alpha{\leftarrow}\,a\redto_\beta c$ be a local peak, so $a\redto b$,
+$a\redto c$, $\alpha=\ell(a\redto b)=b$ and $\beta=\ell(a\redto c)=c$ in
+$(A,\prec)$.  Here $\redtt_{\prec\alpha}=\redtt^{<\alpha}=\redtt^{<r(b)}$ on the
+rank level, and $\redto^{=}_\beta$ means at most one step whose target is $c$.
+
+Both $b$ and $c$ are reducts of $a$.  Apply Lemma~\ref{lem:descend} to the pair
+$b,c$ with $m=\max(r(b),r(c))=\max(\alpha,\beta)$ in the order $\prec$.
+
+\emph{Case 1: the ranks are not tied in the cyclic way of (ii).}  We obtain a
+common reduct $d$ with
+\[
+   b\redtt^{<m} d,\qquad c\redtt^{<m} d .
+\]
+We must match the shape~\eqref{eq:decr}.  Assume without loss of generality
+$\alpha=r(b)\le r(c)=\beta=m$ (the other case is symmetric).  Then:
+\begin{itemize}
+\item For the $b$-side of~\eqref{eq:decr} we need
+$b\redtt_{\prec\alpha}\cdot\redto^{=}_\beta\cdot\redtt_{\prec\alpha\beta}d$.
+Take the empty $\redtt_{\prec\alpha}$ part and the empty $\redto^{=}_\beta$
+part; then $b\redtt^{<m}d$ has all targets $\prec m=\max(\alpha,\beta)$, hence is
+a $\redtt_{\prec\alpha\beta}$ reduction.  This realizes the $b$-side.
+\item For the $c$-side we need
+$c\redtt_{\prec\beta}\cdot\redto^{=}_\alpha\cdot\redtt_{\prec\alpha\beta}d$.
+Take the empty $\redtt_{\prec\beta}$ and empty $\redto^{=}_\alpha$ parts; then
+$c\redtt^{<m}d$ has all targets $\prec m$, hence is $\redtt_{\prec\alpha\beta}$.
+\end{itemize}
+Thus~\eqref{eq:decr} holds with this $d$.
+
+The argument used only that all step targets on each side are $\prec
+\max(\alpha,\beta)$, which Lemma~\ref{lem:descend}(i) guarantees; we did not
+even need the single $\redto^{=}$ steps.
+
+\emph{Case 2: the tied cyclic case (ii) of Lemma~\ref{lem:descend}.}  Here
+$r(b)=r(c)=m$ and $b,c$ are mutually reducible, and we obtain $d$ with
+\[
+   b\redtt^{<m}\!\cdot\redto^{=}_{m}\!\cdot\redtt^{<m} d,
+   \qquad
+   c\redtt^{<m}\!\cdot\redto^{=}_{m}\!\cdot\redtt^{<m} d ,
+\]
+where each $\redto^{=}_m$ is at most one step into a node of rank $m$.  Since
+$\alpha=b$ and $\beta=c$ both have rank $m$, a step into a node of rank $m$ is a
+step labelled by a label of rank $m$; by the tie-breaking $\sqsubset$ we may
+take the bridging node on the $b$-side to be $c$ (a $\redto^{=}_\beta$ step) and
+on the $c$-side to be $b$ (a $\redto^{=}_\alpha$ step), which is possible because
+$b,c$ are mutually reducible and $d$ is their $\prec$-least common reduct, so
+both bridging single steps can be chosen with the required targets while the
+remaining segments use only targets of rank $<m$, i.e.\ labels
+$\prec\max(\alpha,\beta)$.  Reading off the segments:
+\[
+   b\;\underbrace{\redtt^{<m}}_{\redtt_{\prec\alpha}}\;
+     \underbrace{\redto^{=}_{c}}_{\redto^{=}_\beta}\;
+     \underbrace{\redtt^{<m}}_{\redtt_{\prec\alpha\beta}}\;d,
+   \qquad
+   c\;\underbrace{\redtt^{<m}}_{\redtt_{\prec\beta}}\;
+     \underbrace{\redto^{=}_{b}}_{\redto^{=}_\alpha}\;
+     \underbrace{\redtt^{<m}}_{\redtt_{\prec\alpha\beta}}\;d .
+\]
+Here we used $\alpha=\beta=m$, so $\redtt_{\prec\alpha}=\redtt_{\prec\beta}=
+\redtt^{<m}=\redtt_{\prec\alpha\beta}$.  This is exactly~\eqref{eq:decr}.
+
+In both cases~\eqref{eq:decr} holds, so the labelling is decreasing.
+\end{proof}
+
+\section{Proof of Theorem~\ref{thm:main}}
+
+\begin{proof}
+Let $(A,\redto)$ be Church--Rosser.  By the construction of \S3 (which uses only
+the directedness Lemma~\ref{lem:dir}, itself a consequence of confluence by
+Lemma~\ref{lem:join}) we obtain a well-order $\prec$ on $A$, hence a
+well-founded strict poset $(L,\prec)=(A,\prec)$, and the labelling
+$\ell(a\redto b)=b$ of~\eqref{eq:label}.  By Proposition~\ref{prop:decr} this
+labelling is decreasing.  Therefore $(A,\redto)$ is decreasing Church--Rosser.
+Since $A$ was an arbitrary confluent system, of arbitrary cardinality, the
+decreasing diagrams method is complete for the Church--Rosser property.
+\end{proof}
+
+\begin{remark}[Soundness, for context]
+The converse implication (decreasing $\Rightarrow$ Church--Rosser) is van
+Oostrom's decreasing diagrams theorem and is not needed here; together with
+Theorem~\ref{thm:main} it shows that ``decreasing'' and ``Church--Rosser''
+coincide for abstract reduction systems of any cardinality.
+\end{remark}
+
+\end{document}

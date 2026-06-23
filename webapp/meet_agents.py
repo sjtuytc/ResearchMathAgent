@@ -59,22 +59,13 @@ def run_discussion_turn(
     transcript = transcript_text(room)
     knowledge = _knowledge_text(repo_root, participant)
 
-    # Read problem statement
+    # Read problem statement (searches problems/<pid>.tex then every dataset store)
     prob_text = ""
-    prob_path = repo_root / "problems" / f"{problem_id}.tex"
-    if prob_path.is_file():
-        prob_text = prob_path.read_text(encoding="utf-8", errors="replace")[:4000]
-    else:
-        # Try dataset store
-        try:
-            from .dataset_store import get_problem as ds_get
-            for ds in ("first_proof_2", "first_proof_1"):
-                full = ds_get(ds, problem_id)
-                if full:
-                    prob_text = (full.get("statement") or full.get("tex") or "")[:4000]
-                    break
-        except Exception:
-            pass
+    try:
+        from .dataset_store import find_problem_tex
+        prob_text = (find_problem_tex(repo_root, problem_id) or "")[:4000]
+    except Exception:
+        pass
 
     # Build system prompt
     if participant in MATHEMATICIAN_PERSONAS:

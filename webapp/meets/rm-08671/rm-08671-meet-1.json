@@ -1,0 +1,165 @@
+{
+  "id": "rm-08671-meet-1",
+  "problem_id": "rm-08671",
+  "topic": "Init rm-08671 — proof review",
+  "goal": "Review the proof and issues for rm-08671; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T12:47:48Z",
+  "messages": [
+    {
+      "id": "m8d3b7d01",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-08671 — proof review**",
+      "created_at": "2026-06-23T12:47:48Z"
+    },
+    {
+      "id": "m2bcb9f96",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about where my instincts lie versus what this problem actually demands. My whole toolkit — effective resistances, Laplacian quadratic forms, spectral sparsification — is built for weighted undirected graphs where $x^T L x = \\sum_{uv} w_{uv}(x_u-x_v)^2$ is symmetric and positive semidefinite. But an argumentation framework $(A,R)$ is a *directed* graph, and the attack relation is fundamentally asymmetric. There's no Laplacian quadratic form to optimize here; the semantics are combinatorial fixpoint conditions, not eigenvalue conditions. So I want to flag at the outset: I don't think spectral machinery is the right hammer.\n\nThat said, the *structure* of the problem is one I recognize from a different angle. Normal deletion equivalence is a \"robustness under all subset deletions\" condition, and the natural way to capture that is exactly a **kernel** — a canonical minimal representative $\\mathcal{F}^*$ such that $F$ and $G$ are equivalent iff their kernels coincide. This is the same philosophy as sparsification: find the smallest object that preserves the property you care about under all the operations you allow. The questions I'd want answered:\n\n- **What's invariant under deletion?** Since we quantify over *all* $S$, in particular $S=\\emptyset$, we already need $\\sigma(F)=\\sigma(G)$. The deletion closure should force redundant attacks (self-attacks, attacks dominated by others) to be identifiable — analogous to how low-leverage edges are removable.\n- **Is there a monotone/locality structure?** Deleting $S$ only removes attacks internal to $A\\setminus S$. So the characterization should be expressible per-vertex and per-edge locally, the way an effective resistance is a local importance score.\n- **What's the right notion of a \"redundant\" attack** for each semantics? For naive (maximal conflict-free) only the symmetric closure of $R$ matters and self-attacks; that one should have a clean kernel. The harder ones — semi-stable, eager — involve the range $R(S)$, which is where deletion interacts nontrivially.\n\nConcretely: can someone state whether existing *standard equivalence* kernels (Oikarinen–Woltran style) survive the universal-deletion quantifier, or whether deletion is strictly stronger? That tells us if we're refining a known kernel or building a new one.",
+      "created_at": "2026-06-23T12:48:02Z"
+    },
+    {
+      "id": "m6db019ad",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right that spectral machinery is the wrong hammer here, and his kernel instinct is exactly the correct one — but let me sharpen the algebraic framework, because the Oikarinen–Woltran theory already gives us the template, and the question is precisely how the *universal deletion quantifier* changes the kernel.\n\nRecall the situation for **strong equivalence** ($F \\equiv_\\sigma G$ iff $\\sigma(F \\cup H) = \\sigma(G \\cup H)$ for all $H$). Oikarinen and Woltran showed this is characterized by *kernels*: one defines a syntactic reduction $R \\mapsto R^k$ removing certain redundant attacks, and $F \\equiv_\\sigma G$ iff $F^{k} = G^{k}$. For stable semantics the stable kernel removes $(a,b)$ whenever $(a,a) \\in R$ (a self-attacker's outgoing attacks are redundant); for admissible/preferred the kernel is different, keeping attacks that matter for defense.\n\nNow, normal deletion is a fundamentally *different* operation than union. Two key structural observations:\n\n1. **Deletion is anti-monotone and removes only induced edges.** Since we quantify over all $S$, including $S=\\emptyset$, ordinary $\\sigma$-equivalence is necessary. But more strongly: for every *induced subframework* on $A\\setminus S$ we need agreement. This is exactly saying $F$ and $G$ are **induced-subframework-equivalent for all vertex subsets simultaneously** — a hereditary condition. That is much closer in spirit to graph-limit / homomorphism-density characterizations than to the union-closure kernels: deletion equivalence is the statement that $F$ and $G$ have the same $\\sigma$-behavior on *every induced pattern*.\n\n2. **The right invariant should be local and hereditary.** Compare: in my graph limits work, two graphons are equal iff all homomorphism densities $t(H,\\cdot)$ agree — a \"test against all small patterns\" condition. Here the natural analog is: $F \\equiv^{\\mathrm{del}}_\\sigma G$ iff for every \"local configuration\" the two frameworks agree. So I conjecture the kernel for deletion equivalence is a **hereditary refinement** of the union kernel: it must respect *both* the redundancy reductions of the standard kernel *and* be stable under taking induced substructures.\n\nConcretely, my proposed program:\n\n- **Naive / conflict-free–based (naive, stage):** only the *symmetric closure* of $R$ together with self-attacks survives deletion, because conflict-freeness is itself a hereditary (downward-closed) property. I'd bet naive deletion equivalence is characterized by: same self-loops and same symmetric closure $R \\cup R^{-1}$ on the surviving universe — and crucially this is *automatically* deletion-stable, since the symmetric closure of an induced subframework is the induced symmetric closure. So naive should be the **easy** case, with kernel = $(A, R^{\\mathrm{sym}} \\cup \\mathrm{loops})$.\n\n- **Defense-based (preferred, semi-stable, eager, ideal):** here $R(S)$ and the defense operator enter, and defense is *not* hereditary — deleting an attacker can destroy a defense. This is where deletion is strictly stronger than $S=\\emptyset$ equivalence. The kernel must record, for each pair, whether the attack is *essential to some defense chain that survives in some induced subframework*. \n\nSo my concrete question back to the room: **is normal delet",
+      "created_at": "2026-06-23T12:48:50Z"
+    },
+    {
+      "id": "mfac92f90",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have framed this beautifully, and I want to push on the *real theorem* hiding behind the kernel formalism. Let me start the way I always do: **compute the smallest cases by hand.**\n\nTake $A = \\{a,b\\}$. The frameworks on two arguments are: empty, single attack $a\\to b$, mutual attack $a\\leftrightarrow b$, self-loops, etc. Now the quantifier over all $S$ is brutal here — with $|A|=2$ you only test $S=\\emptyset, \\{a\\}, \\{b\\}, \\{a,b\\}$, and the singleton deletions reduce you to the *one-argument* problem, which is trivial (only self-loops matter). So the entire content of deletion equivalence at level $n$ is carried by the **top-level framework plus all induced subframeworks of size $n-1$ agreeing recursively.** This is precisely László's hereditary point, and it tells me the characterization *must* be an induction on $|A|$: $F \\equiv^{\\mathrm{del}}_\\sigma G$ iff $\\sigma(F)=\\sigma(G)$ **and** $F-\\{a\\} \\equiv^{\\mathrm{del}}_\\sigma G-\\{a\\}$ for every single argument $a$. Single-vertex deletions generate everything.\n\nThat recursive structure is the right \"local invariant,\" and now I want to ask the Ramanujan-style question: **is naive really the easy case?** László conjectures the symmetric-closure-plus-loops kernel. Let me stress-test it. Naive sets are maximal conflict-free, and conflict-freeness depends *only* on $R^{\\mathrm{sym}} \\cup \\text{loops}$ — directions are invisible to conflict-freeness. Conflict-freeness is hereditary: an induced subframework's symmetric closure is the induced symmetric closure. So the recursion *closes* for naive with no new conditions — the $S=\\emptyset$ condition (same naive extensions on $A$) already propagates. **Yes, naive is genuinely easy, and its deletion kernel equals its ordinary kernel.** That's the clean baseline.\n\nThe interesting phenomenon — the analog of a Ramanujan violation — is exactly where László points: **defense is not hereditary.** Here's the explicit obstruction. A defense chain $c \\to b \\to a$ protects $a$; delete $c$, and $a$ is now undefended. So an attack $(b,a)$ that was *redundant for defense* in $F$ (because $a$ had another defender) can become *essential* in $F-\\{c\\}$. This means the preferred/semi-stable kernel cannot simply delete attacks based on the global picture — it must retain every attack that is *essential in some induced subframework*. I'd phrase the kernel reduction as: remove $(b,a)$ only if it is redundant for defense **in $F$ and in every $F-S$ simultaneously** — equivalently, the deletion kernel is the *intersection-stable closure* of the Oikarinen–Woltran admissible kernel over all induced restrictions.\n\nOne sharp prediction to test computationally before we believe any of this: **eager vs. semi-stable should differ in a controlled way.** Eager is built from semi-stable extensions, semi-stable from complete; both involve maximizing $S \\cup R(S)$, which is the genuinely directional, non-hereditary quantity. I'd wager the eager deletion kernel is strictly finer than the semi-stable one — find me a 4-argument example where $F,G$ are semi-stable deletion equivalent but *not* eager deletion equivalent. If that",
+      "created_at": "2026-06-23T12:49:39Z"
+    },
+    {
+      "id": "m8611bb70",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's recursion is the cleanest thing said so far, and I want to lean on it because it converts the whole problem into a *base-case + propagation* statement — exactly the recursive sparsification structure I used in the Laplacian solvers, where you reduce a graph to a smaller one and argue the invariant survives one step at a time. Let me state the recursion as a lemma and stress where it can break:\n\n**Lemma (Peter's recursion).** $F \\equiv^{\\mathrm{del}}_\\sigma G$ iff $\\sigma(F)=\\sigma(G)$ and $F-\\{a\\} \\equiv^{\\mathrm{del}}_\\sigma G-\\{a\\}$ for every $a \\in A$.\n\nThe forward direction is trivial. The backward direction needs: every $S$ with $|S|\\geq 2$ factors through a single deletion, i.e. $F-S = (F-\\{a\\})-(S\\setminus\\{a\\})$ for $a\\in S$. That holds because **normal deletion commutes** — deleting $S$ then $T$ equals deleting $S\\cup T$, since we only ever restrict $R$ to the surviving vertices. So the recursion is *valid for all six semantics simultaneously*; the directionality issue does not threaten the recursion itself, only the base case $\\sigma(F)=\\sigma(G)$.\n\nThis is the key simplification: **the deletion kernel is whatever invariant makes \"$\\sigma(F)=\\sigma(G)$ on $A$\" hereditary under single-vertex deletion.** For naive that invariant is already hereditary, so the kernel is the ordinary one — I agree with László and Peter, that's the clean baseline.\n\nNow my concrete worry about the defense-based cases. Peter says \"retain every attack essential in some induced subframework.\" That's a correct *description* but it's an existence statement quantified over all $S$ — not yet a kernel I can compute in polynomial time. Here's what I'd demand, in the spirit of wanting an explicit algorithm rather than an existence proof:\n\n- **A local certificate for \"essential.\"** Define $(b,a)$ to be *deletion-essential* if there is a single induced subframework $F-S$ in which removing $(b,a)$ changes $\\sigma(F-S)$. Question: is deletion-essentiality witnessed by a *bounded-size* $S$? If essentiality of an edge can always be certified on an induced subframework of size $O(1)$ — say involving only the defense chain $c\\to b\\to a$ and its immediate alternatives — then the kernel is computable by checking constant-size patterns, and Peter's \"find a 4-argument example\" instinct is exactly right: 4 vertices may already be the certificate size.\n\nSo the sharp technical conjecture I'd put on the table: **there is a constant $k_\\sigma$ such that $(b,a)$ is deletion-essential iff it is essential in some induced subframework of size $\\leq k_\\sigma$.** If true, the deletion kernel is the intersection of the Oikarinen–Woltran kernel over all $\\leq k_\\sigma$-vertex restrictions — finitely checkable, hence an honest algorithm. For naive $k=2$, for preferred/semi-stable I'd guess $k=4$, matching Peter's eager-vs-semi-stable separating example. Can someone construct the 4-vertex separator, or prove no constant $k$ exists for eager? That dichotomy is the whole ballgame.",
+      "created_at": "2026-06-23T12:51:55Z"
+    },
+    {
+      "id": "m839c94d6",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's bounded-certificate conjecture is the right thing to chase, but I want to inject a note of caution drawn directly from my graph-limits experience, because the analogy to homomorphism-density testing actually *predicts* where the constant $k_\\sigma$ will and won't exist.\n\nRecall the moral of the limits theory: a property is testable by bounded-size patterns precisely when it is, in the appropriate sense, *local* — expressible via homomorphism densities $t(H,\\cdot)$ of bounded $H$. The hereditary recursion Peter and Dan established is exactly the statement that deletion equivalence is determined by the family of induced subframeworks; the question Dan sharpens is whether *finitely many* sizes suffice. Here is my prediction, refined by semantics:\n\n1. **Naive: $k=2$, certainly.** Conflict-freeness is a graph property of the symmetric closure, and maximality is checked by single-vertex extension. Both are first-order with one quantifier alternation over neighborhoods — genuinely local. Kernel $= (A, R^{\\mathrm{sym}} \\cup \\mathrm{loops})$, as I said.\n\n2. **Preferred / semi-stable: I doubt a constant $k$ exists, and here is the structural reason.** Defense chains $c_1 \\to c_2 \\to \\cdots \\to c_\\ell \\to a$ can be arbitrarily long, and the *essentiality* of an attack can depend on whether an alternative defender survives at the **far end** of a long chain. This is precisely a non-local dependency — the analog of trying to test connectivity or a long shortest path by bounded patterns, which the regularity/limits framework tells us you *cannot* do. So I conjecture: deletion-essentiality for preferred is **not** witnessed by bounded $S$; the certificate size grows with the length of the longest induced defense chain. The kernel is still well-defined (the intersection over all induced restrictions of the Oikarinen–Woltran admissible kernel), but it is not a constant-pattern check — it is a *reachability* condition along $R$.\n\n3. **The reconciliation with Dan's algorithm:** even without bounded $k$, the kernel is polynomial-time computable, because \"essential along some surviving defense chain\" is a reachability property, and reachability is in $\\mathsf{P}$ regardless of chain length. So we can have Dan's honest algorithm *without* the bounded-certificate property — these are different demands. I'd separate them cleanly: bounded certificate $\\Rightarrow$ constant-degree local kernel; polynomial computability is weaker and likely holds for all six.\n\n4. **Eager vs. semi-stable, answering Peter directly.** Eager is built from the *intersection* contained in all semi-stable extensions — it adds a global \"$\\cap$ over a maximization\" operator. Intersections of maximizers are notoriously non-hereditary: deleting one vertex can remove a semi-stable extension and thereby *enlarge* the eager extension. I therefore expect the eager kernel to be strictly finer, and I'd locate the separating example not at 4 vertices but wherever a single deletion flips the *count* of semi-stable extensions — likely $5$ or $6$ vertices, since you need at least two competing semi-stable sets plus a vertex whose removal kills one of them.\n\nSo my concrete proposal: split the six semantics into **local** (naive, and probably stage modulo its $R(S)$ term) versus **reachability-controlled** (preferred, semi-stable, eager, ideal), and prove for the first group a bounded-pattern kernel à la Dan",
+      "created_at": "2026-06-23T12:52:45Z"
+    },
+    {
+      "id": "ma20ca8e2",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's local-vs-reachability split is exactly the right dichotomy, but I think he's conceded too fast on the bounded-certificate question for preferred. Let me push back with a hand computation, because I don't believe long chains kill bounded certificates the way long geodesics kill homomorphism testing.\n\nHere's the subtlety. Yes, a defense chain $c_\\ell \\to \\cdots \\to c_1 \\to a$ can be arbitrarily long. But **deletion-essentiality of a single attack $(b,a)$ is a statement about $a$ and $b$ and the *alternatives at $a$*, not about the whole chain.** When you ask \"is $(b,a)$ essential in some $F-S$?\", the worst case is: pick $S$ to delete *all other attackers of $a$* and all alternative defenders, so that $(b,a)$ becomes the unique surviving conflict at $a$. That deletion is achievable by removing a set $S$ whose effect on $a$'s immediate in-neighborhood is bounded — you only need $a$, $b$, and one alternate attacker/defender of $a$. The long tail of the chain gets *deleted away*, it doesn't need to be witnessed. So I'd wager **the certificate for preferred lives in the closed in-neighborhood of $a$ of radius 2**, giving $k_{\\mathrm{pref}} \\approx 4$ after all — Dan's instinct, not László's pessimism.\n\nThe genuine non-locality, where I do agree with László, is **eager and ideal**, because those are *intersections over a maximization* — the analog in my world of a QUE limit being controlled not by one eigenfunction but by the whole sequence. Deleting one vertex can resurrect or kill an entire semi-stable extension and shift the intersection globally; that's a count-flip phenomenon, not a neighborhood phenomenon. So my refined bet:\n\n- **naive, stage, preferred, semi-stable: bounded certificate, $k \\le 4$** — local kernel, intersection of Oikarinen–Woltran kernels over $\\le 4$-vertex induced restrictions.\n- **eager, ideal: no constant $k$**, genuinely reachability-/count-controlled, polynomial but not bounded-pattern.\n\nThe decisive experiment: build me the explicit framework where $(b,a)$ is essential only via a chain of length $\\ell$ that *cannot* be shortened by deletion. If you can't — and I claim you can't, because deletion lets you amputate the chain — then preferred is local and László's chain obstruction evaporates. Let's compute the $\\ell=3$ case by hand right now; that settles it.",
+      "created_at": "2026-06-23T12:53:31Z"
+    },
+    {
+      "id": "m9c76d9ac",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T12:54:25Z"
+    },
+    {
+      "id": "m97ac6be9",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nCharacterize normal deletion equivalence for argumentation frameworks across six semantics via a single-vertex-deletion recursion, proving a hereditary kernel that is a bounded-pattern check for local semantics and a reachability-controlled kernel for the non-local ones.",
+      "created_at": "2026-06-23T12:54:25Z"
+    }
+  ],
+  "plan": {
+    "summary": "Characterize normal deletion equivalence for argumentation frameworks across six semantics via a single-vertex-deletion recursion, proving a hereditary kernel that is a bounded-pattern check for local semantics and a reachability-controlled kernel for the non-local ones.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Prove the single-vertex deletion recursion lemma",
+        "body": "Establish rigorously that F is deletion-equivalent to G for semantics sigma iff sigma(F)=sigma(G) and F-{a} is deletion-equivalent to G-{a} for every single argument a. The forward direction is trivial; for the backward direction prove that normal deletion commutes (deleting S then T equals deleting S∪T because R is merely restricted to surviving vertices), so every |S|>=2 deletion factors through single-vertex deletions. Confirm validity simultaneously for all six semantics (naive, stage, preferred, semi-stable, eager, ideal).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Settle the naive (and conflict-free-based) base case",
+        "body": "Prove that for naive semantics the deletion kernel equals the ordinary Oikarinen-Woltran kernel, namely (A, R^sym ∪ loops). Show conflict-freeness depends only on the symmetric closure plus self-loops, that it is hereditary (induced subframework's symmetric closure equals induced symmetric closure), and that maximality is checked by single-vertex extension, so the recursion closes with no new conditions (k=2). Attempt the same for stage, isolating how the R(S) range term affects the argument.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Compute the decisive defense-chain experiment for preferred",
+        "body": "Resolve the Sarnak-Lovasz disagreement by explicit construction. Build a framework with a defense chain c_ell -> ... -> c_1 -> a of length ell=3 and test whether deletion-essentiality of attack (b,a) can be witnessed only via the full chain, or whether deletion can amputate the chain so that essentiality is certified within the closed in-neighborhood of a of radius 2. Determine empirically whether a bounded certificate size k_pref ~ 4 holds for preferred/semi-stable, or whether certificate size provably grows with chain length.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove or refute the bounded-certificate conjecture for preferred/semi-stable",
+        "body": "Based on the experiment outcome, either prove there exists a constant k_sigma such that (b,a) is deletion-essential iff it is essential in some induced subframework of size <= k_sigma (yielding a kernel = intersection of Oikarinen-Woltran admissible kernels over <=k-vertex restrictions), or construct a family showing no constant k exists and that essentiality reduces to a reachability condition along R. Cover both preferred and semi-stable.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Analyze eager and ideal as intersection-over-maximization semantics",
+        "body": "Investigate the claim that eager and ideal are genuinely non-local because they are intersections over maximizing extensions, where deleting one vertex can remove a semi-stable extension and thereby enlarge the eager/ideal extension (a count-flip phenomenon). Construct an explicit separating example (expected 5-6 vertices) where F,G are semi-stable deletion equivalent but not eager deletion equivalent. Determine whether the kernel is reachability-/count-controlled rather than bounded-pattern.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Establish polynomial-time computability of all kernels",
+        "body": "Independently of the bounded-certificate property, prove that for all six semantics the deletion kernel is polynomial-time computable, by expressing 'attack essential along some surviving defense chain' as a reachability property in P. Cleanly separate the two distinct claims: bounded certificate (implies constant-degree local kernel) versus polynomial computability (weaker, expected to hold universally).",
+        "agent": "solver-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify recursion, kernels, and separating examples",
+        "body": "Independently check the deletion-commutativity argument and recursion lemma for all six semantics, verify the naive kernel characterization, confirm the hand-computed defense-chain example and the semi-stable/eager separating example produce the claimed extension differences, and validate that each proposed kernel is both complete (equivalent frameworks share a kernel) and sound (equal kernels imply deletion equivalence).",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Critique the local-vs-reachability dichotomy and analogies",
+        "body": "Stress-test the overall framework: challenge whether the graph-limits/homomorphism-density analogy genuinely predicts the local-vs-reachability split, scrutinize edge cases where stage's R(S) term may break locality, examine whether ideal and eager truly require non-constant k or whether a cleverer encoding restores bounded certificates, and identify any semantics where the recursion's base condition sigma(F)=sigma(G) hides additional subtleties.",
+        "agent": "critic-agent",
+        "depends_on": [
+          3,
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T12:54:25Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

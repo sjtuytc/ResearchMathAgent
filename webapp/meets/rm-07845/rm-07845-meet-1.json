@@ -1,0 +1,163 @@
+{
+  "id": "rm-07845-meet-1",
+  "problem_id": "rm-07845",
+  "topic": "Init rm-07845 — proof review",
+  "goal": "Review the proof and issues for rm-07845; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T13:04:20Z",
+  "messages": [
+    {
+      "id": "mb38d8e71",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-07845 — proof review**",
+      "created_at": "2026-06-23T13:04:20Z"
+    },
+    {
+      "id": "m94d75fa1",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me cut to the linear-algebraic heart of this, because I think this geostatistics problem is secretly a Laplacian problem in disguise.\n\nHere's how I see it. Discretize $D \\times [h_{\\min},h_{\\max}]$ into cells, and let $Z$ be a Gaussian random field with covariance kernel $K$. The reserve is $R = \\mathbf{1}^T Z$ (an integral), and we observe $Z$ at a sampling set $S$. Under the Gaussian model the optimal estimator is just kriging — the conditional mean — and the MSE of $\\widehat R$ is\n\n$$\\mathrm{MSE} = \\mathbf{1}^T K \\mathbf{1} - K_{\\cdot S} K_{SS}^{-1} K_{S \\cdot},$$\n\nevaluated against the weight vector $\\mathbf{1}$. So part (b) is essentially Schur complements of the covariance operator. That's clean.\n\nNow here is where my tools bite. The covariance matrix $K$ and its precision matrix $K^{-1}$ are the objects of interest, and for many natural spatial models (Markov random fields, Matérn with half-integer smoothness) the **precision matrix is sparse and is essentially a graph Laplacian** — $K^{-1} = L + \\tau I$. Then:\n\n1. **Design = subset selection for spectral approximation.** Choosing $S$ to minimize $\\mathbf{1}^T K \\mathbf{1} - K_{\\cdot S}K_{SS}^{-1}K_{S\\cdot}$ is exactly a column-subset / experimental-design problem. The right importance measure for cell $i$ is its **leverage score** $\\ell_i = (K^{1/2})_i^T (\\text{stuff})$ — the same quantity that drove the Spielman–Srivastava sparsification by effective resistances. Sample proportional to leverage and you get provable near-optimality.\n\n2. **Part (c) optimal designs are A-/V-optimal experimental design.** This is where Marcus–Spielman–Srivastava is directly relevant: the Kadison–Singer / Weaver machinery and the deterministic spectral sparsification it spawned (Batson–Spielman–Srivastava, \"twice-Ramanujan sparsifiers\") let you pick *exactly* $n$ samples deterministically achieving $(1\\pm\\varepsilon)$ spectral control of $K_{SS}$. That beats i.i.d. random sampling by removing the $\\log n$ factor — which is the rigorous statement of why systematic/grid designs outperform simple random sampling.\n\n3. **Adaptive = greedy maximization of a barrier function.** Sequential design should greedily add the cell maximizing the marginal MSE reduction. Under the determinantal structure this is submodular, so greedy is near-optimal; and I'd track it with the barrier potential $\\Phi(\\lambda)=\\sum 1/(\\lambda_i - t)$ rather than re-inverting $K_{SS}$ each step.\n\nTwo questions to the room. First: **what's the spectral gap / decay rate of $K$?** Everything — convergence rate, whether grid beats random, the achievable MSE($n$) — is governed by the eigenvalue decay of the covariance operator. If $K$ has fast (analytic) decay, $n$ samples give exponentially small MSE; if it's rough (low Matérn smoothness) we're in a polynomial regime. Second: **can we solve the kriging system $K_{SS}\\alpha = b$ in nearly-linear time?** If $K^{-1}$ is",
+      "created_at": "2026-06-23T13:04:42Z"
+    },
+    {
+      "id": "ma89c89e6",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your reduction is elegant and I agree the kriging MSE is a Schur complement — but I want to push on the design question from a different angle, because I think the *right limit object* is missing.\n\nLet me make three points.\n\n**1. The continuous analog: this is a graphon/kernel problem, not just a matrix problem.** Before discretizing, $K$ is a covariance *operator* on $L^2(D \\times [h_{\\min},h_{\\max}])$ with Mercer decomposition $K(s,t) = \\sum_j \\lambda_j \\phi_j(s)\\phi_j(t)$. The reserve functional is $R = \\langle \\mathbf{1}, Z\\rangle$, and the MSE of the optimal (kriging) estimator is exactly the squared norm of the projection of $\\mathbf{1}$ onto the orthogonal complement of the sampled subspace. So your leverage scores are, in the limit, the values $|\\langle \\mathbf{1},\\phi_j\\rangle|^2$ weighted against $\\lambda_j$ — sampling should concentrate where the *low-frequency eigenfunctions carrying mass of $\\mathbf{1}$* live. This is precisely the spectral-decay question you raised, and I'd insist we phrase it operator-first; the discretization is just one convergent sequence.\n\n**2. On grid vs. random — your sparsification framing is right but the constant matters.** Batson–Spielman–Srivastava removes the $\\log n$ for *spectral* control of $K_{SS}$, but for the *reserve functional* we only need control in the single direction $\\mathbf{1}$ (V-optimality), which is weaker and should give a cleaner constant. Here is where I think systematic/grid design is provably optimal for smooth $K$: by a Poisson-summation / quadrature argument, a grid integrates against eigenfunctions with error controlled by aliasing, and the MSE decays like the tail $\\sum_{j>n}\\lambda_j$. That is the right benchmark, and I claim no random design beats it for a stationary smooth kernel — the analog of why equispaced points are optimal for the trapezoidal rule on smooth periodic integrands.\n\n**3. The Local Lemma earns its keep in part (c) under constraints.** Pure leverage sampling ignores geometric feasibility — you cannot drill two boreholes in the same village, there are exclusion zones, depth-access constraints. Frame each constraint as a \"bad event\" $A_v$ (a forbidden local configuration of chosen boreholes). If each design constraint depends on at most $d$ others and is violated with probability $\\le p$ under leverage-proportional sampling, then $ep(d+1)\\le 1$ guarantees a feasible near-optimal design exists, and Moser–Tardos makes it algorithmic. This is the rigorous bridge between i.i.d. leverage sampling and *constrained* admissible designs that the statement (c) actually asks for.\n\nTwo questions back to you, Dan. First: when the precision is $K^{-1}=L+\\tau I$, is $\\mathbf{1}$ approximately an eigenvector? If $L\\mathbf{1}\\approx 0$ (Laplacian!), then $\\mathbf{1}^T K\\mathbf{1}\\approx \\tau^{-1}|D|$ and the whole problem collapses to estimating a near-constant — the design barely matters, which is a sanity check we should verify. Second: for the *mapping* problem (d), the relevant functional is the whole operator, not one direction, so I'd expect the optimal map design and the optimal reserve design to *diverge* exactly by the gap",
+      "created_at": "2026-06-23T13:05:32Z"
+    },
+    {
+      "id": "me1dc0a09",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laci — beautiful, but you've both jumped straight to the smooth-kernel paradise where everything decays exponentially. Let me ask the question that's really at the heart of this: **what is the spectrum of $K$, and is it Ramanujan or not?**\n\nHere's why I care. Laci, you said for a stationary smooth kernel the grid is optimal and the MSE decays like the tail $\\sum_{j>n}\\lambda_j$. Fine. But geological reserves are *not* analytic — coal seams, ore bodies, faults are fractal, multiscale objects. The realistic model is a Matérn kernel with *low* smoothness $\\nu$, where $\\lambda_j \\sim j^{-(1+2\\nu/d)}$ — a polynomial, not exponential, tail. So the entire design comparison lives or dies on $\\nu$, exactly your \"spectral gap\" question, Dan. Let me draw the analogy that I think is exact, not metaphorical:\n\n1. **This is the trace formula in disguise.** The MSE for a grid design is governed by *aliasing* — Laci's Poisson summation — which is precisely the geometric side of a Selberg-type trace formula: errors come from the \"closed geodesics,\" i.e., the lattice points $\\xi \\in (\\mathbb{Z}^2)^* \\setminus 0$ where the grid resonates. The spectral side is $\\sum_j \\lambda_j |\\langle \\mathbf{1}, \\phi_j\\rangle|^2$. The grid is optimal *exactly when* the dual-lattice resonances are pushed past the spectral support — that's a quantitative Ramanujan-type cancellation statement.\n\n2. **Grid vs. random is the eigenvalue-spacing question.** Dan's BSS sparsifiers give Ramanujan graphs — $\\lambda \\le 2\\sqrt{d-1}$. The reason grid beats i.i.d. random by the $\\log n$ factor is *the same phenomenon* as why a Ramanujan graph beats a random regular graph: rigidity of the spectrum. But — and here's my provocation — for a *rough* field the spectrum is in the GUE/random-matrix universality class, the eigenfunctions $\\phi_j$ are *delocalized and ergodic* (this is QUE!), and then $|\\langle \\mathbf{1}, \\phi_j\\rangle|^2 \\approx 1/j$ on average with no special structure. In that regime random sampling and grid sampling become asymptotically *equivalent* — the $\\log n$ saving evaporates because there's no low-frequency structure to exploit.\n\n3. So my concrete claim sharpening part (c): **there is a phase transition at a critical smoothness $\\nu_c$.** For $\\nu > \\nu_c$, eigenfunctions localize on the mass of $\\mathbf{1}$, leverage/grid sampling wins decisively (Laci's regime). For $\\nu < \\nu_c$, QUE-type equidistribution makes the design nearly irrelevant and MSE $\\sim n^{-(1+2\\nu/d)}$ for *any* reasonable design — you're just paying the Weyl-law tail.\n\nLet me check the trivial case by hand, as I always do. Laci's sanity check: if $L\\mathbf 1 \\approx 0$, $\\mathbf 1$ is the constant eigenfunction, smoothest possible — that's the $\\nu \\to \\infty$ corner, design irrelevant for the opposite reason (everything is correlated). Good, the two endpoints agree.\n\nSo before we optimize anything: **tell me $\\nu$.** Is",
+      "created_at": "2026-06-23T13:06:21Z"
+    },
+    {
+      "id": "mba4b9437",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that phase-transition picture is exactly right, and I want to make it *algorithmically* precise rather than leave it as a dichotomy — because the beautiful thing is that the leverage scores diagnose which regime you're in, automatically, without anyone telling us $\\nu$ in advance.\n\nHere's the point. The effective-resistance / leverage score of cell $i$ for the reserve functional is\n$$\\ell_i = \\frac{\\big(K^{1/2} K_{SS}^{-1}\\cdots\\big)\\text{-type quantity}}{\\;} \\;=\\; \\sum_j \\lambda_j\\, |\\phi_j(i)|^2 \\cdot (\\text{weight toward } \\mathbf 1).$$\nAnd the sum of leverage scores is the *effective dimension* $d_{\\mathrm{eff}}(\\tau) = \\sum_j \\frac{\\lambda_j}{\\lambda_j + \\tau} = \\mathrm{tr}\\,K(K+\\tau I)^{-1}$. This single number *is* Peter's order parameter. In the smooth regime $\\nu>\\nu_c$, $d_{\\mathrm{eff}}$ saturates at a constant — a few low-frequency eigenfunctions carry $\\mathbf 1$, leverage is spiky, and grid/BSS sampling exploits it. In the rough regime $d_{\\mathrm{eff}}\\sim n$ — leverage is flat, QUE has delocalized everything, and the scores literally tell you \"stop trying, you're paying the Weyl tail.\" So the phase transition is visible as: *is $d_{\\mathrm{eff}}(\\tau)\\ll n$ or $\\Theta(n)$?* That's computable.\n\nTwo things I'll insist on:\n\n1. **We don't need to know $\\nu$ to sample well.** Ridge-leverage-score sampling (the regularized version of Spielman–Srivastava) gives a $(1\\pm\\varepsilon)$ approximation to the kriging operator with $O(d_{\\mathrm{eff}}\\log d_{\\mathrm{eff}}/\\varepsilon^2)$ samples — *adaptively to the unknown decay*. In Laci's smooth corner that's $O(\\log)$ samples; in Peter's rough corner it correctly refuses to do better than $n$. The estimator is agnostic and provably near-optimal in both regimes. That settles part (c) up to the BSS log-removal in the smooth case.\n\n2. **And we can compute all of this in nearly-linear time** — this is where $K^{-1}=L+\\tau I$ being a Laplacian-plus-diagonal pays off. The kriging system $K_{SS}\\alpha=b$ and the leverage scores via Johnson–Lindenstrauss projection $\\ell_i \\approx \\|(K^{-1/2})_i\\|^2$ both reduce to solving $O(\\log n)$ Laplacian systems, each in $\\tilde O(m)$ time by Spielman–Teng. So the whole pipeline — estimate $d_{\\mathrm{eff}}$, sample by ridge leverage, solve the kriging system, produce the map — is one nearly-linear-time algorithm. We never form $K_{SS}^{-1}$.\n\nOn Laci's mapping-vs-reserve divergence (his second question): for the reserve we sample by leverage *projected onto $\\mathbf 1$* (V-optimality, rank-one); for the map we sample by full ridge leverage (A-/V-optimality on the whole operator). The two designs coincide precisely when $\\mathbf 1$ is spread across the heavy e",
+      "created_at": "2026-06-23T13:08:39Z"
+    },
+    {
+      "id": "m205c7c3b",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — this is converging beautifully, and the effective dimension $d_{\\mathrm{eff}}(\\tau) = \\mathrm{tr}\\,K(K+\\tau I)^{-1}$ as the order parameter is exactly the right invariant. Let me sharpen three things and then raise a genuine gap.\n\n**1. The phase transition has a clean graph-limit statement.** Peter's $\\nu_c$ and Dan's $d_{\\mathrm{eff}}$ are two faces of the same Mercer tail. The crispest formulation: consider the *normalized* covariance graphon $W_K = K/\\|K\\|$ on $D\\times[h_{\\min},h_{\\max}]$, and ask how the reserve direction $\\mathbf 1$ decomposes against its spectral measure. Define $\\mu_{\\mathbf 1} = \\sum_j |\\langle \\mathbf 1,\\phi_j\\rangle|^2\\,\\delta_{\\lambda_j}$. Then $\\mathrm{MSE}_n^{\\min}$ is the $n$-term approximation tail of $\\mu_{\\mathbf 1}$ *in the kriging norm* — and the entire grid-vs-random dichotomy is whether $\\mu_{\\mathbf 1}$ is atomic-dominated (Laci's corner) or absolutely-continuous-dominated (Peter's QUE corner). This is the continuous analog of my graph-limit principle: state it for the operator, and the discretization is just *one* convergent sequence with the cut-metric guaranteeing the MSE functional is continuous along it.\n\n**2. A caution on V-optimality and BSS.** Dan, ridge-leverage with $O(d_{\\mathrm{eff}}\\log d_{\\mathrm{eff}})$ samples gives spectral control of the *whole* $K_{SS}$ — but for the reserve we only need control in the single direction $\\mathbf 1$. That is genuinely a rank-one objective, and there the relevant quantity is not $d_{\\mathrm{eff}}$ but the *one-dimensional* effective dimension $\\langle \\mathbf 1, K(K+\\tau I)^{-1}\\mathbf 1\\rangle/\\langle \\mathbf 1,\\mathbf 1\\rangle$, which can be $O(1)$ even when $d_{\\mathrm{eff}}\\sim n$. So in Peter's rough regime, the *map* is hopeless but the *reserve* may still be cheap — the two designs diverge maximally exactly at $\\nu < \\nu_c$. That is the precise answer to the mapping-vs-reserve question (d): the divergence is governed by the gap between the rank-one and full effective dimensions.\n\n**3. The Local Lemma is not decoration here — it is the only rigorous bridge to admissibility.** Both of you are sampling i.i.d. by leverage. But (c) demands *feasible* designs: exclusion zones, minimum borehole spacing, depth-access. Reframe: i.i.d. leverage sampling violates a spacing constraint $A_v$ with probability $p$, and each constraint conflicts with at most $d$ others (bounded by the geometric packing number). If $ep(d+1)\\le 1$, the symmetric LLL guarantees a feasible design retaining the variance guarantee, and Moser–Tardos makes it a polynomial-time resampling algorithm sitting on top of Dan's nearly-linear kriging solver. Without this, the \"optimal\" designs are inadmissible.\n\n**The genuine gap I want flagged.** Everything so far assumes $K$ is",
+      "created_at": "2026-06-23T13:09:26Z"
+    },
+    {
+      "id": "m318fd39d",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laci, you were about to say the gap is that $K$ is *known* — and that's exactly the rub. Let me push there, because it's the deepest issue in the room and it's, once again, a Ramanujan question in disguise.\n\nWe've been doing spectral approximation assuming the spectral measure $\\mu_{\\mathbf 1}$ is given. But in practice $\\nu$, the smoothness, *is the very thing the boreholes must estimate*. This is the **model-selection / spectral-estimation** layer sitting underneath the design layer, and the two are coupled: you can't optimally sample until you know $\\nu$, and you can't estimate $\\nu$ until you've sampled. So let me say three things.\n\n1. **Estimating $\\nu$ is reading the spectrum off the data — and the obstruction is universality.** The decay $\\lambda_j \\sim j^{-(1+2\\nu/d)}$ is a high-frequency statement, and high frequencies are *exactly* what sampling at rate $n$ cannot resolve past the Nyquist wall. This is precisely my point about quantum chaos: in the rough/QUE regime the eigenfunctions are delocalized and the local spectral statistics are GUE-*universal*, which means the data carry information about the *one-point density* (the Weyl law, hence $\\nu$) but the fluctuations wash out — you get $\\hat\\nu$ with error $\\sim 1/\\log n$. Universality is a double-edged sword: it makes the estimator robust but it kills the rate.\n\n2. **A concrete by-hand check.** Take $D=[0,1]$, $h$ a single depth, $K(x,y)=e^{-|x-y|}$ — Matérn $\\nu=1/2$, the Ornstein–Uhlenbeck kernel. Then $\\lambda_j \\sim (1+(\\pi j)^2)^{-1}$, so the Mercer tail is $\\sum_{j>n}\\lambda_j \\sim 1/n$ — the polynomial Weyl regime, no exponential salvation. The reserve direction $\\mathbf 1$ overlaps the eigenfunctions $\\phi_j(x)\\approx\\cos(\\pi j x)$ as $\\langle\\mathbf 1,\\phi_j\\rangle \\sim 1/j$ for odd $j$, zero for even — so $\\mu_{\\mathbf 1}$ is atomic on a *thin* low-frequency set even though $\\nu$ is small. That confirms Laci's point 2 exactly: the rank-one reserve dimension is $O(1)$ here, MSE $\\sim 1/n$ for the reserve, while the *map* pays the full $n^{-1}$ Weyl tail per coordinate. The two diverge, and I can see it in three lines of Bessel asymptotics.\n\n3. **The real theorem behind all this.** It's not \"kriging MSE is a Schur complement\" — Dan's right but that's the corollary. The real content is a *trace-formula duality*: $\\mathrm{MSE}_{\\text{grid}}(n) = \\sum_{\\xi\\in\\Lambda^*\\setminus 0}\\hat K(\\xi)\\,|\\hat{\\mathbf 1}(\\xi)|^2$ (geometric/aliasing side) $=$ $n$-term tail of $\\mu_{\\mathbf 1}$ (spectral side), and the question of *which design wins* is whether the dual-lattice resonances $\\hat K(\\xi)$ on $\\Lambda^*$ are smaller than the random-sampling diagonal — a Ramanujan-type cancellation. For smooth $K$, $\\hat K",
+      "created_at": "2026-06-23T13:10:16Z"
+    },
+    {
+      "id": "m1a921ad2",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T13:11:15Z"
+    },
+    {
+      "id": "m9300397f",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nRecast the geostatistical reserve-estimation and sampling-design problem as spectral approximation of a covariance operator, where kriging MSE is a Schur complement, optimal designs reduce to leverage-score/experimental-design sampling, and a smoothness-driven phase transition (governed by the effective dimension) determines when structured designs beat random ones.",
+      "created_at": "2026-06-23T13:11:15Z"
+    }
+  ],
+  "plan": {
+    "summary": "Recast the geostatistical reserve-estimation and sampling-design problem as spectral approximation of a covariance operator, where kriging MSE is a Schur complement, optimal designs reduce to leverage-score/experimental-design sampling, and a smoothness-driven phase transition (governed by the effective dimension) determines when structured designs beat random ones.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish kriging MSE as a Schur complement",
+        "body": "Discretize D x [h_min, h_max] into cells and model Z as a Gaussian field with covariance K. Prove that the optimal estimator of the reserve R = 1^T Z is the conditional mean (kriging) and that its MSE equals 1^T K 1 - K_{.S} K_{SS}^{-1} K_{S.}. State the continuous analog: MSE is the squared kriging-norm of the projection of 1 onto the orthogonal complement of the sampled subspace, using the Mercer decomposition K(s,t) = sum_j lambda_j phi_j(s) phi_j(t). This settles part (b).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Define the spectral order parameter and phase transition",
+        "body": "Introduce the effective dimension d_eff(tau) = tr K(K+tau I)^{-1} and the rank-one (reserve-direction) effective dimension <1, K(K+tau I)^{-1} 1>/<1,1>. For a Matern kernel with smoothness nu, where lambda_j ~ j^{-(1+2nu/d)}, characterize the critical smoothness nu_c separating the regime where low-frequency eigenfunctions carrying the mass of 1 dominate (leverage spiky, d_eff = O(1)) from the QUE/rough regime where eigenfunctions delocalize (d_eff ~ n). Formalize the spectral measure mu_1 = sum_j |<1,phi_j>|^2 delta_{lambda_j} and express min MSE_n as its n-term tail in the kriging norm.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove the grid-vs-random dichotomy via trace-formula duality",
+        "body": "Establish the aliasing/Poisson-summation identity MSE_grid(n) = sum_{xi in Lambda* \\ 0} hat{K}(xi) |hat{1}(xi)|^2 (geometric side) = n-term tail of mu_1 (spectral side). Show that for smooth K (nu > nu_c) dual-lattice resonances are pushed past the spectral support, so grid/structured designs remove the log n factor (BSS/Ramanujan-type rigidity), while for rough K (nu < nu_c) QUE equidistribution makes random and grid designs asymptotically equivalent with MSE ~ n^{-(1+2nu/d)}. This sharpens part (c).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Construct the agnostic ridge-leverage sampling algorithm",
+        "body": "Develop ridge-leverage-score sampling (regularized Spielman-Srivastava) achieving a (1±epsilon) approximation to the kriging operator with O(d_eff log d_eff / epsilon^2) samples, adapting automatically to unknown nu. For the reserve, sample by leverage projected onto 1 (rank-one V-optimality); for the full map, sample by full ridge leverage (A-/V-optimality). Quantify the divergence between the reserve-optimal and map-optimal designs via the gap between rank-one and full effective dimension, answering part (d).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Add feasibility constraints via the Lovasz Local Lemma",
+        "body": "Frame geometric design constraints (exclusion zones, minimum borehole spacing, depth-access) as bad events A_v. Show that if i.i.d. leverage sampling violates each constraint with probability at most p, each constraint conflicts with at most d others (bounded by packing number), and ep(d+1) <= 1, then the symmetric LLL guarantees a feasible near-optimal design, with Moser-Tardos providing a polynomial-time resampling algorithm. This bridges idealized leverage sampling to admissible designs required by (c).",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Implement nearly-linear-time kriging and leverage computation",
+        "body": "Exploiting K^{-1} = L + tau I (graph Laplacian plus diagonal), reduce solving the kriging system K_{SS} alpha = b and estimating leverage scores ell_i ~ ||(K^{-1/2})_i||^2 (via Johnson-Lindenstrauss projection) to solving O(log n) Laplacian systems, each in nearly-linear time via Spielman-Teng solvers, never forming K_{SS}^{-1}. Verify the sanity check that when L 1 ~ 0, the reserve collapses to estimating a near-constant (1^T K 1 ~ tau^{-1} |D|), the nu -> infinity corner.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          3
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify endpoint cases and concrete worked example",
+        "body": "Check the Ornstein-Uhlenbeck/Matern nu=1/2 case on D=[0,1]: lambda_j ~ (1+(pi j)^2)^{-1}, Mercer tail sum_{j>n} lambda_j ~ 1/n, with <1, phi_j> ~ 1/j for odd j and 0 for even, confirming mu_1 atomic on a thin low-frequency set. Verify the reserve MSE ~ 1/n while the map pays the full Weyl tail per coordinate, demonstrating maximal reserve/map divergence. Confirm both endpoints (nu -> infinity constant-field corner and rough QUE corner) yield design irrelevance for the predicted opposite reasons.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          4,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Scrutinize the coupled model-selection layer",
+        "body": "Critically assess the assumption that K (and nu) is known. Analyze the coupled estimation-design problem: nu must be inferred from boreholes, but optimal sampling requires nu. Examine whether high-frequency decay can be resolved past the Nyquist wall, and whether GUE universality limits nu estimation to error ~ 1/log n. Flag whether the proposed agnostic ridge-leverage scheme genuinely circumvents this circularity or whether a joint spectral-estimation guarantee is still a gap.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T13:11:15Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

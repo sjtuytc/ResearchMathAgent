@@ -297,7 +297,10 @@ def run_agent(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
         "tools": TOOL_DEFINITIONS,
     }
     if cfg.thinking:
-        create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": THINKING_BUDGET}
+        # Opus 4.8 uses adaptive thinking; the old {"type":"enabled","budget_tokens":N}
+        # form is rejected with a 400. effort=high maximizes reasoning depth.
+        create_kwargs["thinking"] = {"type": "adaptive"}
+        create_kwargs["output_config"] = {"effort": "high"}
 
     # First user message: problem + cached prefix context + instruction
     first_msg_content = _build_first_message_content(cfg)
@@ -404,7 +407,10 @@ def run_agent_vertex(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
         "tools": TOOL_DEFINITIONS,
     }
     if cfg.thinking:
-        create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": THINKING_BUDGET}
+        # Opus 4.8 uses adaptive thinking; the old {"type":"enabled","budget_tokens":N}
+        # form is rejected with a 400. effort=high maximizes reasoning depth.
+        create_kwargs["thinking"] = {"type": "adaptive"}
+        create_kwargs["output_config"] = {"effort": "high"}
 
     if cfg.initial_message:
         first_msg_content: list[dict] | str = cfg.initial_message

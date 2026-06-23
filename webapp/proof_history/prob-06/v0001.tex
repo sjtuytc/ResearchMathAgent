@@ -1,0 +1,491 @@
+\section*{Solution to Problem 6}
+
+Throughout, $T$ is a finite weighted tree with vertex set $V$, edge set $E$, weight
+function $w:V\to\bZ$, and degree function $d:V\to\bZ_{\ge 0}$.  We write the symmetric
+bilinear form on $L(T)$ (and its various extensions of scalars) as $\cdot$, and we put
+$\norm{x}=x\cdot x$.  Recall that a vertex $v$ is \emph{bad} if $w(v)<d(v)$, and that an
+element of a positive definite lattice is \emph{irreducible} if it cannot be written as a
+sum of two nonzero elements whose pairing is $\ge 0$.  We must prove:
+
+\begin{thm}
+\label{thm:one_bad_vtx}
+If a weighted tree $T$ contains a single bad vertex and $L(T)$ is positive definite, then
+$L(T)$ contains an irreducible vertex element.
+\end{thm}
+
+We prove the slightly sharper statement that \emph{either the unique bad vertex $v$ is
+irreducible, or $T$ contains a leaf of weight $1$} (a vertex $u$ of degree $1$ and weight
+$w(u)=1$ satisfies $\norm{u}=1$, the minimum nonzero value of a positive definite integral
+form, and is therefore irreducible).
+
+The strategy has two ingredients.  First we develop the cut/flow machinery of graphs and a
+``projection length'' formula (\S\ref{sec:cutflow}--\ref{sec:length}).  Then we apply it to
+\emph{apex trees} to show that, at a vertex of a tree with no bad vertices and weight $>$
+degree, the relevant dual basis vector is irreducible
+(\S\ref{sec:apex}).  Finally a local analysis at the bad vertex
+(\S\ref{sec:reducible}--\ref{sec:finale}) reduces the theorem to that fact.
+
+\section{Cut and flow lattices}
+\label{sec:cutflow}
+
+Let $G$ be a finite, loopless graph with vertex set $V(G)$ and edge set $E(G)$, possibly
+with parallel edges; write $e(v,w)$ for the number of edges joining distinct vertices
+$v,w$.  Fix an arbitrary orientation of the edges of $G$.  This makes $G$ a $1$--dimensional
+CW complex, with integral cellular chain complex
+\[
+0\longrightarrow C_1(G)\overset{\partial}{\longrightarrow}C_0(G)\longrightarrow 0,
+\qquad \partial(e)=v-w \text{ for an edge $e$ oriented from $w$ to $v$.}
+\]
+Equip $C_1(G)$ and $C_0(G)$ with the symmetric bilinear forms making $E(G)$ and $V(G)$
+orthonormal bases.  Both are unimodular (in fact $\bZ^{E(G)}$ and $\bZ^{V(G)}$), hence
+self-dual.  Let $\partial^\ast:C_0(G)\to C_1(G)$ be the adjoint of $\partial$, so
+\[
+\partial^\ast v=\sum_{e\in E(G)}(\partial e\cdot v)\,e .
+\]
+
+The \emph{cut lattice} and \emph{flow lattice} of $G$ are
+\[
+\Cut(G)=\im\partial^\ast\subseteq C_1(G),
+\qquad
+\Flow(G)=\ker\partial\subseteq C_1(G).
+\]
+Since $\partial^\ast$ is the adjoint of $\partial$, these are orthogonal:
+$\Cut(G)\cdot\Flow(G)=0$ inside $C_1(G)$.  The images $\partial^\ast v$ ($v\in V(G)$) span
+$\Cut(G)$, and a direct computation gives
+\begin{equation}
+\label{eq:cob}
+\partial^\ast u\cdot\partial^\ast v=
+\begin{cases}
+d(u), & u=v,\\
+-e(u,v), & u\ne v.
+\end{cases}
+\end{equation}
+Indeed $\partial^\ast u\cdot\partial^\ast v=\sum_e(\partial e\cdot u)(\partial e\cdot v)$;
+an edge with both endpoints in $\{u,v\}$ and $u\ne v$ contributes $-1$ each, while an edge
+incident to $u=v$ contributes $+1$ each.
+
+\begin{lem}[Primitivity]
+\label{lem:primitive}
+Both $\Flow(G)$ and $\Cut(G)$ are primitive sublattices of $C_1(G)$; that is,
+$C_1(G)\cap\bigl(\Flow(G)\otimes\bQ\bigr)=\Flow(G)$ and
+$C_1(G)\cap\bigl(\Cut(G)\otimes\bQ\bigr)=\Cut(G)$.
+Consequently the restriction maps $C_1(G)\to\Flow(G)^\ast$ and $C_1(G)\to\Cut(G)^\ast$ are
+both surjective.
+\end{lem}
+
+\begin{proof}
+We may assume $G$ is connected; otherwise we argue on each connected component, over which
+the chain complex splits orthogonally.
+
+\emph{Flow.}  If $x\in C_1(G)$ and $nx\in\Flow(G)$ for some integer $n\ne 0$, then
+$n\,\partial x=\partial(nx)=0$ in the torsion-free group $C_0(G)$, so $\partial x=0$ and
+$x\in\Flow(G)$.  Thus $\Flow(G)$ is primitive.
+
+\emph{Cut.}  We must show $C_1(G)\cap(\Cut(G)\otimes\bQ)=\Cut(G)$, equivalently that the
+quotient $C_1(G)/\Cut(G)$ is torsion-free.  We analyze $\partial^\ast:C_0(G)\to C_1(G)$.
+For connected $G$,
+\[
+\ker\partial^\ast=\{y\in C_0(G):\partial^\ast y=0\}
+=\{y:\,y\cdot\partial w=0\ \forall w\}=(\im\partial)^\perp\cap C_0(G)=\bZ\,\mathbf 1,
+\]
+where $\mathbf 1=\sum_{v\in V(G)}v$: indeed $\partial^\ast y\cdot e=y\cdot\partial e$ for all
+$e$, so $\partial^\ast y=0$ iff $y$ is orthogonal to $\im\partial$, and for connected $G$ the
+orthogonal complement of $\im\partial$ in $C_0(G)\otimes\bQ$ is the line through $\mathbf 1$;
+intersecting with $C_0(G)$ gives $\bZ\mathbf 1$ since $\mathbf 1$ is a primitive vector of
+$C_0(G)=\bZ^{V(G)}$.  Hence $\partial^\ast$ factors as an injection
+\[
+\overline{\partial^\ast}:\ \overline C:=C_0(G)/\bZ\mathbf 1\ \hookrightarrow\ C_1(G),
+\qquad \im\overline{\partial^\ast}=\Cut(G),
+\]
+and $\overline C$ is a free $\bZ$-module of rank $|V(G)|-1$.
+
+Now $\Cut(G)$ is primitive in $C_1(G)$ iff $\cok\overline{\partial^\ast}=C_1(G)/\Cut(G)$ is
+torsion-free, iff every invariant factor (Smith normal form entry) of $\overline{\partial^\ast}$
+equals $1$.  Passing to transposes (adjoints) does not change invariant factors, so it
+suffices to show that the adjoint
+\[
+\overline\partial:\ C_1(G)\longrightarrow \overline C^\ast,
+\qquad \overline\partial=(\overline{\partial^\ast})^\ast,
+\]
+is \emph{surjective}.  Under the identification $C_0(G)$ self-dual, $\overline C^\ast$ is the
+sublattice $(\bZ\mathbf 1)^\perp\cap C_0(G)=\ker\varepsilon$, where
+$\varepsilon:C_0(G)\to\bZ$ is the augmentation $\varepsilon(\sum a_v v)=\sum a_v$; and under
+this identification $\overline\partial$ is simply $\partial:C_1(G)\to\ker\varepsilon$.  But
+$\partial$ \emph{is} surjective onto $\ker\varepsilon$: for connected $G$, the boundaries of
+edges of any spanning tree, $\{\partial f\}$, are exactly the differences $v-v_0$ of
+vertices, which generate $\ker\varepsilon$ over $\bZ$.  Therefore all invariant factors of
+$\overline{\partial^\ast}$ equal $1$, $C_1(G)/\Cut(G)$ is torsion-free, and $\Cut(G)$ is
+primitive.
+
+\emph{Surjectivity of restriction.}  If $L'\subseteq M$ is a primitive sublattice of a
+\emph{self-dual} lattice $M$, then a $\bZ$-basis of $L'$ extends to a $\bZ$-basis of $M$; the
+dual basis of $M^\ast=M$ restricts to the dual basis of $(L')^\ast$, so the restriction map
+$M=M^\ast\to(L')^\ast$ is surjective.  Since $C_1(G)$ is self-dual and $\Cut(G),\Flow(G)$ are
+primitive, both restriction maps surject.
+\end{proof}
+
+\begin{rem}
+\label{rem:proj}
+We caution that, although each of $\Cut(G)$ and $\Flow(G)$ is primitive, the orthogonal
+direct sum $\Cut(G)\oplus\Flow(G)$ is in general only a \emph{finite-index} sublattice of
+$C_1(G)$ (the quotient is the critical/sandpile group).  We never use
+$\Cut\oplus\Flow=C_1(G)$.  All that is needed below is the surjectivity of
+$C_1(G)\twoheadrightarrow\Cut(G)^\ast$ from Lemma~\ref{lem:primitive}, together with the
+orthogonality $\Cut(G)\perp\Flow(G)$.  For $x\in C_1(G)$ we write $x_C$ and $x_F$ for the
+\emph{rational} orthogonal projections of $x$ onto $\Cut(G)\otimes\bQ$ and
+$\Flow(G)\otimes\bQ$; then $x=x_C+x_F$ with $x_C\in\Cut(G)^\ast$ and $x_F\in\Flow(G)^\ast$
+(the projection of an integral vector to the dual of a primitive sublattice of a self-dual
+lattice is the restriction functional, which is integral on that sublattice).
+\end{rem}
+
+\section{The projection length formula}
+\label{sec:length}
+
+Let $G$ be a connected graph with a fixed orientation.  For an ordered partition $(A,B)$ of
+$V(G)$ define the \emph{cut vector}
+\[
+\chi_{A,B}=\sum_{e\in E(A,B)}\varepsilon_{A,B,e}\,e\in C_1(G),
+\qquad
+\varepsilon_{A,B,e}=\begin{cases}+1,&e\text{ oriented }A\to B,\\-1,&e\text{ oriented }B\to A,\end{cases}
+\]
+where $E(A,B)$ is the set of edges with one endpoint in each part.  Then
+$\chi_{A,B}=-\chi_{B,A}$, and, comparing coefficients edge by edge (edges internal to $A$
+appear with opposite signs in the two terms of $\partial^\ast$ and cancel, while a cut edge
+survives with the correct sign),
+\begin{equation}
+\label{eq:chi}
+\chi_{A,B}=-\sum_{v\in A}\partial^\ast v\ \in\ \Cut(G).
+\end{equation}
+
+A \emph{two-component spanning forest} of $G$ is an unordered pair $\{A,B\}$ of vertex-disjoint
+subtrees of $G$ that together contain every vertex of $G$ (equivalently, a spanning forest
+with exactly two tree components).  For $x=\sum_e x_e e\in C_1(G;\bR)$ define its
+\emph{square-flux} on $\{A,B\}$ by
+\begin{equation}
+\label{eq:flux}
+\cF_{\{A,B\}}(x)=(\chi_{A,B}\cdot x)^2
+=\sum_{e\in E(A,B)}x_e^2+\sum_{\substack{e,e'\in E(A,B)\\ e\ne e'}}\varepsilon_{A,B,e}\varepsilon_{A,B,e'}x_ex_{e'} .
+\end{equation}
+(The right-hand side is well defined: $E(A,B)$ depends only on the unordered pair, and the
+products $\varepsilon_{A,B,e}\varepsilon_{A,B,e'}$ are insensitive to swapping $A$ and $B$.)
+
+\begin{lem}
+\label{lem:length}
+Let $G$ be a connected graph and $x\in C_1(G)$, with orthogonal decomposition
+$x=x_C+x_F$, $x_C\in\Cut(G)^\ast$, $x_F\in\Flow(G)^\ast$.  Then
+\[
+\norm{x_C}=\frac1\tau\sum_{\{A,B\}}\cF_{\{A,B\}}(x),
+\]
+the sum being over all two-component spanning forests of $G$ and $\tau$ the number of
+spanning trees of $G$.
+\end{lem}
+
+\begin{proof}
+A \emph{connected spanning unicyclic subgraph} $R$ is a connected spanning subgraph
+containing a unique cycle $C_R$; deleting any edge of $C_R$ yields a spanning tree.  Choose
+signs $\delta_{R,e}\in\{\pm1\}$ ($e\in C_R$) so that
+$\omega_R=\sum_{e\in C_R}\delta_{R,e}e$ satisfies $\partial\omega_R=0$; then
+$\omega_R\in\Flow(G)$ and it is unique up to sign.  Define the \emph{circulation}
+\begin{equation}
+\label{eq:circ}
+\cC_R(x)=(\omega_R\cdot x)^2
+=\sum_{e\in C_R}x_e^2+\sum_{\substack{e,e'\in C_R\\ e\ne e'}}\delta_{R,e}\delta_{R,e'}x_ex_{e'} .
+\end{equation}
+
+We record three bijections.
+\begin{enumerate}[(a)]
+\item For a fixed edge $e$, two-component spanning forests $\{A,B\}$ with $e\in E(A,B)$
+correspond to spanning trees containing $e$ (add $e$ back to join the two components).
+\item Connected spanning unicyclic subgraphs $R$ with $e\in C_R$ correspond to spanning
+trees \emph{not} containing $e$ (the unique cycle is created by adding $e$ to a spanning
+tree of $G$ avoiding $e$).
+\item For distinct edges $e,e'$, two-component spanning forests $\{A,B\}$ with
+$e,e'\in E(A,B)$ correspond to connected spanning unicyclic subgraphs $R$ with
+$e,e'\in C_R$, via $R\mapsto R-\{e,e'\}$.  Under this correspondence
+$\varepsilon_{A,B,e}\varepsilon_{A,B,e'}=-\delta_{R,e}\delta_{R,e'}$: deleting $e$ and $e'$
+from the cycle $C_R$ splits $V(G)$ into $A\sqcup B$, and traversing $C_R$ consistently the
+two edges cross the cut in opposite senses relative to $\omega_R$.
+\end{enumerate}
+
+Sum \eqref{eq:flux} over all two-component spanning forests and \eqref{eq:circ} over all
+connected spanning unicyclic subgraphs.  The diagonal terms $x_e^2$: by (a) the coefficient
+of $x_e^2$ from the flux sum is the number of spanning trees containing $e$, and by (b) the
+coefficient from the circulation sum is the number of spanning trees not containing $e$;
+together $\tau$.  The cross terms $x_ex_{e'}$ ($e\ne e'$): by (c) each forest with
+$e,e'\in E(A,B)$ is matched with a unicyclic $R$ with $e,e'\in C_R$ and the signs cancel,
+so the total coefficient of $x_ex_{e'}$ is $0$.  Hence
+\begin{equation}
+\label{eq:full}
+\sum_{\{A,B\}}\cF_{\{A,B\}}(x)+\sum_{R}\cC_R(x)=\tau\sum_e x_e^2=\tau\,\norm{x}.
+\end{equation}
+
+Now apply \eqref{eq:full} to $x_C$.  Since $x_C\perp\Flow(G)$ and $\omega_R\in\Flow(G)$, we
+have $\cC_R(x_C)=(\omega_R\cdot x_C)^2=0$ for every $R$, so
+$\tau\norm{x_C}=\sum_{\{A,B\}}\cF_{\{A,B\}}(x_C)$.  Finally $\chi_{A,B}\in\Cut(G)$ and
+$x_F\perp\Cut(G)$ give $\chi_{A,B}\cdot x=\chi_{A,B}\cdot x_C$, whence
+$\cF_{\{A,B\}}(x)=\cF_{\{A,B\}}(x_C)$ for every $\{A,B\}$.  Combining the last two
+identities yields the claim.
+\end{proof}
+
+\section{Apex trees}
+\label{sec:apex}
+
+For a weighted tree $T$, the vertex set $V$ is a $\bZ$-basis of $L(T)$; let $V^\ast$ be the
+dual basis of $L(T)^\ast$ and $v^\ast$ the dual of $v$.
+
+\begin{lem}
+\label{lem:apex}
+Let $T$ be a weighted tree with no bad vertices, and let $v\in V$ satisfy $w(v)>d(v)$.  If
+$a\in L(T)^\ast$ satisfies $a\cdot v\ne 0$, then $\norm a\ge\norm{v^\ast}$.
+\end{lem}
+
+\begin{proof}
+\emph{The apex graph.}  Form the graph $G$ by adjoining to $T$ a single \emph{apex} vertex
+$v_\infty$ joined to each $u\in V$ by exactly $w(u)-d(u)\ge0$ parallel edges (no edges where
+$w(u)=d(u)$).  In $G$ every original vertex $u$ has degree
+$d_G(u)=d(u)+(w(u)-d(u))=w(u)$, and by \eqref{eq:cob} the map $u\mapsto\partial^\ast u$ is an
+isometry from $L(T)$ onto $\Cut(G)$: diagonal entries become $d_G(u)=w(u)$ and off-diagonal
+entries $-e_G(u,u')=-1$ exactly when $(u,u')\in E(T)$ (there are no $T$-edges to $v_\infty$).
+Thus
+\[
+L(T)\xrightarrow{\ \sim\ }\Cut(G),\qquad u\mapsto\partial^\ast u,
+\]
+and dually $L(T)^\ast\cong\Cut(G)^\ast$.  Because $w(v)>d(v)$ there is at least one edge $e$
+joining $v$ to $v_\infty$.  Note $G$ is connected (it is a tree with extra apex edges, and
+since $T$ is connected so is $G$).
+
+\emph{Self-pairing of $v^\ast$.}  We claim that under
+$L(T)^\ast\cong\Cut(G)^\ast$, the projection $e_C\in\Cut(G)^\ast$ of the basis edge
+$e\in C_1(G)$ corresponds to $v^\ast$.  Indeed, for any $u\in V$,
+\[
+e_C\cdot\partial^\ast u=e\cdot\partial^\ast u
+=e\cdot\sum_{f}(\partial f\cdot u)f=\partial e\cdot u,
+\]
+where the first equality holds because $e_C-e=-e_F\in\Flow(G)\otimes\bQ$ is orthogonal to
+$\partial^\ast u\in\Cut(G)$.  Since $e$ joins $v$ to $v_\infty$, $\partial e=\pm(v-v_\infty)$,
+and as $v_\infty\notin V$ we get $\partial e\cdot u=\pm\delta_{u,v}$.  After fixing the
+orientation of $e$ so that the sign is $+$, this says $e_C\cdot\partial^\ast u=\delta_{u,v}$
+for all $u\in V$, i.e. $e_C=v^\ast$.
+
+Now compute $\norm{v^\ast}=\norm{e_C}$ by Lemma~\ref{lem:length} applied to $x=e$.  Here
+$x_e=1$ at the single edge $e$ and $0$ elsewhere, so by \eqref{eq:flux}
+\[
+\cF_{\{A,B\}}(e)=
+\begin{cases}1,& e\in E(A,B),\\0,&\text{otherwise.}\end{cases}
+\]
+By bijection (a) of Lemma~\ref{lem:length}, the number of two-component spanning forests with
+$e\in E(A,B)$ equals the number $\tau_e$ of spanning trees of $G$ containing $e$.  Therefore
+\begin{equation}
+\label{eq:vstar}
+\norm{v^\ast}=\frac{\tau_e}{\tau},
+\end{equation}
+where $\tau$ is the number of spanning trees of $G$.
+
+\emph{The inequality.}  Take $a\in L(T)^\ast$ with $a\cdot v\ne0$, and let
+$x_C\in\Cut(G)^\ast$ be its image under $L(T)^\ast\cong\Cut(G)^\ast$.  By the surjectivity in
+Lemma~\ref{lem:primitive} there is $x\in C_1(G)$ projecting to $x_C$, i.e.
+$x=x_C+x_F$.  We claim there are at least $\tau_e$ two-component spanning forests $\{A,B\}$
+with $\cF_{\{A,B\}}(x)\ne0$; granting this, Lemma~\ref{lem:length} gives
+\[
+\norm a=\norm{x_C}=\frac1\tau\sum_{\{A,B\}}\cF_{\{A,B\}}(x)
+\ \ge\ \frac{\tau_e}{\tau}=\norm{v^\ast},
+\]
+each nonzero square-flux being a positive integer (it equals $(\chi_{A,B}\cdot x)^2$ with
+$\chi_{A,B}\cdot x\in\bZ$).
+
+To prove the claim we build an injection $\phi$ from
+$\{\text{spanning trees of }G\text{ containing }e\}$ into
+$\{\text{two-component spanning forests }\{A,B\}:\cF_{\{A,B\}}(x)\ne0\}$.
+First note
+\[
+\chi_{V(G)\setminus\{v\},\,v}\cdot x
+=-\partial^\ast v\cdot x \qquad(\text{by }\eqref{eq:chi}\text{ with }A=V(G)\setminus\{v\})
+=-\partial^\ast v\cdot x_C=-v\cdot a=\mp\,a\cdot v\ne0,
+\]
+using $\partial^\ast v\in\Cut(G)$, $x_F\perp\Cut(G)$, and the isometry
+$\partial^\ast v\leftrightarrow v$.  (The single edges meeting $v$ are accounted for in
+$\partial^\ast v$; the sign is immaterial.)
+
+Let $R$ be a spanning tree of $G$ with $e\in R$.  Let $R_1,\dots,R_k$ be the connected
+components of $R-v$ (the graph $R$ with $v$ and its incident edges removed).  For each $j$,
+$\{R_j,\,R-R_j\}$ is the two-component spanning forest obtained by deleting from $R$ the
+unique edge joining $v$ to $R_j$; these are exactly the forests obtained from $R$ by deleting
+one edge at $v$.  Each vertex of $G-v$ lies in exactly one $R_j$, so \eqref{eq:chi} gives the
+identity of cut vectors
+\[
+\chi_{V(G)\setminus\{v\},\,v}=\sum_{j=1}^k\chi_{R_j,\,R-R_j}.
+\]
+Pairing with $x$ and using that the left side pairs nontrivially with $x$, there is an index
+$\ell$ with $\chi_{R_\ell,R-R_\ell}\cdot x\ne0$, i.e.
+$\cF_{\{R_\ell,R-R_\ell\}}(x)\ne0$.  Set $\phi(R)=\{R_\ell,R-R_\ell\}$.
+
+\emph{Injectivity of $\phi$.}  We recover $R$ from $\{A,B\}:=\phi(R)$, knowing only that
+$\{A,B\}$ arises from a spanning tree containing $e$ by deleting an edge incident to $v$.  If
+neither $A$ nor $B$ contains $e$, then $e$ is the deleted edge, so $R=A\cup B\cup\{e\}$.
+Otherwise $e$ lies in one part, say $A$; then $A$ contains both endpoints $v,v_\infty$ of
+$e$, so $v\in A$ and $B$ is a subtree of $T$ not containing $v$.  Since $T$ is a tree, there
+is a \emph{unique} edge $f$ of $T$ joining $v$ to a vertex of $B$, and $R=A\cup B\cup\{f\}$.
+In either case $R$ is determined by $\{A,B\}$, so $\phi$ is injective.  This proves the claim,
+and the lemma.
+\end{proof}
+
+\begin{cor}
+\label{cor:apex}
+Under the hypotheses of Lemma~\ref{lem:apex}, $v^\ast\in L(T)^\ast$ is irreducible.
+\end{cor}
+
+\begin{proof}
+Suppose $v^\ast=a+b$ with $a,b\in L(T)^\ast$ nonzero.  Then
+$1=v^\ast\cdot v=a\cdot v+b\cdot v$, so some summand, say $a$, has $a\cdot v\ne0$.  By
+Lemma~\ref{lem:apex}, $\norm a\ge\norm{v^\ast}$, while $\norm b>0$ since $b\ne0$ and the form
+is positive definite.  Then
+\[
+\norm{v^\ast}=\norm{a+b}=\norm a+2(a\cdot b)+\norm b>\norm{v^\ast}+2(a\cdot b),
+\]
+forcing $a\cdot b<0$.  Hence $v^\ast$ is irreducible.
+\end{proof}
+
+\begin{cor}
+\label{cor:tight}
+Under the hypotheses of Lemma~\ref{lem:apex}, $0<\norm{v^\ast}\le1$, and if $\norm{v^\ast}=1$
+then either $w(v)=1$ or $T$ has a leaf $u\ne v$ with $w(u)=1$.
+\end{cor}
+
+\begin{proof}
+By \eqref{eq:vstar}, $\norm{v^\ast}=\tau_e/\tau$ with $0<\tau_e\le\tau$, so
+$0<\norm{v^\ast}\le1$.  Moreover $\norm{v^\ast}=1\iff\tau_e=\tau\iff$ every spanning tree of
+$G$ uses $e\iff e$ is a cut-edge (bridge) of $G$.  Since $G$ is $T$ together with apex edges,
+$e$ (joining $v$ to $v_\infty$) is a bridge iff it is the \emph{only} apex edge of $G$, i.e.
+$w(v)=d(v)+1$ and $w(u)=d(u)$ for every $u\ne v$.  If $V=\{v\}$ then $d(v)=0$ and
+$w(v)=1$.  Otherwise $T$ has a leaf $u\ne v$ (a tree on $\ge2$ vertices has $\ge2$ leaves),
+and for it $w(u)=d(u)=1$.
+\end{proof}
+
+\section{Reducible vertices}
+\label{sec:reducible}
+
+Let $T$ be a weighted tree with $L(T)$ positive definite, fix $v\in V$, and let
+$T_1,\dots,T_k$ be the components of $T-v$.  For each $i$ let $v_i\in T_i$ be the (unique)
+neighbour of $v$ in $T$.  Let $\lambda_i\in L(T_i)^\ast$ be the dual of $v_i$ with respect to
+the vertex basis $V(T_i)$.  Via $L(T_i)^\ast\subset L(T_i)\otimes\bQ\subset L(T)\otimes\bQ$
+we regard $\lambda_i\in L(T)\otimes\bQ$.
+
+Set $L_1=L(T_1)\oplus\cdots\oplus L(T_k)\subset L(T)$; it is primitive, as the basis
+$V\setminus\{v\}$ of $L_1$ extends to the basis $V$ of $L(T)$.  Its rational orthogonal
+complement $L_1^\perp\subset L(T)\otimes\bQ$ is $1$-dimensional.  Let
+$\pi:L(T)\to L_1^\perp$ be orthogonal projection and $L_0=\pi(L(T))$, a rank-$1$ rational
+lattice.  Then $L(T)\subset L_0\oplus L_1^\ast=L_0\oplus L(T_1)^\ast\oplus\cdots\oplus
+L(T_k)^\ast$ (orthogonal direct sum over $\bQ$).
+
+\begin{lem}
+\label{lem:irred}
+$\pi(v)$ is irreducible in $L_0$.
+\end{lem}
+
+\begin{proof}
+Every vertex of $T$ other than $v$ lies in some $L(T_i)\subset L_1=\ker\pi$, so projects to
+$0$.  Hence $\pi(v)=\pi(\sum_{u}c_uu)$-type combinations show $\pi(v)$ generates the rank-$1$
+lattice $L_0=\pi(L(T))$ (it is the image of the basis vector $v$, and all other basis vectors
+die).  A generator of a rank-$1$ positive definite lattice is irreducible: if
+$\pi(v)=p+q$ with $p,q$ nonzero and proportional, then $p=su,\ q=tu$ for a generator $u$ and
+nonzero integers $s,t$ with $s+t=\pm1$, whence $s,t$ have opposite signs and
+$p\cdot q=st\norm u<0$.
+\end{proof}
+
+\begin{lem}
+\label{lem:dichotomy}
+If $v$ is reducible in $L(T)$, then for some $i$ either
+\textup{(i)} $\lambda_i$ is reducible in $L(T_i)^\ast$, or \textup{(ii)} $\lambda_i\in L(T_i)$.
+\end{lem}
+
+\begin{proof}
+For $u\in V(T_i)$ we have $v\cdot u=-1$ if $u=v_i$ and $0$ otherwise; hence the orthogonal
+projection of $v$ to $L(T_i)^\ast$ is $-\lambda_i$, and
+\begin{equation}
+\label{eq:vdecomp}
+v=\pi(v)-\lambda_1-\cdots-\lambda_k
+\end{equation}
+is the orthogonal decomposition of $v$ in $L_0\oplus L(T_1)^\ast\oplus\cdots\oplus
+L(T_k)^\ast$.
+
+Suppose $v=x+y$ with $x,y\in L(T)$ nonzero and $x\cdot y\ge0$.  Decompose orthogonally
+$x=\bar x+x_1+\cdots+x_k$ and $y=\bar y+y_1+\cdots+y_k$ with $\bar x,\bar y\in L_0$ and
+$x_i,y_i\in L(T_i)^\ast$.  Comparing with \eqref{eq:vdecomp}, $\bar x+\bar y=\pi(v)$ and
+$x_i+y_i=-\lambda_i$ for all $i$.  By Lemma~\ref{lem:irred}, $\pi(v)$ is irreducible in
+$L_0$, so $\bar x\cdot\bar y\le0$, with equality only if $\bar x=0$ or $\bar y=0$.  Since
+\[
+0\le x\cdot y=\bar x\cdot\bar y+\sum_{i=1}^k x_i\cdot y_i,
+\]
+either $\bar x\cdot\bar y<0$ — in which case some $x_i\cdot y_i>0$, so the decomposition
+$-\lambda_i=x_i+y_i$ exhibits $\lambda_i$ (equivalently $-\lambda_i$) as reducible in
+$L(T_i)^\ast$, giving (i) — or else $\bar x\cdot\bar y=0$ and every $x_i\cdot y_i=0$.
+
+In the latter case, equality in $\bar x\cdot\bar y\le0$ forces $\{\bar x,\bar
+y\}=\{0,\pi(v)\}$, and $x_i\cdot y_i=0$ with $x_i+y_i=-\lambda_i$ irreducible (if it were
+reducible we are in case (i)); thus $\{x_i,y_i\}=\{0,-\lambda_i\}$ for each $i$.  Assume
+w.l.o.g. $\bar x=0$.  Then
+\[
+x=-\sum_{i\in A}\lambda_i\quad\text{for some }A\subseteq\{1,\dots,k\},\qquad A\ne\emptyset
+\]
+(as $x\ne0$).  Now $x\in L(T)$ and $x\in L_1\otimes\bQ$ (each $\lambda_i\in L(T_i)\otimes\bQ
+\subseteq L_1\otimes\bQ$); since $L_1$ is primitive in $L(T)$, in fact $x\in L_1=
+\bigoplus_iL(T_i)$.  As the $\lambda_i$ lie in pairwise orthogonal summands, this forces
+$\lambda_i\in L(T_i)$ for every $i\in A\ne\emptyset$, which is (ii).
+\end{proof}
+
+\section{Proof of the theorem}
+\label{sec:finale}
+
+\begin{proof}[Proof of Theorem~\ref{thm:one_bad_vtx}]
+Let $v$ be the unique bad vertex of $T$.  Define $T_1,\dots,T_k$, $v_i$, $\lambda_i$ as in
+\S\ref{sec:reducible}.
+
+Fix $i$.  Every vertex $u$ of $T_i$ is distinct from $v$ (the unique bad vertex), so $u$ is
+not bad in $T$, i.e. $w(u)\ge d_T(u)$.  Removing $v$ from $T$ lowers the degree of $v_i$ by
+$1$ and leaves the degree of every other vertex of $T_i$ unchanged; hence
+$d_{T_i}(u)\le d_T(u)\le w(u)$ for all $u\in T_i$, so \emph{$T_i$ has no bad vertex}.
+Moreover $d_{T_i}(v_i)=d_T(v_i)-1$, and since $v_i\ne v$ is not bad we get
+\[
+w(v_i)\ge d_T(v_i)=d_{T_i}(v_i)+1>d_{T_i}(v_i),
+\]
+so $T_i$ and the vertex $v_i$ satisfy the hypotheses of Lemma~\ref{lem:apex}.  Since
+$\lambda_i$ is precisely the dual basis vector $v_i^\ast\in L(T_i)^\ast$,
+Corollary~\ref{cor:apex} shows that $\lambda_i$ is irreducible in $L(T_i)^\ast$ for every
+$i$.
+
+\emph{Case 1: $\lambda_i\notin L(T_i)$ for all $i$.}  Since no $\lambda_i$ is reducible (just
+shown) and no $\lambda_i$ lies in $L(T_i)$, Lemma~\ref{lem:dichotomy} (contrapositive) shows
+$v$ is \emph{irreducible} in $L(T)$.  Then $v$ itself is the required irreducible vertex.
+
+\emph{Case 2: $\lambda_i\in L(T_i)$ for some $i$.}  Then $\norm{\lambda_i}\in\bZ$.  By
+Corollary~\ref{cor:tight} applied to $T_i$ and $v_i$ (whose hypotheses we verified above, and
+noting $\lambda_i=v_i^\ast$ in $L(T_i)^\ast$ so $\norm{\lambda_i}=\norm{v_i^\ast}$), we have
+$0<\norm{\lambda_i}\le1$; integrality forces $\norm{\lambda_i}=1$, and then either
+$w(v_i)=1$ or $T_i$ has a leaf $u\ne v_i$ with $w(u)=1$.
+
+If $w(v_i)=1$: then $d_{T_i}(v_i)\le w(v_i)=1$, and since $v_i$ has a neighbour in $T_i$
+(unless $T_i=\{v_i\}$) we examine its degree in $T$.  In $T$, $v_i$ is adjacent to $v$, so
+$d_T(v_i)=d_{T_i}(v_i)+1$.  As $v_i$ is not bad, $w(v_i)\ge d_T(v_i)=d_{T_i}(v_i)+1$, i.e.
+$1\ge d_{T_i}(v_i)+1$, forcing $d_{T_i}(v_i)=0$.  Hence $T_i=\{v_i\}$ and $v_i$ is a leaf of
+$T$ (its only $T$-neighbour is $v$) with $w(v_i)=1$.
+
+If instead $T_i$ has a leaf $u\ne v_i$ with $w(u)=1$: a leaf of $T_i$ different from $v_i$ has
+the same neighbourhood in $T$ as in $T_i$ (only $v_i$ is affected by removing $v$), so $u$ is
+also a leaf of $T$, with $w(u)=1$.
+
+In either subcase, $T$ contains a leaf $u$ with $w(u)=1$, i.e. $\norm u=w(u)=1$.  Such $u$ has
+minimal nonzero self-pairing in the positive definite integral lattice $L(T)$, hence is
+irreducible: if $u=a+b$ with $a,b$ nonzero then $\norm a,\norm b\ge1$ and
+$1=\norm u=\norm a+2(a\cdot b)+\norm b\ge2+2(a\cdot b)$, giving $a\cdot b\le-\tfrac12<0$.
+
+In all cases $L(T)$ contains an irreducible vertex element, completing the proof.
+\end{proof}
+
+\begin{rem}[Sharpness]
+The conclusion cannot be strengthened to ``the bad vertex is irreducible.''  Let $T$ be the
+star with centre $v$ ($d(v)=3$, $w(v)=2$) and three leaves of weights $1,2,3$.  Then $v$ is
+the unique bad vertex, $L(T)$ is positive definite of determinant $1$ (indeed isometric to
+$\bZ^4$ with the standard form), yet $v=(-u_1)+(v+u_1)$, where $u_1$ is the weight-$1$ leaf,
+realizes $v$ as reducible (the two summands pair to $0$).  Consistently with the theorem, the
+weight-$1$ leaf $u_1$ is irreducible.
+\end{rem}

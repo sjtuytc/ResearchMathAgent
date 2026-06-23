@@ -1,0 +1,422 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{remark}{Remark}
+
+\DeclareMathOperator{\tr}{tr}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\norm}[1]{\left\lVert #1\right\rVert}
+
+\begin{document}
+
+\title{A globally convergent BFGS variant for nonconvex objectives}
+\maketitle
+
+\section{Answer and construction}
+
+\textbf{The answer is yes.} We exhibit an explicit variant of the BFGS
+quasi-Newton method --- the \emph{cautious BFGS (CBFGS) method} of Li and
+Fukushima --- which, under the stated regularity assumptions (twice continuous
+differentiability, lower boundedness, Lipschitz continuous gradient on the
+initial level set) and \emph{without any convexity assumption}, satisfies the
+global convergence property
+\[
+   \liminf_{k\to\infty}\norm{g(x_k)}=0 .
+\]
+The only modification of the textbook scheme is in the update of the matrix
+$B_k$: the rank-two BFGS correction is applied only when the curvature pair
+$(s_k,y_k)$ satisfies a quantitative ``cautious'' inequality; otherwise the
+matrix is left unchanged. The iteration $x_{k+1}=x_k+\alpha_k d_k$,
+$d_k=-B_k^{-1}g(x_k)$, and the weak Wolfe--Powell (WWP) line search are kept
+exactly as in the problem statement.
+
+\begin{algorithm}[h]
+\caption{Cautious BFGS (CBFGS) method}
+\label{alg:cbfgs}
+\begin{algorithmic}[1]
+  \Require Starting point $x_0\in\R^n$; symmetric positive definite
+           $B_0\in\R^{n\times n}$; Wolfe constants $0<\delta<\sigma<1$;
+           cautious parameters $\varepsilon>0$ and $\rho>0$.
+  \Ensure A sequence $\{x_k\}$ with $\liminf_k\norm{g(x_k)}=0$.
+  \State $k\gets0$
+  \While{$g(x_k)\neq0$}
+    \State $d_k\gets -B_k^{-1}g(x_k)$ \Comment{search direction}
+    \State choose $\alpha_k>0$ satisfying the WWP conditions \eqref{eq:armijo}--\eqref{eq:curv}
+    \State $x_{k+1}\gets x_k+\alpha_k d_k$
+    \State $s_k\gets x_{k+1}-x_k$,\quad $y_k\gets g(x_{k+1})-g(x_k)$
+    \If{$\dfrac{y_k^\top s_k}{\norm{s_k}^2}\ \ge\ \varepsilon\,\norm{g(x_k)}^{\rho}$}
+        \Comment{cautious test}
+       \State $B_{k+1}\gets B_k-\dfrac{B_k s_k s_k^\top B_k}{s_k^\top B_k s_k}
+                                 +\dfrac{y_k y_k^\top}{y_k^\top s_k}$
+    \Else
+       \State $B_{k+1}\gets B_k$ \Comment{skip the update}
+    \EndIf
+    \State $k\gets k+1$
+  \EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+Throughout, $g=\nabla f$, $\norm{\cdot}$ is the Euclidean norm, and $\tr$,
+$\det$ denote trace and determinant. The line search
+\eqref{eq:armijo}--\eqref{eq:curv} is the WWP search of the problem:
+\begin{align}
+   f(x_k+\alpha_k d_k) &\le f(x_k)+\delta\,\alpha_k\, g(x_k)^\top d_k, \label{eq:armijo}\\
+   g(x_k+\alpha_k d_k)^\top d_k &\ge \sigma\, g(x_k)^\top d_k. \label{eq:curv}
+\end{align}
+
+\begin{remark}
+If $g(x_k)=0$ for some finite $k$, the conclusion holds trivially; we therefore
+assume henceforth that $g(x_k)\neq0$ for all $k$, so the algorithm produces an
+infinite sequence.
+\end{remark}
+
+\section{Standing assumptions and basic facts}
+
+\begin{assumption}\label{ass:f}
+$f\colon\R^n\to\R$ is twice continuously differentiable and bounded below, say
+$f(x)\ge f_*$ for all $x$. The initial sublevel set
+$\Omega=\{x : f(x)\le f(x_0)\}$ is such that $g=\nabla f$ is Lipschitz
+continuous on an open neighbourhood of $\Omega$ with constant $L>0$:
+\[
+   \norm{g(u)-g(v)}\le L\norm{u-v}\qquad\text{for all }u,v\in\Omega .
+\]
+\end{assumption}
+
+By the Armijo condition \eqref{eq:armijo} and $g(x_k)^\top d_k<0$
+(Lemma~\ref{lem:spd}), the sequence $\{f(x_k)\}$ is non-increasing; hence every
+iterate $x_k$ lies in $\Omega$. The segment $[x_k,x_{k+1}]$ joins two points of
+$\Omega$, on which the Lipschitz bound applies. We fix the cautious constants
+$\varepsilon>0$, $\rho>0$ once and for all.
+
+\begin{lemma}[Positive definiteness is preserved]\label{lem:spd}
+Every $B_k$ produced by Algorithm~\ref{alg:cbfgs} is symmetric positive
+definite. Consequently $d_k=-B_k^{-1}g(x_k)$ is well defined and
+$g(x_k)^\top d_k=-g(x_k)^\top B_k^{-1}g(x_k)<0$, so $d_k$ is a descent
+direction.
+\end{lemma}
+
+\begin{proof}
+$B_0$ is symmetric positive definite by hypothesis. Suppose $B_k$ is symmetric
+positive definite. If the cautious test fails, $B_{k+1}=B_k$ is again symmetric
+positive definite. If it holds, then in particular
+\[
+   y_k^\top s_k\ge\varepsilon\,\norm{g(x_k)}^{\rho}\,\norm{s_k}^2>0,
+\]
+because $g(x_k)\neq0$ and $s_k=\alpha_k d_k\neq0$ ($\alpha_k>0$,
+$d_k=-B_k^{-1}g(x_k)\neq0$). For symmetric positive definite $B_k$ and a pair
+with $y_k^\top s_k>0$, the BFGS update is symmetric positive definite: for any
+$z\neq0$, with $a=B_k^{1/2}z$, $b=B_k^{1/2}s_k$,
+\[
+   z^\top\!\Big(B_k-\frac{B_k s_k s_k^\top B_k}{s_k^\top B_k s_k}\Big)z
+   =\norm{a}^2-\frac{(a^\top b)^2}{\norm{b}^2}\ge0
+\]
+by Cauchy--Schwarz, with equality iff $z\parallel s_k$; and
+$z^\top\frac{y_k y_k^\top}{y_k^\top s_k}z=\frac{(y_k^\top z)^2}{y_k^\top s_k}\ge0$.
+Hence $z^\top B_{k+1}z\ge0$, with equality only if $z\parallel s_k$ and
+$y_k^\top z=0$; but for $z=ts_k$ ($t\neq0$) the second term equals
+$t^2y_k^\top s_k>0$. Thus $z^\top B_{k+1}z>0$ for all $z\neq0$. Symmetry is
+clear. The descent property follows from $g(x_k)^\top B_k^{-1}g(x_k)>0$.
+\end{proof}
+
+\begin{lemma}[Existence of a WWP step]\label{lem:descent}
+For each $k$ there exists $\alpha_k>0$ satisfying both WWP conditions.
+\end{lemma}
+
+\begin{proof}
+Let $\phi(\alpha)=f(x_k+\alpha d_k)$, a $C^1$ function bounded below (since $f$
+is bounded below) with $\phi'(0)=g(x_k)^\top d_k<0$ by Lemma~\ref{lem:spd}.
+Define the Armijo line $\ell(\alpha)=\phi(0)+\delta\alpha\phi'(0)$. Since
+$\delta<1$, $\phi(\alpha)<\ell(\alpha)$ for small $\alpha>0$; since $\phi$ is
+bounded below and $\ell(\alpha)\to-\infty$, the set
+$\{\alpha>0:\phi(\alpha)=\ell(\alpha)\}$ is nonempty. Let $\bar\alpha$ be its
+infimum, so $\bar\alpha>0$, $\phi(\bar\alpha)=\ell(\bar\alpha)$, and
+$\phi(\alpha)\le\ell(\alpha)$ for $\alpha\in(0,\bar\alpha]$ (Armijo holds on
+$(0,\bar\alpha]$). By the mean value theorem there is
+$\alpha_k\in(0,\bar\alpha)$ with
+$\phi'(\alpha_k)=\dfrac{\phi(\bar\alpha)-\phi(0)}{\bar\alpha}=\delta\phi'(0)$.
+At this $\alpha_k$: Armijo \eqref{eq:armijo} holds (as $\alpha_k<\bar\alpha$),
+and the curvature condition \eqref{eq:curv} holds because
+$\phi'(\alpha_k)=\delta\phi'(0)\ge\sigma\phi'(0)$, the inequality following from
+$\delta<\sigma$ and $\phi'(0)<0$.
+\end{proof}
+
+\section{The Zoutendijk condition}
+
+Define
+\[
+   \cos\theta_k=\frac{-g(x_k)^\top d_k}{\norm{g(x_k)}\,\norm{d_k}}>0 .
+\]
+
+\begin{lemma}[Zoutendijk]\label{lem:zoutendijk}
+Under Assumption~\ref{ass:f} and the WWP line search,
+$\sum_{k=0}^\infty\cos^2\theta_k\,\norm{g(x_k)}^2<\infty$. In particular
+$\cos^2\theta_k\,\norm{g(x_k)}^2\to0$.
+\end{lemma}
+
+\begin{proof}
+From \eqref{eq:curv},
+$(g(x_{k+1})-g(x_k))^\top d_k\ge(\sigma-1)g(x_k)^\top d_k>0$. By Lipschitz
+continuity and $x_{k+1}-x_k=\alpha_k d_k$,
+\[
+   (g(x_{k+1})-g(x_k))^\top d_k\le\norm{g(x_{k+1})-g(x_k)}\norm{d_k}
+   \le L\alpha_k\norm{d_k}^2 .
+\]
+Hence $\alpha_k\ge\dfrac{1-\sigma}{L}\cdot\dfrac{-g(x_k)^\top d_k}{\norm{d_k}^2}$.
+Substituting into \eqref{eq:armijo} (multiplying the lower bound on $\alpha_k$ by
+$\delta g(x_k)^\top d_k<0$ reverses the inequality),
+\[
+   f(x_{k+1})\le f(x_k)-\frac{\delta(1-\sigma)}{L}\,
+   \frac{(g(x_k)^\top d_k)^2}{\norm{d_k}^2}
+   = f(x_k)-c\,\cos^2\theta_k\,\norm{g(x_k)}^2,
+\]
+with $c=\delta(1-\sigma)/L>0$ and using
+$(g(x_k)^\top d_k)^2/\norm{d_k}^2=\cos^2\theta_k\norm{g(x_k)}^2$. Summing and
+using $f\ge f_*$ gives
+$c\sum_{k=0}^m\cos^2\theta_k\norm{g(x_k)}^2\le f(x_0)-f_*$; let $m\to\infty$.
+\end{proof}
+
+\section{Trace--determinant potential and the main estimate}
+
+For a symmetric positive definite matrix $B$ define the Byrd--Nocedal potential
+\begin{equation}\label{eq:psi}
+   \psi(B)=\tr(B)-\ln\det(B).
+\end{equation}
+If $\lambda_1,\dots,\lambda_n>0$ are the eigenvalues of $B$, then
+$\psi(B)=\sum_{i}(\lambda_i-\ln\lambda_i)\ge n$, since $t-\ln t\ge1$ for all
+$t>0$. Thus
+\begin{equation}\label{eq:psi-pos}
+   \psi(B)\ge n>0 \quad\text{for every symmetric positive definite }B.
+\end{equation}
+
+For a step on which the update is performed, set (all positive when $B_k$ is
+symmetric positive definite and $y_k^\top s_k>0$)
+\begin{equation}\label{eq:scalars}
+   q_k = \frac{s_k^\top B_k s_k}{\norm{s_k}^2},\qquad
+   M_k = \frac{\norm{y_k}^2}{y_k^\top s_k},\qquad
+   t_k = \frac{y_k^\top s_k}{\norm{s_k}^2},
+\end{equation}
+and recall
+\begin{equation}\label{eq:cos-id}
+   \cos^2\theta_k=\frac{(s_k^\top B_k s_k)^2}
+                       {\norm{s_k}^2\,(s_k^\top B_k^2 s_k)} .
+\end{equation}
+Equation \eqref{eq:cos-id} holds because $g(x_k)=-B_k d_k$ gives
+$-g(x_k)^\top d_k=d_k^\top B_k d_k$ and $\norm{g(x_k)}^2=d_k^\top B_k^2 d_k$, so
+$\cos^2\theta_k=(d_k^\top B_k d_k)^2/\big((d_k^\top B_k^2 d_k)\norm{d_k}^2\big)$;
+substituting $d_k=s_k/\alpha_k$ leaves this ratio invariant and yields
+\eqref{eq:cos-id}.
+
+\begin{lemma}[Potential recursion]\label{lem:psi-rec}
+On a step where the BFGS update is performed,
+\begin{equation}\label{eq:psi-exact}
+   \psi(B_{k+1})=\psi(B_k)
+   +\big(M_k-1-\ln t_k\big)
+   +\Big(1-\frac{q_k}{\cos^2\theta_k}+\ln\frac{q_k}{\cos^2\theta_k}\Big)
+   +\ln\cos^2\theta_k .
+\end{equation}
+On a skipped step $\psi(B_{k+1})=\psi(B_k)$.
+\end{lemma}
+
+\begin{proof}
+The BFGS update obeys the standard trace and determinant identities
+\begin{equation}\label{eq:tr-det}
+   \tr(B_{k+1})=\tr(B_k)-\frac{\norm{B_k s_k}^2}{s_k^\top B_k s_k}
+                          +\frac{\norm{y_k}^2}{y_k^\top s_k},
+   \qquad
+   \det(B_{k+1})=\det(B_k)\,\frac{y_k^\top s_k}{s_k^\top B_k s_k}.
+\end{equation}
+The first follows from linearity of trace and $\tr(uu^\top)=\norm{u}^2$ applied
+to the two rank-one terms. The second is the classical rank-two determinant
+update formula for BFGS (e.g. via the matrix determinant lemma:
+$\det(B_{k+1})/\det(B_k)=(y_k^\top s_k)/(s_k^\top B_k s_k)$). Therefore
+\[
+   \psi(B_{k+1})-\psi(B_k)
+   =-\frac{\norm{B_k s_k}^2}{s_k^\top B_k s_k}+\frac{\norm{y_k}^2}{y_k^\top s_k}
+   -\ln\frac{y_k^\top s_k}{s_k^\top B_k s_k}.
+\]
+From \eqref{eq:cos-id}, $s_k^\top B_k^2 s_k=q_k^2\norm{s_k}^2/\cos^2\theta_k$,
+hence
+\[
+   \frac{\norm{B_k s_k}^2}{s_k^\top B_k s_k}
+   =\frac{s_k^\top B_k^2 s_k}{s_k^\top B_k s_k}
+   =\frac{q_k^2\norm{s_k}^2/\cos^2\theta_k}{q_k\norm{s_k}^2}
+   =\frac{q_k}{\cos^2\theta_k}.
+\]
+Also $\norm{y_k}^2/(y_k^\top s_k)=M_k$ and
+$(y_k^\top s_k)/(s_k^\top B_k s_k)=t_k/q_k$. Thus
+\[
+   \psi(B_{k+1})-\psi(B_k)
+   =M_k-\frac{q_k}{\cos^2\theta_k}-\ln\frac{t_k}{q_k}
+   =M_k-\frac{q_k}{\cos^2\theta_k}-\ln t_k+\ln q_k .
+\]
+Adding and subtracting $1$ and $\ln\cos^2\theta_k$:
+\[
+   M_k-\frac{q_k}{\cos^2\theta_k}-\ln t_k+\ln q_k
+   =(M_k-1-\ln t_k)
+    +\Big(1-\tfrac{q_k}{\cos^2\theta_k}+\ln\tfrac{q_k}{\cos^2\theta_k}\Big)
+    +\ln\cos^2\theta_k,
+\]
+which is \eqref{eq:psi-exact}; the right side expands to
+$M_k-1-\ln t_k+1-\tfrac{q_k}{\cos^2\theta_k}+\ln q_k-\ln\cos^2\theta_k
++\ln\cos^2\theta_k=M_k-\tfrac{q_k}{\cos^2\theta_k}-\ln t_k+\ln q_k$, matching the
+preceding line. On a skipped step $B_{k+1}=B_k$, so $\psi$ is unchanged.
+\end{proof}
+
+Two of the three correction terms in \eqref{eq:psi-exact} have a fixed sign:
+\begin{equation}\label{eq:term2}
+   1-\frac{q_k}{\cos^2\theta_k}+\ln\frac{q_k}{\cos^2\theta_k}\le0
+   \qquad(\text{since }1-t+\ln t\le0\text{ for all }t>0),
+\end{equation}
+and the term $\ln\cos^2\theta_k\le0$ (since $\cos^2\theta_k\le1$). The remaining
+term $M_k-1-\ln t_k$ will be bounded above using the cautious test.
+
+\section{Global convergence}
+
+\begin{theorem}\label{thm:main}
+Under Assumption~\ref{ass:f}, the cautious BFGS method
+(Algorithm~\ref{alg:cbfgs}) with any symmetric positive definite $B_0$,
+constants $0<\delta<\sigma<1$, $\varepsilon>0$, $\rho>0$, generates iterates
+satisfying
+\[
+   \liminf_{k\to\infty}\norm{g(x_k)}=0 .
+\]
+\end{theorem}
+
+\begin{proof}
+Suppose, for contradiction, that there exist $\gamma_0>0$ and $k_0\in\N$ with
+\begin{equation}\label{eq:contra}
+   \norm{g(x_k)}\ge\gamma_0\qquad\text{for all }k\ge k_0 .
+\end{equation}
+We derive a contradiction with Lemma~\ref{lem:zoutendijk}.
+
+\medskip\noindent\textbf{Step 1: curvature bounds on updated steps.}
+Let $\mathcal{U}=\{k\ge k_0:\text{the cautious test holds at step }k\}$. For
+$k\in\mathcal{U}$, the cautious test together with \eqref{eq:contra} gives
+$t_k=y_k^\top s_k/\norm{s_k}^2\ge\varepsilon\norm{g(x_k)}^\rho
+\ge\varepsilon\gamma_0^\rho=:m_1>0$, while Lipschitz continuity
+$\norm{y_k}\le L\norm{s_k}$ gives
+$M_k=\norm{y_k}^2/(y_k^\top s_k)\le L^2\norm{s_k}^2/(m_1\norm{s_k}^2)
+=L^2/m_1=:M_*$. Hence, for every $k\in\mathcal{U}$,
+\begin{equation}\label{eq:term-bound}
+   M_k-1-\ln t_k\le M_*-1-\ln m_1=:C_1 ,
+\end{equation}
+a finite constant independent of $k$ (using $M_k\le M_*$ and $-\ln t_k\le-\ln m_1$).
+
+\medskip\noindent\textbf{Step 2: infinitely many updates occur.}
+Suppose, to the contrary, that only finitely many updates are performed. Then
+$B_k\equiv B$ (a fixed symmetric positive definite matrix) for all large $k$,
+with eigenvalues in $[\mu,\Lambda]$, $0<\mu\le\Lambda$. For any
+$v=g(x_k)\neq0$, since $B^{-1}$ is symmetric positive definite with eigenvalues
+in $[\Lambda^{-1},\mu^{-1}]$,
+\[
+   \cos\theta_k=\frac{v^\top B^{-1}v}{\norm{v}\,\norm{B^{-1}v}}
+   \ge\frac{\Lambda^{-1}\norm{v}^2}{\norm{v}\cdot\mu^{-1}\norm{v}}
+   =\frac{\mu}{\Lambda}=:\kappa>0 ,
+\]
+using $v^\top B^{-1}v\ge\Lambda^{-1}\norm{v}^2$ and
+$\norm{B^{-1}v}\le\mu^{-1}\norm{v}$. Then for all large $k$, by
+\eqref{eq:contra}, $\cos^2\theta_k\norm{g(x_k)}^2\ge\kappa^2\gamma_0^2>0$,
+contradicting Lemma~\ref{lem:zoutendijk}. Hence $\mathcal{U}$ is infinite.
+
+\medskip\noindent\textbf{Step 3: a lower bound on the accumulated
+$-\ln\cos^2\theta_k$.}
+Let $p_m=\#(\mathcal{U}\cap[k_0,m))$; by Step~2, $p_m\to\infty$. Summing the
+exact recursion \eqref{eq:psi-exact} over $k=k_0,\dots,m-1$ (skipped steps
+contribute $0$) yields
+\[
+   \psi(B_m)=\psi(B_{k_0})
+   +\!\!\sum_{k\in\mathcal{U}\cap[k_0,m)}\!\!
+   \Big[(M_k-1-\ln t_k)
+   +\big(1-\tfrac{q_k}{\cos^2\theta_k}+\ln\tfrac{q_k}{\cos^2\theta_k}\big)
+   +\ln\cos^2\theta_k\Big].
+\]
+Using \eqref{eq:psi-pos} ($\psi(B_m)\ge n>0$), the bound \eqref{eq:term-bound}
+($M_k-1-\ln t_k\le C_1$), and \eqref{eq:term2} (the middle bracket is $\le0$),
+\[
+   0<n\le\psi(B_m)\le\psi(B_{k_0})+C_1\,p_m
+   +\!\!\sum_{k\in\mathcal{U}\cap[k_0,m)}\!\!\ln\cos^2\theta_k ,
+\]
+hence, rearranging and discarding $-n\le0$,
+\begin{equation}\label{eq:key}
+   \sum_{k\in\mathcal{U}\cap[k_0,m)}\big(-\ln\cos^2\theta_k\big)
+   \;\le\;\psi(B_{k_0})+C_1\,p_m .
+\end{equation}
+
+\medskip\noindent\textbf{Step 4: a positive fraction of updated steps have
+$\cos\theta_k$ bounded below.}
+Each term $-\ln\cos^2\theta_k\ge0$. By \eqref{eq:key}, for all $m$ large enough
+that $\psi(B_{k_0})\le C_1 p_m$,
+\[
+   \sum_{k\in\mathcal{U}\cap[k_0,m)}(-\ln\cos^2\theta_k)\le 2C_1\,p_m .
+\]
+Put $C_2=2C_1$. By Markov's inequality applied to the nonnegative numbers
+$\{-\ln\cos^2\theta_k\}_{k\in\mathcal{U}\cap[k_0,m)}$ with threshold $2C_2$,
+\[
+   \#\{k\in\mathcal{U}\cap[k_0,m):-\ln\cos^2\theta_k>2C_2\}
+   \le\frac{1}{2C_2}\sum_{k\in\mathcal{U}\cap[k_0,m)}(-\ln\cos^2\theta_k)
+   \le\frac{C_2\,p_m}{2C_2}=\frac{p_m}{2}.
+\]
+Therefore at least $p_m/2$ indices $k\in\mathcal{U}\cap[k_0,m)$ satisfy
+$-\ln\cos^2\theta_k\le2C_2$, i.e.
+\begin{equation}\label{eq:cos-low}
+   \cos^2\theta_k\ge e^{-2C_2}=:\kappa_0^2>0 .
+\end{equation}
+Let $\mathcal{G}=\{k\in\mathcal{U}:\cos^2\theta_k\ge\kappa_0^2\}$. Since for all
+large $m$ at least $p_m/2$ elements of $\mathcal{U}\cap[k_0,m)$ lie in
+$\mathcal{G}$, and $p_m\to\infty$, the set $\mathcal{G}$ is infinite.
+
+\medskip\noindent\textbf{Step 5: contradiction.} For every $k\in\mathcal{G}$, by
+\eqref{eq:contra} and \eqref{eq:cos-low},
+\[
+   \cos^2\theta_k\,\norm{g(x_k)}^2\ge\kappa_0^2\,\gamma_0^2>0 .
+\]
+As $\mathcal{G}$ is infinite, the sequence $\cos^2\theta_k\norm{g(x_k)}^2$ does
+not converge to $0$, contradicting Lemma~\ref{lem:zoutendijk}.
+
+This contradiction refutes \eqref{eq:contra}. Hence no $\gamma_0>0$ and $k_0$
+exist with $\norm{g(x_k)}\ge\gamma_0$ for all $k\ge k_0$; equivalently
+$\liminf_{k\to\infty}\norm{g(x_k)}=0$.
+\end{proof}
+
+\begin{remark}[Where convexity would have been used, and why it is not needed]
+Convexity is never invoked. Curvature information enters only in Step~1, where
+the cautious test supplies the uniform lower bound $t_k\ge m_1>0$ on updated
+steps and the Lipschitz constant supplies $M_k\le M_*$; together these bound the
+only potentially-positive term $M_k-1-\ln t_k\le C_1$ in the potential
+recursion. For \emph{standard} BFGS on nonconvex $f$ the ratios
+$y_k^\top s_k/\norm{s_k}^2$ may approach $0$, so $M_k$ can be unbounded and the
+bound \eqref{eq:term-bound} fails; this is exactly the mechanism behind the known
+nonconvergence counterexamples. The cautious test discards precisely those
+updates, while Step~2 guarantees infinitely many updates still occur, so the
+eigenvalue spread of $B_k$ cannot blow up and $\cos\theta_k$ stays bounded away
+from $0$ on an infinite subsequence.
+\end{remark}
+
+\begin{remark}[On $\rho$ and on the stronger conclusion]
+The proof uses only $\rho>0$ and $\norm{g(x_k)}\ge\gamma_0$ on the contradiction
+branch, via $\norm{g(x_k)}^\rho\ge\gamma_0^\rho$; any $\rho>0$ suffices for the
+$\liminf$ statement. The stronger statement $\lim_{k}\norm{g(x_k)}=0$ requires
+additional structural assumptions (e.g. uniform convexity of $f$) and is neither
+claimed nor needed to answer the question posed.
+\end{remark}
+
+\section*{Conclusion}
+
+The cautious BFGS method of Algorithm~\ref{alg:cbfgs} is an explicit BFGS
+variant which, under twice continuous differentiability, lower boundedness, and
+Lipschitz continuity of the gradient on the initial level set --- with \emph{no}
+convexity assumption --- provably satisfies
+$\liminf_{k\to\infty}\norm{g(x_k)}=0$ (Theorem~\ref{thm:main}). This answers the
+question in the affirmative.
+
+\end{document}

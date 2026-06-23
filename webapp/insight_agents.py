@@ -242,11 +242,17 @@ def _gather_dataset_context(repo_root: Path, slug: str) -> str:
 def _gather_question_context(repo_root: Path, qid: str, dataset: str) -> str:
     lines: list[str] = [f"# Question Context: {qid} (dataset={dataset})\n"]
 
-    # Problem statement (first 500 chars of tex)
-    prob_tex = repo_root / "problems" / f"{qid}.tex"
-    if prob_tex.is_file():
+    # Problem statement — search problems/<qid>.tex then the dataset store
+    # (fp2 / RM14k problems have no problems/<qid>.tex; without this every
+    # non-fp1 question insight was generated with no statement → identical).
+    try:
+        from .dataset_store import find_problem_tex
+        stmt = find_problem_tex(repo_root, qid, dataset)
+    except Exception:
+        stmt = ""
+    if stmt.strip():
         lines.append("## Problem Statement (excerpt)")
-        lines.append(prob_tex.read_text(encoding="utf-8", errors="replace")[:600])
+        lines.append(stmt[:600])
 
     # Issues
     try:
@@ -263,10 +269,10 @@ def _gather_question_context(repo_root: Path, qid: str, dataset: str) -> str:
     except Exception:
         pass
 
-    # Best proof status
+    # Best proof status (dataset-aware — fp2/RM14k live under their own dataset)
     try:
         from .proofs import get_best_proof
-        best = get_best_proof(qid)
+        best = get_best_proof(qid, dataset)
         if best:
             vflag = "verified ✓" if best.get("verification_passed") else f"{best.get('issue_count','?')} open issues"
             lines.append(f"\n## Best Proof\nStatus: {vflag}\nModel: {best.get('model','?')}\nExperiment: {best.get('experiment','?')}")
@@ -393,17 +399,19 @@ def run_all_insights(repo_root: Path) -> dict:
             log.warning(f"[insight] dataset {slug} failed: {e}")
             results.append({"level": "dataset", "id": slug, "ok": False, "error": str(e)})
 
-    # Questions — only first_proof_1 q1-q10
-    for i in range(1, 11):
-        qid = f"q{i}"
-        if not (repo_root / "problems" / f"{qid}.tex").is_file():
-            continue
-        try:
-            generate_question_insight(repo_root, qid, "first_proof_1")
-            results.append({"level": "question", "id": qid, "ok": True})
-        except Exception as e:
-            log.warning(f"[insight] question {qid} failed: {e}")
-            results.append({"level": "question", "id": qid, "ok": False, "error": str(e)})
+    # Questions — first_proof_1 (q1-q10) and first_proof_2 (prob-01..10)
+    question_sets = [
+        ("first_proof_1", [f"q{i}" for i in range(1, 11)]),
+        ("first_proof_2", [f"prob-{i:02d}" for i in range(1, 11)]),
+    ]
+    for ds, qids in question_sets:
+        for qid in qids:
+            try:
+                generate_question_insight(repo_root, qid, ds)
+                results.append({"level": "question", "id": f"{ds}/{qid}", "ok": True})
+            except Exception as e:
+                log.warning(f"[insight] question {ds}/{qid} failed: {e}")
+                results.append({"level": "question", "id": f"{ds}/{qid}", "ok": False, "error": str(e)})
 
     ok = sum(1 for r in results if r.get("ok"))
     log.info(f"[insight] all done: {ok}/{len(results)} succeeded")

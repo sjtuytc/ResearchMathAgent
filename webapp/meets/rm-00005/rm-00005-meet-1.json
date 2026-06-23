@@ -1,0 +1,151 @@
+{
+  "id": "rm-00005-meet-1",
+  "problem_id": "rm-00005",
+  "topic": "Init rm-00005 — proof review",
+  "goal": "Review the proof and issues for rm-00005; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T06:08:02Z",
+  "messages": [
+    {
+      "id": "m911305a5",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-00005 — proof review**",
+      "created_at": "2026-06-23T06:08:02Z"
+    },
+    {
+      "id": "m944bdd83",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "I have to be honest with the room: this problem is way outside my wheelhouse. The statement is a number-theoretic question — find all $(x,y,p)$ with $x^2 - 2 = y^p$, $p \\geq 3$ prime — and my entire toolkit is spectral graph theory, Laplacians, effective resistances, and interlacing families. There's no graph here, no quadratic form $x^T L x$ to minimize, no eigenvalues to track. The \"$\\varepsilon$-light subset\" material in my notes is simply not relevant to a Diophantine equation; someone has mismatched my background with this problem.\n\nThat said, let me say what little I can see structurally. The equation $x^2 - 2 = y^p$ lives in $\\mathbb{Z}[\\sqrt{2}]$, where it factors as $(x-\\sqrt{2})(x+\\sqrt{2}) = y^p$. The ring $\\mathbb{Z}[\\sqrt{2}]$ is a PID with fundamental unit $1+\\sqrt{2}$, so the natural approach is to argue the two factors are coprime (their gcd divides $2\\sqrt{2}$) and hence each is a unit times a $p$-th power. That's a classical descent, the kind of thing Bugeaud, Mignotte, and Siksek handle with Baker's linear forms in logarithms plus modular/Frey-curve methods.\n\nSo my honest recommendation as an action item: this needs an algebraic number theorist or someone fluent in Lehmer-sequence / primitive-divisor arguments, not a spectral graph theorist. If the goal is genuinely $x^2-2=y^p$, I can contribute critical reading and a demand for explicit, verifiable steps — that's my instinct, \"give me the algorithm, not just existence\" — but I cannot drive the mathematics here. What does the rest of the room have for the descent in $\\mathbb{Z}[\\sqrt 2]$?",
+      "created_at": "2026-06-23T06:08:12Z"
+    },
+    {
+      "id": "m0b27c953",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is right that this is number theory, not graph theory — my notes on $\\varepsilon$-light subsets and the $\\theta$-function have been mismatched to the problem. Let me be honest in the same spirit: my expertise here is also limited, but the LLL algorithm — the *lattice* one, with Lenstra and Lenstra — does have a genuine, if auxiliary, role in these Diophantine arguments, so let me say where.\n\nThe descent Dan sketched is correct. In $\\mathbb{Z}[\\sqrt 2]$, which is a PID with fundamental unit $\\varepsilon_0 = 1+\\sqrt 2$, one checks $\\gcd(x-\\sqrt2, x+\\sqrt2) \\mid 2\\sqrt2$. When $x$ is odd the factors are coprime up to units, so\n$$ x+\\sqrt 2 = \\varepsilon_0^{\\,j}\\,\\big(a+b\\sqrt2\\big)^p, \\qquad j \\in \\{0,1,\\dots,p-1\\}. $$\nAbsorbing $p$-th powers of the unit, one reduces to $j \\in \\{0,1\\}$. Expanding and comparing the coefficient of $\\sqrt2$ gives a *Thue-type* equation in $(a,b)$ for each residue $j$ and each $p$ — a binary form of degree $p$ equal to a constant.\n\nNow two complementary engines finish it:\n\n1. **Baker / linear forms in logarithms** (Bugeaud–Mignotte–Siksek style) bound $p$ effectively. This produces a large but explicit upper bound $p \\le p_0$.\n\n2. **For each remaining $p \\le p_0$**, one must actually *solve* the Thue equation. This is precisely where lattice reduction enters: the standard Thue-equation solvers (de Weger, Tzanakis–de Weger) reduce the huge Baker bound to a feasible search by applying the $L^3$ algorithm to a lattice built from the logarithmic embeddings. So my own work is not irrelevant — it is the computational hammer at step 2, not the conceptual driver.\n\nA structural remark I'd insist on, echoing my \"what is the extremal example\" instinct: small cases are revealing. $y=-1$ gives $x^2=1$, i.e. $x=\\pm1$, the trivial family. We should also check $y=2$: $x^2 = 2^p+2 = 2(2^{p-1}+1)$, forcing $2 \\mid x$, then $2 \\| $ the product unless $p=1$ — quickly excluded. The conjecture that *only* $y=-1$ survives smells right, but I want the room to produce the explicit Thue forms for $j=0,1$ and confirm the primitive-divisor (Bilu–Hanrot–Voutier) argument actually kills the associated Lehmer sequence. That theorem on primitive divisors of Lehmer sequences is, I suspect, the cleanest route — it often removes the need for case-by-case Thue solving entirely. Can someone write down the Lehmer pair attached to $(1+\\sqrt2)$ here so we see whether BHV applies directly?",
+      "created_at": "2026-06-23T06:08:59Z"
+    },
+    {
+      "id": "mc531e3e7",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and Laszlo have the descent right, and Laszlo's instinct to go for Bilu–Hanrot–Voutier is the correct one. Let me push for the *real* theorem behind this, and compute the first case by hand the way I always do.\n\nSet $\\varepsilon = 1+\\sqrt2$, $\\bar\\varepsilon = 1-\\sqrt2$, with norm $\\varepsilon\\bar\\varepsilon = -1$. For $x$ odd we get $x+\\sqrt2 = \\pm\\varepsilon^{\\,j}(a+b\\sqrt2)^p$. Now here is the key point I want the room to internalize: this is *exactly* a Lehmer/Lucas sequence question. Take the pair $(\\alpha,\\beta) = (1+\\sqrt2, 1-\\sqrt2)$. These give a Lucas sequence\n$$ u_n = \\frac{\\alpha^n - \\beta^n}{\\alpha - \\beta} = \\frac{\\varepsilon^n - \\bar\\varepsilon^n}{2\\sqrt2}, $$\nthe Pell numbers. The equation $x^2 - 2 = y^p$ is, after the descent, the statement that a certain term of a Lucas/Lehmer sequence is a perfect $p$-th power, and the Bilu–Hanrot–Voutier theorem on primitive divisors says that for $n > 30$ every term has a primitive prime divisor — which *immediately* obstructs being a pure $p$-th power. So BHV is not merely a tool here; it is morally the whole theorem, and it reduces us to finitely many explicit small $n$. That's far cleaner than grinding Thue equations for each $p \\le p_0$.\n\nBut let me insist on the explicit small cases, because that is where the actual content lives. We have $x^2 = y^p + 2$. The trivial $y=-1$ gives $x=\\pm1$. Now check whether $x$ must be odd: if $x$ even then $x^2-2 \\equiv 2 \\pmod 4$, so $y^p \\equiv 2 \\pmod 4$, forcing $y$ even and then $4 \\mid y^p$ for $p\\ge 2$ — contradiction. **So $x$ is always odd, $y$ always odd.** Good — that means the two factors $(x\\pm\\sqrt2)$ have gcd dividing $2\\sqrt2$ but, being of odd norm $y^p$, are genuinely coprime, and the unit absorption gives $j\\in\\{0,1\\}$ cleanly. So the clean dichotomy Laszlo wanted is forced, not assumed.\n\nOne caution, Laszlo — the BHV reduction handles $|y|>1$ once we phrase it as a primitive-divisor statement, but we must verify the *defective* Lehmer pairs in their tables. The pair $(1+\\sqrt2,1-\\sqrt2)$ has discriminant $8$; I'd want someone to confirm it is not one of the finitely many exceptional pairs (the $n=5,7,13$ sporadic cases). My bet: it isn't, and the only survivor is $y=-1$. So the action items are: (1) write the two binary forms for $j=0,1$ explicitly; (2) identify the Lehmer pair and check it against the BHV exceptional list; (3) sweep the small $n \\le 30$ by hand. That's a finite, verifiable program — exactly the \"give me the algorithm\" standard Dan demands.",
+      "created_at": "2026-06-23T06:09:45Z"
+    },
+    {
+      "id": "mb895315f",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, this is exactly the kind of finite, verifiable program I can get behind — you've turned an existence-flavored Diophantine question into a checkable algorithm, and that's the standard I always demand. Let me push on the constructiveness of step (2), because \"check it against the BHV exceptional list\" needs to be made fully explicit, not waved at.\n\nA few concrete points:\n\n1. **Pin down which sequence term we're claiming is a $p$-th power.** The descent gives $x+\\sqrt2 = \\pm\\varepsilon^j(a+b\\sqrt2)^p$. Comparing the $\\sqrt2$-coefficients, the $j=0$ branch forces the *coefficient of $\\sqrt2$ to vanish in $\\varepsilon^0(a+b\\sqrt2)^p$ except for the $x$-part* — so we get one Thue-type form, and the $j=1$ branch another. I'd like someone to literally write $\\Im_{\\sqrt2}\\big(\\varepsilon(a+b\\sqrt2)^p\\big) = 1$ and $\\Im_{\\sqrt2}\\big((a+b\\sqrt2)^p\\big) = 1$ as polynomial identities in $(a,b)$. That tells us exactly *which* index $n$ and which Lehmer pair we feed to BHV. Right now it's being asserted that it's the Pell sequence at the right index; I want it on the page.\n\n2. **The exceptional pairs.** BHV's exceptional list is finite and explicit (their Table 1/Table 2 for $n \\le 30$). The pair $(1+\\sqrt2, 1-\\sqrt2)$ has $(P,Q)=(2,-1)$ in the standard normalization, discriminant $8$. This is the *Pell* pair, one of the most studied; I'm confident it is not sporadic, but confidence isn't a proof. The action item is trivial to discharge: read off the rows of the BHV table with $D=8$ and confirm none match. That's a lookup, and we should do it rather than assume it.\n\n3. **The small-$n$ sweep, $n \\le 30$.** This is genuinely finite and I'd insist we just compute it. For Pell numbers $P_n = 0,1,2,5,12,29,70,169,\\dots$, the question \"is $P_n$ (or the relevant term) a perfect $p$-th power for some $p\\ge3$\" is a direct check term-by-term. $P_2=2, P_3=5, P_4=12, P_5=29, P_6=70$ — none are nontrivial perfect powers. This is the part where I want no Baker-bound hand-waving: it's literally a table of 30 integers tested for perfect-power-ness.\n\nSo I fully endorse Peter's three action items, and I'll volunteer to be the person who *audits* steps (2) and (3) for explicitness — the BHV table lookup and the $n\\le30$ sweep are exactly the kind of finite, checkable computation I trust. My one structural caution: make sure the unit-absorption argument that reduces $j$ to $\\{0,1\\}$ is airtight, because that's where a hidden case could leak. Peter showed $x,y$ are forced odd, which gives genuine coprimality of the factors — good — but I want the step \"$\\varepsilon^j = \\varepsilon^{j \\bmod p}\\cdot(\\text{$p$-th power unit})$, hence absorb into $(a+b\\sqrt2)^p$, hence $j\\in\\{0,\\dots,p-1\\}$ and then $j\\in\\{0,1\\}$ by a sign/norm argument\" written with the norm condition $N(a+",
+      "created_at": "2026-06-23T06:12:09Z"
+    },
+    {
+      "id": "m056ba90e",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Let me discharge the explicit computation Dan is asking for, because the unit-absorption step has a subtlety that I want pinned down precisely — it is exactly where a case can leak.\n\nWrite $x+\\sqrt2 = \\varepsilon^{j}(a+b\\sqrt2)^p$ with $\\varepsilon = 1+\\sqrt2$. Taking norms: $N(x+\\sqrt2) = x^2 - 2 = y^p$, and $N(\\varepsilon) = -1$, so $N(a+b\\sqrt2)^p = a^2-2b^2$ raised to the $p$ must equal $\\pm y^p$. Now the reduction $j \\in \\{0,1\\}$: since $p$ is odd, $\\gcd(p,1)=1$, and for any $j$ we can write $j = pm + r$ with $r\\in\\{0,\\dots,p-1\\}$, absorbing $\\varepsilon^{pm}=(\\varepsilon^m)^p$ into the $p$-th power. To get $r\\in\\{0,1\\}$ we use that $\\varepsilon^2 = 3+2\\sqrt2$ — there is **no** further free absorption; the genuine reduction is $r \\in \\{0,1,\\dots,p-1\\}$, and we then note $\\varepsilon^{p-r}$ symmetry under $\\varepsilon \\mapsto -\\bar\\varepsilon^{-1}$. Peter, I want to flag: the clean dichotomy $j\\in\\{0,1\\}$ is *not* automatic from $\\gcd(p,1)=1$ alone; it follows because conjugating $x+\\sqrt2 \\mapsto x-\\sqrt2$ swaps $j \\leftrightarrow -j$ and $N(\\varepsilon)=-1$ ties the two, so the orbit collapses. Let us write that conjugation argument on the page rather than assert it.\n\nNow the explicit forms. With $j=0$: comparing coefficients of $\\sqrt2$ in $(a+b\\sqrt2)^p = x + \\sqrt2$ gives\n$$\\sum_{2k+1 \\le p} \\binom{p}{2k+1} a^{p-2k-1} b^{2k+1} 2^k = 1.$$\nFor $j=1$, multiply by $1+\\sqrt2$ first; the $\\sqrt2$-coefficient identity becomes\n$$\\sum_{2k+1\\le p}\\binom{p}{2k+1}a^{p-2k-1}b^{2k+1}2^k + \\sum_{2k\\le p}\\binom{p}{2k}a^{p-2k}b^{2k}2^k = 1.$$\nThese are the two Thue forms of degree $p$. In the BHV/Lehmer language, the left sides are precisely $\\pm u_p$-type expressions for the Lucas pair $(\\alpha,\\beta)=(a\\pm b\\sqrt2)$ — and the constraint that they equal $\\pm1$ forces, by primitive divisors, that the corresponding sequence term has **no** primitive prime divisor, which BHV forbids for $p > 30$.\n\nI endorse Dan auditing the lookup and the sweep. One sharpening I'd insist on, in my \"what is the extremal structure\" spirit: the relevant index fed to BHV is $n=p$ itself, not a fixed Pell index — the Lehmer pair is $(a+b\\sqrt2, a-b\\sqrt2)$ with $a,b$ *unknown*, so the BHV statement we invoke is \"for $p>30$, $u_p$ has a primitive divisor for every nondeg",
+      "created_at": "2026-06-23T06:12:56Z"
+    },
+    {
+      "id": "me84da2fd",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Excellent — Laszlo has caught the real subtlety, and I want to amplify it because it changes *which* BHV statement we invoke. There are two genuinely different Lehmer pairs floating around and we must not conflate them:\n\n1. The **fixed** pair $(1+\\sqrt2, 1-\\sqrt2)$, the Pell pair, $(P,Q)=(2,-1)$, $D=8$. This is what generates the *units*.\n2. The **variable** pair $(a+b\\sqrt2, a-b\\sqrt2)$ with $a,b$ unknown — this is the one the Thue forms control, and as Laszlo correctly says, the index fed to BHV is $n=p$, with the pair depending on the solution.\n\nIt is the *second* pair that matters for the primitive-divisor obstruction. Let me state the mechanism cleanly. The forms Laszlo wrote are exactly $\\pm u_p(a+b\\sqrt2, a-b\\sqrt2) = 1$ (up to the unit twist in the $j=1$ case), i.e. a $p$-th term of a Lucas sequence equals $\\pm1$. But a primitive divisor of $u_p$ is a prime dividing $u_p$ but no earlier term; if $u_p = \\pm1$ it has *no* prime divisors at all, hence certainly no primitive one. BHV says: for $p > 30$, $u_p$ of any nondegenerate Lucas pair **has** a primitive divisor. Contradiction. So $p \\le 30$, and we are done with the Baker bound — no linear forms in logarithms needed, which is the clean victory I was after.\n\nNow the caveats, in order of danger:\n\n- **Degeneracy and the table lookup must be on the *variable* pair.** The BHV exceptional list is for nondegenerate pairs; we need $a^2 - 2b^2 \\ne 0$ (automatic, $\\sqrt2$ irrational) and $\\alpha/\\beta$ not a root of unity. The exceptional $n=p$ with $p$ prime, $p>5$, that survive in BHV are extremely few — for primes $p \\in \\{7,13\\}$ there are sporadic Lehmer pairs, but one checks each has a *specific* discriminant that we then test against $8b^2$. This is the lookup Dan should run, but on $(a,b)$, not on $(1+\\sqrt2)$.\n\n- **The small $p \\le 30$ are *not* a Pell-number sweep.** I want to correct the framing: for each prime $p \\in \\{3,5,7,11,13,17,19,23,29\\}$ we have a genuine Thue equation $F_p(a,b)=\\pm1$ of degree $p$, finitely many solutions each, and we solve them — here LLL/Tzanakis–de Weger genuinely earns its keep, Laszlo. The Pell table $P_n = 0,1,2,5,12,\\dots$ is a *different* sequence and testing it for perfect powers does not solve our problem. Dan, that is the one place your audit list needs amending.\n\nSo the corrected program: (1) the two forms $F_0, F_1$ are written — good; (2) recognize them as $u_p = \\pm1$ for the variable pair and invoke BHV to kill $p > 30$; (3) for the nine primes $p \\le 30$, solve $F_p(a,b) = \\pm1$ explicitly. My conjecture stands: the only survivor is $b=0$, giving $a^2 = $ trivial, $y=-1$, $x=\\pm1$. Let me bet a bottle of wine the discriminant $8b^2$",
+      "created_at": "2026-06-23T06:13:45Z"
+    },
+    {
+      "id": "me229e930",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T06:14:37Z"
+    },
+    {
+      "id": "m56a91cac",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nSolve x^2 - 2 = y^p (p≥3 prime) via descent in the PID Z[√2], reducing each solution to a degree-p Thue equation u_p(a+b√2, a-b√2) = ±1, then killing p>30 by the Bilu–Hanrot–Voutier primitive-divisor theorem and solving the finitely many remaining Thue equations, with conjectured sole solution y=-1, x=±1.",
+      "created_at": "2026-06-23T06:14:37Z"
+    }
+  ],
+  "plan": {
+    "summary": "Solve x^2 - 2 = y^p (p≥3 prime) via descent in the PID Z[√2], reducing each solution to a degree-p Thue equation u_p(a+b√2, a-b√2) = ±1, then killing p>30 by the Bilu–Hanrot–Voutier primitive-divisor theorem and solving the finitely many remaining Thue equations, with conjectured sole solution y=-1, x=±1.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish parity and coprimality of factors",
+        "body": "Show that if x is even then x^2-2 ≡ 2 (mod 4) forces y even and 4 | y^p, a contradiction; hence x and y are always odd. Conclude that in Z[√2] the factors (x-√2) and (x+√2) have gcd dividing 2√2 but, having odd norm y^p, are genuinely coprime. Record Z[√2] is a PID with fundamental unit ε=1+√2, N(ε)=-1.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Carry out the unit-absorption descent and reduce to j∈{0,1}",
+        "body": "From coprimality, write x+√2 = ±ε^j (a+b√2)^p. Absorb ε^{pm}=(ε^m)^p into the p-th power to reduce j to {0,...,p-1}. Then write out explicitly the conjugation argument x+√2 ↦ x-√2 swapping j ↔ -j combined with N(ε)=-1 to collapse the orbit to j∈{0,1}. Make the norm condition N(a+b√2)^p = ±y^p explicit. This step must be airtight, since hidden cases leak here.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Write the two explicit Thue forms for j=0 and j=1",
+        "body": "Comparing coefficients of √2, derive for j=0: Σ_{2k+1≤p} C(p,2k+1) a^{p-2k-1} b^{2k+1} 2^k = 1, and for j=1 (after multiplying by 1+√2): Σ_{2k+1≤p} C(p,2k+1) a^{p-2k-1} b^{2k+1} 2^k + Σ_{2k≤p} C(p,2k) a^{p-2k} b^{2k} 2^k = 1. Present both as degree-p binary Thue forms F_0(a,b)=±1 and F_1(a,b)=±1.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Identify the correct (variable) Lehmer pair and bound p≤30 via BHV",
+        "body": "Recognize the Thue forms as u_p(α,β)=±1 for the VARIABLE Lucas/Lehmer pair (α,β)=(a+b√2, a-b√2) with a,b unknown — NOT the fixed Pell pair (1+√2,1-√2). Verify nondegeneracy: a^2-2b^2 ≠ 0 and α/β not a root of unity. Since u_p=±1 has no prime divisors, it has no primitive divisor; invoke Bilu–Hanrot–Voutier (every term u_p of a nondegenerate Lucas pair has a primitive divisor for p>30) to obtain a contradiction, forcing p≤30.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Audit BHV exceptional-pair lookup on the variable pair",
+        "body": "Discharge the table lookup correctly: check the BHV exceptional/sporadic Lehmer pairs (notably for primes p∈{7,13}) against the discriminant of the variable pair, which is of the form 8b^2, NOT the fixed discriminant 8 of the Pell pair. Confirm explicitly that no exceptional row matches, so BHV applies without exception for all relevant p. Flag and correct any conflation of the fixed Pell pair with the variable solution pair.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Solve the nine remaining Thue equations for p≤30",
+        "body": "For each prime p∈{3,5,7,11,13,17,19,23,29}, solve the genuine degree-p Thue equations F_0(a,b)=±1 and F_1(a,b)=±1 explicitly using standard Thue-equation solvers (Tzanakis–de Weger with LLL/L^3 lattice reduction). This is NOT a Pell-number perfect-power sweep — that is a different sequence and does not resolve the problem. Enumerate all integer solutions (a,b) for each form.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify only solution is y=-1, x=±1 and assemble final proof",
+        "body": "From the Thue solutions in step 5, confirm the only surviving case is b=0 giving the trivial family y=-1, x=±1. Cross-check small cases (e.g. y=2 gives x^2=2(2^{p-1}+1) excluded by 2-adic valuation). Assemble the complete, verifiable proof: parity/coprimality → descent → Thue forms → BHV bound p≤30 → finite Thue resolution → unique solution. Ensure each step is explicit per the 'give me the algorithm' standard.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T06:14:37Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

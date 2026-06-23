@@ -1,0 +1,160 @@
+{
+  "id": "rm-09362-meet-1",
+  "problem_id": "rm-09362",
+  "topic": "Init rm-09362 — proof review",
+  "goal": "Review the proof and issues for rm-09362; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T15:43:31Z",
+  "messages": [
+    {
+      "id": "m789013af",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-09362 — proof review**",
+      "created_at": "2026-06-23T15:43:31Z"
+    },
+    {
+      "id": "m7f203da7",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Hold on — I need to flag something before we dive into proof review. The problem statement we've been handed (rm-09362) is from organizational psychology: it's about *work teams*, *psychological safety*, and *learning behavior*. This is essentially Amy Edmondson's research program, not a theorem about $\\varepsilon$-light subsets or Laplacian spectra. There's a serious mismatch between the problem statement and the toolkit I was brought in for.\n\nLet me be constructive, though, because there *is* a real modeling question here, and I think a graph-theoretic framing actually helps. Here's how I'd formalize it:\n\n1. **Model the team as a weighted graph** $G = (V, E, w)$ where vertices are members and edge weight $w_{uv}$ encodes interpersonal trust / safety between members $u$ and $v$. Then \"psychological safety\" is not a scalar — it's a structural property of this graph, and the natural measure is its **spectral gap** $\\lambda_2(L)$: a well-connected, high-trust team has a large $\\lambda_2$, meaning information and help diffuse quickly (this is exactly the random-walk mixing interpretation from my Laplacian-solver work).\n\n2. **The interaction question** — antecedent vs. mediator vs. moderator — becomes a statement about *how structural features enter the Laplacian*. Team design, coaching, composition set the edge weights $w_{uv}$ (antecedents). Psychological safety, as $\\lambda_2(L(w))$, is then a **mediator**: structure $\\to$ Laplacian $\\to$ spectral gap $\\to$ learning behavior. Learning behavior $y$ scales with the quadratic form $y \\sim \\mathbf{1}^T$-weighted diffusion, controlled by $\\lambda_2$.\n\n3. **Why not independent predictors**: because $\\lambda_2$ is a *nonlinear* function of the weights — you cannot decompose its effect additively. That's the algebraic justification for \"jointly modeled, not independent.\" The cross term is precisely the off-diagonal Laplacian structure.\n\nSo my question to the room: **what is the actual claim we're reviewing?** If there's a genuine $\\varepsilon$-light subset theorem hiding underneath — say, identifying subteams whose internal trust is low ($\\varepsilon$-light = at-risk subgroups) — then my effective-resistance greedy algorithm applies directly and I can sketch the construction. But if the deliverable is the qualitative framework as stated, we should be honest that this is a social-science modeling problem and the \"proof\" is a justification, not a derivation. Which is it?",
+      "created_at": "2026-06-23T15:43:44Z"
+    },
+    {
+      "id": "m810b0af3",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your spectral framing is elegant, and I agree the deliverable here is a *justification*, not a derivation — but I want to push on whether $\\lambda_2(L)$ alone is the right invariant. Let me offer three refinements from my own vantage point.\n\n1. **Psychological safety is not a scalar, but it may not be $\\lambda_2$ either.** The spectral gap measures *global* mixing, yet Edmondson's construct is fundamentally about *local* willingness to take risk — vertex by vertex. This is precisely the situation my $\\theta$-function was built for: $\\theta(G)$ sits sandwiched between $\\alpha(G)$ and $\\chi(\\bar G)$ and captures structure that no single linear functional sees. I'd propose modeling safety as an SDP-valued quantity, a positive semidefinite \"trust kernel\" $B \\succeq 0$ with $B_{uv}=0$ where no relationship exists. Learning behavior then lives in the geometry of the vectors $u_i$ realizing $B$ — the *angles* between members, not just a scalar gap.\n\n2. **The graphon perspective tells you what \"antecedent vs. mediator\" really means at scale.** Imagine not one team but a convergent sequence of teams $G_n \\to W$, where $W:[0,1]^2\\to[0,1]$ is the limiting trust graphon. Structural features (design, coaching, composition) are exactly the *parameters that select which graphon* you converge to. Psychological safety is then a homomorphism density — say $t(K_2, W)$ for mean trust, or $t(K_3, W)$ for *triadic* safety (mutual trust closing triangles, which is what actually licenses help-seeking). Learning behavior is another homomorphism functional $t(H, W)$. The mediation claim becomes: structure $\\mapsto W \\mapsto t(\\cdot, W)$, and these densities are *nonlinearly coupled* — exactly your point about non-additivity, now made rigorous via the Counting Lemma in the cut metric.\n\n3. **The interaction is a moderation, and the Local Lemma names the threshold.** Here is where I'd part slightly from a pure mediation story. Learning behavior emerges only when *no* member is locally isolated in trust — every member must have enough safe neighbors to risk speaking. That is a constraint-satisfaction problem: let $A_v$ be the \"bad event\" that member $v$ lacks sufficient safe ties. If each member's risk depends on at most $d$ others and each bad event has probability $\\le p$, then by the LLL ($ep(d+1)\\le 1$) a globally safe configuration *exists* — and below threshold it provably does not. This gives a sharp **moderator**: team size and density $d$ moderate whether structural inputs translate into learning. That is empirically testable and qualitatively interpretable.\n\nSo to answer your question directly, Dan: the claim we are reviewing is the *framework*, and our job is to certify its internal coherence. My recommendation — model safety as a PSD trust kernel, mediate through homomorphism densities, and locate the size/density moderation via a Local-Lemma threshold. The qualitative methods then probe the off-diagonal structure of $B$; the quantitative methods estimate $t(H,\\cdot)$. That is jointly modeled, not independent, and it is honest about which parts are theorem and which are justification.",
+      "created_at": "2026-06-23T15:44:33Z"
+    },
+    {
+      "id": "m0c00f1bf",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — beautiful, but let me ask the question I always ask: *what is the real theorem here, and is there a Ramanujan phenomenon hiding in it?* I think there is, and it's exactly the right one.\n\nHere's my read. You've both built the trust graph $G$. The deep question is not the value of $\\lambda_2(L)$ alone — it's the *whole spectrum*. Edmondson's empirical fact is that learning behavior is robust: it doesn't depend on one lucky high-trust dyad but on the team mixing uniformly fast. That is precisely the **expander/Ramanujan condition** $\\lambda_2 \\le 2\\sqrt{d-1}/d$ in the normalized Laplacian — optimal spectral gap. My work with Bourgain and Gamburd on $SL_2$ and Ramanujan graphs says: expansion is exactly the regime where local information (help-seeking) reaches everyone in $O(\\log n)$ steps with no bottleneck. So I'd reframe Dan's mediator: **psychological safety is the team being a near-Ramanujan graph.** That's testable — estimate the spectral measure, check it against the Kesten–McKay law.\n\nAnd this answers Laszlo's local-vs-global tension *quantitatively*. Quantum Unique Ergodicity is the right analogy: in my work with Lindenstrauss, the issue was whether a global spectral gap forces *every* eigenfunction's mass to equidistribute — no scarring on a closed geodesic. The team analogue: does global trust force *no member* to be scarred/isolated? QUE says yes, the entropy is full. So Laszlo's Local Lemma threshold and Dan's spectral gap are not competing — they're the spectral and arithmetic sides of one trace formula, and the content is making them agree.\n\nTwo concrete demands:\n1. **Compute the first cases by hand.** $n=2,3,4$. For $n=3$, the cut between \"path of trust\" and \"triangle of trust\" is exactly Laszlo's $t(K_3,W)$ — and you'll see $\\lambda_2$ jump. Triadic closure is the *Ramanujan threshold* for small teams.\n2. **The off-diagonal is everything.** Laszlo's PSD kernel $B$ — its eigenvalue *spacings*, not just the gap, should follow GUE-type repulsion if trust is \"generic.\" Anomalous clustering of eigenvalues = a structural pathology (a clique, a clique). That's a sharp, falsifiable diagnostic.\n\nSo the framework I'd certify: structure sets the weights, safety *is* the spectral gap being near-Ramanujan (mediator), team size moderates whether you can reach that threshold (Laszlo's LLL), and learning behavior $\\sim$ mixing time. The real theorem behind the framework is an expander-mixing lemma for teams.",
+      "created_at": "2026-06-23T15:45:21Z"
+    },
+    {
+      "id": "m19f43e14",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, Laszlo — I love where this went, but let me play the role I always play: I want an *algorithm*, and I want to check the spectral story is actually constructive and estimable from data, not just poetic.\n\nThree points.\n\n1. **Near-Ramanujan is too strong as the empirical claim.** Peter, real teams have $n = 5$ to $10$. The Kesten–McKay law and the bound $\\lambda_2 \\le 2\\sqrt{d-1}/d$ are asymptotic statements; for $n=6$ there is no meaningful \"bulk\" to fit. What *is* robust at finite $n$ is the leverage-score / effective-resistance picture from my sparsification work with Srivastava. So let me reframe safety operationally: member $v$'s **vulnerability** is its effective resistance to the rest of the team, $R_v = (e_v - \\bar{e})^T L^\\dagger (e_v - \\bar{e})$. Large $R_v$ means $v$ is poorly integrated — a scarred vertex, in Peter's QUE language. This is exactly computable in nearly-linear time, and it's the *local* invariant Laszlo wanted, derived from the *global* Laplacian. So local and global are reconciled by $L^\\dagger$, not by a trace formula we can't estimate from $n=7$.\n\n2. **The $\\varepsilon$-light subset is the at-risk subteam, and it's the falsifiable object.** Define $S$ to be $\\varepsilon$-light if $\\mathbf{1}_S^T L_S \\mathbf{1}_S \\le \\varepsilon\\, d_S$ — most of the trust *touching* $S$ leaves $S$. That is precisely a subgroup that is internally cohesive only weakly and clings to the rest of the team. My greedy effective-resistance algorithm *finds* these subgroups explicitly: grow $S$ by adding the vertex of highest external effective resistance while the lightness invariant holds. This is the constructive deliverable the framework keeps gesturing at. Empirically: an at-risk subteam is one the algorithm extracts as $\\varepsilon$-light.\n\n3. **On mediation vs. moderation — make it an inequality, not a metaphor.** The clean structural claim is an *expander-mixing* statement: learning behavior $y$ obeys\n$$ \\Big| y - \\tfrac{1}{n}\\mathbf{1}^T y \\Big| \\;\\le\\; \\frac{C}{\\lambda_2(\\mathcal{L})}\\cdot (\\text{external input}), $$\nso $\\lambda_2$ mediates, and Laszlo's size/density $d$ moderates whether $\\lambda_2$ can clear threshold. Good — but note $\\lambda_2$ is a *nonlinear* function of the weights, which is the entire algebraic content of \"not independent predictors.\" The cross term is the off-diagonal of $L$, full stop.\n\nSo my proposed certified deliverable: safety $=$ the profile $\\{R_v\\}$ of effective resistances (estimable, local-and-global); at-risk subgroups $=$ $\\varepsilon$-light subsets found by my greedy algorithm; learning $\\sim 1/\\lambda_2$ by expander mixing. That is jointly modeled, honest about theorem-vs-justification, and — crucially — *runnable on a real $7$-person team's trust matrix tomorrow*. Can we agree the effective-resistance profile is the right estimable invariant, rather than a Ramanujan condition we can't fit at $n=7$?",
+      "created_at": "2026-06-23T15:47:40Z"
+    },
+    {
+      "id": "m594ebf61",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your finite-$n$ correction is well taken — Peter and I were perhaps seduced by the asymptotics, and effective resistance is the honest local-global invariant at $n=7$. Let me adjudicate the dispute and then sharpen the deliverable, because I think $R_v$ and my PSD trust kernel are the *same object* viewed twice.\n\n1. **Reconciliation: $R_v$ is the Gram geometry of my kernel $B$.** Recall the effective resistance is itself an SDP-realizable quantity: $R_{uv} = \\|f(u)-f(v)\\|^2$ for the spectral embedding $f(v) = L^{\\dagger/2} e_v$. So your $\\{R_v\\}$ profile and my \"angles between members\" are literally the same vectors $u_i$. The disagreement dissolves: take $B = L^\\dagger$ (or its restriction to the cut subspace $\\mathbf{1}^\\perp$). Then $B \\succeq 0$, $B_{uv}=0$ is *not* generally true — but the right kernel is $B = L^\\dagger$ and effective resistance is its induced metric. This is exactly the move from my $\\theta$-function: the *embedding geometry* carries the combinatorial information, not any scalar.\n\n2. **But $1/\\lambda_2$ is too crude for the at-risk story — that is the whole point of using resistances.** The expander-mixing inequality controls the *worst global* mode; an at-risk subteam is a *localized* defect. Here the correct functional is not $\\lambda_2$ but the resistance-weighted cut, and your $\\varepsilon$-light condition $\\mathbf{1}_S^T L_S \\mathbf{1}_S \\le \\varepsilon\\, d_S$ is precisely the localized analog. I concede $c=1/2$ from $K_n$ is the *transitive* extremal constant; for genuinely heterogeneous trust the extremal graphon is a blow-up, and the right $c$ depends on which blow-up structure the team's design selects. That ties the constant back to the *antecedents*.\n\n3. **One caution on your greedy algorithm — invoke the Local Lemma to guarantee the object exists before you search for it.** Your greedy extraction finds an $\\varepsilon$-light $S$ *if one exists*. Whether a nontrivial at-risk subgroup must exist is exactly an LLL question: below the density threshold $ep(d+1)\\le 1$ a fully-integrated (no $\\varepsilon$-light $S$) configuration provably exists; above it, defects are forced. So the moderator is sharp: team density determines whether your greedy algorithm *can* return empty. That is the cleanest possible statement of \"structure moderates whether safety clears threshold.\"\n\nSo I agree: **certify $\\{R_v\\}$ as the estimable invariant, $\\varepsilon$-light subsets as the falsifiable at-risk object.** My one amendment — report the full embedding geometry $L^\\dagger$, not just the diagonal $\\{R_v\\}$, because the *off-diagonal angles* are what distinguish a triadically-closed safe team ($t(K_3,W)$ high) from a star-shaped team that has the same resistance profile but no peer trust. That distinction is empirically real and only the kernel sees it.",
+      "created_at": "2026-06-23T15:48:28Z"
+    },
+    {
+      "id": "m992c8d80",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Laszlo, your reconciliation $R_v = \\|L^{\\dagger/2}e_v\\|^2$ is exactly right, and I happily concede Dan's finite-$n$ point: at $n=7$ there is no Kesten–McKay bulk to fit. But I don't want to throw out the Ramanujan idea — I want to relocate it. Here is the precise move.\n\n1. **The spectrum is still the right object, but read it as a partition function, not a bulk law.** At $n=7$ you cannot do spacing statistics, but you *can* compute the full spectrum $\\{\\lambda_2,\\dots,\\lambda_n\\}$ of $L^\\dagger$ — seven numbers, by hand. The trace formula content survives even at finite $n$: $\\sum_v R_v = \\mathrm{Tr}(L^\\dagger) = \\sum_{j\\geq 2} 1/\\lambda_j$. So Dan's diagonal profile and the full spectrum are *two sides of one identity*. The at-risk diagnostic is when this trace is dominated by a single small $\\lambda_2$ — that's a scarred mode, my QUE pathology — versus when it's spread across all $\\lambda_j$, which is the equidistributed, \"Ramanujan-like\" healthy team. That distinction is computable on a $7\\times 7$ matrix and is exactly Laszlo's star-vs-triangle.\n\n2. **Compute $n=3$ by hand and you see it.** Take the path $1\\!-\\!2\\!-\\!3$ (member 2 the broker) versus the triangle $K_3$. Path Laplacian eigenvalues: $\\{0,1,3\\}$, so $\\mathrm{Tr}(L^\\dagger)=1+\\tfrac13=\\tfrac43$, concentrated on the soft mode $\\lambda_2=1$. Triangle: $\\{0,3,3\\}$, $\\mathrm{Tr}(L^\\dagger)=\\tfrac23$, *flat* spectrum. The triangle has both smaller total resistance and no spectral scar — that is Laszlo's $t(K_3,W)$ and my expander threshold saying the *same* thing. Triadic closure flattens the spectrum.\n\n3. **Where Ramanujan genuinely returns: don't average over one team, average over the population of teams.** A single $n=7$ team has no statistics, but Edmondson studied 51 teams. *That* ensemble is where I want GUE/repulsion. Form the $\\lambda_2$ across all teams and ask: do the spectral gaps cluster, or repel? My claim — the Montgomery–Odlyzko instinct — is that high-performing organizations show *level repulsion* in their team spectral gaps (no two teams stuck at the same bottleneck), while dysfunctional ones show clustering at small $\\lambda_2$. The ensemble is the operator; the teams are its eigenvalues.\n\nSo I accept the deliverable: certify $\\{R_v\\}$ and the $\\varepsilon$-light subsets. My amendment to Laszlo's amendment: report not just $L^\\dagger$ but the *spectral participation ratio* $\\big(\\sum 1/\\lambda_j\\big)^2 / \\sum 1/\\lambda_j^2$ — one scalar that distinguishes \"all modes healthy\" (Ramanujan) from \"one soft scarred mode\" (at-risk broker). That is falsifiable on a single team tomorrow, *and* it scales to the population. Is the real theorem an expander-mixing lemma? Yes — but the real *phenomenon* is QUE: global trust forbids",
+      "created_at": "2026-06-23T15:49:16Z"
+    },
+    {
+      "id": "m6ebd6493",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T15:50:12Z"
+    },
+    {
+      "id": "m06341c67",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nFormalize the organizational-psychology framework (psychological safety, antecedents, mediation/moderation, learning behavior) as a weighted trust-graph model in which safety is captured by the Laplacian pseudoinverse geometry, at-risk subteams are ε-light subsets, and learning behavior follows from expander-mixing, all estimable at finite team size.",
+      "created_at": "2026-06-23T15:50:12Z"
+    }
+  ],
+  "plan": {
+    "summary": "Formalize the organizational-psychology framework (psychological safety, antecedents, mediation/moderation, learning behavior) as a weighted trust-graph model in which safety is captured by the Laplacian pseudoinverse geometry, at-risk subteams are ε-light subsets, and learning behavior follows from expander-mixing, all estimable at finite team size.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the graph model and clarify deliverable",
+        "body": "State explicitly that rm-09362 is a social-science modeling/justification task, not a derivation, and fix the formal model: team = weighted graph G=(V,E,w) with edge weights w_uv encoding interpersonal trust. Define which constructs map to which graph objects: antecedents = the weights w (set by design/coaching/composition), psychological safety = a structural invariant of L(w), learning behavior = a diffusion/mixing functional. Document which claims are theorems versus justifications.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Define the estimable safety invariant: effective-resistance / pseudoinverse profile",
+        "body": "Adopt the effective-resistance profile {R_v}, R_v = (e_v - e_bar)^T L^† (e_v - e_bar), as the local-and-global safety invariant, and report the full pseudoinverse kernel B = L^† (restricted to 1^perp) rather than only its diagonal, so that off-diagonal angles (peer/triadic trust vs. star structure) are retained. Establish the identity R_uv = ||L^{†/2}e_u - L^{†/2}e_v||^2 reconciling Dan's resistance profile with Laszlo's PSD trust kernel.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Define at-risk subteams as ε-light subsets and give extraction algorithm",
+        "body": "Formalize S as ε-light if 1_S^T L_S 1_S ≤ ε d_S (most trust touching S leaves S). Specify the greedy effective-resistance extraction: grow S by adding the vertex of highest external effective resistance while the lightness invariant holds. Prove correctness (the algorithm returns an ε-light set if one exists) and bound runtime (near-linear via Laplacian solvers).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Establish mediation/moderation via expander-mixing inequality and LLL threshold",
+        "body": "Prove the mediation statement as an inequality |y - (1/n)1^T y| ≤ (C/λ_2(L)) · (external input), showing λ_2 mediates structure→learning and that λ_2 is a nonlinear function of weights (the off-diagonal cross term = the algebraic content of 'not independent predictors'). Then formalize the moderation: use a Local Lemma argument (ep(d+1) ≤ 1) to show that below a density threshold a fully-integrated configuration (no ε-light S) provably exists, and above it defects are forced — so team size/density d moderates whether safety clears threshold.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Compute small cases n=2,3,4 by hand",
+        "body": "Work out explicit Laplacian spectra and resistance profiles for small teams. In particular contrast path 1-2-3 (eigenvalues {0,1,3}, Tr(L^†)=4/3, mass concentrated on soft mode) versus triangle K_3 (eigenvalues {0,3,3}, Tr(L^†)=2/3, flat spectrum), demonstrating that triadic closure both lowers total resistance and flattens the spectrum. Confirm the star-vs-triangle distinction is invisible to {R_v} alone but visible in the kernel/spectrum.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Define single scalar diagnostic and population-level statistic",
+        "body": "Define the spectral participation ratio (Σ 1/λ_j)^2 / Σ 1/λ_j^2 as the falsifiable single-team scalar distinguishing 'all modes healthy' (equidistributed) from 'one soft scarred mode' (at-risk broker), and verify it via the identity Σ_v R_v = Tr(L^†) = Σ_{j≥2} 1/λ_j. Additionally specify the population-level test across many teams (e.g. Edmondson's 51 teams): examine whether the team spectral gaps λ_2 cluster at small values (dysfunction) or repel (high-performing).",
+        "agent": "solver-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Critically assess validity and scope of the spectral framing",
+        "body": "Stress-test the model: confirm that near-Ramanujan/Kesten–McKay claims are dropped at finite n (no bulk to fit at n≈7) and replaced by effective-resistance and participation-ratio statistics; check that the extremal constant c in the ε-light bound is tied to the team's blow-up/design structure rather than fixed at the transitive K_n value; flag any place where graph constructs over-claim relative to the original psychological constructs.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble and certify the final framework writeup",
+        "body": "Integrate all components into a certified deliverable: safety = effective-resistance profile {R_v} plus kernel L^†; at-risk subgroups = ε-light subsets via greedy extraction; learning ~ 1/λ_2 via expander mixing; size/density moderation via LLL threshold; single-team diagnostic = participation ratio; population test = spectral-gap repulsion. Verify internal coherence, the worked small cases, and that the pipeline is runnable on a real 7-person trust matrix.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T15:50:12Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

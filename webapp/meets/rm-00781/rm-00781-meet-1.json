@@ -1,0 +1,153 @@
+{
+  "id": "rm-00781-meet-1",
+  "problem_id": "rm-00781",
+  "topic": "Init rm-00781 — proof review",
+  "goal": "Review the proof and issues for rm-00781; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T03:34:00Z",
+  "messages": [
+    {
+      "id": "me73a4da5",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-00781 — proof review**",
+      "created_at": "2026-06-23T03:34:00Z"
+    },
+    {
+      "id": "med8aa7d7",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about what I'm looking at: this problem is framed in the language of KPZ surface growth and Family–Vicsek scaling, which is some distance from my usual habitat of Laplacian systems and effective resistances. But the mathematical core is something I can engage with directly, because it's a crossover/scaling argument, and those I trust.\n\nLet me restate the heart of part (a)/(c) cleanly. We have $W^2(t) \\sim L_0^{2\\alpha} f(t/L_0^z)$ with $f(u)\\sim u^{2\\beta}$ for $u\\ll 1$ and $f(u)\\to$ const for $u\\gg 1$. The only subtlety on an *expanding* substrate is which scaling variable controls things. Write the running correlation length as $\\xi(t)\\sim t^{1/z}$ (the saturated length scale) versus the system size $L(t)\\sim t^\\gamma$. The whole dichotomy is just: **does the correlation length outrun the substrate, or does the substrate outrun the correlation length?**\n\n- If $\\gamma < 1/z$: correlations spread faster than the domain grows, the interface saturates, $f\\to$ const, and $W^2 \\sim L(t)^{2\\alpha}$. **Correlated regime.**\n- If $\\gamma > 1/z$: the domain outpaces correlations, the argument $t/L_0^z$ stays small in the appropriate local sense, you sit on the $f(u)\\sim u^{2\\beta}$ branch, giving $W^2 \\sim L_0^{2\\alpha} t^{2\\beta}$. **Uncorrelated/growing regime.**\n\nSo to the \"prove or disprove only two regimes\" question: generically yes, but I want to flag the **marginal case $\\gamma = 1/z$**, where $t/L(t)^z \\to$ const and you get $W^2 \\sim L(t)^{2\\alpha} \\times (\\text{const})$ with possible logarithmic corrections — that's a genuine *third* asymptotic behavior the problem statement papers over. Any clean theorem here needs to handle $\\gamma=1/z$ explicitly. This is exactly analogous to a critical spectral gap: $1/z - \\gamma$ is your \"gap,\" and the sign is everything, but the zero of the gap is its own regime.\n\nNow the part I actually care about — making (a) *constructive* and unambiguous. Here's the extraction protocol, stated as I'd state an algorithm:\n\n1. **Fix the regime first.** Measure $L(t)$ directly, fit $\\gamma$. You cannot extract $\\alpha,\\beta$ until you know which branch you're on, i.e., the sign of $1/z-\\gamma$ — and $z$ is what you're trying to find, so this is self-referential. Resolve it the way I resolve a barrier-function bootstrap: assume $\\gamma>1/z$, extract candidate $(\\alpha,\\beta)$, then *verify* the inequality holds with the extracted $z$. Reject if inconsistent.\n\n2. **Separate $\\alpha$ and $\\beta$ with two knobs.** In the fast regime $W^2 \\sim L_0^{2\\alpha} t^{2\\beta}$, the two exponents factor cleanly. Run experiments at several initial sizes $L_0$ and read off $\\alpha$ from $\\partial \\log W^2 / \\partial \\log L_0 = 2\\alpha$ at fixed $t$; read off $\\beta$ from $\\partial \\log W^2/\\partial \\log t = 2\\beta$ at fixed $L_0$. The point is that $L_0$ and",
+      "created_at": "2026-06-23T03:34:18Z"
+    },
+    {
+      "id": "m760d4503",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has framed the dichotomy correctly, and his $1/z - \\gamma$ \"spectral gap\" analogy is exactly right — the marginal case $\\gamma = 1/z$ is a genuine third regime that the problem statement disproves by omission. Let me sharpen this with the perspective I bring from limits of graph sequences, because I think it clarifies *why* there are exactly three regimes and not more.\n\nThe structural point is that $W^2(t)$ is governed by a single scaling function $f$ evaluated along a *trajectory* in the $(u = t/L(t)^z)$ variable. On an expanding substrate, $u(t) \\sim t^{1 - \\gamma z} = t^{1 - \\gamma/( \\beta^{-1}\\alpha)}$... let me write it cleanly: $u(t) \\sim t \\cdot L_0^{-z} t^{-\\gamma z} = (t/L_0^z)\\, t^{-\\gamma z}$, so $u(t) \\sim t^{1-\\gamma z}$. The asymptotics of $W^2$ are then *entirely* dictated by whether $1 - \\gamma z$ is positive, negative, or zero — three cases, period. This is a trichotomy theorem, and the proof is just monotonicity of the exponent $1 - \\gamma z$ in the sign of $1/z - \\gamma$. So I would state:\n\n**Theorem (trichotomy).** Assuming the Family–Vicsek ansatz with $f$ regularly varying at $0$ and $\\infty$, exactly three asymptotic regimes occur:\n- $\\gamma > 1/z$: $u \\to 0$, $W^2 \\sim L_0^{2\\alpha} t^{2\\beta}$;\n- $\\gamma < 1/z$: $u \\to \\infty$, $W^2 \\sim L(t)^{2\\alpha}$;\n- $\\gamma = 1/z$: $u \\to$ const, $W^2 \\sim L(t)^{2\\alpha} f(\\text{const})$, with logarithmic corrections if $f$ has a slowly-varying factor there.\n\nThe \"regularly varying\" hypothesis is the real content — it is the continuous analog of saying the graphon limit exists. Without it $f$ could oscillate and you'd get a continuum of accumulation exponents; *that* is how the dichotomy can fail, and any honest theorem must assume it away.\n\nOn Dan's extraction protocol: I agree with the bootstrap, but I want to make the self-reference rigorous rather than heuristic. Define the map $\\Phi: (\\hat\\alpha, \\hat\\beta) \\mapsto$ \"predicted regime sign of $1/z - \\gamma$ at $z = \\hat\\alpha/\\hat\\beta$.\" Run his two-knob regression $(\\partial_{\\log L_0}, \\partial_{\\log t})$ *assuming* the fast branch, get $(\\hat\\alpha,\\hat\\beta)$, then check $\\hat\\alpha/\\hat\\beta < 1/\\gamma$. This is a fixed-point consistency check, and because the fast-branch formula gives $\\alpha,\\beta$ as *independent* slopes (the variables $L_0$ and $t$ genuinely factor), the check is non-circular: the data overdetermines the system, so consistency is a falsifiable prediction, not a tautology. That overdetermination is the experimental gift here.\n\nFor part (b): the minimal control strength is simply the distance $|\\gamma - 1/z|$ one must induce to cross zero — the gap closes linearly. To drive a correlated system ($\\gamma < 1/z$) into the uncor",
+      "created_at": "2026-06-23T03:35:06Z"
+    },
+    {
+      "id": "m08bb7b6c",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan and László have nailed the trichotomy, and I want to say loudly: this is the *same* mathematics as the crossover I see everywhere in arithmetic quantum chaos. The scaling variable $u(t) \\sim t^{1-\\gamma z}$ is a flow, and the question \"does the correlation length outrun the substrate\" is *exactly* the question of whether eigenfunction mass equidistributes faster than the geometry decorrelates — it's QUE versus scarring. The sign of $1-\\gamma z$ is your Lyapunov-type exponent for the flow on the scaling ray.\n\nBut let me push on the \"regularly varying\" hypothesis, because that is the real theorem hiding here. László is right that without it $f$ can oscillate and you lose the dichotomy. In my world this is precisely the Ramanujan question: regular variation of $f$ is the statement that the *spectrum has no anomalous accumulation* — the analog of $|\\lambda(p)| \\le 2\\sqrt p$. If KPZ universality holds, the scaling function $f$ inherits the Tracy–Widom / Baik–Rains structure, and Tracy–Widom is rigid — it does NOT oscillate. So I would say: **the trichotomy is a Ramanujan phenomenon.** The hypothesis you need is not generic regular variation but the genuine KPZ fixed-point statement, and that is a theorem (in $1+1$d) now, not an assumption.\n\nLet me compute the first case by hand to anchor this. For $1+1$ KPZ: $\\alpha = 1/2$, $\\beta = 1/3$, so $z = 3/2$ and $1/z = 2/3$. The crossover is at $\\gamma_c = 2/3$. Concretely:\n- A colony front growing with $L(t) \\sim t^{3/4}$ ($\\gamma = 3/4 > 2/3$): fast regime, $W^2 \\sim L_0\\, t^{2/3}$. **Decorrelating.**\n- A front with $L(t)\\sim t^{1/2}$ ($\\gamma=1/2 < 2/3$): correlated, $W^2 \\sim L(t) \\sim t^{1/2}$.\n\nThat gap $1/z - \\gamma = 2/3 - \\gamma$ is the *honest* control parameter, and the minimal control strength László describes is the linear closing of this gap — but I'd add a warning from quantum chaos: near $\\gamma = \\gamma_c$ the fluctuations themselves are governed by a *different* statistical law (the marginal Family–Vicsek window), just as spacing statistics change character at a spectral degeneracy. So the experimental protocol must steer *away* from $\\gamma_c$ by a fixed margin, or the Tracy–Widom rigidity that makes the extraction unambiguous breaks down. The real theorem behind the technical one: **the two-knob factorization of $\\alpha$ and $\\beta$ is exactly as clean as the KPZ universality is exact** — no more, no less.",
+      "created_at": "2026-06-23T03:35:52Z"
+    },
+    {
+      "id": "m19fafaa4",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's point about Tracy–Widom rigidity is the right anchor, and it lets me close the loop on the constructiveness I care about. Let me state the extraction as an actual estimator with error bars, because \"read off the slope\" is not yet an algorithm.\n\nYou have measurements $W^2(t_i, L_0^{(j)})$ on a grid of times $t_i$ and initial sizes $L_0^{(j)}$. In the fast regime the model is *log-linear*:\n$$\\log W^2 = \\log C + 2\\alpha \\log L_0 + 2\\beta \\log t.$$\nThis is just ordinary least squares in two covariates — solve the $3\\times 3$ normal equations, no fixed-point iteration needed for the estimate itself. The bootstrap consistency check $\\hat\\alpha/\\hat\\beta < 1/\\gamma$ then applies to the *fitted* values. So the procedure is: (1) OLS regression, (2) verify the inequality, (3) accept or reject the fast-branch hypothesis. That's a genuine algorithm.\n\nNow here is where I want to be sharp, in my own language. The reliability of separating $\\alpha$ from $\\beta$ is exactly a **conditioning** question — it's the leverage-score story from spectral sparsification. Form the design matrix $X$ whose rows are $(1, \\log L_0^{(j)}, \\log t_i)$. The variance of $(\\hat\\alpha,\\hat\\beta)$ is governed by $(X^TX)^{-1}$, and the two exponents are cleanly separable **iff $\\log L_0$ and $\\log t$ are not collinear over your experimental grid**. If your protocol only varies $L_0$ and $t$ together — say you start bigger colonies later — then $X^TX$ is near-singular and $\\alpha,\\beta$ are confounded no matter how rigid Tracy–Widom is. The experimental design *must* span both axes independently; that's a $\\sigma_{\\min}(X^TX)$ lower bound you should report alongside the estimates. This is precisely the effective-resistance intuition: an experiment that doesn't add a new direction adds no information.\n\nOn the trichotomy: I fully endorse László's $u(t)\\sim t^{1-\\gamma z}$ formulation and Peter's reading of regular variation as a Ramanujan/no-anomalous-accumulation condition. But note that $z=\\alpha/\\beta$ appears in the exponent $1-\\gamma z$ that you're using to *select* the branch — so the marginal case $\\gamma=1/z$ is not just an analysis curiosity, it's the locus where the conditioning above *also* degrades, because near criticality $u(t)$ drifts slowly and the $t^{2\\beta}$ signal is contaminated by the crossover transient. So Peter's \"steer away by a fixed margin\" and my \"keep $X^TX$ well-conditioned\" are the same prescription: stay a constant distance $|1/z-\\gamma|\\geq \\delta$ from the gap, and your estimator is provably stable with error $O(\\sigma_{\\min}^{-1/2} \\cdot \\text{noise})$. That's the honest answer to part (b): the minimal control strength is exactly the $\\delta$ needed to lift $\\sigma_{\\min}(X^TX)$ above the measurement noise floor.",
+      "created_at": "2026-06-23T03:38:09Z"
+    },
+    {
+      "id": "m0de26470",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has just closed the loop beautifully, and I want to formalize the connection between his conditioning bound and my trichotomy, because together they yield a *clean optimization statement* — the kind of thing where I'd reach for the ellipsoid method's separation-oracle philosophy.\n\nHere is the observation. Dan's design matrix $X$ with rows $(1, \\log L_0^{(j)}, \\log t_i)$ lives in the experimenter's control. The estimator quality is governed by $\\sigma_{\\min}(X^TX)$, and the *physical* validity by the margin $\\delta = |1/z - \\gamma|$. These are not independent constraints — they are coupled, and I claim the right formulation is a **constrained D-optimal design problem**:\n$$\\max_{\\text{grid } \\{(L_0^{(j)}, t_i)\\}} \\log\\det(X^TX) \\quad \\text{subject to} \\quad \\min_i u(t_i) \\geq \\delta_0 \\ \\text{(stay in the fast branch with margin)}.$$\nThis is convex in the design measure (Kiefer–Wolfowitz), so it has a clean, computable optimum — and it tells the experimentalist *exactly* which $(L_0, t)$ pairs to sample. That answers Dan's \"span both axes\" prescription quantitatively.\n\nOn the trichotomy itself, let me reinforce Peter's Ramanujan reading with the graph-limit picture I keep returning to. The hypothesis \"$f$ regularly varying\" is *precisely* the statement that the rescaled interface sequence has a limit object — a graphon analog, a single scaling function $f$ rather than an oscillating family. In my work on limits of dense graph sequences, convergence of $t(H, G_n)$ for all $H$ is what rules out pathological accumulation; here, convergence of $W^2(t)/L_0^{2\\alpha}$ along the ray $u(t) \\sim t^{1-\\gamma z}$ is the exact counterpart. So I'd state the theorem with full honesty:\n\n**Trichotomy holds iff the limit object exists** (regular variation). Peter is right that in $1+1$d KPZ universality *supplies* this limit — Tracy–Widom is the limit object — and there it is a theorem, not an assumption. In higher dimensions, where the KPZ fixed point is not yet rigorous, the trichotomy remains *conditional* on regular variation, and the experimentalist's job is to falsify it: if the OLS residuals show systematic curvature in $\\log u$, the limit object does not exist and no clean exponents can be extracted.\n\nSo my synthesis for the writeup: (a) the constrained D-optimal design above; (b) the minimal control strength is $\\delta_0$ from the *same* constraint that keeps the design well-conditioned — Peter's margin, Dan's $\\sigma_{\\min}$, and my \"limit exists\" are three faces of one requirement. The marginal case $\\gamma = 1/z$ is where the limit object becomes scale-invariant and the two-knob factorization collapses — that is the genuine third regime, and it must be stated explicitly.",
+      "created_at": "2026-06-23T03:38:56Z"
+    },
+    {
+      "id": "m548f6b82",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "We've converged beautifully, and László's D-optimal formulation is exactly the right packaging. But let me insist on one thing the three of us have been circling and not stated as a theorem: **the marginal regime $\\gamma = 1/z$ is not merely a third case — it is the analog of the critical line, and its fluctuations have their own universal law.**\n\nHere is what I mean concretely. When $\\gamma = 1/z$, the scaling variable $u(t) \\to$ const, and you sit *frozen* on a single value of the KPZ scaling function. The fluctuation distribution there is neither the saturated (Baik–Rains stationary) law of the correlated regime nor the growing-interface (GUE Tracy–Widom) law of the fast regime — it is a one-parameter *interpolating* law indexed by that frozen $u$. This is precisely the phenomenon I lived through with Katz in the function-field work: as you tune a parameter through a degeneracy, the eigenvalue statistics cross over between symmetry types — GUE to GOE to GSE — and *at* the transition you get a distinct interpolating ensemble. So I'd sharpen László's statement:\n\n- $\\gamma > 1/z$: GUE Tracy–Widom rigidity $\\Rightarrow$ clean two-knob factorization (this is the regime Dan's OLS is honest in).\n- $\\gamma < 1/z$: stationary/saturated law, $W^2 \\sim L(t)^{2\\alpha}$, only $\\alpha$ is extractable — $\\beta$ is invisible because you've saturated.\n- $\\gamma = 1/z$: a *family* of laws parametrized by $u_\\infty = \\lim t/L(t)^z$; here $\\alpha$ and $\\beta$ are genuinely confounded, which is Dan's $\\sigma_{\\min}(X^TX) \\to 0$ seen from the spectral side.\n\nSo the \"distance from correlation\" $1/z - \\gamma$ is doing double duty exactly as the spectral gap does: its sign picks the universality class, and its magnitude is the rate at which Tracy–Widom rigidity is restored. **The real theorem behind part (b):** the minimal control strength $\\delta_0$ is not arbitrary — it is the margin needed to escape the interpolating-ensemble window into the rigid GUE regime where the scaling function $f$ is *locally a pure power*, $f(u) \\sim u^{2\\beta}$, with no slowly-varying correction. Below $\\delta_0$ you are in the crossover ensemble and no honest exponent extraction exists, full stop.\n\nOne caveat I must flag, because I always check the first case by hand: this whole edifice rests on $1+1$d KPZ where Tracy–Widom is a *theorem*. For $\\alpha=1/2,\\beta=1/3,z=3/2$ everything is rigorous. In $2+1$ and higher — your tissue boundaries are genuinely $2+1$! — the KPZ fixed point is conjectural, so the rigidity that makes the two-knob factorization unambiguous is itself a Ramanujan-type hypothesis. The experimentalist should therefore *test* it: fit the full one-point distribution of $h$, not just $W^2$, and check it against GUE Tracy–Widom. If the skewness and kurtosis match $(0.2935\\ldots, 0.1652\\ldots)$, you've earned the right to trust the exponents. That is the falsifiable content.",
+      "created_at": "2026-06-23T03:39:46Z"
+    },
+    {
+      "id": "m644dd176",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T03:40:38Z"
+    },
+    {
+      "id": "m1bd2dc50",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nEstablish and prove a trichotomy theorem for interface width scaling on an expanding substrate governed by the sign of 1/z - gamma, then build a constructive, well-conditioned exponent-extraction protocol with explicit handling of the marginal critical regime.",
+      "created_at": "2026-06-23T03:40:38Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish and prove a trichotomy theorem for interface width scaling on an expanding substrate governed by the sign of 1/z - gamma, then build a constructive, well-conditioned exponent-extraction protocol with explicit handling of the marginal critical regime.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the scaling-variable trichotomy",
+        "body": "Starting from the Family-Vicsek ansatz W^2(t) ~ L_0^{2alpha} f(t/L(t)^z) with L(t) ~ t^gamma, derive u(t) ~ t^{1-gamma z} and prove the trichotomy theorem: gamma > 1/z gives u->0 and W^2 ~ L_0^{2alpha} t^{2beta}; gamma < 1/z gives u->infty and W^2 ~ L(t)^{2alpha}; gamma = 1/z gives u->const and W^2 ~ L(t)^{2alpha} f(const). Explicitly state and use the regular-variation hypothesis on f at 0 and infinity as the precise condition ruling out oscillatory accumulation.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Characterize the marginal regime as a genuine third case",
+        "body": "Analyze gamma = 1/z rigorously: show u(t) -> u_infty frozen, identify the resulting logarithmic corrections when f carries a slowly-varying factor, and demonstrate that alpha and beta become genuinely confounded here. Document this as the third asymptotic behavior omitted by the original problem statement, framing it as the analog of a critical line / closing spectral gap.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Ground the regular-variation hypothesis in KPZ universality",
+        "body": "Connect the regular-variation requirement to KPZ fixed-point rigidity (Tracy-Widom / Baik-Rains structure). For 1+1d (alpha=1/2, beta=1/3, z=3/2, gamma_c=2/3) show the hypothesis is a theorem and the trichotomy is unconditional. For 2+1d and higher, state explicitly that the trichotomy remains conditional on regular variation since the KPZ fixed point is conjectural.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Construct the OLS exponent-extraction estimator with bootstrap consistency",
+        "body": "In the fast regime, write log W^2 = log C + 2alpha log L_0 + 2beta log t and define the OLS estimator solving the 3x3 normal equations. Implement the bootstrap self-consistency check: extract (alpha-hat, beta-hat) assuming the fast branch, then verify alpha-hat/beta-hat < 1/gamma; accept or reject the fast-branch hypothesis accordingly. Prove non-circularity via overdetermination of the system.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Derive the conditioning and constrained D-optimal design",
+        "body": "Form the design matrix X with rows (1, log L_0^{(j)}, log t_i); show estimator variance is governed by (X^T X)^{-1} and that alpha, beta separate iff log L_0 and log t are not collinear. Formulate the constrained D-optimal design: maximize log det(X^T X) subject to min_i u(t_i) >= delta_0 (fast-branch margin). Establish convexity (Kiefer-Wolfowitz) and produce the explicit sampling prescription spanning both axes.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Resolve part (b): minimal control strength as the unifying margin delta_0",
+        "body": "Prove that the minimal control strength to cross between regimes is the linear-closing gap |gamma - 1/z|, and identify delta_0 as the margin simultaneously required to (i) escape the interpolating critical ensemble into rigid pure-power behavior f(u)~u^{2beta}, and (ii) lift sigma_min(X^T X) above the measurement noise floor. Show Peter's margin, Dan's conditioning, and Laszlo's limit-existence are three faces of one requirement, yielding estimator error O(sigma_min^{-1/2} * noise).",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify the full assembly and falsifiable predictions",
+        "body": "Check internal consistency: trichotomy proof, marginal-case analysis, estimator, design problem, and control-strength bound. Validate the 1+1d worked examples (L~t^{3/4} decorrelating; L~t^{1/2} correlated). State the falsifiability protocol: fit the full one-point distribution of h against GUE Tracy-Widom, checking skewness ~0.2935 and kurtosis ~0.1652, and test OLS residuals for systematic curvature in log u as a probe that the limit object exists.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1,
+          2,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T03:40:38Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

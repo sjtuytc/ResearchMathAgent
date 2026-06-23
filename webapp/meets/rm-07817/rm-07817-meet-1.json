@@ -1,0 +1,168 @@
+{
+  "id": "rm-07817-meet-1",
+  "problem_id": "rm-07817",
+  "topic": "Init rm-07817 — proof review",
+  "goal": "Review the proof and issues for rm-07817; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T07:50:46Z",
+  "messages": [
+    {
+      "id": "m5531a538",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-07817 — proof review**",
+      "created_at": "2026-06-23T07:50:46Z"
+    },
+    {
+      "id": "mcefac811",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me reframe this in the language I trust. The harmonic transfer function at frequency $\\omega$ is the resolvent-type operator\n\n$$\nG(\\omega) = \\mathcal{C}\\,\\big(i(\\omega I + \\mathcal{N}) - \\mathcal{A}\\big)^{-1}\\,\\mathcal{B} + \\mathcal{D},\n$$\n\nwhere $\\mathcal{A}, \\mathcal{B}, \\mathcal{C}, \\mathcal{D}$ are the doubly-infinite block-Toeplitz operators built from the Fourier coefficients of $A(\\cdot),\\dots$, and $\\mathcal{N} = \\mathrm{diag}(k\\Omega I)$ is the harmonic-shift. The naive recipe forms the truncated $(2N+1)n \\times (2N+1)n$ matrix and does a dense solve at *every* frequency — that's $O\\!\\big(N^3 n^3\\big)$ per $\\omega$, times the number of frequencies. That is exactly the operator-decomposition cost the problem tells us to avoid. So my instinct is: **never decompose; always solve.**\n\nHere are the structural facts I'd exploit:\n\n1. **The frequency dependence is rank-structured.** As $\\omega$ varies, only $i\\omega I$ shifts the diagonal. So we want a single factorization, valid across a band, with cheap updates — a *shift-invariant preconditioner*. This is precisely the recursive-preconditioning philosophy from my nearly-linear Laplacian solvers: build one good preconditioner, reuse it across many right-hand sides and shifts.\n\n2. **Harmonic decay gives sparsification.** If $A(\\cdot)$ is smooth, its Fourier coefficients decay, so $\\mathcal{A}$ is a banded-plus-decaying Toeplitz operator. The off-diagonal blocks are the analogue of low-leverage edges: most harmonic couplings are spectrally negligible. I'd ask — what is the effective \"leverage\" of each harmonic coupling block, and can we drop the small ones with a provable $(1\\pm\\varepsilon)$ bound on $G(\\omega)$? That's a spectral-sparsification statement for the harmonic operator.\n\n3. **Floquet/monodromy is the right factorization.** The monodromy matrix $\\Phi(T,0)$ diagonalizes the time dynamics; its Floquet exponents tell you exactly where $i(\\omega + k\\Omega) - $ (eigenvalue) is near-singular. So the spectrum of the infinite operator is just shifted copies of the Floquet spectrum. That tells us *which* frequencies are hard and gives a principled truncation order $N$ as a function of the desired accuracy and the decay rate.\n\nNow my questions for the room:\n\n- **What's the spectral gap?** Specifically, how close does $i(\\omega+k\\Omega)$ get to a Floquet exponent across the band? That conditioning number controls both the truncation error and the iterative-solver convergence.\n- Can we compute $G(\\omega)$ at a grid of frequencies by solving shifted linear systems $\\big(i(\\omega I + \\mathcal{N}) - \\mathcal{A}\\big)x = \\mathcal{B}e_j$ with a Krylov method (shifted GMRES / rational Krylov), reusing one Arnoldi basis across *all* $\\omega$ in the band? That replaces $O(\\#\\omega \\cdot N^3 n^3)$ with $O(N^2 n^2)$ per matvec times a number of iterations governed by the gap.\n\nWhat",
+      "created_at": "2026-06-23T07:51:04Z"
+    },
+    {
+      "id": "md1a334b8",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your three structural facts are exactly right, and the Floquet observation is the heart of it. Let me push on the sparsification point, because I think it has a clean formulation in the language I trust.\n\nThe operator $\\mathcal{A}$ is a doubly-infinite block-Toeplitz operator whose $k$-th block is $\\hat A_k$, the $k$-th Fourier coefficient of $A(\\cdot)$. If $A(\\cdot)$ is $C^s$ then $\\|\\hat A_k\\| = O(|k|^{-s})$, and if it is analytic in a strip of width $\\eta$ then $\\|\\hat A_k\\| = O(e^{-\\eta|k|})$. This is precisely the \"decay = low leverage\" picture. The right statement is not just dropping small blocks, but a **cut-norm / operator-norm sparsification**: I want to replace $\\mathcal{A}$ by a banded approximation $\\mathcal{A}_N$ with $\\|\\mathcal{A}-\\mathcal{A}_N\\| \\le \\varepsilon$, and then bound the resolvent perturbation by $\\|G - G_N\\| \\le \\frac{\\|\\mathcal{C}\\|\\|\\mathcal{B}\\|}{\\delta^2}\\varepsilon$, where $\\delta$ is exactly the spectral gap Dan is asking about — the distance from $i(\\omega+k\\Omega)$ to the Floquet spectrum across the band. So the truncation order is $N \\asymp \\frac{1}{\\eta}\\log(\\|\\mathcal{C}\\|\\|\\mathcal{B}\\|/(\\delta^2\\varepsilon))$ in the analytic case. That is your provable error bound.\n\nTwo further points where I think we can do better than generic shifted-Krylov:\n\n1. **Use the Floquet factorization to make the operator nearly diagonal.** Write $\\Phi(t,0) = P(t)e^{tR}$ with $P(\\cdot)$ $T$-periodic and $R$ the Floquet generator. Conjugating the system by $P(t)$ turns $A(t)$ into the *constant* matrix $R$. In harmonic space this means $\\mathcal{A}$ becomes $\\mathcal{N}'$-shifted plus a pure block-diagonal $I\\otimes R$ — the Toeplitz coupling is absorbed into the change of basis $\\mathcal{P}$, which is itself banded by the decay of $P(\\cdot)$. Then $i(\\omega I+\\mathcal{N}) - I\\otimes R$ is **block-diagonal**, and each block inverts in $O(n^3)$ independent of $\\omega$ via a single Schur/eigendecomposition of $R$. The frequency sweep then costs $O(n^3 + \\#\\omega\\cdot Nn^2)$ — essentially the time-invariant cost, which is what the problem asks for.\n\n2. The cost is paid once in computing $P(\\cdot)$ and $R$, i.e. one monodromy computation $\\Phi(T,0)$ plus a matrix logarithm — well-conditioned away from Floquet resonances. So the hard frequencies are exactly the near-resonant ones where $\\delta$ is small, and there the banded-Krylov fallback applies.\n\nSo my proposal: a two-regime algorithm. Away from resonances, **diagonalize via Floquet** and sweep frequencies trivially. Near resonances, fall back to Dan's rational-Krylov with a shift-invariant preconditioner. The crossover is governed entirely by $\\delta(\\omega)$. The remaining gap I want the room to n",
+      "created_at": "2026-06-23T07:51:51Z"
+    },
+    {
+      "id": "ma4f0f19d",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — this is beautiful, and the Floquet diagonalization is exactly right. But let me push on what the *real* theorem is here, because I think you're both circling a spectral object I recognize from the trace formula world.\n\nLook at what the resolvent $G(\\omega)$ actually is: it's a sum over the Floquet spectrum, $G(\\omega) = \\mathcal{C}\\,\\mathcal{P}\\,\\big(i(\\omega I + \\mathcal{N}) - I\\otimes R\\big)^{-1}\\mathcal{P}^{-1}\\mathcal{B}+\\mathcal{D}$, and the poles sit at $i(\\omega + k\\Omega) = \\mu_j$, the Floquet exponents. That's an *explicit formula* — the analogue of $\\sum_\\rho x^\\rho = -\\sum_p \\Lambda(p)\\hat f(\\log p)$. The \"primes\" here are the closed orbits of the monodromy, the \"zeros\" are the Floquet exponents shifted by $k\\Omega$. So the conditioning $\\delta(\\omega)$ Dan asks about is literally a **gap statistic**: how do the points $\\{\\mu_j - i k\\Omega\\}$ distribute relative to the line $i\\omega$?\n\nNow here is my provocation. Laszlo's bound $N \\asymp \\frac1\\eta\\log(\\cdots)$ assumes you *know* $\\eta$, the analyticity strip. But the genuinely hard case is when the Floquet exponents are nearly resonant across many $k$ — when $\\mu_j \\approx \\mu_{j'} + ik\\Omega$. That's an *arithmetic* small-denominator phenomenon, exactly the obstruction that appears in KAM and in the quantum-chaos eigenvalue spacings I studied with Lindenstrauss. So my question: **are the Floquet resonances generic (Poissonian/well-separated) or do they cluster?** If they obey a level-repulsion law — GUE-like — then $\\delta(\\omega)$ is bounded below on a grid of density $\\sim 1/\\delta$ and your two-regime algorithm has provably *bounded* near-resonant work. If they cluster like a Poisson process, you get small gaps with probability $\\sim\\delta$, and the near-resonant fallback dominates.\n\nLet me also insist on computing the first case by hand. Take $n=1$, scalar $a(t) = a_0 + 2a_1\\cos\\Omega t$. Then $R = a_0$, $P(t) = \\exp\\!\\big(\\frac{2a_1}{\\Omega}\\sin\\Omega t\\big)$, which is genuinely analytic with strip width set by $a_1/\\Omega$ — and you see *explicitly* that the harmonic decay of $\\mathcal P$ is $e^{-\\eta|k|}$ with $\\eta = \\log(\\Omega/a_1)$-ish. So Laszlo's $\\eta$ is computable from the data, not a free parameter. I'd want the theorem stated as: $N$ as an *effective* function of $\\|A\\|/\\Omega$.\n\nTwo concrete demands for the writeup:\n1. State the error bound as a genuine **explicit-formula remainder** — the tail $\\sum_{|k|>N}$ controlled by $\\eta$ *and* by $\\delta$, and make the interplay sharp, because that's where the real content is.\n2. Characterize the resonant set $\\{\\omega : \\delta(\\omega) < \\epsilon\\}$ as a *measure* — its size as a function of $\\epsilon$ is the true complexity parameter. Is it $O",
+      "created_at": "2026-06-23T07:52:39Z"
+    },
+    {
+      "id": "m21675c07",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your reframing as an explicit formula is exactly the lens that makes the conditioning question precise — and I want to seize on your demand to characterize the resonant set $\\{\\omega : \\delta(\\omega) < \\epsilon\\}$ as a *measure*, because that's where I can give you something concrete and algorithmic.\n\nHere's the claim: the resonant set is small in a way I can prove with a leverage-score argument. Across the fundamental band $\\omega \\in [0,\\Omega)$, the near-singular directions are exactly where $i\\omega$ lands within $\\epsilon$ of some $\\mu_j - ik\\Omega$. The total \"bad measure\" is at most $\\sum_{j,k:\\ |\\mathrm{Im}(\\mu_j)-k\\Omega|<\\text{band}} 2\\epsilon = O(n \\cdot N_{\\text{eff}} \\cdot \\epsilon)$, where $N_{\\text{eff}}$ counts shifted exponents reaching the band. So generically the resonant set has measure $O(n\\,\\epsilon)$ per band — *linear in $\\epsilon$* — which is the Poisson-tail estimate, and level repulsion only improves it. That directly bounds Laszlo's two-regime crossover work.\n\nBut let me make my real point, the constructive one. I do not want to *test* $\\delta(\\omega)$ pointwise on a fine grid — that's wasteful. Instead, treat $\\delta(\\omega)^{-2}$ as a **leverage score for the frequency grid**, exactly as $\\ell_e = w_e R_e$ was the leverage of an edge in my sparsification work. Concretely:\n\n1. **One factorization, reused as a shift-invariant preconditioner.** Compute $R$ and $\\mathcal{P}$ once (one monodromy + one matrix log, as Laszlo says). The preconditioner is the block-diagonal $M(\\omega) = i(\\omega I+\\mathcal N) - I\\otimes R$. Away from resonance $M^{-1}$ is an excellent preconditioner for the true operator $i(\\omega I+\\mathcal N)-\\mathcal A$ because the residual $\\mathcal A - I\\otimes R$ has small norm controlled by the *off-band* harmonic decay. This is precisely recursive preconditioning: solve, don't decompose.\n\n2. **Importance-sample the frequency grid by $\\delta^{-1}$.** Build a coarse estimate of $\\delta(\\omega)$ for free from the eigenvalues of $R$ — you literally know the pole locations $\\mu_j - ik\\Omega$ from the Floquet spectrum, no solve required. Then place dense evaluation points only where $\\delta$ is small. The number of \"hard\" points is $\\sum_\\omega \\delta(\\omega)^{-1}$-weighted, which by the measure bound above is $O(n N_{\\text{eff}} \\log(1/\\epsilon))$ — sublinear in the naive grid size.\n\n3. **Provable iteration count via the gap.** Preconditioned GMRES on the residual $\\mathcal A - I\\otimes R$ converges at rate $(1 - c\\,\\delta^2/\\|\\mathcal A - I\\otimes R\\|^2)$, so the iteration count is $O(\\delta^{-2}\\log(1/\\varepsilon))$ — and crucially the *Arnoldi basis is reusable across nearby $\\omega$* because the shift only moves the diagonal. That's the matvec-cost win: $O(N^2 n^2)$ per matvec, not $O(N^3 n^3)$ per frequency.\n\nSo my syn",
+      "created_at": "2026-06-23T07:54:57Z"
+    },
+    {
+      "id": "mc12bbc12",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — the synthesis is essentially there, and I want to sharpen one point in your leverage-score argument, because I think it hides a subtlety that the graph-limits perspective makes visible.\n\nYou both treat $\\delta(\\omega)^{-2}$ as a leverage score and importance-sample the grid by it. Good. But the bound \"resonant measure $= O(n N_{\\mathrm{eff}}\\epsilon)$\" assumes the shifted exponents $\\{\\mu_j - ik\\Omega\\}$ are *simple poles* with bounded residues. The residue at the pole $i\\omega = \\mu_j - ik\\Omega$ is governed by the spectral projector of $R$ onto its $j$-th eigenspace, and this is exactly where conditioning of the Floquet diagonalization enters: if $R$ is non-normal — say a Jordan block, the genuine generic situation near a *coalescence* of Floquet exponents — then $\\|\\mathcal P\\|\\|\\mathcal P^{-1}\\|$ blows up and Dan's preconditioner residual $\\|\\mathcal A - I\\otimes R\\|$ is no longer small. So I would refine the resonant set into **two distinct phenomena**:\n\n1. **Spectral resonance** ($i\\omega$ near a pole) — measure $O(n N_{\\mathrm{eff}}\\epsilon)$, handled by Peter's gap statistics and Dan's importance sampling.\n2. **Eigenvector resonance** (Floquet exponents nearly coalescing, $\\kappa(\\mathcal P) \\to \\infty$) — this is a *separate* small-denominator set, and it is exactly the KAM small-divisor phenomenon Peter named. Here the diagonalization itself fails and one must use a *block* Floquet–Schur form rather than full diagonalization, grouping near-coalescent exponents into invariant subspaces.\n\nThis is the same lesson as my $\\theta$-function work: a clean spectral sandwich exists, but the *certificate* (here, the projector) degrades exactly when the SDP — or the eigenbasis — becomes degenerate. The robust algorithm should therefore compute a **block-Schur Floquet factorization** $\\Phi(T,0)=P(t)e^{tR}$ with $R$ in ordered quasi-triangular form, never diagonalizing across a cluster. Each diagonal block of size $m_j$ inverts in $O(m_j^3)$ and stays well-conditioned; the inter-block coupling is upper-triangular and back-substituted. This preserves the $O(n^3 + \\#\\omega\\cdot Nn^2)$ sweep cost while making the residue bounds $\\kappa$-free.\n\nOn Peter's demand for an effective $N$: the analyticity strip $\\eta$ of $P(\\cdot)$ is *not* purely a property of $A$'s smoothness — it shrinks as exponents coalesce, precisely because $P(t)=\\Phi(t,0)e^{-tR}$ inherits the conditioning of $R$. So I'd state the master estimate as\n$$\nN \\asymp \\frac{1}{\\eta}\\,\\log\\!\\Big(\\frac{\\kappa(\\mathcal P)\\,\\|\\mathcal C\\|\\|\\mathcal B\\|}{\\delta^2\\varepsilon}\\Big),\\qquad \\eta = \\eta(A,\\,\\mathrm{sep}(R)),\n$$\nwith $\\mathrm{sep}(R)$ the Bauer–Fike separation of the Floquet blocks. That is the genuinely sharp, effective form Peter wan",
+      "created_at": "2026-06-23T07:55:45Z"
+    },
+    {
+      "id": "m90a49108",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, that block-Schur refinement is *exactly* right, and the appearance of $\\mathrm{sep}(R)$ as the true small-divisor is the heart of the matter — but let me now name the phenomenon precisely, because I think you've just rediscovered the difference between *level repulsion* and *level clustering* in two different spectral planes.\n\nThere are genuinely **two distinct spacing statistics** at play, and conflating them is the danger:\n\n1. **The vertical statistics** — the spacings of $\\{\\mu_j - ik\\Omega\\}$ along the line $i\\omega$. This is Dan's resonant measure $O(nN_{\\mathrm{eff}}\\epsilon)$, and it's essentially a *one-dimensional* point process. Here I'd actually bet on Poissonian, not GUE: the $k\\Omega$ shifts are a perfect arithmetic progression, so for generic incommensurate $\\mathrm{Im}(\\mu_j)/\\Omega$ you get equidistribution mod $\\Omega$ (Weyl!), and the gaps are exponentially distributed — the $O(\\epsilon)$ tail Dan wrote. *No* level repulsion in the vertical direction.\n\n2. **The horizontal/coalescence statistics** — Laszlo's $\\mathrm{sep}(R)$, the spacings of the bare Floquet exponents $\\mu_j$ among themselves. *This* is where repulsion lives, because $R$ is a fixed $n\\times n$ matrix and its eigenvalues repel like a GUE ensemble of dimension $n$ under generic perturbation of the data. So $\\mathrm{sep}(R)$ is large with high probability — coalescence is codimension-one, the KAM small-divisor wall.\n\nThe clean theorem I want: the resonant set splits as\n$$\n\\{\\omega:\\delta(\\omega)<\\epsilon\\} \\;=\\; \\underbrace{\\text{(Poisson tail, measure }O(nN_{\\mathrm{eff}}\\epsilon))}_{\\text{generic, cheap}} \\;\\cup\\; \\underbrace{\\text{(coalescence shadow, codim 1 in data)}}_{\\text{rare, needs block-Schur}}.\n$$\n\nLet me check the scalar case again to be sure I'm not fooling myself. For $a(t)=a_0+2a_1\\cos\\Omega t$ there's *one* exponent $\\mu=a_0$, so $\\mathrm{sep}(R)$ is vacuous — no coalescence possible, $\\kappa(\\mathcal P)=1$ in the natural norm. The only resonances are vertical: $\\omega = \\mathrm{Im}(a_0)/1 - k\\Omega$, isolated points, Poisson-trivially. So the scalar case sees *only* phenomenon (1) — exactly why $n\\geq 2$ is where the real content of Laszlo's block-Schur lives. **The genuine problem begins at $n=2$ with two Floquet exponents that can collide.** I'd insist the writeup compute that $2\\times 2$ case explicitly, with $\\mu_{1,2}(\\lambda)$ crossing as a parameter $\\lambda$ is tuned, and exhibit $\\eta(\\lambda)\\to 0$ as $\\mathrm{sep}\\to 0$ — that's the honest demonstration that Laszlo's $\\eta=\\eta(A,\\mathrm{sep}(R))$ is the right master estimate and not a free parameter.",
+      "created_at": "2026-06-23T07:56:33Z"
+    },
+    {
+      "id": "ma4f198f5",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T07:57:31Z"
+    },
+    {
+      "id": "mf944ea68",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nCompute the harmonic transfer function G(omega) across a frequency band by a Floquet block-Schur diagonalization that converts the doubly-infinite block-Toeplitz resolvent into a near-block-diagonal shifted operator, with provable harmonic-truncation error bounds and a two-regime (diagonalize vs. preconditioned-Krylov) strategy governed by the spectral gap delta(omega).",
+      "created_at": "2026-06-23T07:57:31Z"
+    }
+  ],
+  "plan": {
+    "summary": "Compute the harmonic transfer function G(omega) across a frequency band by a Floquet block-Schur diagonalization that converts the doubly-infinite block-Toeplitz resolvent into a near-block-diagonal shifted operator, with provable harmonic-truncation error bounds and a two-regime (diagonalize vs. preconditioned-Krylov) strategy governed by the spectral gap delta(omega).",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the harmonic operator and resolvent representation",
+        "body": "Write G(omega) = C(i(omega I + N) - A)^{-1}B + D where A,B,C,D are doubly-infinite block-Toeplitz operators from Fourier coefficients of A(.) etc., and N = diag(k*Omega I). Establish the block structure, identify the poles as i(omega + k*Omega) = mu_j (shifted Floquet exponents), and define the spectral gap delta(omega) = dist(i*omega, {mu_j - ik*Omega}) as the master conditioning parameter.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Establish harmonic decay and truncation error bound",
+        "body": "Prove that if A(.) is analytic in a strip of width eta then ||hat A_k|| = O(e^{-eta|k|}) (C^s case: O(|k|^{-s})), so A is well-approximated by a banded operator A_N. Derive the resolvent perturbation bound ||G - G_N|| <= (||C||||B||/delta^2) * epsilon and the effective truncation order N ~ (1/eta) log(kappa(P)||C||||B||/(delta^2 epsilon)). State the tail sum_{|k|>N} explicitly as an explicit-formula remainder controlled jointly by eta and delta.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Construct the block-Schur Floquet factorization",
+        "body": "Compute Phi(T,0) = P(t) e^{tR} with P(.) T-periodic and R in ordered quasi-triangular (block-Schur) form, grouping near-coalescent Floquet exponents into invariant blocks rather than fully diagonalizing. Show that conjugation by P(t) turns A into a block-diagonal I (x) R plus the shift, so each diagonal block of size m_j inverts in O(m_j^3) and inter-block coupling is back-substituted, yielding sweep cost O(n^3 + #omega * N n^2) that is kappa-free. Establish eta = eta(A, sep(R)) showing the strip shrinks as block separation degrades.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Characterize the resonant set as a measure and split it into two phenomena",
+        "body": "Prove the resonant set {omega : delta(omega) < epsilon} splits into (i) spectral/vertical resonance of measure O(n * N_eff * epsilon) governed by the point process {mu_j - ik*Omega} along i*omega, and (ii) eigenvector/horizontal coalescence resonance (sep(R) -> 0) which is codimension-one in the data. Argue via Weyl equidistribution that the vertical statistics are Poissonian (exponential gap tail, no level repulsion) while the horizontal exponents of fixed nxn R repel generically, so sep(R) is large with high probability.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Design the two-regime sweep algorithm with leverage-score sampling",
+        "body": "Specify: away from resonance, use the block-diagonal M(omega) = i(omega I + N) - I (x) R as a shift-invariant preconditioner with reusable Arnoldi basis across nearby omega, giving O(N^2 n^2) per matvec and iteration count O(delta^{-2} log(1/eps)). Use known pole locations mu_j - ik*Omega to estimate delta(omega) for free and importance-sample the frequency grid by delta^{-1}, placing dense points only near resonances; near coalescence fall back to the block-Schur form. Define the crossover threshold in terms of delta(omega) and sep(R).",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Work out the scalar (n=1) and 2x2 (n=2) worked examples",
+        "body": "For a(t) = a_0 + 2a_1 cos(Omega t) verify R = a_0, P(t) = exp((2a_1/Omega) sin(Omega t)), strip width eta = log(Omega/a_1)-type, kappa(P)=1, and only vertical Poissonian resonances at omega = Im(a_0) - k*Omega. Then construct an explicit 2x2 case with mu_{1,2}(lambda) crossing as a parameter lambda is tuned, and exhibit eta(lambda) -> 0 as sep(R) -> 0, demonstrating that eta = eta(A, sep(R)) is genuinely data-determined and not a free parameter.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify error bounds, cost claims, and conditioning robustness",
+        "body": "Independently check: (a) the resolvent perturbation bound and its dependence on delta and kappa(P); (b) that the block-Schur factorization keeps residue bounds kappa-free and the preconditioner residual ||A - I (x) R|| small away from coalescence; (c) the claimed total complexity O(n^3 + #omega * N n^2) versus the naive O(#omega * N^3 n^3); (d) the resonant-measure estimate O(n N_eff epsilon). Flag any hidden assumptions (simple poles, bounded residues, normality of R).",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Stress-test assumptions and identify remaining gaps",
+        "body": "Critically examine the weakest links: whether the Poissonian vertical-statistics assumption holds for commensurate Im(mu_j)/Omega, whether sep(R) genuinely stays bounded below under the relevant data perturbations, whether the analytic-strip assumption on A(.) is realistic, and whether the importance-sampling work bound survives clustering. Propose concrete counterexample classes and necessary hypotheses to make each theorem statement rigorous.",
+        "agent": "critic-agent",
+        "depends_on": [
+          3,
+          4,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T07:57:31Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

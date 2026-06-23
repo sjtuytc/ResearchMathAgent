@@ -1,0 +1,766 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+
+\newcommand{\eqdef}{\mathrel{\mathop:}=}
+\newcommand{\bL}{\mathbf{L}}
+\newcommand{\Form}{\mathrm{Form}}
+\newcommand{\fto}{\rightarrow}
+\newcommand{\fbi}{\leftrightarrow}
+\newcommand{\odotop}{\,\&\,}
+\newcommand{\Top}{\top}
+\newcommand{\Bot}{\bot}
+
+\begin{document}
+
+\title{A lattice-valued quantitative logic}
+\author{solver-agent}
+\date{}
+\maketitle
+
+\begin{abstract}
+We develop a quantitative propositional logic whose truth degrees range over an
+arbitrary complete residuated lattice $\bL$ (in particular over a bounded lattice
+that is not linearly ordered and is not embedded in $[0,1]$).  We isolate two
+complementary ``meta-degree'' constructions that replace the
+integral-with-respect-to-Lebesgue-measure of the classical $[0,1]$-valued
+theory:
+
+\begin{itemize}
+\item an \emph{intrinsic, $\bL$-valued} truth degree and similarity, which require
+no measure at all and exist for every complete residuated lattice; and
+\item a \emph{numerical}, $[0,1]$-valued truth degree obtained from a
+\emph{state} (a Bosbach/Riečan averaging functional) on $\bL$, which plays exactly
+the role of the uniform probability measure.
+\end{itemize}
+
+We prove for both constructions: well-definedness up to logical equivalence,
+the residuated/triangle laws, that the induced object is an $\bL$-valued
+similarity (resp.\ a genuine pseudometric on the set of formulas), and
+compatibility with the connectives, together with a theory of divergence and
+consistency degrees of theories.  We then show that the state hypothesis is sharp: an
+\emph{arbitrary} order-preserving collapse $\bL\to[0,1]$ that is not a state
+destroys the triangle inequality, while states (in fact top-faithful ones,
+yielding genuine point-separating metrics) exist for all the standard truth-value
+algebras, including non-chain ones such as the diamond $M_2$ and the product
+$W_3\times W_4$.  Thus a satisfactory generalization exists for every complete
+residuated lattice in the intrinsic $\bL$-valued form, and in numerical
+$[0,1]$-valued form for every lattice carrying a state, with the modular/state
+law being the exact additional ingredient required for the numerical metric.
+\end{abstract}
+
+\section{The algebraic setting}\label{sec:setting}
+
+\begin{definition}[Complete residuated lattice]\label{def:rl}
+A \emph{complete residuated lattice} is a structure
+$\bL=(L,\wedge,\vee,\odotop,\fto,\Bot,\Top)$ such that
+\begin{enumerate}
+\item $(L,\wedge,\vee,\Bot,\Top)$ is a complete lattice with least element
+$\Bot$ and greatest element $\Top$, with order $x\le y \iff x\wedge y = x$;
+\item $(L,\odotop,\Top)$ is a commutative monoid (the \emph{multiplication}, or
+\emph{strong conjunction}), with unit $\Top$;
+\item $(\odotop,\fto)$ is an adjoint pair (\emph{residuation}): for all
+$x,y,z\in L$,
+\begin{equation}\label{eq:adj}
+x\odotop y \le z \quad\Longleftrightarrow\quad x \le y\fto z .
+\end{equation}
+\end{enumerate}
+We write $\neg x \eqdef x\fto\Bot$ and define the \emph{biresiduum}
+\begin{equation}\label{eq:bi}
+x\fbi y \eqdef (x\fto y)\wedge(y\fto x).
+\end{equation}
+\end{definition}
+
+This class is large enough to subsume every standard truth-degree algebra used
+in many-valued logic and to admit genuinely non-linear examples:
+
+\begin{itemize}
+\item the standard \L ukasiewicz, G\"odel and product algebras on $[0,1]$, and
+the finite \L ukasiewicz chains $W_n$ (these recover the classical quantitative
+logic of the Background paragraph);
+\item every complete \emph{Heyting algebra} $(H,\wedge,\vee,\fto,\Bot,\Top)$,
+where $\odotop=\wedge$ and $\fto$ is the Heyting implication
+$x\fto y=\bigvee\{z: z\wedge x\le y\}$; this includes finite distributive
+lattices that are \emph{not} chains, e.g.\ the diamond
+$M_2=\{\Bot,a,b,\Top\}$ with $a,b$ incomparable;
+\item any direct product $\bL_1\times\bL_2$ of residuated lattices, with
+componentwise operations; e.g.\ $W_3\times W_4$, a $12$-element residuated lattice
+that is not a chain.
+\end{itemize}
+
+We collect the elementary residuation facts used throughout.  Each is a standard
+consequence of \eqref{eq:adj}; we prove the ones we need from scratch.
+
+\begin{lemma}[Residuation calculus]\label{lem:res}
+For all $x,y,z\in L$:
+\begin{enumerate}
+\item\label{it:r-mono} $\odotop$ is order-preserving in each argument;
+$\fto$ is order-preserving in the second and order-reversing in the first.
+\item\label{it:r-unit} $x\fto x=\Top$ and $\Top\fto x=x$.
+\item\label{it:r-mp} $x\odotop(x\fto y)\le y$ (modus ponens).
+\item\label{it:r-trans} $(x\fto y)\odotop(y\fto z)\le x\fto z$.
+\item\label{it:bi-trans} $(x\fbi y)\odotop(y\fbi z)\le x\fbi z$.
+\item\label{it:bi-refl} $x\fbi x=\Top$, \ $x\fbi y=y\fbi x$, and $x\fbi y=\Top$
+iff $x=y$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\eqref{it:r-mono} If $a\le b$ then $a\odotop c\le b\odotop c$: indeed
+$b\odotop c\le b\odotop c$ gives $b\le c\fto(b\odotop c)$ by \eqref{eq:adj}, and
+$a\le b\le c\fto(b\odotop c)$ gives $a\odotop c\le b\odotop c$ again by
+\eqref{eq:adj}.  Monotonicity of $\fto$ in the second argument: if $y\le y'$ and
+$z=x\fto y$ then $z\odotop x\le y\le y'$, so $z\le x\fto y'$.  Antitonicity in the
+first: if $x\le x'$ and $z=x'\fto y$ then $z\odotop x\le z\odotop x'\le y$, hence
+$z\le x\fto y$.
+
+\eqref{it:r-unit} From $x\odotop\Top=x\le x$ and \eqref{eq:adj}, $\Top\le x\fto x$,
+so $x\fto x=\Top$.  And $\Top\fto x$: from \eqref{eq:adj},
+$z\le\Top\fto x \iff z=z\odotop\Top\le x$, so $\Top\fto x=x$.
+
+\eqref{it:r-mp} $x\fto y\le x\fto y$ gives, by \eqref{eq:adj},
+$(x\fto y)\odotop x\le y$, i.e.\ $x\odotop(x\fto y)\le y$ by commutativity.
+
+\eqref{it:r-trans} By \eqref{it:r-mp} (twice) and \eqref{it:r-mono},
+\[
+\bigl[(x\fto y)\odotop(y\fto z)\bigr]\odotop x
+=(y\fto z)\odotop\bigl[(x\fto y)\odotop x\bigr]
+\le (y\fto z)\odotop y \le z .
+\]
+By \eqref{eq:adj} this yields $(x\fto y)\odotop(y\fto z)\le x\fto z$.
+
+\eqref{it:bi-trans} Using \eqref{it:r-mono}, $\eqref{eq:bi}$ and \eqref{it:r-trans},
+\begin{align*}
+(x\fbi y)\odotop(y\fbi z)
+&\le (x\fto y)\odotop(y\fto z)\le x\fto z,\\
+(x\fbi y)\odotop(y\fbi z)
+&\le (y\fto x)\odotop(z\fto y)=(z\fto y)\odotop(y\fto x)\le z\fto x.
+\end{align*}
+Hence $(x\fbi y)\odotop(y\fbi z)\le (x\fto z)\wedge(z\fto x)=x\fbi z$.
+
+\eqref{it:bi-refl} $x\fbi x=(x\fto x)\wedge(x\fto x)=\Top$ by \eqref{it:r-unit};
+symmetry is immediate from \eqref{eq:bi}.  If $x\fbi y=\Top$ then
+$x\fto y=\Top$ and $y\fto x=\Top$; from $x\fto y=\Top$ and \eqref{eq:adj}
+(with the left side $\Top\odotop x=x$) we get $x\le y$, and symmetrically
+$y\le x$, so $x=y$.  The converse is $x\fbi x=\Top$.
+\end{proof}
+
+\section{Formulas and their induced truth functions}\label{sec:formulas}
+
+Fix a countable set of propositional variables $\{p_1,p_2,\dots\}$.
+
+\begin{definition}[Formulas]\label{def:form}
+The set $\Form$ of \emph{formulas} is the least set containing all variables and
+the constants $\overline\Bot,\overline\Top$, and closed under the binary
+connectives $\wedge,\vee,\odotop$ (multiplicative conjunction) and $\fto$.  We use
+$\neg\varphi\eqdef\varphi\fto\overline\Bot$ and
+$\varphi\fbi\psi\eqdef(\varphi\fto\psi)\wedge(\psi\fto\varphi)$ as abbreviations.
+For $\varphi\in\Form$ let $\mathrm{Var}(\varphi)$ be its (finite) set of variables;
+write $\Form_n$ for the formulas with $\mathrm{Var}(\varphi)\subseteq\{p_1,\dots,p_n\}$.
+\end{definition}
+
+\begin{definition}[Valuations and induced functions]\label{def:val}
+A \emph{valuation} is a map $v:\{p_i\}\to L$.  It extends uniquely to
+$\overline v:\Form\to L$ by interpreting each connective by the corresponding
+operation of $\bL$ and $\overline\Bot,\overline\Top$ by $\Bot,\Top$.  For
+$\varphi\in\Form_n$ the \emph{induced truth function}
+$\overline\varphi:L^n\to L$ is
+$\overline\varphi(a_1,\dots,a_n)\eqdef\overline v(\varphi)$ for any valuation $v$
+with $v(p_i)=a_i$ ($1\le i\le n$); this is well defined since
+$\overline v(\varphi)$ depends only on $v\restriction\mathrm{Var}(\varphi)$.
+\end{definition}
+
+\begin{definition}[Semantic equivalence]\label{def:eqv}
+Formulas $\varphi,\psi$ are \emph{$\bL$-equivalent}, written
+$\varphi\approx\psi$, if $\overline\varphi=\overline\psi$ as functions on
+$L^{m}$, where $m$ is large enough that
+$\mathrm{Var}(\varphi)\cup\mathrm{Var}(\psi)\subseteq\{p_1,\dots,p_m\}$.
+Equivalently (by Lemma~\ref{lem:res}\eqref{it:bi-refl}),
+$\varphi\approx\psi \iff \overline{\varphi\fbi\psi}\equiv\Top$, i.e.\ the induced
+function of $\varphi\fbi\psi$ is constantly $\Top$.  Plainly $\approx$ is an
+equivalence relation on $\Form$.
+\end{definition}
+
+Throughout, when comparing functions of finitely many variables we always pad to
+a common variable set $\{p_1,\dots,p_m\}$; adding dummy variables does not change
+any quantity below, because all our aggregations are over product structures and
+the marginal in a dummy variable is constant.
+
+\section{Two notions of meta-degree}\label{sec:meta}
+
+The classical theory averages $\overline\varphi:[0,1]^n\to[0,1]$ against Lebesgue
+measure on $[0,1]^n$.  Two structural facts make this work: \emph{(i)} $[0,1]$
+carries a translation that lets one form an average; \emph{(ii)} that average is
+\emph{monotone} and \emph{modular} (additive).  A general lattice has neither a
+canonical addition nor a canonical measure.  We therefore separate the two roles.
+
+\subsection{The intrinsic ($\bL$-valued) meta-degree}
+
+For non-linear $\bL$ there is a canonical aggregation that needs no measure: the
+infimum and supremum.  These give a meta-degree and similarity valued in $\bL$
+itself.
+
+\begin{definition}[Intrinsic meta-degree and similarity]\label{def:intrinsic}
+For $\varphi\in\Form_n$ put
+\begin{equation}\label{eq:intr}
+\tau_\wedge(\varphi)\eqdef\bigwedge_{a\in L^n}\overline\varphi(a)\in L,
+\qquad
+\tau_\vee(\varphi)\eqdef\bigvee_{a\in L^n}\overline\varphi(a)\in L .
+\end{equation}
+For $\varphi,\psi\in\Form$ define the \emph{intrinsic similarity}
+\begin{equation}\label{eq:Esim}
+E(\varphi,\psi)\eqdef
+\bigwedge_{a\in L^{m}}\overline{(\varphi\fbi\psi)}(a)\;=\;\tau_\wedge(\varphi\fbi\psi)\in L,
+\end{equation}
+with $m$ a common variable bound.  (Infima/suprema exist because $\bL$ is
+complete.)  We call $E(\varphi,\psi)$ the \emph{degree to which $\varphi$ and
+$\psi$ are interchangeable}; it lives in $\bL$.
+\end{definition}
+
+\begin{theorem}[Intrinsic similarity]\label{thm:intrinsic}
+The map $E:\Form\times\Form\to L$ of \eqref{eq:Esim} is well defined,
+independent of the chosen common variable bound $m$, and an $\bL$-valued
+similarity:
+\begin{enumerate}
+\item\label{it:E-refl} $E(\varphi,\varphi)=\Top$;
+\item\label{it:E-sym} $E(\varphi,\psi)=E(\psi,\varphi)$;
+\item\label{it:E-trans} $E(\varphi,\psi)\odotop E(\psi,\chi)\le E(\varphi,\chi)$
+(residuated transitivity);
+\item\label{it:E-sep} $E(\varphi,\psi)=\Top$ iff $\varphi\approx\psi$;
+\item\label{it:E-cong} $E$ is a congruence for the connectives: for
+$*\in\{\wedge,\vee,\odotop,\fto\}$,
+\[
+E(\varphi_1,\psi_1)\odotop E(\varphi_2,\psi_2)\ \le\
+E(\varphi_1*\varphi_2,\ \psi_1*\psi_2).
+\]
+\end{enumerate}
+In particular $E$ descends to $\Form/{\approx}$ and there
+$E(\varphi,\psi)=\Top\iff\varphi=\psi$.
+\end{theorem}
+
+\begin{proof}
+Independence of $m$: adding a dummy variable $p_{m+1}$ replaces $L^m$ by
+$L^{m+1}=L^m\times L$, and $\overline{(\varphi\fbi\psi)}$ does not depend on the
+last coordinate, so the infimum is unchanged.
+
+\eqref{it:E-refl}, \eqref{it:E-sym} follow from
+Lemma~\ref{lem:res}\eqref{it:bi-refl} applied pointwise:
+$\overline{(\varphi\fbi\varphi)}(a)=\overline\varphi(a)\fbi\overline\varphi(a)=\Top$
+for all $a$, and $\overline{(\varphi\fbi\psi)}=\overline{(\psi\fbi\varphi)}$.
+
+\eqref{it:E-trans} For each $a\in L^m$,
+Lemma~\ref{lem:res}\eqref{it:bi-trans} gives
+\[
+\overline{(\varphi\fbi\psi)}(a)\odotop\overline{(\psi\fbi\chi)}(a)
+=\bigl(\overline\varphi(a)\fbi\overline\psi(a)\bigr)\odotop
+\bigl(\overline\psi(a)\fbi\overline\chi(a)\bigr)
+\le \overline\varphi(a)\fbi\overline\chi(a)
+=\overline{(\varphi\fbi\chi)}(a).
+\]
+Now $E(\varphi,\psi)\le\overline{(\varphi\fbi\psi)}(a)$ and
+$E(\psi,\chi)\le\overline{(\psi\fbi\chi)}(a)$ for every $a$, so by
+Lemma~\ref{lem:res}\eqref{it:r-mono},
+$E(\varphi,\psi)\odotop E(\psi,\chi)\le\overline{(\varphi\fbi\chi)}(a)$ for every
+$a$; taking the infimum over $a$ gives \eqref{it:E-trans}.
+
+\eqref{it:E-sep} $E(\varphi,\psi)=\Top$ iff
+$\overline{(\varphi\fbi\psi)}(a)=\Top$ for all $a$ (an infimum equals $\Top$ iff
+every term is $\Top$), iff $\overline\varphi(a)=\overline\psi(a)$ for all $a$
+(Lemma~\ref{lem:res}\eqref{it:bi-refl}), iff $\varphi\approx\psi$.
+
+\eqref{it:E-cong} We first prove the pointwise statement for elements of $L$:
+for all $x_i,y_i\in L$ and $*\in\{\wedge,\vee,\odotop,\fto\}$,
+\begin{equation}\label{eq:point-cong}
+(x_1\fbi y_1)\odotop(x_2\fbi y_2)\ \le\ (x_1*x_2)\fbi(y_1*y_2).
+\end{equation}
+\emph{Case $*=\odotop$.}  Put $e_i=x_i\fbi y_i$.  By
+Lemma~\ref{lem:res}\eqref{it:r-mp}, $e_i\odotop x_i\le e_i\odotop x_i$ and
+$x_i\fto y_i\ge e_i$ give, using
+$x_i\odotop(x_i\fto y_i)\le y_i$ and monotonicity,
+$x_i\odotop e_i\le y_i$; symmetrically $y_i\odotop e_i\le x_i$.  Then
+\[
+(x_1\odotop x_2)\odotop(e_1\odotop e_2)
+=(x_1\odotop e_1)\odotop(x_2\odotop e_2)\le y_1\odotop y_2,
+\]
+so by \eqref{eq:adj} $e_1\odotop e_2\le (x_1\odotop x_2)\fto(y_1\odotop y_2)$;
+symmetrically $e_1\odotop e_2\le(y_1\odotop y_2)\fto(x_1\odotop x_2)$, proving
+\eqref{eq:point-cong} for $\odotop$.
+\emph{Case $*=\fto$.}  We claim
+$e_1\odotop e_2\le(x_1\fto x_2)\fto(y_1\fto y_2)$.  By \eqref{eq:adj} it suffices
+that $e_1\odotop e_2\odotop(x_1\fto x_2)\le y_1\fto y_2$, i.e.\ by \eqref{eq:adj}
+again that $e_1\odotop e_2\odotop(x_1\fto x_2)\odotop y_1\le y_2$.  Now
+$y_1\odotop e_1\le x_1$ (shown above), and $x_1\odotop(x_1\fto x_2)\le x_2$
+(Lemma~\ref{lem:res}\eqref{it:r-mp}), and $x_2\odotop e_2\le y_2$, so using
+commutativity and monotonicity,
+\[
+e_1\odotop e_2\odotop(x_1\fto x_2)\odotop y_1
+\le e_2\odotop(x_1\fto x_2)\odotop x_1
+\le e_2\odotop x_2\le y_2 .
+\]
+By symmetry $e_1\odotop e_2\le(y_1\fto y_2)\fto(x_1\fto x_2)$, giving
+\eqref{eq:point-cong} for $\fto$.
+\emph{Cases $*=\wedge,\vee$.}  Since $e_i\le x_i\fto y_i$ and
+$e_i\le y_i\fto x_i$, by modus ponens $x_i\odotop e_i\le y_i$ and
+$y_i\odotop e_i\le x_i$.  Put $f=e_1\odotop e_2\le e_1,e_2$.  Then
+$x_i\odotop f\le x_i\odotop e_i\le y_i$ for $i=1,2$, whence
+$(x_1\wedge x_2)\odotop f\le x_i\odotop f\le y_i$, so
+$(x_1\wedge x_2)\odotop f\le y_1\wedge y_2$ and by \eqref{eq:adj}
+$f\le (x_1\wedge x_2)\fto(y_1\wedge y_2)$; the symmetric bound and the
+$\vee$-case ($(x_1\vee x_2)\odotop f=(x_1\odotop f)\vee(x_2\odotop f)$, using that
+$\odotop$ distributes over $\vee$ which follows from \eqref{eq:adj} and
+completeness) are identical.  This proves \eqref{eq:point-cong}.
+
+Finally evaluate \eqref{eq:point-cong} at $x_i=\overline{\varphi_i}(a)$,
+$y_i=\overline{\psi_i}(a)$ and bound each $x_i\fbi y_i$ below by
+$E(\varphi_i,\psi_i)$; monotonicity of $\odotop$ gives
+$E(\varphi_1,\psi_1)\odotop E(\varphi_2,\psi_2)\le
+\overline{(\varphi_1*\varphi_2)}(a)\fbi\overline{(\psi_1*\psi_2)}(a)$ for all
+$a$, and taking the infimum gives \eqref{it:E-cong}.
+\end{proof}
+
+\begin{remark}[Codomain of the intrinsic degree]\label{rem:intr-codomain}
+Theorem~\ref{thm:intrinsic} answers part (b) in its first form: the
+\emph{intrinsic} meta-degree of interchangeability takes values in the lattice
+$\bL$ itself; no measure is needed.  Its ``metric'' is the residuated triangle law
+\eqref{it:E-trans}, the exact lattice analogue of the triangle inequality (it
+becomes the usual triangle inequality after applying $-\log$ to a real residuated
+lattice).  This is the largest invariant available with no extra structure on
+$\bL$, and it is non-trivial precisely because $\bL$ may be non-linear.
+\end{remark}
+
+\subsection{States: the role of the uniform measure}
+
+To obtain a \emph{numerical} truth degree in $[0,1]$ as in the classical theory,
+we replace ``Lebesgue measure followed by integration'' by a single averaging
+functional, a \emph{state}.
+
+\begin{definition}[State]\label{def:state}
+A \emph{state} on $\bL$ is a map $s:L\to[0,1]$ with
+\begin{enumerate}
+\item[(S1)] $s(\Bot)=0$, $s(\Top)=1$;
+\item[(S2)] $s$ is order-preserving: $x\le y\Rightarrow s(x)\le s(y)$;
+\item[(S3)] (modular/valuation law) $s(x\vee y)+s(x\wedge y)=s(x)+s(y)$ for all $x,y$;
+\item[(S4)] ($\&$-subadditivity) $s(x)+s(y)\le 1+s(x\odotop y)$ for all $x,y$.
+\end{enumerate}
+\end{definition}
+
+\begin{remark}[Existence and the classical case]\label{rem:state-exist}
+Conditions (S1)--(S4) hold for the canonical averaging functional of the
+classical theory.  On $[0,1]$ with the \L ukasiewicz operations
+$x\odotop y=\max(0,x+y-1)$, take $s=\mathrm{id}$: (S1),(S2) are clear,
+(S3) is $\max(x,y)+\min(x,y)=x+y$, and (S4) is $x+y\le 1+\max(0,x+y-1)$, true
+since $\max(0,x+y-1)\ge x+y-1$.  For any finite residuated chain $W_k$ the same
+$s(x)=x$ is a state.  States also exist for all non-chain examples: by
+Proposition~\ref{prop:exist} every finite Heyting algebra, every finite
+MV-algebra, and their products carry the height-function state.  Concretely, on
+the diamond $M_2$ the height state $s(\Bot)=0$, $s(a)=s(b)=\tfrac12$,
+$s(\Top)=1$ satisfies (S1)--(S4): (S3) is
+$s(a\vee b)+s(a\wedge b)=s(\Top)+s(\Bot)=1=s(a)+s(b)$, and (S4) with
+$\odotop=\wedge$ reads $s(x)+s(y)\le 1+s(x\wedge y)$, which by (S3) is
+$s(x\vee y)\le1$.  Existence and its sharp boundary are treated in
+\S\ref{sec:obstr}; the intrinsic theory of the previous subsection requires no
+state at all.
+\end{remark}
+
+We now choose the averaging measure on valuations.  Because $\overline\varphi$
+factors through finitely many coordinates, the natural ``uniform'' object is a
+sequence of probability spaces.
+
+\begin{definition}[Averaged numerical meta-degree]\label{def:tau-state}
+Fix a state $s$ on $\bL$ and, for each finite $L_0\subseteq L$ that generates
+the values needed below, the uniform counting measure.  Concretely, when $\bL$ is
+finite let $\mu_n$ be the uniform probability measure on $L^n$
+($\mu_n(\{a\})=|L|^{-n}$); when $\bL$ is infinite assume a fixed Borel probability
+measure $\mu_n$ on $L^n$ that is a product $\mu_1^{\otimes n}$ of a fixed measure
+$\mu_1$ on $L$ for which $a\mapsto s(\overline\varphi(a))$ is $\mu_n$-integrable
+for every $\varphi$ (e.g.\ Lebesgue/uniform when $L=[0,1]$).  Define the
+\emph{numerical truth degree}
+\begin{equation}\label{eq:tau-s}
+\tau_s(\varphi)\eqdef \int_{L^n} s\bigl(\overline\varphi(a)\bigr)\,d\mu_n(a)\in[0,1],
+\qquad \varphi\in\Form_n,
+\end{equation}
+and the \emph{logic distance}
+\begin{equation}\label{eq:rho-s}
+\rho_s(\varphi,\psi)\eqdef 1-\tau_s(\varphi\fbi\psi)
+=\int_{L^m}\bigl[\,1-s\bigl(\overline{(\varphi\fbi\psi)}(a)\bigr)\bigr]\,d\mu_m(a).
+\end{equation}
+\end{definition}
+
+The integrand $a\mapsto s(\overline\varphi(a))$ is $\mu_n$-measurable: in the
+finite case it is a finite-valued function; in the assumed infinite case it is
+measurable because $s$ is monotone (hence Borel) and $\overline\varphi$ is a
+composition of the (assumed Borel) operations of $\bL$.
+
+\begin{lemma}[Well-definedness and basic shape of $\tau_s$]\label{lem:tau-wd}
+With $\mu_n=\mu_1^{\otimes n}$ as above:
+\begin{enumerate}
+\item\label{it:tau-dummy} $\tau_s(\varphi)$ is independent of the number of dummy
+variables: padding $\varphi\in\Form_n$ to $\Form_{n+1}$ leaves
+\eqref{eq:tau-s} unchanged.
+\item\label{it:tau-eqv} $\varphi\approx\psi\Rightarrow\tau_s(\varphi)=\tau_s(\psi)$
+and $\rho_s(\varphi,\psi)=0$.
+\item\label{it:tau-range} $0\le\tau_s(\varphi)\le1$, with
+$\tau_s(\overline\Top)=1$, $\tau_s(\overline\Bot)=0$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\eqref{it:tau-dummy} Since $\overline\varphi$ ignores $p_{n+1}$, Fubini for the
+product measure gives
+$\int_{L^{n+1}}s(\overline\varphi)\,d\mu_{n+1}
+=\int_{L^n}s(\overline\varphi)\,d\mu_n\cdot\mu_1(L)
+=\int_{L^n}s(\overline\varphi)\,d\mu_n$.
+\eqref{it:tau-eqv} If $\varphi\approx\psi$ then $\overline\varphi=\overline\psi$
+pointwise, so the integrands agree; and $\overline{(\varphi\fbi\psi)}\equiv\Top$
+gives $s(\overline{(\varphi\fbi\psi)})\equiv1$, so
+$\tau_s(\varphi\fbi\psi)=1$ and $\rho_s(\varphi,\psi)=0$.
+\eqref{it:tau-range} Immediate from $0\le s\le1$, $s(\Top)=1$, $s(\Bot)=0$ and
+$\mu_n(L^n)=1$.
+\end{proof}
+
+\section{The induced logic pseudometric}\label{sec:metric}
+
+\begin{theorem}[$\rho_s$ is a logic pseudometric]\label{thm:pseudometric}
+Let $s$ be a state on $\bL$.  Then $\rho_s$ of \eqref{eq:rho-s} is a pseudometric
+on $\Form$:
+\begin{enumerate}
+\item\label{it:rho-zero} $\rho_s(\varphi,\varphi)=0$;
+\item\label{it:rho-sym} $\rho_s(\varphi,\psi)=\rho_s(\psi,\varphi)$;
+\item\label{it:rho-tri} $\rho_s(\varphi,\chi)\le\rho_s(\varphi,\psi)+\rho_s(\psi,\chi)$.
+\end{enumerate}
+Moreover $\rho_s(\varphi,\psi)=0$ whenever $\varphi\approx\psi$, so $\rho_s$
+descends to a pseudometric on $\Form/{\approx}$.
+\end{theorem}
+
+\begin{proof}
+\eqref{it:rho-zero} By Lemma~\ref{lem:res}\eqref{it:bi-refl},
+$\overline{(\varphi\fbi\varphi)}\equiv\Top$, so the integrand in \eqref{eq:rho-s}
+is identically $0$.
+\eqref{it:rho-sym} $\overline{(\varphi\fbi\psi)}=\overline{(\psi\fbi\varphi)}$
+pointwise (Lemma~\ref{lem:res}\eqref{it:bi-refl}), so the integrands agree.
+\eqref{it:rho-tri} We prove the \emph{pointwise} triangle inequality
+\begin{equation}\label{eq:point-tri}
+1-s\bigl(\overline\varphi(a)\fbi\overline\chi(a)\bigr)
+\ \le\
+\bigl[1-s(\overline\varphi(a)\fbi\overline\psi(a))\bigr]
++\bigl[1-s(\overline\psi(a)\fbi\overline\chi(a))\bigr]
+\end{equation}
+for every $a\in L^m$, and then integrate.  Write $x=\overline\varphi(a)$,
+$y=\overline\psi(a)$, $z=\overline\chi(a)$, and $u=x\fbi y$, $w=y\fbi z$.  By
+Lemma~\ref{lem:res}\eqref{it:bi-trans}, $u\odotop w\le x\fbi z$, so by (S2),
+\begin{equation}\label{eq:tri-a}
+s(u\odotop w)\le s(x\fbi z).
+\end{equation}
+By (S4) applied to $u,w$,
+\begin{equation}\label{eq:tri-b}
+s(u)+s(w)\le 1+s(u\odotop w).
+\end{equation}
+Combining \eqref{eq:tri-b} and \eqref{eq:tri-a}:
+$s(u)+s(w)\le 1+s(x\fbi z)$, i.e.
+\[
+s(x\fbi y)+s(y\fbi z)\le 1+s(x\fbi z),
+\]
+which rearranges to exactly \eqref{eq:point-tri}.  Integrating \eqref{eq:point-tri}
+over $a\in L^m$ against the probability measure $\mu_m$ (and using linearity of the
+integral and $\mu_m(L^m)=1$) gives \eqref{it:rho-tri}.
+
+The last clause is Lemma~\ref{lem:tau-wd}\eqref{it:tau-eqv}.
+\end{proof}
+
+\begin{remark}[Why a state, not an arbitrary collapse]\label{rem:why-state}
+Both (S3)/(S4) and (S2) are used in \eqref{eq:tri-a}--\eqref{eq:tri-b}.  Dropping
+the valuation/subadditivity axioms genuinely breaks \eqref{it:rho-tri}; see
+\S\ref{sec:obstr}.  Thus the state law is not a convenience but the precise
+hypothesis under which the integral construction of the $[0,1]$-valued theory
+survives the passage to a non-linear $\bL$.
+\end{remark}
+
+\begin{proposition}[Compatibility with connectives]\label{prop:lipschitz}
+Let $s$ be a state on $\bL$.  For all $\varphi_1,\varphi_2,\psi_1,\psi_2\in\Form$
+and $*\in\{\wedge,\vee,\odotop,\fto\}$,
+\begin{equation}\label{eq:lip}
+\rho_s(\varphi_1*\varphi_2,\ \psi_1*\psi_2)\ \le\
+\rho_s(\varphi_1,\psi_1)+\rho_s(\varphi_2,\psi_2).
+\end{equation}
+In particular each connective is non-expansive (uniformly continuous) for
+$\rho_s$, and $\rho_s(\neg\varphi,\neg\psi)\le\rho_s(\varphi,\psi)$.
+\end{proposition}
+
+\begin{proof}
+Fix $a$ and write $x_i=\overline{\varphi_i}(a)$, $y_i=\overline{\psi_i}(a)$, and
+$e_i=x_i\fbi y_i$.  By the pointwise congruence \eqref{eq:point-cong} of
+Theorem~\ref{thm:intrinsic}\eqref{it:E-cong},
+$e_1\odotop e_2\le(x_1*x_2)\fbi(y_1*y_2)$, so by (S2),
+\[
+s\bigl((x_1*x_2)\fbi(y_1*y_2)\bigr)\ \ge\ s(e_1\odotop e_2).
+\]
+By (S4), $s(e_1\odotop e_2)\ge s(e_1)+s(e_2)-1$.  Hence
+\[
+1-s\bigl((x_1*x_2)\fbi(y_1*y_2)\bigr)
+\le 1-(s(e_1)+s(e_2)-1)
+=\bigl[1-s(e_1)\bigr]+\bigl[1-s(e_2)\bigr].
+\]
+Integrating over $a$ against $\mu_m$ gives \eqref{eq:lip}.  For negation take
+$*=\fto$, $\varphi_2=\psi_2=\overline\Bot$ (so $\rho_s$-term $=0$): then
+$\varphi_1\fto\overline\Bot=\neg\varphi_1$ and we get
+$\rho_s(\neg\varphi_1,\neg\psi_1)\le\rho_s(\varphi_1,\psi_1)$.
+\end{proof}
+
+\section{Divergence and consistency degrees of theories}\label{sec:theories}
+
+Let $\Gamma\subseteq\Form$ be a \emph{theory} (a set of formulas).
+
+\begin{definition}[Truth, divergence, consistency]\label{def:cons}
+Fix a state $s$.  The \emph{degree of truth of $\Gamma$} and the
+\emph{divergence degree} of $\Gamma$ are
+\begin{equation}\label{eq:cons}
+\tau_s(\Gamma)\eqdef \inf_{\varphi\in\Gamma}\tau_s(\varphi)\in[0,1],
+\qquad
+\mathrm{div}_s(\Gamma)\eqdef\sup_{\varphi,\psi\in\Gamma}\rho_s(\varphi,\psi)\in[0,1].
+\end{equation}
+We say $\Gamma$ is \emph{$\rho_s$-consistent} if $\mathrm{div}_s(\Gamma)<1$, and
+\emph{fully inconsistent} if $\mathrm{div}_s(\Gamma)=1$.  The
+\emph{consistency degree} is $\mathrm{cons}_s(\Gamma)\eqdef 1-\mathrm{div}_s(\Gamma)$.
+\end{definition}
+
+\begin{proposition}[Properties of the divergence/consistency degree]\label{prop:cons}
+For all theories $\Gamma,\Gamma'$ and state $s$:
+\begin{enumerate}
+\item\label{it:c-mono} $\Gamma\subseteq\Gamma'\Rightarrow
+\mathrm{div}_s(\Gamma)\le\mathrm{div}_s(\Gamma')$ and
+$\mathrm{cons}_s(\Gamma)\ge\mathrm{cons}_s(\Gamma')$.
+\item\label{it:c-inv} $\mathrm{div}_s$ and $\mathrm{cons}_s$ depend on $\Gamma$ only
+through $\{[\varphi]_\approx:\varphi\in\Gamma\}\subseteq\Form/{\approx}$.
+\item\label{it:c-tri} For any $\theta\in\Form$,
+$\mathrm{div}_s(\Gamma)\le 2\sup_{\varphi\in\Gamma}\rho_s(\varphi,\theta)$;
+hence if some $\theta$ is $\rho_s$-close to all of $\Gamma$ then $\Gamma$ is
+consistent.  In particular every theory all of whose members are
+$\bL$-equivalent has divergence $0$.
+\item\label{it:c-singleton} A single formula $\Gamma=\{\varphi\}$ has
+$\mathrm{div}_s(\Gamma)=0$, i.e.\ is maximally consistent.
+\item\label{it:c-full} $\Gamma$ is fully inconsistent iff
+$\sup_{\varphi,\psi\in\Gamma}\rho_s(\varphi,\psi)=1$; e.g.\ if $\Gamma$ contains
+two formulas $\varphi,\psi$ with $\overline{(\varphi\fbi\psi)}\equiv\Bot$ and
+$s(\Bot)=0$, then $\rho_s(\varphi,\psi)=1$ and $\Gamma$ is fully inconsistent.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+\eqref{it:c-mono} Supremum over a larger index set.
+\eqref{it:c-inv} By Lemma~\ref{lem:tau-wd}\eqref{it:tau-eqv}, $\rho_s$ and
+$\tau_s$ are constant on $\approx$-classes.
+\eqref{it:c-tri} For $\varphi,\psi\in\Gamma$, the triangle inequality
+(Theorem~\ref{thm:pseudometric}\eqref{it:rho-tri}) gives
+$\rho_s(\varphi,\psi)\le\rho_s(\varphi,\theta)+\rho_s(\theta,\psi)\le
+2\sup_{\xi\in\Gamma}\rho_s(\xi,\theta)$; take the supremum over $\varphi,\psi$.
+If all members are $\approx$-equivalent, pick $\theta\in\Gamma$; then each
+$\rho_s(\varphi,\theta)=0$ and $\mathrm{div}_s(\Gamma)=0$.
+\eqref{it:c-singleton} $\rho_s(\varphi,\varphi)=0$
+(Theorem~\ref{thm:pseudometric}\eqref{it:rho-zero}).
+\eqref{it:c-full} The first statement is the definition; for the example,
+$\overline{(\varphi\fbi\psi)}\equiv\Bot$ gives integrand $1-s(\Bot)=1$, so
+$\rho_s(\varphi,\psi)=1$.
+\end{proof}
+
+\begin{remark}[Approximate reasoning]\label{rem:approx}
+Proposition~\ref{prop:lipschitz} is the engine of approximate reasoning: if a
+derivation uses connectives finitely many times and the hypotheses are perturbed
+by total $\rho_s$-error $\varepsilon$, the conclusion is perturbed by at most a
+constant times $\varepsilon$ (the constant being the number of connective
+applications), exactly as in the classical $[0,1]$-valued logic.  All of this is
+now available over a non-linear truth-value lattice.
+\end{remark}
+
+\section{Faithfulness, sharpness, and obstructions}\label{sec:obstr}
+
+We now delimit precisely what generalizes.  Three facts emerge: the
+modular/state law cannot be weakened to mere monotonicity; states (hence
+pseudometrics) exist for all the standard truth-value algebras including
+non-chain ones; and a mild faithfulness condition on the state turns $\rho_s$
+into a genuine point-separating metric.
+
+\begin{proposition}[An arbitrary monotone collapse breaks the triangle inequality]
+\label{prop:obstr-mono}
+There is a finite Heyting algebra $\bL$ and a monotone map $v:L\to[0,1]$ with
+$v(\Bot)=0$, $v(\Top)=1$ \emph{(but $v$ not a state)} such that the function
+$\rho_v(\varphi,\psi)=1-v(\overline{(\varphi\fbi\psi)})$, evaluated at a single
+valuation, violates the triangle inequality.  Hence the modular law (S3) cannot
+be dropped: monotonicity alone does not yield a pseudometric.
+\end{proposition}
+
+\begin{proof}
+Let $\bL=M_2=\{\Bot,a,b,\Top\}$ be the diamond Heyting algebra
+($\odotop=\wedge$, $a,b$ incomparable, $a\wedge b=\Bot$, $a\vee b=\Top$).  Its
+biresiduum, computed from the Heyting implication
+$x\fto y=\bigvee\{z:z\wedge x\le y\}$, gives
+\[
+a\fbi b=\Bot,\qquad a\fbi\Top=a,\qquad b\fbi\Top=b .
+\]
+Take the monotone $v$ with $v(\Bot)=0$, $v(a)=v(b)=\tfrac23$, $v(\Top)=1$.  With
+$(x,y,z)=(a,\Top,b)$,
+\[
+1-v(a\fbi b)=1-v(\Bot)=1,\qquad
+\bigl[1-v(a\fbi\Top)\bigr]+\bigl[1-v(\Top\fbi b)\bigr]
+=(1-\tfrac23)+(1-\tfrac23)=\tfrac23,
+\]
+and $1>\tfrac23$, so the pointwise triangle inequality fails.  This $v$ violates
+(S3): $v(a\vee b)+v(a\wedge b)=v(\Top)+v(\Bot)=1$ while $v(a)+v(b)=\tfrac43$.  By
+contrast the modular value $v(a)=v(b)=\tfrac12$ is a state and, by
+Theorem~\ref{thm:pseudometric}, gives a pseudometric; the failure above is
+attributable exactly to the loss of (S3).
+\end{proof}
+
+\begin{proposition}[States exist for the standard algebras]\label{prop:exist}
+Let $\bL$ be either a finite Heyting algebra \emph{(}so $\odotop=\wedge$, the
+underlying lattice finite distributive, possibly non-chain\emph{)} or a finite
+MV-algebra, or a finite direct product of such.  Let $h$ be the height function
+$h(x)=$ the common length of every maximal chain from $\Bot$ to $x$ \emph{(}well
+defined because each such $\bL$ is graded\emph{)}, and set
+$s(x)\eqdef h(x)/h(\Top)$.  Then:
+\begin{enumerate}
+\item\label{it:exist-state} $s$ is a state on $\bL$, hence $\rho_s$ is a
+pseudometric \emph{(Theorem~\ref{thm:pseudometric})};
+\item\label{it:exist-topf} $s$ is \emph{top-faithful}: $s(e)=1\iff e=\Top$.
+\end{enumerate}
+In particular states, hence numerical logic pseudometrics, exist for all the
+non-chain examples such as $M_2$ and $W_3\times W_4$.
+\end{proposition}
+
+\begin{proof}
+\emph{Gradedness and the rank identity.}  Every finite distributive lattice is
+modular, every chain is modular, and a finite product of modular graded lattices
+is modular and graded with height the coordinatewise sum of factor heights.  In a
+finite modular lattice every maximal chain between two comparable elements has the
+same length (Jordan--Dedekind condition), so $h$ is well defined with
+$h(\Bot)=0$, $h(y)=h(x)+1$ whenever $y$ covers $x$, and $h$ satisfies the modular
+rank identity $h(x\vee y)+h(x\wedge y)=h(x)+h(y)$ for all $x,y$.  Dividing by
+$h(\Top)>0$ gives $s(\Bot)=0$, $s(\Top)=1$ (S1), monotonicity (S2) from
+$x\le y\Rightarrow h(x)\le h(y)$, and the modular law (S3).
+
+\emph{(S4).}  For a Heyting algebra $\odotop=\wedge$, so (S4) reads
+$s(x)+s(y)\le 1+s(x\wedge y)$; by (S3) this is $s(x\vee y)\le 1$, which holds.
+For an MV-algebra the rank $s$ satisfies the MV-state identity
+$s(x)+s(y)=s(x\oplus y)+s(x\odotop y)$ (where $\oplus$ is the strong
+disjunction); since $s(x\oplus y)\le 1$, this gives
+$s(x)+s(y)\le 1+s(x\odotop y)$, i.e.\ (S4).  For a product the four axioms hold
+coordinatewise and are preserved by the convex combination
+$s=\sum_i \lambda_i s_i$ with weights $\lambda_i=h_i(\Top_i)/h(\Top)\ge0$,
+$\sum_i\lambda_i=1$, where $s_i$ is the factor state and the product height is the
+sum of factor heights.  Hence in all listed cases $s$ is a state, proving
+\eqref{it:exist-state}.
+
+\eqref{it:exist-topf} If $s(e)=1$ then $h(e)=h(\Top)$; as $e\le\Top$, any maximal
+chain from $\Bot$ to $e$ extends to one from $\Bot$ to $\Top$, and equal length
+forces $e=\Top$.  The converse is $s(\Top)=1$.
+\end{proof}
+
+\begin{theorem}[$\rho_s$ is a metric, not merely a pseudometric]\label{thm:metric}
+Let $s$ be a top-faithful state on a finite $\bL$ \emph{(}$s(e)=1\Rightarrow
+e=\Top$\emph{)} and $\mu_n$ the uniform counting measure on $L^n$.  Then on
+$\Form/{\approx}$ the logic distance $\rho_s$ is a genuine metric:
+$\rho_s(\varphi,\psi)=0\iff \varphi\approx\psi$.  By
+Proposition~\ref{prop:exist}\eqref{it:exist-topf} such a state exists for every
+finite Heyting algebra \emph{(}including all finite distributive non-chain
+lattices\emph{)}, every finite MV-algebra, and their products; on these $\rho_s$
+separates points.
+\end{theorem}
+
+\begin{proof}
+``$\Leftarrow$'' is the last clause of Theorem~\ref{thm:pseudometric}.  For
+``$\Rightarrow$'', suppose $\varphi\not\approx\psi$.  By
+Definition~\ref{def:eqv} there is a point $a\in L^m$ with
+$x\eqdef\overline\varphi(a)\ne\overline\psi(a)\eqdef y$.  By
+Lemma~\ref{lem:res}\eqref{it:bi-refl}, $x\fbi y\ne\Top$, hence by top-faithfulness
+$s(x\fbi y)<1$, i.e.\ $1-s(\overline{(\varphi\fbi\psi)}(a))>0$.  The integrand in
+\eqref{eq:rho-s} is nonnegative, and the uniform measure assigns mass
+$\mu_m(\{a\})=|L|^{-m}>0$ to the singleton $\{a\}$, so
+\[
+\rho_s(\varphi,\psi)\ \ge\ \mu_m(\{a\})\,\bigl(1-s(x\fbi y)\bigr)\ =\
+|L|^{-m}\bigl(1-s(x\fbi y)\bigr)\ >\ 0 .
+\]
+\end{proof}
+
+\begin{remark}[The precise dichotomy]\label{rem:obstr-scope}
+The picture requested in part (c) is the following.
+\begin{itemize}
+\item For \emph{every} complete residuated lattice the intrinsic, $\bL$-valued
+theory of \S\ref{sec:meta} (Theorem~\ref{thm:intrinsic}) holds verbatim; it uses
+only completeness and residuation, separates $\not\approx$-classes (clause
+\eqref{it:E-sep}), and needs no measure or numerical structure.  This is the most
+general satisfactory generalization, and its codomain is $\bL$ itself.
+\item A \emph{numerical}, $[0,1]$-valued pseudometric $\rho_s$ exists whenever
+$\bL$ carries a state; by Proposition~\ref{prop:exist} this includes every finite
+Heyting algebra and MV-algebra and their products, in particular non-chain
+lattices such as $M_2$ and $W_3\times W_4$.  For a top-faithful state $\rho_s$ is
+in fact a genuine metric on $\Form/{\approx}$ (Theorem~\ref{thm:metric}).
+\item The state hypothesis is sharp: replacing it by mere monotonicity destroys
+the triangle inequality (Proposition~\ref{prop:obstr-mono}).  Thus the modular
+law (S3) together with $\&$-subadditivity (S4) is exactly the additional
+structure on $\bL$ that lets the integral/averaging construction of the classical
+$[0,1]$-valued quantitative logic survive the passage to a non-linear truth-value
+lattice.
+\end{itemize}
+When $\bL=[0,1]$ (or $W_n$) with the \L ukasiewicz operations, $s=\mathrm{id}$ is
+a top-faithful state and $\mu_n$ the uniform/Lebesgue measure, recovering exactly
+the classical theory of the Background paragraph.
+\end{remark}
+
+\section{Summary}\label{sec:summary}
+
+\begin{theorem}[The lattice-valued quantitative logic framework]\label{thm:main}
+Let $\bL$ be a complete residuated lattice and $\Form$ the formula algebra of
+\S\ref{sec:formulas}.  Then:
+\begin{enumerate}
+\item\emph{(part (a))} The connectives $\wedge,\vee,\odotop,\fto$ interpreted by
+the operations of $\bL$ give every $\varphi\in\Form_n$ a well-defined induced
+truth function $\overline\varphi:L^n\to L$
+(Definitions~\ref{def:form}--\ref{def:val}).
+\item\emph{(part (b), intrinsic)} The infimum biresiduum
+$E(\varphi,\psi)=\tau_\wedge(\varphi\fbi\psi)\in L$ is a well-defined
+$\bL$-valued meta-degree; it satisfies reflexivity, symmetry, residuated
+transitivity, separation up to $\approx$, and congruence with the connectives
+(Theorem~\ref{thm:intrinsic}).  No measure on $\bL$ is required; the codomain is
+$\bL$ itself.
+\item\emph{(part (b), numerical)} If $\bL$ carries a state $s$
+(Definition~\ref{def:state}), then $\tau_s(\varphi)\in[0,1]$ of
+\eqref{eq:tau-s} is a well-defined numerical truth degree, invariant under
+$\approx$ (Lemma~\ref{lem:tau-wd}); the state plays exactly the role of the
+uniform/Lebesgue measure of the classical theory and the codomain is $[0,1]$.
+\item\emph{(part (c))} The induced distance $\rho_s(\varphi,\psi)=1-\tau_s(\varphi\fbi\psi)$
+is a pseudometric on $\Form$, descends to $\Form/{\approx}$
+(Theorem~\ref{thm:pseudometric}), all connectives are non-expansive for it
+(Proposition~\ref{prop:lipschitz}), and it supports a consistent theory of
+divergence and consistency degrees of theories
+(Proposition~\ref{prop:cons}).  All these properties reduce to the classical
+$[0,1]$-valued ones when $\bL=[0,1]$ (or $W_n$) with the \L ukasiewicz operations
+and $s=\mathrm{id}$, $\mu_n=$ uniform measure.
+\item\emph{(sharpness and metricity)} The state hypothesis is sharp: an
+arbitrary monotone collapse $\bL\to[0,1]$ that is not a state violates the
+triangle inequality (Proposition~\ref{prop:obstr-mono}).  Conversely, states
+exist for every finite Heyting algebra, every finite MV-algebra, and their
+products (Proposition~\ref{prop:exist}), in particular for non-chain lattices, and
+a top-faithful state makes $\rho_s$ a genuine point-separating metric on
+$\Form/{\approx}$ (Theorem~\ref{thm:metric}).  For every complete residuated
+lattice the intrinsic $\bL$-valued theory of clause (2) holds unconditionally.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+Each clause is the cited result: (1) Definitions~\ref{def:form}--\ref{def:val};
+(2) Theorem~\ref{thm:intrinsic}; (3) Definition~\ref{def:tau-state} with
+Lemma~\ref{lem:tau-wd}; (4) Theorems~\ref{thm:pseudometric},
+Proposition~\ref{prop:lipschitz}, Proposition~\ref{prop:cons}, with the classical
+reduction noted in Remark~\ref{rem:state-exist}; (5)
+Proposition~\ref{prop:obstr-mono}, Proposition~\ref{prop:exist},
+Theorem~\ref{thm:metric}, and Remark~\ref{rem:obstr-scope}.
+\end{proof}
+
+\end{document}

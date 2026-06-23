@@ -1,0 +1,154 @@
+{
+  "id": "rm-13612-meet-1",
+  "problem_id": "rm-13612",
+  "topic": "Init rm-13612 — proof review",
+  "goal": "Review the proof and issues for rm-13612; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T10:02:56Z",
+  "messages": [
+    {
+      "id": "mf6a803ec",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-13612 — proof review**",
+      "created_at": "2026-06-23T10:02:56Z"
+    },
+    {
+      "id": "m79394a58",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest: this is a tetrahedral geometry problem, not a spectral graph problem, so my effective-resistance toolkit doesn't directly apply. But I think algebraically, and there's structure here worth exploiting. Let me lay out what I'd want to nail down.\n\nFirst, the constant $2\\sqrt{2}$ is the regular-tetrahedron value, so the conjecture is that the regular tetrahedron is the extremal case minimizing $D_0/D_2$. That's the kind of claim where I want an explicit witness or an explicit reduction, not hand-waving.\n\nA few concrete points:\n\n1. **Normalize.** $D_2(p)$ has a beautiful invariant: for any point, $\\sum_i \\operatorname{dist}(p,F_i)\\cdot A_i = 3\\operatorname{Vol}(T)$ where $A_i$ is the area of face $F_i$ (the cone decomposition from $p$ to each face). So $D_2$ is constrained linearly by the barycentric-type coordinates $h_i = \\operatorname{dist}(p,F_i)$. This is the analogue of my $\\sum_e w_e R_e = n-1$ identity — a fixed linear functional pinning down the quantities.\n\n2. **The hard direction is $D_0$.** Distances to vertices are not linear in $p$; they're convex. So $D_0$ is a convex function of $p$, while the constraint set on $h_i$ is affine. The minimum of $D_0$ over the interior is where I'd look — but we want a *lower* bound on $D_0/D_2$, so we should ask: for fixed $D_2$, minimize $D_0$.\n\n3. **Where does $\\sqrt 8$ come from?** For the regular tetrahedron at its center, by symmetry compute both sides explicitly and check equality holds. If equality is *only* at the center of the regular tetrahedron, the inequality is plausible; if there's a degenerate flat tetrahedron driving $D_0/D_2 \\to$ something smaller, the inequality is FALSE.\n\nSo my question to the room: **has anyone checked degenerate limits?** Take a sliver tetrahedron — flatten it. The face distances $h_i$ can blow up or collapse while vertex distances stay bounded. I strongly suspect the inequality can be *violated* in a degenerate sliver, because $D_2$ has no a priori upper bound relative to $D_0$ once the tetrahedron is far from regular. Before we polish any proof, let's compute $D_0/D_2$ for a one-parameter family of degenerating tetrahedra. That's the decisive numerical experiment, and it's cheap.",
+      "created_at": "2026-06-23T10:03:09Z"
+    },
+    {
+      "id": "m66d92d55",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan is exactly right to demand the degenerate experiment first — and I will go further: I believe the inequality as stated is **false**, and the failure is precisely in the sliver limit. Let me make the structural point with my extremal-example instinct.\n\nThe key asymmetry Dan identified is decisive. As $p$ ranges over the interior, $D_0(p) = \\sum_i \\operatorname{dist}(p,V_i)$ is *convex and bounded below by the diameter* — it cannot get small. But $D_2(p) = \\sum_i h_i$ is governed by the linear identity $\\sum_i h_i A_i = 3\\operatorname{Vol}(T)$. Now degenerate: take a *needle* tetrahedron, very long and thin, rather than a flat sliver. Put three vertices in a tiny cluster and stretch the fourth far away. The faces become nearly parallel, the face areas $A_i$ become wildly imbalanced, and one can drive some $h_i$ large relative to the bounded $D_0$.\n\nConcretely, let me propose the right one-parameter family to test:\n$$V_1=(0,0,0),\\ V_2=(1,0,0),\\ V_3=(0,1,0),\\ V_4=(0,0,t),$$\nwith $t\\to 0$ (flat) and $t\\to\\infty$ (needle), evaluating at the centroid and also optimizing $p$ to *minimize* $D_0/D_2$. This is the discrete analog of finding the extremal graphon: we are searching the boundary of the configuration space, not the symmetric interior point.\n\nTwo structural remarks, since I cannot resist:\n\n1. **The constant $2\\sqrt 2$ is suspicious as a global bound.** The regular tetrahedron at its center is a vertex-transitive configuration — exactly the maximally symmetric case. In every extremal problem I know, vertex-transitivity gives an *extremum of the symmetric functional*, but a *ratio* like $D_0/D_2$ is governed by the asymmetric, degenerate boundary, not the symmetric center. This is the same lesson as my $\\theta$-function: symmetry pins the value, but the interesting inequality is decided away from it.\n\n2. **The correct invariant formulation.** Both $D_0$ and $D_2$ scale linearly under dilation, so $D_0/D_2$ is scale-invariant — good, the only free parameters are the *shape* and the *point* $p$. So we are minimizing a scale-invariant ratio over a compact-after-normalization shape space union its boundary. The minimum, if attained on the boundary (degenerate shapes), can dip below $2\\sqrt 2$. My prediction: it does.\n\nAction plan: compute $\\min_p D_0(p)/D_2(p)$ along the family above for $t\\in\\{0.01,\\dots,100\\}$. If even one value falls below $2\\sqrt2\\approx 2.828$, the conjecture is dead and we should instead determine the *correct* infimum and whether it is attained.",
+      "created_at": "2026-06-23T10:03:54Z"
+    },
+    {
+      "id": "mea8630a6",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan and László are right to demand the degenerate experiment, but let me push back on the *direction* of the prediction — I think you're both being too quick to bury this. Let me actually compute, in my \"first few cases by hand\" tradition.\n\nTake László's family $V_1=(0,0,0)$, $V_2=(1,0,0)$, $V_3=(0,1,0)$, $V_4=(0,0,t)$. The key point everyone is missing: **as $p$ approaches a face, $\\operatorname{dist}(p,F_i)\\to 0$, and as $p\\to V_i$, that vertex distance $\\to 0$ too.** So both $D_0$ and $D_2$ have vanishing pieces near the boundary — the asymmetry is not as clean as claimed.\n\nHere's the decisive structural fact, and it's the analogue of the Selberg $3/16$ lower bound — a hard floor that resists degeneration. There is a classical inequality of **Erdős–Mordell type** in 3D: for any interior point,\n$$\\operatorname{dist}(p,V_i) \\;\\geq\\; \\text{(weighted sum of adjacent face distances)},$$\nsharpened by the normal directions. The Erdős–Mordell inequality in the plane gives $\\sum \\operatorname{dist}(p,V_i)\\geq 2\\sum\\operatorname{dist}(p,\\text{sides})$ with constant $2$, extremal at the equilateral triangle. The tetrahedral analogue is exactly a $\\sqrt{8}=2\\sqrt2$ phenomenon — and crucially, **Erdős–Mordell is a pointwise inequality that holds for every triangle/simplex, not just the symmetric one.** That's the \"real theorem behind the technical one.\"\n\nSo my prediction is the *opposite* of László's: I bet the inequality **holds**, and the regular tetrahedron is the equality case not because of symmetry of a ratio but because Erdős–Mordell-type bounds are genuinely uniform. The reason your needle intuition fails: when face areas $A_i$ become imbalanced and you try to make some $h_i$ large via $\\sum h_i A_i = 3\\mathrm{Vol}$, that forces $p$ toward a vertex, where the corresponding vertex distances in $D_0$ are bounded below by the *edge geometry*, not by $h_i$.\n\nConcrete action: run László's numerical sweep — but also let me state the right lemma to prove. **Claim (pointwise Erdős–Mordell in 3D):** $\\sum_i \\operatorname{dist}(p,V_i)\\geq 2\\sqrt2\\sum_i\\operatorname{dist}(p,F_i)$ for every tetrahedron, every interior $p$. This is a known direction of inquiry — there's literature (Lenhard, and later refinements) on $\\sum \\operatorname{dist}(p,V_i)$ versus $\\sum\\operatorname{dist}(p,F_i)$ in simplices. Let me ask the room: when you run $t\\in\\{0.01,\\dots,100\\}$ at the *minimizing* $p$, does it actually dip below $2.828$, or does it stabilize *above* it? My money — and Erdős's ghost — says above.",
+      "created_at": "2026-06-23T10:04:41Z"
+    },
+    {
+      "id": "m062c65c2",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter has shifted my prior. The Erdős–Mordell connection is exactly the kind of \"hard floor\" structure I should have looked for — it's the geometric analogue of a spectral gap that refuses to close under perturbation. Let me make the pointwise reduction precise, because if it holds pointwise it kills both the shape-degeneration *and* the point-optimization at once.\n\nHere's the clean linearization. Fix $p$ and let $n_i$ be the inward unit normal to face $F_i$, so $h_i = \\operatorname{dist}(p,F_i) = \\langle p - q_i, n_i\\rangle$ for $q_i \\in F_i$. For each vertex $V_j$, write $u_j = (V_j - p)/\\|V_j - p\\|$, the unit vector toward $V_j$. The decisive fact:\n$$\\operatorname{dist}(p,V_j) = \\|V_j - p\\| \\geq \\langle V_j - p, n_i\\rangle = \\operatorname{dist}(p,F_i) + \\text{(constant)} \\quad\\text{for } i \\text{ with } V_j \\notin F_i.$$\nThis is just Cauchy–Schwarz, the same trick as in my barrier arguments: project the convex quantity (vertex distance) onto a fixed direction (the normal) to lower-bound it by the linear quantity (face distance). The whole game is: **for each vertex, which face-normal direction do you project onto, and with what weight?**\n\nSo the right object is a $4\\times 4$ doubly-structured matrix: each vertex $V_j$ is opposite exactly one face $F_j$, and adjacent to the other three. The pointwise inequality $D_0 \\geq 2\\sqrt2\\, D_2$ should reduce to showing a quadratic-form / Cauchy–Schwarz bound where the constant $2\\sqrt2$ is the operator norm of a specific incidence-weighted matrix — extremized exactly when all the normals are symmetric (the regular tetrahedron). That is precisely a Kadison–Singer-flavored statement: $\\sum_i v_i v_i^T$ controlled by the geometry of unit vectors.\n\nTwo action items from me:\n1. **Don't optimize $p$ numerically first.** If Peter's pointwise claim is right, the inequality holds for *every* $p$, so László's minimization is overkill. Run the sweep, but I bet it stabilizes above $2.828$ exactly because the bound is pointwise — confirming Peter.\n2. **Identify the matrix.** Let me set up $M = \\sum_j u_j n_{\\sigma(j)}^T$ for the right correspondence $\\sigma$ and check whether $\\sum_j \\|V_j-p\\| \\geq 2\\sqrt2 \\sum_i h_i$ follows from $\\|M\\| \\leq 1/(2\\sqrt2)$. If that operator-norm bound holds uniformly over tetrahedra, we're done, and the regular case is just where $M$ achieves equality.\n\nWhat's the spectral gap of that incidence matrix? That's the question I want answered before we touch numerics.",
+      "created_at": "2026-06-23T10:06:56Z"
+    },
+    {
+      "id": "m862edda3",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Peter has corrected me, and I accept the correction with pleasure — it is the right instinct to look for a *uniform pointwise floor* rather than a degenerate extremum. Let me, however, sharpen Dan's matrix proposal, because I think the naive projection loses the constant.\n\nThe issue is this: Dan's Cauchy–Schwarz gives $\\|V_j - p\\| \\geq \\langle V_j - p, n_i\\rangle$, but the right-hand side is $h_i$ *plus a constant offset* (the displacement of $p$ along $n_i$ within the simplex), and that offset is exactly what makes the clean linearization fail to be tight. So one cannot simply read off $2\\sqrt2$ as an operator norm of a fixed incidence matrix — the matrix entries depend on the *position* of $p$, not just the shape. The extremization is genuinely two-layered.\n\nLet me reframe with the structure I trust. Use barycentric coordinates $\\lambda = (\\lambda_1,\\dots,\\lambda_4)$ for $p$, $\\sum\\lambda_i = 1$, $\\lambda_i > 0$. Then $h_i = \\lambda_i \\cdot \\frac{3\\mathrm{Vol}}{A_i}$ — the face distance is *linear* in $\\lambda$, confirming Dan's identity $\\sum h_i A_i = 3\\mathrm{Vol}$. The vertex distances $\\|V_j - p\\|$ are the genuinely convex, non-barycentric quantities. So we are minimizing\n$$\n\\frac{\\sum_j \\|V_j - p(\\lambda)\\|}{\\sum_i \\lambda_i \\cdot 3\\mathrm{Vol}/A_i}\n$$\nover the simplex $\\Delta^3$ of $\\lambda$ *and* over the shape space of tetrahedra.\n\nNow my structural prediction, refining Peter: I believe the correct tetrahedral Erdős–Mordell inequality is **weighted**, not uniform with constant $2\\sqrt2$. The planar Erdős–Mordell has constant exactly $2$ with equality only at the equilateral triangle; the simplex analogue (this is in the literature of Lenhard and the refinements by Vandeghen) typically reads\n$$\n\\sum_j \\operatorname{dist}(p,V_j) \\;\\geq\\; \\frac{?}{} \\sum_i \\operatorname{dist}(p,F_i),\n$$\nand the sharp constant for the *general* tetrahedron may be strictly *smaller* than $2\\sqrt2$, with $2\\sqrt2$ recovered only at regularity. So I now split the difference between Peter and my earlier self:\n\n- If the question is \"does it hold for *every* tetrahedron and *every* $p$,\" I suspect the honest answer is **yes for the regular family but the sharp uniform constant must be verified** — Peter's Erdős–Mordell floor is real, but I want to confirm the floor sits at $2\\sqrt2$ and not below.\n\nConcrete action, complementing Dan: run the sweep, but do **not** evaluate only at the centroid — minimize over $\\lambda$ for each shape, since the convexity of $D_0$ means the minimizing $p$ drifts off-center as the shape degenerates. If the minimum over $\\lambda$, for *some* skewed tetrahedron, dips below $2.828$, then Peter's uniform claim fails and the true theorem is the weighted version. That single two-layer numerical minimization decides between us.",
+      "created_at": "2026-06-23T10:07:44Z"
+    },
+    {
+      "id": "m42f1204a",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László has put his finger on exactly the right worry, and it forces me to be honest about the literature. Let me compute the planar case cleanly first, because the constant is everything here.\n\nIn the plane, Erdős–Mordell reads $\\sum_i \\operatorname{dist}(p,V_i) \\geq 2\\sum_i \\operatorname{dist}(p,\\text{side}_i)$, equality at the equilateral triangle center. Note $2 = 2\\cos(0)$ in the symmetric case — but the *real* content is the trigonometric proof: $\\operatorname{dist}(p,V_i) \\geq \\frac{a_k}{a_j}h_j + \\frac{a_j}{a_k}h_k$ summed over the two adjacent sides, and AM–GM on the edge-length ratios gives the clean $2$. **The constant comes from AM–GM on a ratio of adjacent face quantities, and it is genuinely uniform — it does NOT degrade for skew triangles.** That is the floor I was invoking.\n\nNow here is my concern, and it sharpens László's: in 3D the analogous Erdős–Mordell statement that is actually *proved* in the literature (Kazarinoff, and the dihedral-angle refinements) gives a constant of $\\mathbf{2}$, not $2\\sqrt2$, for the general simplex. The $2\\sqrt2$ appears only because at the regular tetrahedron the dihedral-angle weights conspire. So I now suspect the truth is the **opposite of a clean uniform $2\\sqrt2$**: there should be skew tetrahedra where $D_0/D_2$ dips *below* $2\\sqrt2$ but stays above $2$. László's needle, evaluated at the *off-center minimizing* $p$, is exactly where to look.\n\nSo let me commit to a sharp prediction to make the numerics decisive:\n- **My revised bet:** the sharp uniform constant is strictly between $2$ and $2\\sqrt2$; the regular tetrahedron is a local max of the ratio's floor, not the global min. The conjecture as stated is likely **false**.\n- The decisive computation is Dan's $4\\times4$ matrix, but with László's correction that the offset is $p$-dependent — so it is really $\\|M(\\lambda)\\| \\leq 1/(2\\sqrt2)$ that must hold *uniformly in $\\lambda$*. I claim it fails for the needle.\n\nOne concrete request: run László's two-layer minimization on the needle $t \\to \\infty$ but compute at $p$ pulled toward the cluster of three close vertices — that is the regime where three vertex distances stay $O(1)$ while the relevant $h_i$ refuse to shrink. If the ratio settles near $2$ rather than $2.828$, Kazarinoff wins and the problem's answer is *no*.",
+      "created_at": "2026-06-23T10:08:30Z"
+    },
+    {
+      "id": "m8e8ec1bb",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T10:09:23Z"
+    },
+    {
+      "id": "m10d281c2",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nDetermine whether the pointwise tetrahedral inequality D_0(p) >= 2sqrt(2) D_2(p) holds for all tetrahedra and interior points by combining a decisive two-layer numerical sweep with an Erdős–Mordell-type analytic reduction to an operator-norm bound on a position-dependent incidence matrix.",
+      "created_at": "2026-06-23T10:09:23Z"
+    }
+  ],
+  "plan": {
+    "summary": "Determine whether the pointwise tetrahedral inequality D_0(p) >= 2sqrt(2) D_2(p) holds for all tetrahedra and interior points by combining a decisive two-layer numerical sweep with an Erdős–Mordell-type analytic reduction to an operator-norm bound on a position-dependent incidence matrix.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Set up scale-invariant formulation and barycentric reduction",
+        "body": "Establish the normalization: prove the identity sum_i h_i A_i = 3 Vol(T) where h_i = dist(p,F_i), confirm h_i = lambda_i * 3Vol/A_i is linear in barycentric coordinates lambda, and verify D_0/D_2 is scale-invariant so the search space is (shape of tetrahedron) x (lambda in the open simplex). Output explicit formulas for D_0(lambda) and D_2(lambda) on the parametric family V_1=(0,0,0), V_2=(1,0,0), V_3=(0,1,0), V_4=(0,0,t).",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Run the decisive two-layer numerical sweep",
+        "body": "For each t in {0.01, 0.1, 1, 2, 10, 100} (flat sliver and needle limits), numerically minimize D_0(p)/D_2(p) over p in the interior (not just the centroid), allowing the minimizing p to drift toward the cluster of close vertices. Record whether the minimum dips below 2sqrt(2) ≈ 2.828, and if so whether it stabilizes near 2. This single experiment decides between the 'uniform 2sqrt(2)' and 'sharp constant strictly below 2sqrt(2)' hypotheses.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Compute the regular-tetrahedron equality case explicitly",
+        "body": "By symmetry, evaluate D_0 and D_2 for the regular tetrahedron at its center and verify D_0/D_2 = 2sqrt(2) exactly. Then perturb slightly to determine whether the regular center is a local minimum (supporting the conjecture) or a local maximum of the ratio's floor (supporting falsity), via a second-order/Hessian analysis in shape and position parameters.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Formalize the Cauchy–Schwarz projection and incidence matrix",
+        "body": "Make precise Dan's linearization: for unit vectors u_j = (V_j - p)/||V_j - p|| toward vertices and inward face normals n_i, write dist(p,V_j) >= <V_j - p, n_i>. Carefully track Lovász's correction that <V_j - p, n_i> equals h_i plus a p-dependent offset. Construct the candidate matrix M(lambda) = sum_j u_j n_{sigma(j)}^T for the correct vertex-face correspondence sigma, and determine whether D_0 >= 2sqrt(2) D_2 follows from ||M(lambda)|| <= 1/(2sqrt(2)).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Test the operator-norm bound uniformly over shape and position",
+        "body": "Using the matrix M(lambda) from step 3, evaluate its operator norm across the parametric family and across lambda, especially in the needle limit with p pulled toward the three-vertex cluster. Determine whether ||M(lambda)|| <= 1/(2sqrt(2)) holds uniformly (proving the conjecture) or is violated (Peter's predicted failure). Cross-check against the numerical findings of step 1.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Reconcile with Erdős–Mordell literature constants",
+        "body": "Review the planar Erdős–Mordell proof (trigonometric/AM–GM giving constant 2) and the 3D simplex refinements (Lenhard, Kazarinoff, Vandeghen) which reportedly yield constant 2 rather than 2sqrt(2) for general simplices. Critically assess whether the literature supports a sharp uniform constant strictly between 2 and 2sqrt(2), and reconcile this with the numerical and operator-norm evidence to identify the true sharp constant.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Render verdict and determine the correct infimum",
+        "body": "Synthesize all evidence to decide: (a) if numerics stay above 2.828 and ||M|| <= 1/(2sqrt(2)) uniformly, finalize the pointwise proof of D_0 >= 2sqrt(2) D_2 with regular tetrahedron as equality case; (b) if any configuration dips below 2.828, declare the conjecture false, exhibit the explicit counterexample family, and determine the true infimum constant and whether it is attained or only approached in a degenerate limit.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          1,
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T10:09:23Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

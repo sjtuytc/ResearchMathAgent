@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "Significant: Variance additivity proof (Prop. prop:props (i)) is incomplete",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "## Gap Description\n\nProposition prop:props (i) claims: if gamma = Psi(alpha, beta), then\n  Var(gamma) = Var(alpha) + Var(beta).\n\nThe proof says only \"(i) follows from eq:walsh together with Newton identities applied\nto the first two coefficients of p boxplus_n q.\" This is too brief.\n\n## The Missing Computation\n\nThe first-moment part m_1(gamma) = m_1(alpha) + m_1(beta) is straightforward:\neach permutation contributes sum_i(alpha_i + beta_{pi(i)}) = sum_i alpha_i + sum_j beta_j.\n\nThe SECOND moment requires computing the coefficient of x^{n-2} in the average:\n  (1/n!) sum_pi e_2(alpha_1+beta_{pi(1)}, ..., alpha_n+beta_{pi(n)})\n\nExpanding e_2 of sums:\n  e_2(alpha_i + beta_{pi(i)} : i=1..n) = sum_{i<j} (alpha_i+beta_{pi(i)})(alpha_j+beta_{pi(j)})\n  = sum_{i<j} [alpha_i*alpha_j + alpha_i*beta_{pi(j)} + beta_{pi(i)}*alpha_j + beta_{pi(i)}*beta_{pi(j)}]\n\nThe purely alpha/beta terms give e_2(alpha) + e_2(beta) after averaging.\nThe cross terms require:\n  (1/n!) sum_pi sum_{i<j} [alpha_i * beta_{pi(j)} + alpha_j * beta_{pi(i)}]\n  = (1/n!) sum_{i<j} (alpha_i + alpha_j) * sum_pi (beta_{pi(i)} + beta_{pi(j)})\n\nFor fixed i != j:  (1/n!) sum_pi beta_{pi(i)} = (1/n!) * (n-1)! * sum_k beta_k = (1/n) sum_k beta_k\n\nSo the cross terms give: (1/n) * sum_{i<j}(alpha_i+alpha_j) * 2 * sum_k beta_k\n= (n-1)/n * (sum_i alpha_i)(sum_j beta_j)\n\nCombined: the second coefficient of p boxplus_n q is\n  e_2(alpha) + e_2(beta) + (n-1)/n * e_1(alpha)*e_1(beta)\n\nFrom this one can verify m_2(gamma) - m_1(gamma)^2 = Var(alpha) + Var(beta), but\nthe detailed calculation is absent from the solution.\n\n## Why This Matters\n\nVariance additivity is essential for Lemma lem:hess (the Hessian identity), which in\nturn underpins Proposition prop:contraction (the contraction estimate).\nThe identity partial_t^2 m_2(gamma(t))|_0 = partial_t^2 [m_2(alpha(t)) + m_2(beta(t))]|_0\nis derived by differentiating Var(gamma(t)) = Var(alpha(t)) + Var(beta(t)), so\nany gap here propagates to the heart of the proof.",
       "created_at": "2026-06-17T15:23:45Z"
+    },
+    {
+      "id": "c33782298",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolution\n\nI replaced the one-line proof of Proposition prop:props with a complete, self-contained derivation. The new proof establishes both coefficients explicitly from the symmetrized-product (Walsh) representation eq:walsh and then runs the variance algebra.\n\n### What is now proved in full\n\n**First coefficient.** For every permutation pi, e_1(gamma^pi) = sum_i(alpha_i + beta_{pi(i)}) = e_1(alpha)+e_1(beta), independent of pi, so c_1 = -(e_1(alpha)+e_1(beta)) and m_1(gamma)=m_1(alpha)+m_1(beta).\n\n**Second coefficient.** Expanding e_2 of the sums splits into pure-alpha, pure-beta, and cross terms:\n- pure-alpha term = e_2(alpha) (pi-independent);\n- pure-beta term: since (pi(i),pi(j)) ranges over all unordered pairs as (i,j) does, it equals e_2(beta) (pi-independent);\n- cross term averaged via the single-index identity (1/n!) sum_pi beta_{pi(i)} = (n-1)!/n! * sum_k beta_k = e_1(beta)/n, giving (1/n!) sum_pi (**) = sum_{i<j}(alpha_i+alpha_j) * e_1(beta)/n = (n-1)/n * e_1(alpha) e_1(beta), using sum_{i<j}(alpha_i+alpha_j) = (n-1) e_1(alpha).\n\nHence c_2 = e_2(alpha) + e_2(beta) + (n-1)/n * e_1(alpha) e_1(beta), exactly as the critic indicated.\n\n**Variance.** Using Newton (n m_1 = e_1, n m_2 = e_1^2 - 2 e_2) so Var(v) = ((n-1)e_1(v)^2 - 2n e_2(v))/n^2, I substitute e_1(gamma)=A_1+B_1, e_2(gamma)=A_2+B_2+(n-1)/n A_1 B_1 and show the A_1 B_1 cross term cancels exactly: the coefficient is 2(n-1) - 2(n-1) = 0. The result is Var(gamma) = Var(alpha) + Var(beta).\n\nI also expanded part (ii) (translation), which follows immediately from eq:walsh since shifting alpha by t shifts every factor x - gamma_i^pi to (x-t) - gamma_i^pi.\n\n### Verification\n- Symbolic check (sympy): with c_2 = e_2(alpha)+e_2(beta)+(n-1)/n e_1(alpha)e_1(beta) and the Newton formulas, Var(gamma)-(Var(alpha)+Var(beta)) simplifies to 0 identically in n.\n- Numerical check: for random alpha,beta of degrees 2..5, computing p box_n q roots directly and comparing variances gives agreement to ~1e-13.\n\nThe gap is fully closed. (LaTeX compilation could not be run: no toolchain installed in the workspace; the begin/end proof environments are balanced and the edit is purely a textual replacement of the proof body.)",
+      "created_at": "2026-06-21T21:30:25Z"
+    },
+    {
+      "id": "evda436515",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T21:30:31Z"
     }
   ]
 }

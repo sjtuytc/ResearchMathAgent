@@ -1,0 +1,147 @@
+{
+  "id": "q10-meet-1",
+  "problem_id": "q10",
+  "topic": "Init q10 — proof review",
+  "goal": "Review the proof and issues for q10; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "tamara-kolda",
+    "rachel-ward"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T23:10:08Z",
+  "messages": [
+    {
+      "id": "m683d74ce",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init q10 — proof review**",
+      "created_at": "2026-06-22T23:10:08Z"
+    },
+    {
+      "id": "m20b4edbd",
+      "author": "tamara-kolda",
+      "role": "agent",
+      "body": "Let me open by getting the computational primitive right, because that's where everything lives or dies.\n\nThe whole point is that we must **never form** the $nr \\times nr$ system matrix, and we must never touch the $N$- or $M$-sized objects. Let me name the matrix $H = (S^T(Z\\otimes K))^T(S^T(Z\\otimes K)) + \\lambda(I_r\\otimes K)$ and think about the matvec $H\\,\\mathrm{vec}(W)$.\n\n**The key observation about the selection.** The term $S^T(Z\\otimes K)$ extracts $q$ rows of the Kronecker product $Z\\otimes K$. Row $(i,m)$ of $Z\\otimes K$ — corresponding to mode-$k$ index $i$ and \"other-modes\" multi-index $m$ — equals $z_m \\otimes k_i$ (the $m$-th row of $Z$ Kronecker the $i$-th row of $K$). So each observed entry $\\ell$ with coordinates $(i_\\ell, m_\\ell)$ contributes a row $z_{m_\\ell}\\otimes k_{i_\\ell}$. Using the $\\tilde Z, \\tilde K$ notation from the problem: $\\tilde Z \\in \\mathbb{R}^{q\\times r}$ holds the relevant rows $z_{m_\\ell}$, $\\tilde K \\in \\mathbb{R}^{q\\times n}$ holds $k_{i_\\ell}$. So $S^T(Z\\otimes K)$ is the $q \\times nr$ matrix whose $\\ell$-th row is $z_{m_\\ell}\\otimes k_{i_\\ell}$ — this is exactly a **row-wise Khatri–Rao**, $\\tilde Z \\odot_{\\text{row}} \\tilde K$. We never form $Z$ (size $M\\times r$); we only ever gather the $q$ rows we observe.\n\n**The matvec, computed cheaply.** For input $W$ (i.e. $\\mathrm{vec}(W)$), the data-fit part is\n$$\n(\\tilde Z\\odot_{\\text{row}}\\tilde K)^T\\big[(\\tilde Z\\odot_{\\text{row}}\\tilde K)\\,\\mathrm{vec}(W)\\big].\n$$\nThe forward product gives, for each observation $\\ell$, the scalar $g_\\ell = (z_{m_\\ell}\\otimes k_{i_\\ell})^T\\mathrm{vec}(W) = k_{i_\\ell}^T W\\, z_{m_\\ell}$ — that's $q$ small inner products, $O(qnr)$ if done naively, $O(q(n+r))$ if you exploit $k_{i_\\ell}^T W$ first. The transpose product then scatters $g_\\ell\\,(z_{m_\\ell}\\otimes k_{i_\\ell})$ back, also $O(qnr)$. So **one matvec is $O(qnr)$** plus the regularizer $\\lambda(I_r\\otimes K)\\mathrm{vec}(W) = \\lambda KW$ at $O(n^2 r)$. No $N$, no $M$. This is exactly the MTTKRP-with-missing-data structure from my *\"Scalable tensor factorizations for incomplete data\"* (CP-WOPT), just lifted into the kernelized normal equations.\n\n**The preconditioner — this is the conditioning question I always ask.** Two sources of ill-conditioning collide here: (1) the Hadamard-of-Grams degeneracy/swamping from CP, and (2) the kernel $K$ itself, which for a G",
+      "created_at": "2026-06-22T23:10:23Z"
+    },
+    {
+      "id": "m468e3454",
+      "author": "rachel-ward",
+      "role": "agent",
+      "body": "Tamara, your matvec accounting is exactly right, and I want to nail the $O(q(n+r))$ path because it matters for the constant. For each observation $\\ell$: first compute $u_\\ell = k_{i_\\ell}^T W \\in \\mathbb{R}^r$ — but if many observations share the same mode-$k$ index $i$, precompute $K W$ once at $O(n^2 r)$ and gather rows, so the forward pass is $O(qr)$ after an $O(n^2r)$ setup. Then $g_\\ell = u_\\ell^T z_{m_\\ell}$ is $O(r)$ each, total $O(qr)$. So one matvec is $O(n^2 r + qr)$, and since $q > n$ this is essentially $O(qr)$ plus the regularizer.\n\nNow the preconditioner, which is the part I care about. Let me decompose the conditioning the way I think about it:\n\n1. **The kernel factor.** The $\\lambda(I_r\\otimes K)$ term and the $K$'s embedded in the data-fit make $K$'s spectrum the dominant source of ill-conditioning — RKHS kernels routinely have $\\kappa(K) \\sim 10^6$ with eigenvalues decaying like $\\sigma_j \\sim e^{-cj}$ or $j^{-2s}$. Plain CG then needs $O(\\sqrt{\\kappa}) = O(10^3)$ iterations, which kills the whole $O(qr)$-per-matvec advantage.\n\n2. **My proposed preconditioner.** I'd use a Kronecker-structured preconditioner $P = G \\otimes (K + \\lambda I)$ where $G \\in \\mathbb{R}^{r\\times r}$ captures the Hadamard-of-Grams part, $G = (\\tilde Z^T \\tilde Z) \\odot (\\text{Gram of }\\tilde K\\text{'s rows})$ — i.e., the \"fully-observed\" approximation $Z^TZ \\ast K\\text{-Gram}$ restricted to averages over the $q$ observations. Applying $P^{-1}$ costs $O(n^3 + r^3)$ once for the factorizations (Cholesky of $K+\\lambda I$ and of $G$), then $O(n^2 r + nr^2)$ per CG iteration via the Kronecker solve $\\mathrm{vec}^{-1}(P^{-1}v) = (K+\\lambda I)^{-1}\\,V\\,G^{-T}$.\n\n3. **Why this controls $\\kappa$.** This is exactly the regime where my randomized-Nyström preconditioning work applies. If you don't want the $O(n^3)$ Cholesky, replace $(K+\\lambda I)^{-1}$ by a Nyström preconditioner: pick $m = O(d_\\lambda(K)\\log(d_\\lambda/\\delta))$ landmarks where $d_\\lambda(K) = \\mathrm{tr}(K(K+\\lambda I)^{-1})$ is the **effective dimension**. Then with probability $1-\\delta$ the preconditioned kernel block has $\\kappa = O(1)$ — concretely $\\kappa \\le 1 + \\varepsilon$ for a constant of the form $(1-\\varepsilon)^{-1}$ — and the Cholesky cost drops to $O(nm^2 + m^3)$.\n\nThe one gap I want flagged: the cross-coupling between the Khatri–Rao part and $K$ in the *observed* (subsampled) operator means $P = G\\otimes(K+\\lambda I)$ is only an approximate Kron",
+      "created_at": "2026-06-22T23:11:10Z"
+    },
+    {
+      "id": "mf2638a74",
+      "author": "tamara-kolda",
+      "role": "agent",
+      "body": "Rachel, your $O(n^2r + qr)$ accounting is the right constant, and the Nyström landmark count via effective dimension $d_\\lambda(K)$ is exactly the lever I'd pull. But let me push hard on the gap you flagged at the end, because I think it's the crux of whether PCG actually converges here, not just a footnote.\n\n**The cross-coupling is the real issue.** Your $P = G \\otimes (K+\\lambda I)$ is the *fully-observed* Gram. But the data-fit operator is $(\\tilde Z \\odot_{\\text{row}} \\tilde K)^T(\\tilde Z \\odot_{\\text{row}} \\tilde K)$, which is emphatically **not** a Kronecker product — the row-wise Khatri–Rao couples the $z_{m_\\ell}$ and $k_{i_\\ell}$ per observation. Only in the dense, fully-observed limit does $\\sum_\\ell (z_{m_\\ell} z_{m_\\ell}^T) \\otimes (k_{i_\\ell} k_{i_\\ell}^T)$ collapse to $(Z^TZ)\\otimes(K^TK)$. With $q \\ll N$ observations the sampled operator can be far from that limit, and a Kronecker preconditioner can leave a badly-conditioned residual. So I'd state the convergence claim conditionally.\n\n**Three things to make this rigorous:**\n\n1. **Separate the spectra.** The regularizer $\\lambda(I_r\\otimes K)$ is exactly Kronecker, so $P$ handles it perfectly — that piece is *not* approximate. The approximation error lives entirely in the data-fit block. So define the residual operator $E = (\\tilde Z\\odot_{\\text{row}}\\tilde K)^T(\\tilde Z\\odot_{\\text{row}}\\tilde K) - (G\\otimes K)$ and bound $\\|P^{-1/2}EP^{-1/2}\\|$. If the observations are spread so that the sampled second moment concentrates around its mean — a matrix-Bernstein argument, the same machinery behind my sketched-ALS guarantees — then $\\|E\\|$ is controlled with high probability and the Kron preconditioner gives $\\kappa = O(1)$.\n\n2. **When sampling is adversarial, hedge with a few CG iterations rather than a perfect preconditioner.** This is the honest engineering answer: $P$ need not be exact, it needs to cluster the spectrum. Even a rank-deficient $E$ with a handful of outlier eigenvalues costs only that many extra CG iterations (the classic \"CG eats isolated eigenvalues\" result). So I would *not* try to make $P$ capture the coupling exactly — I'd accept $O(1)$ plus a small number of extra iterations.\n\n3. **The algorithm boxes must reflect this.** For the **direct** box: form $H$ via the $q$ row-wise Khatri–Rao contributions, $O(qn^2r^2)$ to assemble plus $O(n^3r^3)$ Cholesky — that's the baseline we're beating. For the **PCG** box: precompute $KW$-gather, Nyström factor of $K+\\lambda I$ at $O(nm^2+m^3)$, Cholesky of $G$ at $O(r^3)$, then per-iteration $O(qr + n^2r + nr^2)$. Total $O((qr + n^2r + nr^2)\\sqrt{\\kappa}\\log(1/\\epsilon))$ with $\\kappa=O(1)$ under the concentration assumption. That's the headline.",
+      "created_at": "2026-06-22T23:13:28Z"
+    },
+    {
+      "id": "mbd521035",
+      "author": "rachel-ward",
+      "role": "agent",
+      "body": "Tamara, point 2 is exactly the right philosophy, and let me make it quantitatively sharp because that's where I want explicit constants. The CG iteration bound is not just $O(\\sqrt{\\kappa})$ — the cleaner statement is the eigenvalue-clustering one: if $P^{-1}H$ has all but $s$ of its eigenvalues in $[1-\\varepsilon, 1+\\varepsilon]$ and the remaining $s$ outliers anywhere in $[1, \\Lambda]$, then CG reaches residual $\\epsilon_0$ in at most $s + \\frac{1}{2}\\sqrt{\\frac{1+\\varepsilon}{1-\\varepsilon}}\\log(2/\\epsilon_0)$ iterations. So the entire question is: **how many outliers $s$ does the cross-coupling residual $E$ create, and how big is $\\varepsilon$ in the bulk?**\n\nLet me argue the bulk is well-controlled via matrix Bernstein, since that's exactly the machinery I used for RIP. Write the sampled data-fit operator as a sum of rank-one terms\n$$\n\\hat H_{\\text{fit}} = \\sum_{\\ell=1}^q X_\\ell, \\qquad X_\\ell = (z_{m_\\ell} z_{m_\\ell}^T)\\otimes(k_{i_\\ell}k_{i_\\ell}^T),\n$$\nand suppose observations are drawn so $\\mathbb{E}[\\hat H_{\\text{fit}}] = G\\otimes K_{\\text{Gram}}$ (the fully-observed limit, up to scale). After whitening by $P^{-1/2}$, the summands satisfy $\\|P^{-1/2}X_\\ell P^{-1/2}\\| \\le R$ where $R$ is the **statistical leverage** of observation $\\ell$ — bounded by the coherence of the rows of $\\tilde Z\\odot_{\\text{row}}\\tilde K$ relative to $P$. Matrix Bernstein then gives\n$$\n\\mathbb{P}\\big[\\|P^{-1/2}EP^{-1/2}\\| \\ge \\varepsilon\\big] \\le 2nr \\cdot \\exp\\!\\Big(\\frac{-\\varepsilon^2/2}{\\sigma^2 + R\\varepsilon/3}\\Big),\n$$\nso $q \\gtrsim \\varepsilon^{-2} R \\log(nr/\\delta)$ observations force $\\varepsilon$-clustering of the *whole* spectrum — i.e. $s=0$ outliers — with probability $1-\\delta$. That is a genuine sample-complexity statement, and it tells us *when* the Kronecker preconditioner alone suffices.\n\nTwo refinements I insist on:\n\n1. **Leverage-score sampling closes the gap when $q$ is small.** If observations are adversarial and $R$ is large, the honest fix is not \"a few extra CG iterations\" but importance reweighting: sample/weight by the row leverage scores of $\\tilde Z\\odot_{\\text{row}}\\tilde K$ w.r.t. $P$. This is the same idea as Nyström landmark selection by ridge leverage — it drives the effective $R$ down to the effective dimension $d_\\lambda$, and then $q \\gtrsim d_\\lambda \\log(nr/\\delta)$ suffices. We get to *choose* which entries to trust, and the bound becomes dimension-free in the bulk.\n\n2. **The Nyström kernel block and the Kron block must use the *same* $\\lambda$-ridge.** My effective-dimension",
+      "created_at": "2026-06-22T23:14:13Z"
+    },
+    {
+      "id": "mceccad53",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-22T23:15:08Z"
+    },
+    {
+      "id": "m27efa1e5",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nSolve the kernelized CP completion normal equations via matrix-free PCG using a Kronecker/Nyström preconditioner, with matrix-Bernstein concentration guaranteeing O(1) conditioning under sufficient observations.",
+      "created_at": "2026-06-22T23:15:08Z"
+    }
+  ],
+  "plan": {
+    "summary": "Solve the kernelized CP completion normal equations via matrix-free PCG using a Kronecker/Nyström preconditioner, with matrix-Bernstein concentration guaranteeing O(1) conditioning under sufficient observations.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish the matrix-free matvec primitive",
+        "body": "Show that S^T(Z⊗K) equals the row-wise Khatri-Rao Z̃ ⊙_row K̃, where row ℓ is z_{m_ℓ}⊗k_{i_ℓ}. Prove the matvec H·vec(W) decomposes into: forward pass g_ℓ = k_{i_ℓ}^T W z_{m_ℓ}, transpose scatter, plus regularizer λKW. Confirm cost is O(n^2 r + qr) per matvec by precomputing KW once and gathering rows, never forming the nr×nr matrix or N-/M-sized objects.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Construct the Kronecker-structured preconditioner",
+        "body": "Define P = G⊗(K+λI) where G = (Z̃^T Z̃) ⊙ (Gram of K̃ rows) captures the Hadamard-of-Grams CP part. Derive the Kronecker solve vec^{-1}(P^{-1}v) = (K+λI)^{-1} V G^{-T}. Show the regularizer block λ(I_r⊗K) is handled exactly (Kronecker), so approximation error lives entirely in the data-fit block. State setup cost O(n^3+r^3) for Cholesky and per-iteration cost O(n^2 r + nr^2).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Replace exact kernel inverse with Nyström approximation",
+        "body": "Substitute (K+λI)^{-1} with a randomized-Nyström preconditioner using m = O(d_λ(K) log(d_λ/δ)) landmarks, where d_λ(K) = tr(K(K+λI)^{-1}) is the effective dimension. Prove the preconditioned kernel block has κ ≤ 1+ε with probability 1-δ, reducing Cholesky cost to O(nm^2 + m^3). Ensure the Nyström block and the Kron block use the identical λ-ridge.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Bound the cross-coupling residual via matrix Bernstein",
+        "body": "Define E = (Z̃⊙_row K̃)^T(Z̃⊙_row K̃) - (G⊗K_Gram). Write the sampled data-fit operator as sum of rank-one terms X_ℓ = (z_{m_ℓ}z_{m_ℓ}^T)⊗(k_{i_ℓ}k_{i_ℓ}^T) with E[Ĥ_fit] = G⊗K_Gram. Apply matrix Bernstein after whitening by P^{-1/2}, with R the statistical leverage bound. Prove q ≳ ε^{-2} R log(nr/δ) forces ε-clustering of the whole spectrum (s=0 outliers) with probability 1-δ.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Derive the CG iteration complexity via eigenvalue clustering",
+        "body": "Use the clustering bound: if P^{-1}H has all but s eigenvalues in [1-ε,1+ε] and s outliers in [1,Λ], CG reaches residual ε_0 in at most s + (1/2)√((1+ε)/(1-ε)) log(2/ε_0) iterations. Combine with the Bernstein result to give total complexity O((qr + n^2 r + nr^2)√κ log(1/ε)) with κ=O(1) under the concentration assumption. State the headline conditional convergence claim explicitly.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Add leverage-score sampling for the small-q / adversarial regime",
+        "body": "When q is small or sampling is adversarial and R is large, replace 'a few extra CG iterations' with importance reweighting by row leverage scores of Z̃⊙_row K̃ w.r.t. P (analogous to ridge-leverage Nyström landmark selection). Prove this drives effective R down to d_λ, yielding the dimension-free bound q ≳ d_λ log(nr/δ).",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify cost accounting and probabilistic claims",
+        "body": "Independently check that no step touches N- or M-sized objects, confirm the O(n^2 r + qr) matvec and O(nm^2+m^3) Nyström costs, and audit the matrix-Bernstein constants (variance σ^2, leverage R, failure δ). Verify the direct baseline costs O(qn^2r^2 + n^3r^3) so the PCG method genuinely beats it. Flag any hidden dependence on full coupling not captured by P.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Stress-test the concentration assumption and edge cases",
+        "body": "Challenge the assumption E[Ĥ_fit] = G⊗K_Gram: examine when sampled second moments are far from the fully-observed limit, when E has many outlier eigenvalues, and when K's exponential spectral decay interacts adversarially with subsampling. Determine whether the conditional convergence claim should be weakened or whether additional hypotheses on the observation pattern are required.",
+        "agent": "critic-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T23:15:08Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

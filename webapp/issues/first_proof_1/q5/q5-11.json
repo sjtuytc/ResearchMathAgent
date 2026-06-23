@@ -3,7 +3,7 @@
   "problem_id": "q5",
   "dataset": "first_proof_1",
   "title": "Lemma 'geometric slices': undefined notion + asserted key equivalence",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,28 @@
       "role": "human",
       "body": "In Lemma 2 (geometric slices), the term **'geometric Mackey functor $M$'** is never defined, yet the entire argument rests on it. The proof asserts that for any finite $G$-set $T$, the fixed-point inclusion $S^{|T/G|}\\hookrightarrow N^T S^1$ induces an **equivalence** $S^{|T/G|}\\otimes HM \\xrightarrow{\\sim} N^T S^1\\otimes HM$. This is the crux of the converse and is stated without proof.\n\nSince equivalences in $\\mathrm{Sp}^G$ are detected by $\\Phi^K$ for **all** $K\\subseteq G$, one must check the equivalence on $\\Phi^K$ for every $K$, not merely $K=G$. The proof only invokes $\\Phi^G$. Moreover the bracket computation\n$$[N^TS^1,\\Sigma^kHM]^G\\cong[\\Phi^GN^TS^1,\\Sigma^kHM(G/G)]\\cong[S^{|T/G|},\\Sigma^kHM(G/G)]$$\nis itself nontrivial: it requires $HM$ to be concentrated over $G/G$ (precisely the missing 'geometric' hypothesis) and the identification of $\\Phi^G$-mapping with genuine mapping. None of this is justified.\n\n**To close:** (i) define 'geometric Mackey functor' character-by-character; (ii) prove the equivalence by computing $\\Phi^K(N^TS^1\\otimes HM)$ for all $K$; (iii) state the bracket identity as a lemma with verified hypotheses.",
       "created_at": "2026-06-17T18:10:57Z"
+    },
+    {
+      "id": "c751c582e",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Re-review: addressed in current `solution.tex`.\n(i) 'Geometric Mackey functor' is now defined (Def. `def:geom`: $M(G/H)=0$ for proper $H$). (ii) The asserted equivalence $S^{|T/G|}\\otimes HM\\simeq N^TS^1\\otimes HM$ is no longer used; the crux mapping computation `lem:geom`(3) instead uses ONLY that the **target** $\\Sigma^kHM$ is $\\widetilde{E\\mathcal P}$-local: $[N^TS^1,\\Sigma^kHM]^G\\cong[\\widetilde{E\\mathcal P}\\otimes N^TS^1,\\Sigma^kHM]^G\\cong[\\Phi^GN^TS^1,\\Phi^G\\Sigma^kHM]$ via (L1)+(L2), then $\\Phi^GN^TS^1=S^{|T/G|}$ (`prop:phiNT`) and $\\Phi^G\\Sigma^kHM=\\Sigma^kHA$ (G2). No need to check all $\\Phi^K$. This gap is closed (modulo `prop:phiNT`'s own justification, tracked in q5-24).",
+      "created_at": "2026-06-21T22:09:30Z"
+    },
+    {
+      "id": "c7b710ae5",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Review and reinforcement: gap is closed.\n\nI reviewed the three demands of this issue against the current `solution.tex` and confirm they are all met; I additionally hardened the single most delicate step.\n\n**(i) 'Geometric Mackey functor' is now defined.** Definition `def:geom`: $M(G/H)=0$ for every proper $H\\subsetneq G$ (M1), with the (automatic) vanishing of transfers/restrictions to/from proper $H$ (M2). Equivalently $M=\\underline A^{\\mathrm{geo}}$ is the inflation of $A=M(G/G)$.\n\n**(ii) The unproved equivalence $S^{|T/G|}\\otimes HM\\simeq N^TS^1\\otimes HM$ is no longer used at all.** The issue's correct objection — that an equivalence in $\\mathrm{Sp}^G$ must be checked on $\\Phi^K$ for ALL $K$, not just $K=G$ — is sidestepped because no spectrum-level equivalence of this form is asserted. The crux computation `lem:geom`(3) instead computes the *mapping group* $[N^TS^1,\\Sigma^kHM]^G$, and it does so using ONLY that the **target** $\\Sigma^kHM$ is $\\widetilde{E\\mathcal P}$-local:\n$$[N^TS^1,\\Sigma^kHM]^G \\overset{(L1)}{\\cong} [\\widetilde{E\\mathcal P}\\otimes N^TS^1,\\Sigma^kHM]^G = [\\widetilde{E\\mathcal P}\\otimes N^TS^1,\\widetilde{E\\mathcal P}\\otimes\\Sigma^kHM]^G \\overset{(L2)}{\\cong} [\\Phi^GN^TS^1,\\Phi^G\\Sigma^kHM].$$\nBoth source and target of the final bracket are $\\widetilde{E\\mathcal P}$-local, so the localization equivalence $\\Phi^G\\colon L\\,\\mathrm{Sp}^G\\xrightarrow{\\sim}\\mathrm{Sp}$ (L2) legitimately turns $\\Phi^G$-mapping into genuine mapping. No claim is made that $[X,-]$ is detected by $\\Phi^GX$ for arbitrary $X$; this is explicitly flagged in the proof.\n\n**(iii) The bracket identity is a lemma with verified hypotheses.** It is exactly `lem:geom`(3), resting on (L1)+(L2) (recorded with proofs/standard references) and on (G1) $\\widetilde{E\\mathcal P}$-locality + (G2) $\\Phi^GHM\\simeq HA$, both proved in `prop:geomEM`. Then $\\Phi^GN^TS^1\\simeq S^{|T/G|}$ (`prop:phiNT`, proved in place) and $\\Phi^G\\Sigma^kHM=\\Sigma^kHA$ give $[S^{|T/G|},\\Sigma^kHA]=\\pi_{|T/G|-k}HA=0$ for $|T/G|>k$.\n\n**Hardening I added.** The one place where the 'geometric/concentration over $G/G$' hypothesis genuinely does work is (G1) ($\\widetilde{E\\mathcal P}$-locality). The prior text justified $i_H^\\ast HM\\simeq 0$ via a slightly hand-wavy 'same reasoning applied to all subgroups.' I rewrote (G1) into two clean steps:\n- **(G1a)** $i_H^\\ast HM\\simeq H(i_H^\\ast M)$ (restriction is exact and $t$-exact, sending the EM object to the EM object of the restricted Mackey functor), and $(i_H^\\ast M)(H/K)=M(G/K)$. Since any $K\\subseteq H\\subsetneq G$ is itself proper in $G$, (M1) forces $(i_H^\\ast M)(H/K)=0$ for **all** $K\\subseteq H$; hence the restricted Mackey functor is identically zero and $i_H^\\ast HM\\simeq 0$.\n- **(G1b)** $E\\mathcal P_+$ is built from cells $G/K_+$ with $K$ proper; by the projection formula $G/K_+\\otimes HM\\simeq G_+\\otimes_K i_H^\\ast HM\\simeq 0$, so $E\\mathcal P_+\\otimes HM\\simeq 0$, giving $\\widetilde{E\\mathcal P}$-locality by (L1).\n\nThis makes the dependence on the geometric hypothesis fully explicit and removes the residual vagueness.\n\n**Residual.** The only external dependency is `prop:phiNT` ($\\Phi^G N^TS^1\\simeq S^{|T/G|}$), which is itself proved in place (permutation-sphere identification $N^TS^1\\cong S^{\\mathbb R\\cdot T}$ + $\\Phi^GS^V\\simeq S^{V^G}$ + $\\dim(\\mathbb R\\cdot T)^G=|T/G|$) and tracked separately in q5-24. No circularity.\n\nResolving.",
+      "created_at": "2026-06-21T22:46:18Z"
+    },
+    {
+      "id": "evdc8e74a1",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T22:46:21Z"
     }
   ]
 }

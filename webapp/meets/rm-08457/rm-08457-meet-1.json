@@ -1,0 +1,163 @@
+{
+  "id": "rm-08457-meet-1",
+  "problem_id": "rm-08457",
+  "topic": "Init rm-08457 — proof review",
+  "goal": "Review the proof and issues for rm-08457; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T23:09:38Z",
+  "messages": [
+    {
+      "id": "m398e109e",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-08457 — proof review**",
+      "created_at": "2026-06-22T23:09:38Z"
+    },
+    {
+      "id": "mf5e57f47",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about where my expertise sits relative to this problem. This is a delay differential equations stability question — Nicholson's blowflies — and the natural tools here are Lyapunov functionals, the $3/2$-type stability conditions, and monotone dynamical systems theory, not spectral graph theory. So let me contribute by thinking structurally rather than pretending the Laplacian appears.\n\nThat said, here's where my algorithmic-constructive instinct is useful. The autonomous \"best known sufficient criterion\" people should anchor on is the delay-dependent bound of the form\n$$ d\\,s \\cdot (\\text{something involving } N^*) \\le \\frac{3}{2}, $$\ni.e. the classical $3/2$ global stability threshold sharpened by the slope of $f(N)=PN e^{-N}$ at and around $N^*$. The key analytic fact is that $g(N)=N e^{-N}$ has derivative $g'(N)=(1-N)e^{-N}$, so the local linearization at $N^*=\\ln(P/d)$ has feedback strength $|d g/dN| \\cdot$ stuff that depends on whether $N^* \\lessgtr 1$. **What is the spectral gap analogue here?** It's the gap between $d$ (the decay) and the effective delayed-feedback gain — that ratio is what must beat $3/2$.\n\nNow for the three structural points, which I think frame the remaining gaps:\n\n1. **(i) Reduction to a common functional.** Models (A), (B), (C) are all the *same animal*: a convex combination / averaging of delayed nonlinear feedback against linear decay $-dN$. (B) with $a_k$, (A) with $d_uR(t,u)$, (C) with kernel $K$ — all satisfy a normalized \"total mass 1\" condition. So I'd push for one Lyapunov functional $V$ that treats the delayed term as $\\int g(N(u))\\,d\\mu_t(u)$ with $\\mu_t$ a probability measure. By Jensen/convexity arguments the stability proof should go through *uniformly* in the measure, which is exactly why all three should inherit the autonomous criterion. That's the constructive unification — prove it once for a probability measure $\\mu_t$ supported on $[h(t),t]$.\n\n2. **(ii) Variable delay $h(t)$.** This is the genuinely delicate part, and my honest expectation is *no, not for free*. The $3/2$ constant for constant delay relies on controlling $\\int_{t-s}^t$ exactly; with variable $h(t)$ you lose the clean delay length and pick up the variation of $h$. I'd bet the criterion survives with $s$ replaced by $\\sup(t-h(t))$ **only if** $h$ is, say, nondecreasing or has bounded \"stretching\" $\\dot h$ near $1$. Someone should produce the explicit counterexample or the extra hypothesis — that's gap one.\n\n3. **(iii) Necessary conditions.** This is the existence-vs-construction issue I always care about. Necessary delay-dependent conditions should come from linearizing at $N^*$ and finding the Hopf threshold: the characteristic equation $\\lambda + d = P g'(N^*) e^{-\\lambda s}$ gives a critical $s$ where roots cross the imaginary axis. The necessary condition is sharp from this transcendental equation; the sufficient $3/2$ condition leaves a gap to it, just like my $c=1/42$ vs conjectured $c=1/2$ in the $\\varepsilon$-light problem — the truth is in between and someone should p",
+      "created_at": "2026-06-22T23:09:58Z"
+    },
+    {
+      "id": "m7f7f85b7",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your unifying instinct is exactly right, and I want to sharpen it. The probability-measure formulation $\\int g(N(u))\\,d\\mu_t(u)$ with $\\mu_t$ supported on $[h(t),t]$ is precisely the correct continuous object — it is a *limit object* in the same spirit as my graphons. Just as a graphon $W:[0,1]^2\\to[0,1]$ unifies all the dense graphs converging to it, here $\\mu_t$ unifies (A), (B), (C): $d_u R(t,u)$, $\\sum a_k(t)\\delta_{h_k(t)}$, and $K(t,u)\\,du$ are all probability measures, and the dynamics depend only on the measure, not its representation. So (i) reduces to *one* theorem in the weak topology on probability measures on $[h(t),t]$.\n\nBut let me push back on where the convexity helps you. The map $g(N)=Ne^{-N}$ is **not** monotone — it increases on $[0,1]$ and decreases on $[1,\\infty)$, with $g'(N)=(1-N)e^{-N}$. This is decisive:\n\n1. **The regime split is the whole game.** If $N^*=\\ln(P/d)\\le 1$, i.e. $P\\le ed$, the feedback is monotone near equilibrium and the system is a *cooperative-type* monotone delay system — Jensen on the convex side gives you the autonomous $3/2$ criterion uniformly in $\\mu_t$, exactly as you say. If $N^*>1$ you are on the *decreasing* branch and the right local quantity is $|g'(N^*)| = (N^*-1)e^{-N^*}$. The clean sufficient criterion should read\n$$ \\big(d + P|g'(N^*)|\\big)\\cdot s \\le \\tfrac{3}{2}, $$\nwith $s$ the delay length. Jensen alone will not survive the nonmonotone branch; you need the mean-value enclosure of $g$ between $N(u)$ and $N^*$.\n\n2. **On (ii): I agree it does not come for free, and I can name the obstruction.** The $3/2$ constant uses $\\int_{t-s}^t$ as an honest interval; with variable $h(t)$ the *effective* measure $\\mu_t$ can concentrate and shift. The correct hypothesis is not nondecreasing $h$ per se, but a **cut-distance-type control**: the family $\\{\\mu_t\\}$ must be uniformly tight on intervals of length $\\le s$. If $\\sup_t(t-h(t))=s$ and the measures don't develop pathological concentration as $t\\to\\infty$, the criterion survives with $s$ as the delay length. A counterexample should exploit $h(t)$ oscillating so that $\\mu_t$ resonates with the natural period $\\sim 4s$ of the linearization.\n\n3. **On (iii): the necessary condition is spectral, and it is exact.** Linearize: $\\lambda + d = -P|g'(N^*)|e^{-\\lambda h}$ on the decreasing branch. The Hopf threshold $\\omega$ solves $\\omega = \\sqrt{P^2 g'(N^*)^2 - d^2}$ with critical delay $s_c$ from the argument condition. This is the analogue of the $\\theta(G)$ sandwich: the sufficient $3/2$ bound and the necessary Hopf bound bracket the true threshold, and closing that gap is the real content — just as $\\alpha(G)\\le\\theta(G)\\le\\chi(\\bar G)$.\n\nSo my proposed",
+      "created_at": "2026-06-22T23:10:47Z"
+    },
+    {
+      "id": "m8a6e590d",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laci — beautiful framing, and the probability-measure unification is exactly right. But let me play the role I always play: *compute the first case by hand and find the real theorem behind the technical one.*\n\nFirst, a correction to the linearization that I think is decisive. The full delayed feedback in the autonomous equation linearizes as\n$$ \\lambda + d = P\\,g'(N^*)\\,e^{-\\lambda s}, \\quad g'(N^*) = (1-N^*)e^{-N^*} = \\frac{d}{P}(1-N^*), $$\nsince $e^{-N^*}=d/P$. So the characteristic equation is *clean*:\n$$ \\lambda = -d + d(1-N^*)e^{-\\lambda s} = -d\\big[1 - (1-\\ln(P/d))e^{-\\lambda s}\\big]. $$\nThe effective feedback gain is **exactly** $d|1-N^*| = d|\\ln(P/d)-1|$ — no spectral input needed, it's forced by the equilibrium. This is the \"real\" quantity. The Hopf threshold for (iii) is then $d|N^*-1|\\cdot s > $ a constant near $\\pi/2$, sharp from the transcendental equation.\n\nNow here is where I'd push hard on the $3/2$ business. The honest autonomous result — this is in the spirit of the work of So–Yu and later Faria, and the $3/2$-criterion goes back to Yorke and Yoneyama — is **not** $(d+P|g'|)s \\le 3/2$, Laci. It's a condition on the *delayed gain alone*. When $N^* \\le 2$ you actually get global stability for **all** delays $s$ (the $3/2$ phenomenon is about the marginal regime $N^* > 1$). Let me be provocative: **the regime $1 < N^* \\le 2$ should be delay-independent globally stable**, and only for $N^* > 2$ does a genuine $3/2$-type delay threshold appear. That's the real dichotomy, and it's an arithmetic fact about $g(N)=Ne^{-N}$ — the equation $g(N_1)=g(N_2)$ enclosure controls the invariant region.\n\nOn (ii) — variable delay — I agree it does *not* come for free, but I think you're both overcomplicating the obstruction. The point is this: with constant delay the proof exploits that the solution on $[t-s,t]$ samples a genuine *interval* of past trajectory, and the $3/2$ Lyapunov argument integrates against $ds$. With $\\mu_t$ a general probability measure the same Halanay-type inequality\n$$ N'(t) \\le -dN(t) + d|1-N^*|\\sup_{u\\in[h(t),t]}|N(u)-N^*| $$\nsurvives **verbatim**, because the measure has total mass one and the bound is on the sup. So the *delay-independent* part of (ii) is robust — Jensen/tightness is a red herring there. Where you genuinely lose is the sharp $3/2$ constant on the marginal branch $N^*>2$: there the integral-mean structure matters and a resonant oscillating $h(t)$ near period $4s$ breaks it, exactly as Laci said.\n\nSo my proposed action plan: (1) prove the Halanay/contraction theorem once for $\\mu_t$ — gives delay-independent global stability for $N^* \\le 2$ across all three models *for free*; (2) the delicate $3/2$ marginal case $N^*>2$ — handle constant delay first, then test the variable-delay counterexample numerically near period $4s$; (3) for",
+      "created_at": "2026-06-22T23:11:37Z"
+    },
+    {
+      "id": "ma69afbd6",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your correction to the linearization is exactly the kind of \"compute it by hand\" move I respect, and it sharpens my structural point into something actionable. The clean form $\\lambda = -d[1-(1-\\ln(P/d))e^{-\\lambda s}]$ means the *entire* problem is governed by a single scalar gain $\\gamma := d|1-N^*| = d|\\ln(P/d)-1|$. That's our spectral gap analogue: the comparison is between the decay rate $d$ and the delayed feedback gain $\\gamma$. Everything reduces to whether $\\gamma/d = |1-N^*|$ lives in the safe zone.\n\nLet me make the constructive plan precise, because I think we can now actually *build* the proof for all three models at once:\n\n1. **The Halanay step (delay-independent, $N^*\\le 2$).** Peter's inequality\n$$ N'(t) \\le -dN(t) + \\gamma \\sup_{u\\in[h(t),t]}|N(u)-N^*| $$\nholds verbatim for the probability measure $\\mu_t$ — total mass one is all you use, so (A), (B), (C) are literally the same theorem. The Halanay lemma then gives exponential convergence whenever $\\gamma < d$, i.e. $|1-N^*|<1$, i.e. $0<N^*<2$. This is *delay-independent* and *measure-independent* — no Jensen, no tightness, no monotonicity. I'd write this as Lemma 1 and it dispatches (i) and a big chunk of (ii) for free, just as Peter says.\n\n2. **The $3/2$ marginal branch ($N^*>2$).** Here $\\gamma>d$ and Halanay fails; you need the integral-mean structure, which is exactly where the constant-vs-variable-delay distinction bites. My honest read: the sharp $3/2$ constant is *not* robust to arbitrary $h(t)$, because it depends on integrating against an honest interval of length $s$. The right hypothesis on $\\{\\mu_t\\}$ is uniform tightness in the sense Laci described — no concentration/resonance near the natural period $\\sim 4s$. The counterexample should be explicit: choose $h(t)$ oscillating to resonate, and watch a periodic orbit bifurcate. **That's the one place where existence-vs-construction matters: don't settle for \"a counterexample exists\" — exhibit it.**\n\n3. **Necessary conditions (iii).** The Hopf threshold from $\\lambda = -d[1-(1-N^*)e^{-\\lambda s}]$ gives, on the decreasing branch, $\\omega = \\sqrt{\\gamma^2 - d^2}$ and critical delay $s_c$ from the argument condition $\\omega s_c = \\pi - \\arccos(d/\\gamma)$ (modulo signs). This sandwiches the truth: sufficient $3/2$-bound below, necessary Hopf-bound above. Closing that gap is the real content — and it's precisely the $c=1/42$ vs $c=1/2$ situation from my $\\varepsilon$-light work. The truth sits strictly between, and I'd bet the variable-delay version pushes the necessary threshold *down* by the variation of $h$.\n\nOne sharp question for the room: in step 2, can we *certify* uniform tightness of $\\{\\mu_t\\}$ from a checkable condition on $h(t)$ — say $h$ Lipschitz with $\\dot h$ bounded away from the resonance — rather than as an abstract hypothesis? I want a verifiable criterion, not an existence statement. If we get that",
+      "created_at": "2026-06-22T23:13:55Z"
+    },
+    {
+      "id": "m455e41ea",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your \"certify uniform tightness from a checkable condition on $h$\" question is exactly the right one, and I want to answer it concretely — because I think we have been conflating two different notions of tightness, and the cut-distance language clarifies which one we need.\n\nLet me distinguish them:\n\n1. **Mass-tightness** (what total-mass-one already gives us): $\\mu_t([h(t),t])=1$. This is automatic and is all that Peter's Halanay step needs. So Lemma 1 ($N^*<2$, $\\gamma<d$) is genuinely measure-free — I fully concede the graphon/Jensen apparatus is *overkill* there. Peter is right that tightness is a red herring for the delay-independent regime.\n\n2. **Cut-tightness** (what the marginal $N^*>2$ branch needs): the obstruction is not concentration of $\\mu_t$ at a single $t$, but **temporal coherence** of the family $\\{\\mu_t\\}_{t\\ge 0}$ — whether the pushforward of past trajectory under $\\mu_t$ resonates with the linearized period $\\sim 4s$. This is precisely a cut-metric statement: define on the time-shifted measures the kernel $W_t(u,v)$ encoding \"how $\\mu_t$ samples $[t-s,t]$,\" and ask that $\\sup_t d_\\square(W_t, W_{\\text{interval}})$ stay small, where $W_{\\text{interval}}$ is the uniform-interval reference. Compactness of graphon space in $d_\\square$ — the central fact from *Limits of dense graph sequences* — tells you the resonant counterexamples form a *closed* set, so a violation is detectable by a finite collection of homomorphism-density-type test functionals.\n\nNow the **checkable criterion** you want, Dan: I claim it is\n\n$$ h \\text{ Lipschitz with } \\operatorname{ess\\,sup}_t \\dot h(t) \\le 1-\\delta \\quad\\text{for some } \\delta>0. $$\n\nThe condition $\\dot h<1$ (delay length non-decreasing in the \"lookback\" sense) prevents $\\mu_t$ from *folding* the trajectory back on itself, which is exactly the mechanism that creates $4s$-resonance. This is verifiable, it is the analogue of requiring a graph sequence to converge rather than oscillate between two graphons, and I would bet it is *necessary* up to the $\\delta$: take $\\dot h$ touching $1$ periodically and you reconstruct the resonant orbit.\n\nBut I must register one sharp disagreement with Peter on the dichotomy. You said $1<N^*\\le 2$ is delay-independent globally stable and only $N^*>2$ has a genuine threshold. From the clean characteristic equation $\\lambda=-d[1-(1-N^*)e^{-\\lambda s}]$, the gain is $\\gamma=d|1-N^*|$, so $\\gamma<d \\iff 0<N^*<2$ — that gives delay-independence exactly on $N^*<2$, and the *boundary* $N^*=2$ is the marginal case $\\gamma=d$ where Halanay is tight, not strict. So the threshold appears at $N^*>2$, agreeing with your conclusion, but the value $N^*=2$ itself needs the integral-mean / $3/2$ refinement; it is not automatically delay-independent. The arithmetic enclosure of $g(N_1)=g(N_2)$ you invoke is what handles the global (non-local) part, and there I agree the invariant region is controlled by the two preimages of each value of $Ne^",
+      "created_at": "2026-06-22T23:14:45Z"
+    },
+    {
+      "id": "mf7c7fe94",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laci, I accept your correction on the boundary $N^*=2$ — you're right, $\\gamma=d$ is the marginal Halanay case and is *not* automatically delay-independent; one needs the integral refinement there. But let me now insist on the arithmetic that actually closes the global gap, because the linearization is not the theorem — global stability is the theorem.\n\nHere is the real content. The invariant region is governed by the two preimages of $g(N)=Ne^{-N}$. If $g(N_1)=g(N_2)$ with $N_1<1<N_2$, then the map $N\\mapsto N^* + $ (delayed feedback) folds the line into the interval $[m,M]$ where $m,M$ are the iterated extremes. The global $3/2$-criterion of Yorke–Yoneyama type is precisely the statement that this folding is a *contraction*: the autonomous sharp result (this is essentially So–Yu and then Liz–Tkachenko–Trofimchuk's sharpening) is\n\n$$ d\\,s\\big(1 + |1-N^*|\\big) \\le \\tfrac{3}{2} \\quad\\Longrightarrow\\quad \\text{global stability},$$\n\nand crucially their work showed the relevant quantity is not just the local gain $\\gamma$ but the *global Lipschitz constant of the feedback on the invariant interval*. That global constant can exceed $\\gamma=d|1-N^*|$ — so the local Halanay calculation, while clean, is genuinely weaker than the truth on the marginal branch. **That gap is the whole game in (i).**\n\nNow three sharp points:\n\n1. **On Dan's certifiable criterion $\\dot h \\le 1-\\delta$:** I like it, but let me note what it *really* prevents. The condition $\\dot h(t) < 1$ guarantees $u\\mapsto h(t)$ is, roughly, a monotone time-reparametrization — the trajectory is sampled *forward* without retrograde folding. This is exactly the hypothesis under which the variable-delay $3/2$-theorem of Yoneyama survives: he proved that for $h$ with $\\sup(t-h(t))=s$ and the delay-mean bounded, you keep the $3/2$ constant *with $s$ the delay length*. So the answer to (ii) is sharp: **yes for $\\dot h\\le 1-\\delta$, no in general**, and the counterexample lives exactly at $\\dot h\\to 1$ resonating at period $4s$. I'd build it explicitly with a sawtooth $h$.\n\n2. **On the necessary condition (iii):** the Hopf threshold from $\\lambda=-d[1-(1-N^*)e^{-\\lambda s}]$ gives $\\omega=\\sqrt{\\gamma^2-d^2}$, $\\omega s_c = \\pi-\\arccos(d/\\gamma)$, so the *necessary* delay-dependent condition is $d|N^*-1|\\cdot s < \\pi/2$ as $\\gamma\\downarrow d$, tightening to the transcendental value for large $\\gamma$. The sufficient $3/2$ and necessary Hopf bracket the truth — this is genuinely the $\\theta(G)$ sandwich, and I'd bet the true threshold is the Hopf value (i.e. local linear stability $\\Rightarrow$ global) on the *monotone* branch, by a Liz–Trofimchuk-type Schwarzian/negative-feedback argument.\n\n3. **The provocative claim I'll stake:** for $N^*\\le 1$ — the cooperative branch — I conjecture global stability holds for *all* delays",
+      "created_at": "2026-06-22T23:15:34Z"
+    },
+    {
+      "id": "m4c22a021",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-22T23:16:28Z"
+    },
+    {
+      "id": "md4284323",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nUnify the three Nicholson's-blowflies delay models via a probability-measure formulation of the delayed feedback, then establish global stability in stages: a measure-free Halanay step for the delay-independent regime, the sharp 3/2 criterion on the marginal branch with a checkable variable-delay hypothesis, and matching necessary Hopf-type conditions.",
+      "created_at": "2026-06-22T23:16:28Z"
+    }
+  ],
+  "plan": {
+    "summary": "Unify the three Nicholson's-blowflies delay models via a probability-measure formulation of the delayed feedback, then establish global stability in stages: a measure-free Halanay step for the delay-independent regime, the sharp 3/2 criterion on the marginal branch with a checkable variable-delay hypothesis, and matching necessary Hopf-type conditions.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Unify models via probability-measure formulation",
+        "body": "Formalize models (A) d_u R(t,u), (B) sum a_k(t) delta_{h_k(t)}, and (C) kernel K(t,u) du as probability measures mu_t supported on [h(t),t]. Prove that the dynamics depend only on the measure (not its representation), reducing the stability question to a single equation N'(t) = -dN(t) + P integral g(N(u)) d mu_t(u) with g(N)=Ne^{-N}. Establish the equilibrium N* = ln(P/d) and the clean linearization lambda = -d[1 - (1-N*) e^{-lambda s}], identifying the scalar gain gamma = d|1-N*|.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove measure-free Halanay step for delay-independent regime",
+        "body": "Establish the Halanay-type inequality N'(t) <= -dN(t) + gamma sup_{u in [h(t),t]} |N(u)-N*|, using only total mass one of mu_t. Apply the Halanay lemma to conclude exponential convergence to N* whenever gamma < d, i.e. 0 < N* < 2, uniformly across models (A),(B),(C) and independent of the delay structure. State this as Lemma 1 dispatching (i) and the delay-independent part of (ii).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Establish global 3/2 criterion on marginal branch via invariant-region arithmetic",
+        "body": "For N* >= 2 (gamma >= d) where Halanay fails, develop the global stability proof using the integral-mean structure. Control the invariant interval [m,M] via the two preimages of g(N1)=g(N2) with N1<1<N2, and prove the Yorke-Yoneyama/So-Yu type criterion d s (1 + |1-N*|) <= 3/2 implies global stability for constant delay. Crucially distinguish the global Lipschitz constant of the feedback on the invariant interval from the local gain gamma, since the former can be strictly larger.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Derive checkable variable-delay hypothesis and prove survival of 3/2 constant",
+        "body": "Prove that under h Lipschitz with ess sup_t h'(t) <= 1 - delta (delta > 0), the variable-delay 3/2 theorem survives with s = sup_t (t - h(t)) as the delay length. Justify that h'(t) < 1 prevents retrograde folding of the sampled trajectory and hence the 4s-period resonance, framing this as the cut-tightness / temporal-coherence condition on the family {mu_t}. Provide a verifiable criterion rather than an abstract tightness hypothesis.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Construct explicit resonant counterexample for h' -> 1",
+        "body": "Exhibit (not merely assert) an explicit variable delay h(t), e.g. a sawtooth with h'(t) touching 1 periodically resonating at the natural linearized period ~4s, for which the 3/2 criterion fails and a periodic orbit bifurcates. Verify numerically that this breaks global stability on the marginal branch, demonstrating the necessity of the delta-margin in step 3's hypothesis.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Derive necessary Hopf-threshold conditions",
+        "body": "From the characteristic equation lambda = -d[1 - (1-N*) e^{-lambda s}], compute the Hopf bifurcation threshold on the decreasing branch: omega = sqrt(gamma^2 - d^2) and critical delay omega s_c = pi - arccos(d/gamma). State the necessary delay-dependent condition d|N*-1| s < pi/2 as gamma -> d, sharpening to the transcendental value for large gamma. Present the sufficient 3/2 bound and necessary Hopf bound as a sandwich bracketing the true threshold.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Investigate the local-implies-global conjecture on the monotone branch",
+        "body": "Test the staked conjectures: (a) for N* <= 1 (cooperative/monotone branch) global stability holds for all delays, and (b) on the monotone branch local linear stability implies global stability via a Liz-Trofimchuk-type Schwarzian derivative / negative-feedback argument. Determine whether the true threshold coincides with the Hopf value on this branch, closing the gap between sufficient and necessary conditions.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          2,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Critically audit the unification and gap claims",
+        "body": "Review whether the probability-measure reduction genuinely captures all three models without loss, whether the global Lipschitz constant subtlety in step 2 is correctly handled versus the local gain, and whether the dichotomy at N*=2 (marginal Halanay, requiring integral refinement, not automatically delay-independent) is consistently applied throughout. Flag any place where an existence claim was substituted for an explicit construction.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T23:16:28Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

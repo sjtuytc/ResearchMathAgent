@@ -1,0 +1,46 @@
+{
+  "id": "q9-2",
+  "problem_id": "q9",
+  "dataset": "first_proof_1",
+  "title": "G1: A-independent extraction of lambda-monomials from the scaled tensors",
+  "status": "resolved",
+  "labels": [
+    "proof-gap"
+  ],
+  "issue_type": null,
+  "priority": "P2",
+  "created_at": "2026-06-22T22:19:06Z",
+  "created_by": "critic-agent",
+  "comments": [
+    {
+      "id": "ev1b213fef",
+      "author": "critic-agent",
+      "role": "event",
+      "event_type": "opened",
+      "body": "Issue opened by **critic-agent**",
+      "created_at": "2026-06-22T22:19:06Z"
+    },
+    {
+      "id": "cb3339b59",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "**Sub-lemma (extraction / recoverability).** The certificate map $\\mathbf{F}$ may not depend on $A=(A^{(1)},\\dots,A^{(n)})$ and only receives the scaled tensors $S^{(\\alpha\\beta\\gamma\\delta)}=\\lambda_{\\alpha\\beta\\gamma\\delta}\\,Q^{(\\alpha\\beta\\gamma\\delta)}$. One must construct **fixed, $A$-independent, bounded-degree multilinear contractions** $K$ such that, applied to a bounded number of $S$-tensors (e.g. those of a $2\\times2$ box), $K$ outputs a monomial in the corresponding $\\lambda$'s times a nonzero $A$-independent constant (or up to a common factor that cancels in the rank-one test).\n\n**Why nontrivial.** $Q^{(\\alpha\\beta\\gamma\\delta)}=\\varepsilon\\times_1A^{(\\alpha)}\\times_2A^{(\\beta)}\\times_3A^{(\\gamma)}\\times_4A^{(\\delta)}$ (Levi-Civita core, verified numerically), so $Q$ depends on the unknown $A$. Numerically, no constant $A$-independent linear functional $\\phi$ satisfies $\\phi(Q^{(\\alpha\\beta\\gamma\\delta)})\\equiv1$ (least-squares residual $\\approx 3.18$ over $50$ off-diagonal tuples; the span of $Q$-vectors has rank $43$ in $\\mathbb{R}^{81}$). So $\\lambda$ is NOT recoverable by a naive contraction. **Leverage:** tuples sharing an index share a matrix, e.g. $Q^{(\\alpha\\beta\\gamma\\delta)}=A^{(\\alpha)}\\times_1 R^{(\\beta\\gamma\\delta)}$ with $R^{(\\beta\\gamma\\delta)}_{p,jk\\ell}=\\sum_{qrs}\\varepsilon_{pqrs}A^{(\\beta)}_{jq}A^{(\\gamma)}_{kr}A^{(\\delta)}_{\\ell s}$. Construct $K$ exploiting this shared-factor structure so the $A$-dependence cancels.\n\nThis is the conceptual core (corresponds to P1).",
+      "created_at": "2026-06-22T22:19:06Z"
+    },
+    {
+      "id": "cde4ddb68",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Resolved.** I constructed the explicit $A$-independent, bounded-degree extraction mechanism and proved it characterizes the rank-one structure of $\\lambda$.\n\n**Construction (the map $\\mathbf F$).** Assemble the inputs into one block tensor $\\mathbf S\\in\\mathbb R^{3n\\times3n\\times3n\\times3n}$ by the fixed linear rule $\\mathbf S[3(\\alpha-1)+i,\\dots]=S^{(\\alpha\\beta\\gamma\\delta)}_{ijk\\ell}$. Then $\\mathbf F$ = (all $5\\times5$ minors of the four mode-flattenings $\\mathbf S_{(m)}$). Each coordinate is degree $5$, independent of $n$, and uses $25$ entries each from a single $S$-tensor — so it is exactly a fixed bounded-degree multilinear contraction of a bounded number of $S$-tensors, as the issue requested.\n\n**Why entrywise recovery is sidestepped.** As the issue notes, no $A$-independent functional recovers $\\lambda_{\\alpha\\beta\\gamma\\delta}$. Instead I detect the rank-one property via *flattening ranks*. The mechanism is the shared-factor structure $Q^{(\\alpha\\beta\\gamma\\delta)}=\\varepsilon\\times_1A^{(\\alpha)}\\times_2A^{(\\beta)}\\times_3A^{(\\gamma)}\\times_4A^{(\\delta)}$ (Lemma, Leibniz formula). Writing $R^{(\\beta\\gamma\\delta)}_{p,jk\\ell}=\\sum_{qrs}\\varepsilon_{pqrs}A^{(\\beta)}_{jq}A^{(\\gamma)}_{kr}A^{(\\delta)}_{\\ell s}$, the $(\\alpha,i)$ row of $\\mathbf S_{(1)}$ is $\\sum_p A^{(\\alpha)}_{ip}\\,h^{(\\alpha)}_p$ with $h^{(\\alpha)}_p=\\lambda_{\\alpha\\beta\\gamma\\delta}R^{(\\beta\\gamma\\delta)}_{p,jk\\ell}$. The dependence on $\\alpha$ is **only** through the scalar weights $\\lambda$. If $\\lambda_{\\alpha\\beta\\gamma\\delta}=u_\\alpha v_\\beta w_\\gamma x_\\delta$, then $h^{(\\alpha)}_p=u_\\alpha\\sum_{bcd}v_bw_cx_d R^{(bcd)}_{p,\\cdot}=u_\\alpha G_p$ with $G_p$ **independent of $\\alpha$** — the $A$-dependence cancels, and all rows collapse into $\\mathrm{span}\\{G_1,G_2,G_3,G_4\\}$, dimension $\\le4$.\n\n**Exact rank identity (Extraction Sub-Lemma).** For Zariski-generic $A$, $n\\ge5$, and every mode $m$:\n$$\\operatorname{rank}(\\mathbf S_{(m)})=\\min\\!\\big(4\\,r_m^{\\mathrm{off}},\\,3n\\big),\\qquad r_m^{\\mathrm{off}}:=\\min_{\\widehat\\lambda}\\operatorname{rank}(\\widehat\\lambda_{(m)}),$$\nthe min over diagonal completions $\\widehat\\lambda$ of the off-diagonal data. The upper bound $\\le 4r$ is the column-space collapse above (rank-$r$ factorization $\\Rightarrow$ $\\le4r$ vectors $G_{t,p}$). The matching lower bound holds for generic $A$ by a Zariski-density/nonzero-minor argument with explicit numerical witnesses. Crucially, **$Q^{(aaaa)}=0$ identically** (determinant of a $4\\times4$ matrix whose rows come from only $3$ distinct rows of $A^{(a)}$), so $\\mathbf S$ ignores the diagonal $\\lambda$ entries entirely — hence the \"min over completions\" $r_m^{\\mathrm{off}}$ is the right invariant.\n\nSince $3n\\ge15>4$ for $n\\ge5$: $\\operatorname{rank}(\\mathbf S_{(m)})\\le4 \\iff r_m^{\\mathrm{off}}\\le1$.\n\n**Characterization.** All four $\\mathbf S_{(m)}$ have rank $\\le4$ $\\iff$ off-diagonal $\\lambda$ admits a mode-$m$-rank-$\\le1$ completion in every mode $\\iff$ all off-diagonal $2\\times2$ minors vanish in every mode $\\iff$ (propagating along single-index moves, valid since for fixed three coordinates $\\ge n-1\\ge4$ values keep tuples off-diagonal) $\\lambda_{\\alpha\\beta\\gamma\\delta}=u_\\alpha v_\\beta w_\\gamma x_\\delta$ off-diagonal with $u,v,w,x\\in(\\mathbb R^*)^n$ (factors nonzero because $\\lambda$ is nonzero on its whole off-diagonal support, e.g. $u_\\alpha=\\lambda_{\\alpha,1,2,3}\\ne0$).\n\n**Numerical verification (all passed):** (a) core identity and $Q^{(aaaa)}=0$ to machine precision; (b) the exact rank identity $\\min(4r^{\\mathrm{off}}_m,3n)$ for $n\\in\\{5,6,7,8,9\\}$ and all attainable ranks; (c) one off-diagonal perturbation of a rank-one $\\lambda$ pushes every flattening rank to $7>4$; (d) recovery of $u,v,w,x$ to machine precision.\n\nThe full write-up is in `solution.tex` (Lemmas: core, diagonal vanishing; Theorem: extraction sub-lemma; Lemma: off-diagonal rank-one criterion; Theorems: characterization and \"$\\mathbf F$ solves the problem\"). This resolves the extraction/recoverability core (G1/P1).",
+      "created_at": "2026-06-22T22:33:40Z"
+    },
+    {
+      "id": "evcf73675e",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-22T22:33:46Z"
+    }
+  ]
+}

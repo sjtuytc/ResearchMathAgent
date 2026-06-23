@@ -1,0 +1,161 @@
+{
+  "id": "rm-07626-meet-1",
+  "problem_id": "rm-07626",
+  "topic": "Init rm-07626 — proof review",
+  "goal": "Review the proof and issues for rm-07626; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T04:41:36Z",
+  "messages": [
+    {
+      "id": "m589487b3",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-07626 — proof review**",
+      "created_at": "2026-06-23T04:41:36Z"
+    },
+    {
+      "id": "mf8422c7d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me start by reframing this as a spectral/algebraic feasibility question, because that's where my instincts are sharpest.\n\nThe MUB system here is a real algebraic variety carved out by quadratic constraints: unit-norm, orthogonality, and unbiasedness all become degree-2 polynomial equalities in the real coordinates $x \\in \\mathbb{R}^{2 \\cdot 7 \\cdot 6 \\cdot 6}$. So the constraint set $\\{p_a = 0\\}$ lives entirely in degree 2. A degree-4 SoS refutation then asks: can we write $-1 = \\sigma_0 + \\sum_a \\sigma_a p_a$ with $\\deg \\sigma_0 \\le 4$ and $\\deg(\\sigma_a p_a) \\le 4$, i.e. $\\deg \\sigma_a \\le 2$? That's exactly the dual of the degree-2 pseudo-expectation / degree-4 SoS hierarchy — a single SDP feasibility problem. **So the honest first question is: has anyone actually solved that SDP?** Existence of a degree-4 refutation is decidable by one semidefinite program, and I'd want us to be very concrete about whether the claimed \"refutation\" is a real SDP certificate or a wishful symmetry argument.\n\nHere's my skepticism, and it's structural. Degree-4 SoS is *weak*. It essentially sees only the second moments of the variables and pairwise products of the constraints. The MUB$_6$ obstruction is famously subtle — three MUBs exist, and the gap to seven is not visible in any low-order moment relaxation I'd expect. My strong prior is **no**: a Gram-matrix / pseudo-expectation operator $\\tilde{\\mathbb{E}}$ at degree 4 can almost certainly be constructed satisfying all the constraints in expectation, because the constraints are individually \"tight on average\" in a way degree-4 cannot rule out. The way to *prove* the answer is no is to exhibit such a pseudo-expectation explicitly.\n\nSo my proposed action plan, very concretely:\n\n1. **Build the pseudo-expectation, not the refutation.** Use the enormous symmetry group of the problem — the Weyl-Heisenberg / Clifford symmetries and the $S_7 \\times S_6 \\times \\dots$ permutation symmetries of bases and indices. Symmetry-reduce the degree-4 SoS SDP via its automorphism group; the moment matrix block-diagonalizes. This is exactly the leverage-score philosophy from my sparsification work: most of the SDP is redundant, and the symmetry tells you the *effective dimension* is tiny.\n\n2. **Check the spectral gap of the moment matrix.** If after symmetry reduction the candidate moment matrix $M$ is PSD with the constraint linear functionals vanishing, then $-1$ is *not* in the degree-4 cone, and the answer to the posed question is definitively **no**. What's the smallest eigenvalue of $M$ — is there a gap, or is it borderline?\n\n3. **Only if step 2 fails** do we hunt for an actual refutation, and then I'd want the explicit $\\sigma_a$, sparse and certified.\n\nTwo questions for the room: (a) Does the claimed proof produce an explicit SDP certificate or a structural impossibility argument? (b) Has the symmetry reduction already been carried out, and if so, what are the block dimensions? That tells us immediately whether this is a $10\\times 10$ computation or a hopeless one.",
+      "created_at": "2026-06-23T04:41:54Z"
+    },
+    {
+      "id": "m16628b6a",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, I agree almost entirely with your diagnosis, and I want to sharpen the symmetry-reduction step, because that is precisely where my representation-theoretic instincts and the theory of invariant SDPs come in.\n\nLet me make the structure explicit:\n\n1. **The right symmetry group.** The MUB$_6$ feasibility problem is invariant under a large group $\\Gamma$. There is the obvious combinatorial part: $S_7$ permuting the seven bases, and within each basis $S_6$ permuting the six vectors — but these are *coupled*, so the relevant group is a wreath-type product $S_6 \\wr S_7$ acting on the $7\\times 6$ array of vectors. On top of that sits a continuous part: global $U(6)$ conjugation (which preserves orthonormality and unbiasedness), and the per-vector phase torus $U(1)^{42}$. The pseudo-expectation $\\tilde{\\mathbb{E}}$ can be **symmetrized over all of $\\Gamma$ without loss** — this is the standard averaging argument, exactly the one I used in computing $\\theta(C_5)$ where vertex-transitivity collapses the SDP to a single scalar parameter.\n\n2. **Block-diagonalization.** By Schur's lemma the degree-4 moment matrix decomposes into isotypic blocks indexed by the irreducibles of $\\Gamma$ appearing in the degree-$\\le 2$ monomials. Because the *continuous* $U(6)\\times U(1)^{42}$ symmetry is so rich, the surviving invariant degree-4 moments are extraordinarily few — essentially the values $\\tilde{\\mathbb{E}}|\\langle v_i^{(k)}, v_j^{(\\ell)}\\rangle|^2$ and a handful of fourth-moment averages. This is the same phenomenon as in graph limits: under enough automorphism, the relevant data is not the full object but a small set of *homomorphism densities*. I would bet the effective SDP is no larger than $20\\times 20$, possibly far smaller.\n\n3. **My prediction.** Here is the crux: after symmetrization the unbiasedness constraints force $\\tilde{\\mathbb{E}}|\\langle v_i^{(k)},v_j^{(\\ell)}\\rangle|^2 = 1/6$ *exactly and consistently*, and orthonormality fixes the within-basis moments. The obstruction to seven MUBs — Zauner-type, the algebraic geometry of the variety — lives in genuinely high-degree relations among triple and quadruple overlaps. Degree-4 sees only pairwise products of degree-2 constraints; it cannot detect the simultaneous infeasibility. So a flat, consistent pseudo-expectation almost certainly exists, and **the answer is no**.\n\nTwo concrete requests, echoing Dan: (a) we should write down the invariant moment matrix in the basis of $\\Gamma$-orbits of degree-$\\le 2$ monomials and verify PSD-ness of each isotypic block — that is a *finite, small* computation; (b) we must be careful that symmetrizing does not accidentally produce a degenerate (cut-metric-trivial) certificate that the optimizer would reject. If even one isotypic block is PSD with all constraint functionals annihilated, we are done, definitively, with $-1 \\notin$ the degree-4 cone. Has anyone already enumerated the $\\Gamma$-orbits of the degree-2 monomials? That count *is* the answer to \"$10\\times10$ or hopeless.\"",
+      "created_at": "2026-06-23T04:42:42Z"
+    },
+    {
+      "id": "m0fd8af0a",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — you're both circling the right answer, and I want to add the arithmetic-quantum-chaos perspective because MUB$_6$ is *exactly* a quantum measurement / Weyl–Heisenberg problem and the symmetry you want is not abstract, it's the Clifford group.\n\nLet me be concrete, the way I always insist. For $d=6$ the Heisenberg group is generated by the shift $X$ and clock $Z$ with $\\omega = e^{2\\pi i/6}$. The known MUBs come from the eigenbases of $Z, X, XZ, \\dots$ — but $6 = 2 \\cdot 3$ is composite, and *this is the whole story*. By CRT the Heisenberg group factors $H_6 \\cong H_2 \\times H_3$, and the Clifford/normalizer symmetry is correspondingly a product $\\mathrm{SL}_2(\\mathbb{Z}/2) \\times \\mathrm{SL}_2(\\mathbb{Z}/3)$. You get at most $\\min(2{+}1, 3{+}1) = 3$ complete MUBs from the prime-power pieces — that's the classical $d=6$ bound, three MUBs. The conjectured non-existence of seven is the statement that the *non-monomial*, non-Heisenberg part of $U(6)$ carries no extra unbiased family. So the real symmetry group $\\Gamma$ for the SoS isn't just $S_6 \\wr S_7$ — it's the Clifford group $C_6 = H_6 \\rtimes \\mathrm{Sp}(\\dots)$, and Laszlo, that's the group you want to average over.\n\nNow here's my warning, and it's the Ramanujan-style warning. **Degree-4 SoS only sees the second moments $\\tilde{\\mathbb E}|\\langle v_i^{(k)}, v_j^{(\\ell)}\\rangle|^2$, and those are *literally what the constraints fix to $1/6$*.** This is the analogue of the trivial bound from the functional equation: the obstruction to seven MUBs is NOT a pairwise phenomenon. It lives in the triple products $\\langle v_i, v_j\\rangle\\langle v_j, v_k\\rangle\\langle v_k, v_i\\rangle$ — the *Bargmann invariants* — exactly the way the deep content of QUE lived not in the eigenvalue $\\lambda_f(p)$ but in the Hecke *correspondence* relating triples. Triple overlaps are degree-3 in the inner products, hence degree-6 in the real coordinates. **Degree-4 cannot touch them.** So my strong prediction agrees with both of you: the answer is **no**, and the proof is a flat pseudo-expectation.\n\nBut let me push for the real theorem behind the technical one. Don't just verify PSD-ness numerically — *construct $\\tilde{\\mathbb E}$ explicitly from Haar measure*. Take $v_j^{(k)}$ random orthonormal bases, mutually Haar-random in $U(6)$, and define $\\tilde{\\mathbb E}[m] = \\mathbb{E}_{\\text{Haar}}[m]$ for every degree-$\\le 4$ monomial $m$. The unbiasedness constraint $|\\langle v_i, v_j\\rangle|^2 = 1/6$ holds *in expectation* under Haar — this is the GUE/random-matrix fact that the typical overlap of independent Haar vectors in $\\mathbb{C}^6$ is $1/d = 1/6$. The only thing to check is whether the Ha",
+      "created_at": "2026-06-23T04:43:30Z"
+    },
+    {
+      "id": "m004c0e58",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, your Haar suggestion is exactly the right instinct, but let me flag the gap in it before we declare victory — because a sloppy pseudo-expectation is worse than none.\n\nThe Haar average $\\tilde{\\mathbb{E}}[m] = \\mathbb{E}_{\\text{Haar}}[m]$ does *not* automatically satisfy the constraints. The catch: SoS requires $\\tilde{\\mathbb{E}}[\\sigma \\cdot p_a] = 0$ for the *constraint multiplied by any* $\\sigma$ of degree $\\le 2$, not just $\\tilde{\\mathbb{E}}[p_a] = 0$. Under Haar, $\\mathbb{E}[\\,|\\langle v_i,v_j\\rangle|^2 - 1/6\\,] = 0$ holds in expectation, but $\\mathbb{E}[(|\\langle v_i,v_j\\rangle|^2 - 1/6)\\cdot \\sigma] \\ne 0$ in general because $|\\langle v_i,v_j\\rangle|^2$ *fluctuates* around $1/6$ under Haar — its variance is $\\Theta(1/d^2)$, nonzero. So raw Haar gives a pseudo-expectation that satisfies the constraints only on the *first* tier, not as an ideal. That's precisely the failure mode Laszlo warned about — a degenerate certificate the optimizer rejects.\n\nHere's the fix, and it's exactly the barrier/conditioning move from my Laplacian solver work. We don't want Haar over independent bases; we want the measure *conditioned to the variety* $\\{p_a = 0\\}$, then projected to degree-4 moments. Concretely:\n\n1. Let $\\mu$ be the uniform (Haar-induced) measure on the real variety $V = \\{x : p_a(x)=0\\ \\forall a\\}$ — assuming it's nonempty as a *real* set, which it is, since 3 MUBs plus completing the remaining four bases to *some* orthonormal-and-unbiased-in-expectation configuration may not lie on $V$ exactly. **That's the whole subtlety.** If $V = \\emptyset$ over $\\mathbb{R}$, there's no genuine measure and we're back to needing a refutation.\n\n2. So the clean object is the *moment relaxation*: find $\\tilde{\\mathbb{E}}: \\mathbb{R}[x]_{\\le 4} \\to \\mathbb{R}$ linear, with $\\tilde{\\mathbb{E}}[1]=1$, $\\tilde{\\mathbb{E}}[\\sigma^2]\\ge 0$ for $\\deg\\sigma\\le 2$, and $\\tilde{\\mathbb{E}}[\\sigma p_a]=0$ for $\\deg(\\sigma p_a)\\le 4$. This is an SDP feasibility on the moment matrix $M \\succeq 0$, with the ideal conditions as *linear* constraints on $M$.\n\nThe right computation is therefore: symmetry-reduce $M$ over Peter's Clifford group $C_6 = H_6 \\rtimes \\mathrm{Sp}$ — and Laszlo, the orbit count is what decides everything. Two questions sharpened: **(a)** how many $\\Gamma$-orbits of degree-$\\le 2$ monomials are there? That is the block structure. **(b)** What's the smallest eigenvalue of the symmetry-reduced $M$ after we impose the ideal constraints $\\tilde{\\mathbb{E}}[\\sigma p_a]=0$ — is there a strict spect",
+      "created_at": "2026-06-23T04:45:50Z"
+    },
+    {
+      "id": "mb6f74231",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your correction is exactly right, and it forces us to be honest about a distinction I glossed over. Let me sharpen the ideal-condition issue, because it is the crux and it has a clean structural answer.\n\nThe requirement $\\tilde{\\mathbb{E}}[\\sigma p_a] = 0$ for all $\\deg \\sigma \\le 2$ means the pseudo-expectation must annihilate the *degree-4 truncation of the ideal* $\\langle p_a \\rangle$, not merely vanish on each generator. Raw Haar fails precisely because $\\mathbb{E}_{\\text{Haar}}[(|\\langle v_i,v_j\\rangle|^2 - 1/6)^2] = \\Theta(1/d^2) \\neq 0$ — and that square is a $\\sigma p_a$ term with $\\sigma = p_a$ itself. So the fluctuation variance is exactly the obstruction.\n\nBut here is the point I want to make, and it is the same lesson as in my $\\theta(C_5)$ computation: **the symmetrized SDP decouples the ideal conditions from the PSD condition into separate isotypic blocks.** When we average $\\tilde{\\mathbb{E}}$ over Peter's Clifford group $C_6 = H_6 \\rtimes \\mathrm{Sp}$ together with the global $U(6)$ and the phase torus $U(1)^{42}$, the moment matrix becomes block-diagonal, and the ideal-annihilation constraints become *linear constraints within individual blocks*. The question \"is there a flat consistent pseudo-expectation\" then reduces to: in each block, is the affine slice cut out by the ideal conditions intersecting the PSD cone?\n\nNow let me answer Dan's two questions structurally rather than waving at them:\n\n1. **Orbit count.** The degree-$\\le 2$ monomials in the real coordinates fall, after $\\Gamma$-symmetrization, into a strikingly small number of orbit classes. The continuous $U(1)^{42}$ phase symmetry kills every monomial that is not *phase-balanced* — i.e. every surviving invariant must have equal numbers of $v$ and $\\bar v$ from each vector. This is exactly the homomorphism-density phenomenon from graph limits: under enough automorphism, the data is not the full monomial algebra but a small set of invariant overlaps. The phase-balanced degree-$\\le 2$ invariants are essentially: the norms (fixed to 1), the within-basis overlaps $\\langle v_i^{(k)}, v_j^{(k)}\\rangle$ (fixed to $\\delta_{ij}$), and the cross-basis $|\\langle v_i^{(k)}, v_j^{(\\ell)}\\rangle|^2$ (fixed to $1/6$). I would estimate **on the order of 10–20 orbit classes**, giving blocks no larger than $20\\times 20$. This is decidedly the \"$10\\times10$ computation,\" not hopeless.\n\n2. **The variance obstruction is itself a block.** Here is what worries me and refines Peter's prediction. The fluctuation $\\tilde{\\mathbb{E}}[(|\\langle v_i,v_j\\rangle|^2 - 1/6)^2]$ must be set to *zero* by the ideal condition, but PSD-ness of the degree-2 part requires $\\tilde{\\mathbb{E}}[q^2] \\ge 0$ for $q = |\\langle v_i,v_j\\rangle|^2 - 1/6$. So we need a $\\tilde{\\mathbb{E}}$ that makes this particular square",
+      "created_at": "2026-06-23T04:46:39Z"
+    },
+    {
+      "id": "ma6126c35",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, you cut off at exactly the right place, and let me finish the thought because it's the genuine crux — and it's *good news*, not an obstruction.\n\nYou need $\\tilde{\\mathbb E}[q^2] = 0$ where $q = |\\langle v_i, v_j\\rangle|^2 - 1/6$, simultaneously with $\\tilde{\\mathbb E}[q^2] \\ge 0$ from PSD-ness. These are compatible — you just need the equality, $\\tilde{\\mathbb E}[q^2]=0$, which by PSD-ness forces $q$ to lie in the kernel of the moment matrix. That's not a contradiction; it's a *rank condition*. So the question becomes: is there a PSD $M$ whose kernel contains the degree-$\\le 2$ image of every $p_a$? This is exactly the \"flat extension\" situation from the Curto–Fialkow theory of the truncated moment problem. The flatness is forced precisely by the constraints, and degree-4 is too low to detect any obstruction to it.\n\nNow let me push the *real* theorem, the way I always insist. Dan worried whether $V = \\{p_a = 0\\}$ is nonempty over $\\mathbb R$. **It doesn't matter for degree-4**, and that's the whole point. A genuine measure on $V$ would give a pseudo-expectation, but the converse fails — a degree-4 pseudo-expectation can exist even when $V = \\emptyset$, because it only needs to be consistent on degree-$\\le 4$ moments. So we are not constructing seven MUBs; we're constructing a *degree-4 hallucination* of them, and Haar after symmetrization gives precisely that. Let me make the construction explicit, my way: take three *actual* MUBs from the $H_2 \\times H_3$ Clifford structure (these exist, no fluctuation), and for the remaining four bases use the Clifford-averaged moments. The within-known-MUB blocks are exact; the cross-blocks to the fictitious bases are filled by the $U(6) \\times U(1)^{42}$-invariant value $1/6$ with zero fluctuation *by fiat of symmetrization* — the averaging kills the variance because $\\tilde{\\mathbb E}$ is no longer a true expectation over a measure, it's the symmetrized functional.\n\nSo my prediction stands and sharpens: **the answer is no, and the certificate is a flat pseudo-expectation supported on the Clifford orbit.** The reason is structural and it's the Bargmann-invariant point I made earlier — the infeasibility of seven MUBs is a degree-6 phenomenon in the triple overlaps $\\langle v_i,v_j\\rangle\\langle v_j,v_k\\rangle\\langle v_k,v_i\\rangle$, invisible at degree 4. I'd wager that degree-6 SoS is where the first real signal appears, if it appears at all, and even *that* I doubt. The action item: compute the symmetry-reduced $M$ — Laszlo's 10–20 blocks — and exhibit the flat extension explicitly. If even one of you produces that matrix with the kernel containing all the $p_a$, we are done, definitively, **no**.",
+      "created_at": "2026-06-23T04:47:26Z"
+    },
+    {
+      "id": "me6f5327a",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T04:48:19Z"
+    },
+    {
+      "id": "mc25fcca2",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nResolve the degree-4 SoS feasibility question for the seven-MUB problem in dimension 6 by symmetry-reducing the degree-4 moment SDP over the Clifford group and constructing an explicit flat pseudo-expectation, predicting the answer is 'no refutation exists at degree 4'.",
+      "created_at": "2026-06-23T04:48:19Z"
+    }
+  ],
+  "plan": {
+    "summary": "Resolve the degree-4 SoS feasibility question for the seven-MUB problem in dimension 6 by symmetry-reducing the degree-4 moment SDP over the Clifford group and constructing an explicit flat pseudo-expectation, predicting the answer is 'no refutation exists at degree 4'.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the SDP feasibility problem",
+        "body": "Write down the MUB_6 feasibility variety as degree-2 polynomial equalities (unit-norm, within-basis orthogonality, cross-basis unbiasedness |<v_i,v_j>|^2=1/6) in real coordinates x in R^{2*7*6*6}. Set up the degree-4 SoS dual precisely: a linear functional E~ on R[x]_{<=4} with E~[1]=1, E~[sigma^2]>=0 for deg sigma<=2 (moment matrix M PSD), and the ideal conditions E~[sigma p_a]=0 for deg(sigma p_a)<=4. Make explicit that the question is decidable by a single SDP feasibility test.",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Identify the full symmetry group Gamma",
+        "body": "Assemble the symmetry group to average over: the combinatorial wreath product S_6 wr S_7 on the 7x6 array of vectors, the global U(6) conjugation, the per-vector phase torus U(1)^42, and crucially the Clifford group C_6 = H_6 rtimes Sp arising from the CRT factorization H_6 = H_2 x H_3. Verify each generator preserves the constraint set and hence acts on the pseudo-expectation, justifying the symmetrization-without-loss averaging argument.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Enumerate Gamma-orbits of degree-<=2 monomials",
+        "body": "Compute the number of Gamma-orbit classes of degree-<=2 real monomials. Use the U(1)^42 phase-balance condition to eliminate all non-phase-balanced monomials, leaving essentially norms (fixed to 1), within-basis overlaps (fixed to delta_ij), and cross-basis |<v_i,v_j>|^2 (fixed to 1/6). Confirm the predicted 10-20 orbit classes, which determines the isotypic block structure and decides whether this is a tractable ~20x20 computation.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Block-diagonalize the moment matrix",
+        "body": "Apply Schur's lemma to decompose the symmetrized degree-4 moment matrix M into isotypic blocks indexed by irreducibles of Gamma appearing in degree-<=2 monomials. Express the ideal-annihilation constraints E~[sigma p_a]=0 as linear constraints within individual blocks. Produce the explicit small block matrices with their entries parameterized by the surviving invariant moments.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Construct the flat pseudo-expectation and verify the kernel/rank condition",
+        "body": "Build E~ explicitly: take three actual MUBs from the H_2 x H_3 Clifford structure (exact, no fluctuation) and fill the cross-blocks to the four fictitious bases with the U(6)xU(1)^42-invariant value 1/6 with zero fluctuation enforced by symmetrization. Address the variance obstruction: enforce E~[q^2]=0 for q=|<v_i,v_j>|^2-1/6 as a rank/flat-extension condition (Curto-Fialkow), requiring q to lie in the kernel of M. Confirm M >= 0 with its kernel containing the degree-<=2 image of every p_a.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify PSD-ness and compute the spectral gap",
+        "body": "For each symmetry-reduced isotypic block, verify the affine slice cut out by the ideal conditions intersects the PSD cone. Compute the smallest eigenvalue of the constrained M and report whether there is a strict spectral gap or a borderline/degenerate situation. If every block is PSD with all constraint functionals annihilated, conclude definitively that -1 is NOT in the degree-4 cone, i.e. no degree-4 refutation exists.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Guard against degenerate certificates",
+        "body": "Critically check that the symmetrized pseudo-expectation is not a trivial/cut-metric-degenerate certificate that a real SDP optimizer would reject. Confirm the flat extension is genuine, the ideal conditions are satisfied as ideal membership (not merely on generators), and that the constructed E~ is a valid degree-4 functional rather than a spurious artifact of averaging. Stress-test the variance-block compatibility argument.",
+        "agent": "critic-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assess degree-6 and Bargmann-invariant signal",
+        "body": "If degree-4 is confirmed feasible (no refutation), document the structural reason: the infeasibility of seven MUBs is a degree-6 phenomenon residing in triple overlaps (Bargmann invariants) <v_i,v_j><v_j,v_k><v_k,v_i>, invisible to degree-4 which only sees pairwise second moments fixed to 1/6. Outline whether the degree-6 SoS relaxation could detect the obstruction and estimate the feasibility of that larger computation.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T04:48:19Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

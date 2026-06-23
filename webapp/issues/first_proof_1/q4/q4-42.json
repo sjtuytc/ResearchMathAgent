@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "n=1 / 1-over-0 edge case relies on a solver-introduced convention not in the problem",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "For $n=1$ the score vector is an empty sum, so $\\Phi_1(p)=0$ and the reciprocals are $1/0$. The problem statement fixes $\\Phi_n=\\infty$ only for MULTIPLE roots and does not define $1/0$. The attempt resolves $n=1$ by declaring '$1/0=+\\infty$', a convention it introduces itself, and calls the case trivial. This should be handled in a convention-independent way (or the convention flagged as an assumption). Relatedly, the division in the final step requires $\\Phi_n(p\\boxplus_n q)>0$; the $n\\ge2$ positivity argument (largest root gives a strictly positive score component) is correct, but the writeup should make explicit that the whole argument is intended for $n\\ge2$ and that $n=1$ is a separate degenerate case.",
       "created_at": "2026-06-18T00:48:31Z"
+    },
+    {
+      "id": "c58907560",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "Fixed the n=1 / 1-over-0 edge case so it no longer relies on a silently-introduced convention.\n\n**What the problem actually defines.** The statement assigns $\\Phi_n$ a value in $[0,\\infty]$ ($=\\infty$ only for multiple roots) but never defines $1/\\Phi_n$ when $\\Phi_n=0$. For a degree-1 polynomial the score vector is the empty sum, so $\\Phi_1\\equiv 0$ on a *simple* root (the \"multiple root\" clause never triggers), and the same holds for $p\\boxplus_1 q$ (its single root is $\\alpha_1+\\beta_1$ by the c_1 computation). Hence the $n=1$ instance reads literally \"$1/0 \\ge 1/0 + 1/0$\" with $1/0$ undefined — it is not a well-posed assertion under the given conventions.\n\n**Fix.**\n1. The whole Blachman/convexity argument is now explicitly flagged as the $n\\ge2$ argument. The strict-positivity remark in Lemma (lem:simple, Case 1) and the convolution-positivity remark (Case 2) were rewritten to drop the \"$1/0=+\\infty$ convention\" language and point to the separate degenerate-case discussion.\n2. The \"case $n=1$\" paragraph in the Theorem proof is replaced by an honest, convention-independent treatment: it states that all three quantities equal $\\Phi=0$, that the problem assigns no value to $1/0$, and that the $n=1$ instance is therefore vacuous; it then gives three equivalent dispositions (no content / lower-semicontinuous extension $1/0:=+\\infty$, which is the *only* convention consistent with the $\\epsilon\\to0$ limits used elsewhere / limit of nondegenerate cases), each yielding either vacuity or $+\\infty\\ge+\\infty$. The convention is now explicitly an assumption with justification, not a silent device, and the substantive claim is identified as $n\\ge2$.\n3. The final division step in the simple-root proof no longer invokes any $1/0$ convention: for $n\\ge2$ with simple roots, the regularized convolution $(T_\\epsilon p)\\boxplus(T_\\epsilon q)=(1-\\epsilon d/dx)^{2n}(p\\boxplus q)$ has simple roots (Nuij, since $2n\\ge n$), so Lemma (lem:positive) gives $\\Phi_n(p\\boxplus q)>0$. Thus all of $\\Phi_n(p),\\Phi_n(q),\\Phi_n(p\\boxplus q)\\in(0,\\infty)$, $1/\\Phi$ is a genuine finite positive real, and the division is unconditional.\n\n**Net effect.** For $n\\ge2$ every reciprocal in the inequality is a genuine finite positive real (no convention needed). For $n=1$ the case is handled convention-independently and the dependence on $1/0:=+\\infty$ is now an explicitly stated, justified assumption rather than a hidden one, with the honest caveat that the $n=1$ statement carries no content under the problem's conventions.\n\nVerified: degree-1 convolution has single root $\\alpha_1+\\beta_1$ (so $\\Phi_1(p\\boxplus_1 q)=0$); enumerate/proof environments balanced; all added displays balanced. (No LaTeX toolchain available to compile.)",
+      "created_at": "2026-06-21T21:51:31Z"
+    },
+    {
+      "id": "ev3033493f",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T21:51:35Z"
     }
   ]
 }

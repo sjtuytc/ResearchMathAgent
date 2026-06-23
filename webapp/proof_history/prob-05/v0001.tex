@@ -1,0 +1,803 @@
+\documentclass[12pt]{article}
+\usepackage{amssymb,amsmath,amsthm,secdot,bbm}
+
+\usepackage[
+bookmarks=true,
+bookmarksnumbered=true,
+colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=blue,urlcolor=blue]{hyperref}
+
+
+\usepackage[shortlabels]{enumitem}
+\usepackage{color}
+
+\usepackage[nameinlink,capitalize]{cleveref}
+
+
+\topmargin = -2cm %
+\oddsidemargin =0cm%
+\textwidth = 16cm%
+\textheight= 24.5cm%
+
+\marginparwidth=57pt
+
+\crefname{Lemma}{Lemma}{Lemmas}
+\crefname{Theorem}{Theorem}{Theorems}
+\crefrangeformat{proposition}{Propositions~#3#1#4--#5#2#6}
+
+\usepackage{thmtools}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{assumption}[theorem]{assumption}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+
+
+
+
+\newcommand{\var}{\textrm{var}}
+
+\newcommand*{\Gref}[1]{\hyperref[SDEfunc]{Eq($#1$)}}
+\newcommand*{\Gtag}[1]{\tag{Eq($#1$)}}
+\DeclareMathOperator{\1}{\mathbbm{1}}%%
+\DeclareMathOperator{\I}{\mathbbm{1}}%%
+\DeclareMathOperator{\law}{Law}%
+\DeclareMathOperator*{\esssup}{ess\,sup}
+\DeclareMathOperator*{\re}{Re}
+
+\def\E{\hskip.15ex\mathsf{E}\hskip.10ex}
+\def\P{\mathsf{P}}
+\def\Var{\mathop{\mbox{\rm Var}}}
+
+\def\eps{\varepsilon}
+\def\phi{\varphi}
+
+\renewcommand{\d}{\partial}
+
+\renewcommand{\ge}{\geqslant}
+\renewcommand{\le}{\leqslant}
+
+\newcommand{\dis}{\infty}
+
+\newcommand{\nn}{\nonumber}
+\newcommand{\wt}{\widetilde}
+\newcommand{\wh}{\widehat}
+
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\B}{\mathcal{B}}
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\G}{\mathcal{G}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\X}{\mathcal{X}}
+\newcommand{\Z}{\mathbb{Z}}
+
+\newcommand{\la}{\langle}
+\newcommand{\ra}{\rangle}
+
+
+\newcommand{\Di}[1]{|#1|}
+
+\begin{document}
+	
+\title{Unique Ergodicity for the stochastic skew heat equation}
+	
+	\author{
+		Oleg Butkovsky%
+		\and
+		Jonathan C. Mattingly
+		\and
+		Lorenzo Zambotti
+	}
+	
+	\maketitle
+
+        \begin{center}
+           \textbf{Overview of Proof of Main Theorem}  
+        \end{center}
+We will prove the uniqueness of the invariant measure by showing that
+the Markov Semi-group associated with the system is Asymptotic Strong
+Feller. We will do this by constructing asymptotic coupling of the two equations
+beginning from arbitrary, different initial conditions $u_0$
+and $v_0$. We do this by introducing an intermediate process $\wt
+v_t$ whose law on path space is equivalent to $v_t$ but which
+converges to $u_t$ as $t \rightarrow \infty$.
+
+This is done by in
+introducing a drift term of the form $\lambda_t(u_t-\wt v_t)$ to the
+equation for $\wt v_t$ so the equation for $\|u_t - \wt v_t\|^2$ has a
+contracting term. We essentially  pick $\lambda_t$ to be of comparable
+size to $\|u_t - \wt v_t\|^{-\beta}$ for some $\beta>0$. This makes
+the equation strongly contractive. Since we will pick $\lambda_t$ to
+be a piecewise constant, $\|u_t - \wt v_t\| \rightarrow 0$ only
+asymptotically as $t \rightarrow \infty$. To establish the needed
+absolue continuity on the infinite time horizon via Girsanov's
+theorem, we will have to show that the appropriate infinite-time square
+integrality holds.
+
+After the contractiveness and the integrability, the main technical
+lemma of the proof is \cref{L26}. This lemma requires some 
+stochastic sewing estimates.
+
+        
+        \newpage
+        \begin{center}
+        \textbf{Proof of Main Theorem}  
+        \end{center}
+Let $D:=[0,1]$, $p$ is the Dirichlet heat kenrel. For $x\in D$, $u_0,v_0\in C_0([0,1])$, $t>0$, we define $V(t,x):=\int_0^t \int_D p_{t-r}(x,y) W(dr,dy)$,
+\begin{align}\label{spdeh}
+&u_t(x)=P_t u_0(x) +\int_0^t\int_D p_{t-r}(x,y)
+        h(u_r(y))\,dydr+V_t(x),\\
+&v_t(x)=P_t v_0(x) +\int_0^t\int_D \label{spdehh}
+        p_{t-r}(x,y) h(v_r(y))\,dydr+V_t(x),\\
+&\wt v_t(x)=P_t
+        v_0(x) +\int_0^t\int_D p_{t-r}(x,y) \bigl(h(\wt
+        v_r(y))+\lambda_r(u_r(y)-\wt v_r(y))
+        \bigr)\,dydr+V_t(x).\label{spdehhh}
+\end{align}
+Here $\lambda\colon[0,\infty)\to\R_+$ is a deterministic function which is piecewise constant on intervals $[n,n+ 1)$ for $n\in \N$; $h\colon\R\to\R$ is a smooth function with $\|h\|_{C^{-1}}\le 1$.	
+
+If $f\colon\Omega\times [S,T]\times D\to\R$ is a measurable function, then for 
+$m\ge1$ we define
+\begin{equation}\label{fullsnormsde}
+\|f\|_{\C^{0,0}L_m([S,T])}:=\sup_{s\in[S,T]}\sup_{x\in D}\|f_s(x)\|_{L_m(\Omega)}.
+\end{equation}	
+
+
+\bigskip
+\noindent\textbf{Function spaces and Gaussian smoothing.} 
+For $b\colon\R\to\R$ bounded and measurable and $k\in\N_0$ we use the H\"older spaces $\C^k(\R)$
+with norm $\|b\|_{\C^k}=\sum_{j=0}^k\|b^{(j)}\|_{L_\infty}$, and the negative
+Besov-type space $\C^{-1}(\R)$ defined through the heat flow:
+\begin{equation}\label{eq:negnorm}
+\|b\|_{\C^{-1}}:=\sup_{\theta>0}\theta^{1/2}\,\|G_\theta b\|_{L_\infty(\R)},
+\qquad
+(G_\theta b)(c):=\int_\R g_\theta(c-w)\,b(w)\,dw,\quad 
+g_\theta(w):=\tfrac1{\sqrt{2\pi\theta}}e^{-w^2/(2\theta)},
+\end{equation}
+where $G_\theta$ is the one-dimensional Gaussian semigroup with variance $\theta$ and
+$G_0:=\mathrm{Id}$. We record the following elementary smoothing estimate, the
+quantitative form of the heat-flow characterization of $\C^{-1}$; it is the
+only analytic input we use about the (singular) drift.
+
+\begin{lemma}\label{L:smoothing}
+There is a universal constant $C>0$ such that for every bounded measurable
+$b\colon\R\to\R$, every $\theta>0$, every $k\in\N_0$ and every $\alpha\in[0,1]$,
+\begin{equation}\label{eq:gauss-bound}
+\|G_\theta b\|_{\C^{k+\alpha}(\R)}\le C\,\|b\|_{\C^{-1}}\,\theta^{-(k+1+\alpha)/2}.
+\end{equation}
+In particular $\|G_\theta b\|_{L_\infty}\le \|b\|_{\C^{-1}}\theta^{-1/2}$,
+$\|G_\theta b\|_{\C^1}\le C\|b\|_{\C^{-1}}\theta^{-1}$, and
+$\|G_\theta b\|_{\C^{2/3}}\le C\|b\|_{\C^{-1}}\theta^{-5/6}$.
+\end{lemma}
+\begin{proof}
+The bound on $\|G_\theta b\|_{L_\infty}$ is the definition \eqref{eq:negnorm}. For $k\ge1$
+write, using the semigroup property $G_\theta=G_{\theta/2}\circ G_{\theta/2}$,
+$\partial_c^k(G_\theta b)=(\partial_c^k g_{\theta/2})*\,(G_{\theta/2}b)$, so that
+\[
+\|\partial_c^k(G_\theta b)\|_{L_\infty}
+\le \|\partial_c^k g_{\theta/2}\|_{L_1(\R)}\,\|G_{\theta/2}b\|_{L_\infty}
+\le c_k\,(\theta/2)^{-k/2}\cdot \|b\|_{\C^{-1}}(\theta/2)^{-1/2}
+\le C\|b\|_{\C^{-1}}\theta^{-(k+1)/2},
+\]
+because $\|\partial_c^k g_{\theta/2}\|_{L_1(\R)}=c_k(\theta/2)^{-k/2}$ by scaling. Summing over
+$j\le k$ gives \eqref{eq:gauss-bound} for $\alpha=0$. For $\alpha\in(0,1)$, the $k$-th derivative
+$f:=\partial_c^k(G_\theta b)$ satisfies, for any $c\ne c'$,
+\[
+\frac{|f(c)-f(c')|}{|c-c'|^\alpha}
+\le \min\Bigl\{2\|f\|_{L_\infty}|c-c'|^{-\alpha},\ \|f'\|_{L_\infty}|c-c'|^{1-\alpha}\Bigr\}
+\le \|f\|_{L_\infty}^{1-\alpha}\|f'\|_{L_\infty}^{\alpha},
+\]
+and inserting the already-proved bounds $\|f\|_{L_\infty}\le C\|b\|_{\C^{-1}}\theta^{-(k+1)/2}$ and
+$\|f'\|_{L_\infty}\le C\|b\|_{\C^{-1}}\theta^{-(k+2)/2}$ yields
+$[f]_{\C^\alpha}\le C\|b\|_{\C^{-1}}\theta^{-(k+1+\alpha)/2}$. This proves \eqref{eq:gauss-bound}.
+\end{proof}
+
+\noindent\textbf{Conditional Gaussian identity.}
+The field $V(t,x)=\int_0^t\int_D p_{t-r}(x,y)\,W(dr,dy)$ is centered Gaussian. For
+$0\le s<r$ and $y\in D$, the increment $V(r,y)-\E^sV(r,y)$ is independent of $\F_s$ and Gaussian
+with variance $\sigma^2(s,r,y)=\E\bigl(V(r,y)-\E^sV(r,y)\bigr)^2$. Hence, for every
+bounded measurable $b$ and every $\F_s$-measurable random variable $\xi$,
+\begin{equation}\label{eq:condgauss}
+\E^s\bigl[b\bigl(V(r,y)+\xi\bigr)\bigr]
+=\bigl(G_{\sigma^2(s,r,y)}\,b\bigr)\bigl(\E^sV(r,y)+\xi\bigr)\qquad\text{a.s.},
+\end{equation}
+because, conditionally on $\F_s$, the variable $V(r,y)+\xi$ is Gaussian with mean
+$\E^sV(r,y)+\xi$ and variance $\sigma^2(s,r,y)$. Identity \eqref{eq:condgauss} (used with
+$\xi=\E^s\phi(r,y)$, etc.) converts the singular drift $b$ evaluated along the solution
+into the \emph{smoothed} drift $G_{\sigma^2}b$, whose regularity is controlled by
+\cref{L:smoothing}; this is the mechanism underlying the proof of \cref{L26}.
+
+
+We state the following technical result which we prove later in the text.
+\begin{lemma}\label{L:main}
+Let $m\ge2$,  $\mu\in(0,\frac16)$, Then there exists a constant $C>0$ which depends only on $m$, such that for any $n\in\N$, $n\le s \le t\le n+1$, $x,z\in D$  we have 
+\begin{align}\label{sdeb2}
+&\Bigl\|\int_s^t \int_D e^{-\lambda_n(t-r)}p_{t-r}(x,y)(h(u_r(y))-h(\wt v_r(y)))\,dy dr\Bigr\|_{L_m(\Omega)}\le  C\lambda_n^{-\frac18}\bigl(\lambda_n^{-1}+ \|u-\wt v\|_{\C^{0,0}L_m([s,t])}\bigr). \\
+  	&\Bigl\|\int_s^t \int_D e^{-\lambda_n(t-r)}(p_{t-r}(x,y)-p_{t-r}(z,y))(h(u_r(y))-h(\wt v_r(y)))\,dy dr\Bigr\|_{L_m(\Omega)}\nn\\
+	&\qquad\le 
+	C |x-z|^{\mu} \bigl(\lambda_n^{-\frac98}+\|u-\wt v\|_{\C^{0,0}L_m([s,t])}\bigr). \label{sdeb3}
+\end{align}
+\end{lemma}
+
+Now we proceed to the main part of the proof.
+\begin{lemma}\label{l:diffl}
+Let $n\in\N$, $t\in[n,n+1)$, $x\in D$. Then  we have 
+\begin{align}\label{diffeq}
+u_t(x)-\wt v_t(x)&=e^{-\lambda_n(t-n)} P_{t-n}(u_n-\wt v_n)(x)\nn\\
+&\phantom{=}+ \int_n^t\int_D e^{-\lambda_n (t- r) } p_{t-r}(x,y)\bigl(h(u_r(y))-h(\wt v_r(y))\bigr)\,dy dr. 
+\end{align}
+\end{lemma}
+\begin{proof}
+Let $t\in[n,n+1)$, $x\in D$ and $T>t$. Then 
+$$P_{T-t}(u_t-\wt v_t)(x)=P_{T-n}(u_n-\wt v_n)(x)+\int_n^t\int_D p_{T-r}(x,y) \bigl(h(u_r(y))-h(\wt v_r(y))-\lambda_n(u_r(y)-\wt v_r(y))\bigr)\,dydr.
+$$ 
+Therefore, using the chain rule (in $t$ for fixed $x\in D$) we derive 	
+\begin{align*}
+e^{\lambda_n t}P_{T-t}(u_t-\wt v_t)(x)&=e^{n \lambda_n } P_{T-n}(u_n-\wt v_n)(x)+
+	\lambda_n\int_n^t e^{\lambda_n r } P_{T-r}(u_r-\wt v_r)(x)\,dr\\
+		&\phantom{=}+
+		\int_n^t\int_D e^{\lambda_n r } p_{T-r}(x,y) \bigl(h(u_r(y))-h(\wt v_r(y))-\lambda_n(u_r(y)-\wt v_r(y))\bigr)\,dydr\\
+		&=e^{n \lambda_n } P_{T-n}(u_n-\wt v_n)(x)+ \int_n^t\int_D e^{\lambda r } p_{T-r}(x,y)\bigl(h(u_r(y))-h(\wt v_r(y))\bigr)\,dy dr. 
+	\end{align*}
+Thus, by letting $T\searrow t$ and using continuity of $u$, $\wt v$ we get \eqref{diffeq}.
+\end{proof}
+ 
+\begin{lemma}\label{L:41n}
+Let $m\ge2$. There exists a universal constant $C=C(m)$ with the following property:
+if $\inf_{n\in\N}\lambda_n\ge C$, then for any $n\in\N$ we have
+\begin{equation*}
+\|u-\wt v\|_{\C^{0,0}L_m([n,n+1])}\le  2 \sup_{x\in D}\|u_n(x)-v_n(x)\|_{L_m(\Omega)}+C\lambda_n^{-\frac98}. 
+\end{equation*}
+\end{lemma}
+
+\begin{proof}
+  For any $t>0$, $x\in D$ and any measurable function $f\colon\Omega\times D\to\R$,
+\begin{equation}\label{ineq}
+\|P_t f(x)\|_{L_m(\Omega)}\le 
+\int_D p_t(x,y) \|f(y)\|_{L_m(\Omega)}\,dy \le \sup_{y\in D} \|f(y)\|_{L_m(\Omega)}. 
+\end{equation}
+Using this inequality,   \eqref{diffeq} and taking $s=n$ in \eqref{sdeb2}, we derive for $t\in[n,n+1]$, $x\in D$
+\begin{align*}
+\|u_t(x)-\wt v_t(x)\|_{L_m(\Omega)}\le \sup_{x\in D}\|u_n(x)-v_n(x)\|_{L_m(\Omega)}+C \lambda_n^{-\frac98}+C \lambda_n^{-\frac18} \|u-\wt v\|_{\C^{0,0}L_m([n,n+1])}
+\end{align*}
+for $C=C(m)>0$. 
+Therefore, taking in the above inequality supremum over $t\in[n,n+1]$, $x\in D$, we get 
+$$\|u-\wt v\|_{\C^{0,0}L_m([n,n+1])}\le \sup_{x\in D}\|u_n(x)-v_n(x)\|_{L_m(\Omega)}+C\lambda_n^{-\frac98}+C  \lambda_n^{-\frac18} \|u-\wt v\|_{\C^{0,0}L_m([n,n+1])}.
+$$ 
+We  suppose that for all $n\in\N$ we have
+$
+C \lambda^{-\frac18}_n\le\frac1{2}.
+$
+ Then we get  \eqref{ineq}.
+\end{proof}
+ 
+Next, we improve  bound \eqref{ineq}. 
+\begin{lemma}\label{l:better} Let $m\ge2$. There exist universal constants $\Gamma_0=\Gamma_0(m)$, $\Gamma=\Gamma(m)\ge\Gamma_0^2$ such that if for any $n\in\N$ we have $\lambda_n>\Gamma_0$ then for any $n\in \N$ we have 
+\begin{equation*}
+\sup_{x\in D}\|u_{n+1}(x)-\wt v_{n+1}(x)\|_{L_m(\Omega)}\le \frac1{4}\sup_{x\in D}\|u_{n}(x)-\wt v_{n}(x)\|_{L_m(\Omega)}+\Gamma \lambda_n^{-\frac98}. 
+	\end{equation*}
+\end{lemma}
+
+\begin{proof}
+Fix $n\in \N$. It follows  from \eqref{diffeq}, inequality \eqref{ineq} and \cref{L:main}, that for any $x\in D$
+\begin{align*}%\label{maineqln}
+\|u_{n+1}(x)-\wt v_{n+1}(x)\|_{L^m(\Omega)}&\le e^{-\lambda_n} \sup_{x\in D}\|u_n(x)-\wt v_n(x)\|_{L^m(\Omega)}+C \lambda_n^{-\frac18}(\lambda^{-1}+	 \|u-\wt v\|_{\C^{0,0}L^m([n,n+1])})
+\\ & \le e^{-\lambda_n}  \sup_{x\in D}\|u_n(x)-\wt v_n(x)\|_{L^m(\Omega)}+C \lambda_n^{-\frac98}+
+\\ & +2C \lambda_n^{-\frac18}\bigl( \sup_{x\in D}\|u_n(x)-v_n(x)\|_{L^m(\Omega)}+C  \lambda_n^{-\frac98}\bigr).
+\end{align*}
+Then we need that $e^{-\lambda_n}+2C \lambda_n^{-\frac18}<\frac14$ to conclude.
+\end{proof}
+
+Finally, we pass on to the analysis on $[0,\infty)$. Fix $m\ge2$. Given $u_0$, $v_0$, we define $\lambda_n$, $n\in\Z_+$, as the smallest real number such that
+$
+\Gamma \lambda_n^{-\frac98}\le 2^{-n-2}\sup_{x\in D}|u_0(x)-v_0(x)|
+$ and  $\lambda_n\ge\Gamma_0$ where $\Gamma=\Gamma(m)$, $\Gamma_0=\Gamma_0(m)$ are from \cref{l:better}.
+\begin{lemma}\label{L:27}
+There exists $C>0$ such that for any $n\in\N$ we have 
+\begin{align}\label{firstres}
+&\sup_{x\in D}\|u_{n}(x)-\wt v_{n}(x)\|_{L_m(\Omega)}\le 2^{-n}\|u_0-v_0\|_{\dis};\\
+&d_{TV}(\law(v_n),\law(\wt v_n))\le C \|u_0-v_0\|_{\dis}^{\frac19};\label{secondres}\\
+&\|\sup_{x\in D} |u_{n}(x)-\wt v_{n}(x)|\,\|_{L_m(\Omega)}\le C 2^{-n}\|u_0-v_0\|_{\dis};\label{thirdres}
+\end{align}
+\end{lemma}
+\begin{proof}
+  First, let us show \eqref{firstres}. We proceed by induction. Indeed, if $n=0$, \eqref{firstres} is obviously satisfied. Assume \eqref{firstres} holds for $n\in\N$. Then, by \cref{l:better},
+$$\sup_{x\in D}\|u_{n+1}(x)-\wt v_{n+1}(x)\|_{L_m(\Omega)}\le \frac1{4}\sup_{x\in D}\|u_{n}(x)-\wt v_{n}(x)\|_{L_m(\Omega)}+\Gamma \lambda_n^{-\frac98}
+\le 2^{-n-1}\|u_0-v_0\|_{\dis}
+$$
+and thus \eqref{firstres} holds.
+To show \eqref{secondres}, we note that if $\|u_0-v_0\|_\infty\ge1$ then \eqref{secondres} is obvious. Otherwise, if $\|u_0-v_0\|_\infty\le1$, recalling that $\Gamma\ge\Gamma_0^2$ by \cref{l:better}, we see that 
+$
+\Gamma \lambda_n^{-\frac98}= 2^{-n-2}\sup_{x\in D}|u_0(x)-v_0(x)|.
+$
+Note that thanks to \cref{L:41n} an \eqref{firstres}, we have for any $t\ge0$
+\begin{equation}\label{anytbound}
+\sup_{x\in D}\|u_t(x)-\wt v_t(x)\|_{L_m(\Omega)}\le  2^{-t+2}\sup_{x\in D}|u_0(x)-v_0(x)|.
+\end{equation}
+Therefore
+\begin{align*}
+\int_0^\infty\int_D \lambda_t^2 & \E|u_t(x)-\wt v_t(x)|^2\,dxdt\le \int_0^\infty \lambda_t^2 \sup_{x\in D}   \E|u_t(x)-\wt v_t(x)|^2\,dt\\
+&\le   \Gamma^{2} \sup_{x\in D}|u_0(x)-v_0(x)|^{\frac29}\int_0^\infty 2^{-\frac29t+8}\, dt =C\sup_{x\in D}|u_0(x)-v_0(x)|^{\frac29}.
+\end{align*}
+where $\Gamma$ is from \cref{l:better}. Bound \eqref{secondres} follows now from Pinsker's inequality and the Girsanov's theorem, see, e.g., \cite[Lemma A.1, Theorem A.2]{BKS18}.
+Finally, to show \eqref{thirdres}, we use \cref{L:main} and \cref{l:diffl}. Let $\mu\in(0,\frac16)$. We derive for any $x,z\in D$
+\begin{align*}
+&\|u_{n+1}(x)-\wt v_{n+1}(x)-(u_{n+1}(z)-\wt v_{n+1}(z))\|_{L_m(\Omega)}\le \int_D |p_1(x,y)-p_1(z,y)| \|u_{n}(y)-\wt v_{n}(y)\|_{L_m(\Omega)}\,dy\\
+	&\phantom{\le}+\Bigl\|\int_{n}^{n+1} \int_{D}e^{-\lambda_n(n+1-r)} (p_{n+1-r}(x,y)-p_{n+1-r}(z,y))(h(u_r(y))-h(\wt v_r(y)))\,dydr\Bigr\|_{L_m(\Omega)}\\
+	&\le C|x-z|^{\mu}\bigl(\|u-\wt v\|_{\C^{0,0} L_m([n,n+1])}+\lambda_{n}^{-\frac98}\bigr)
+\end{align*}
+for $C=C(m,\mu)$. Taking now $\mu=\frac17$ and recalling  \eqref{anytbound} and the definition of $\lambda_n$, we get for any $x,z\in D$
+\begin{equation*}
+\|u_{n+1}(x)-\wt v_{n+1}(x)-(u_{n+1}(z)-\wt v_{n+1}(z))\|_{L_m(\Omega)}\le C|x-z|^{\frac17} 2^{-n}\|u_0-v_0\|_{\dis}
+\end{equation*}
+for $C=C(m)$. Choosing now $m$ large enough (it is sufficient to take $m>7$), and applying the Kolmogorov continuity theorem, we obtain \eqref{thirdres}.	
+\end{proof}
+
+
+\begin{proof}[\textbf{Proof of the main result}]
+\paragraph{From the mollified to the limiting drift.}
+For $m\in\N$ let $h=h^{(m)}:=g_{1/m}$ be the (smooth, bounded) mollification of the singular
+drift used in the problem statement, normalized so that $\|h^{(m)}\|_{\C^{-1}}\le 1$ uniformly
+in $m$; let $\PP^{m}_t:=P_t^m$ be the corresponding Markov semigroup on $E=C_0([0,1])$, and let
+$\PP_t:=P_t$ be the semigroup of the limiting (singular) equation. By hypothesis,
+$\PP^m_t\Phi(x)\to\PP_t\Phi(x)$ for every $\Phi\in C_b(E)$ and every deterministic $x\in E$.
+All constants in \cref{L:27} are uniform in $m$, because they depend on $h^{(m)}$ only through
+$\|h^{(m)}\|_{\C^{-1}}\le1$. We use this uniformity to transfer the contraction estimates to the
+limit semigroup $\PP$.
+
+\paragraph{Asymptotic strong Feller property of $\PP$.}
+Fix a globally Lipschitz $\phi\colon E\to\R$ with $\|\phi\|_{L_\infty}\le1$ and
+$\|\phi\|_{\mathrm{Lip}}\le1$, and fix $u_0,v_0\in E$. Construct, for each fixed $m$, the
+coupling $(u^m,v^m,\wt v^{\,m})$ of \eqref{spdeh}--\eqref{spdehhh} driven by the same noise $V$
+with $h=h^{(m)}$ and with the feedback gains $\lambda_n$ chosen as before (these depend only on
+$u_0,v_0$ and on the $m$-independent constants $\Gamma,\Gamma_0$). By \cref{L:27},
+\begin{align}\label{eq:asfm}
+|\PP^m_n\phi(u_0)-\PP^m_n\phi(v_0)|
+&=|\E\phi(u^m_n)-\E\phi(v^m_n)|\nn\\
+&\le |\E\phi(\wt v^{\,m}_n)-\E\phi(v^m_n)|+|\E\phi(u^m_n)-\E\phi(\wt v^{\,m}_n)|\nn\\
+&\le \|\phi\|_{L_\infty}\,d_{TV}\bigl(\law(v^m_n),\law(\wt v^{\,m}_n)\bigr)
+   +\|\phi\|_{\mathrm{Lip}}\,\E\|u^m_n-\wt v^{\,m}_n\|^{\frac19}_{\infty}\nn\\
+&\le C\,\|u_0-v_0\|_\infty^{\frac19}+C\,2^{-n/9}\|u_0-v_0\|_\infty^{\frac19},
+\end{align}
+where in the last line we used \eqref{secondres} (Pinsker's inequality plus Girsanov's
+theorem, the required infinite-horizon square-integrability being established in the proof of
+\eqref{secondres} via \eqref{anytbound}) and \eqref{thirdres}, and the constant $C$ depends only on the fixed integrability exponent used in \cref{L:27} and is \emph{independent of the mollification parameter $m$}. Letting $m\to\infty$
+in \eqref{eq:asfm} and using $\PP^m_n\phi\to\PP_n\phi$ pointwise (valid for the bounded
+continuous $\phi$ here) we obtain, for the limit semigroup $\PP$,
+\begin{equation}\label{eq:asf-limit}
+|\PP_n\phi(u_0)-\PP_n\phi(v_0)|\le C\,\|u_0-v_0\|_\infty^{\frac19}+C\,2^{-n/9}\|u_0-v_0\|_\infty^{\frac19},
+\qquad n\in\N .
+\end{equation}
+Inequality \eqref{eq:asf-limit} holds for every $1$-Lipschitz, $1$-bounded $\phi$. Given
+$\varepsilon>0$, choosing $n$ with $C2^{-n/9}<\varepsilon$ and then $\delta>0$ with
+$C(1+\varepsilon)\delta^{1/9}<\varepsilon$, we get that $\|u_0-v_0\|_\infty<\delta$ implies
+$|\PP_n\phi(u_0)-\PP_n\phi(v_0)|<2\varepsilon$ uniformly over the unit ball of Lipschitz
+functions. This is exactly the asymptotic strong Feller (ASF) property of $\PP$ at every
+point (with the totally bounded gauge $\delta_n\to0$ and a sequence $t_n=n\to\infty$); see
+\cite[Definition~3.8 and Proposition~3.12]{HM06}.
+
+\paragraph{Existence of an invariant measure.}
+We verify the Krylov--Bogolyubov tightness criterion for $\PP$ by exhibiting a uniform-in-time
+\emph{spatial} H\"older bound on the solution. Start the equation \eqref{spdeh} from
+$u_0=0$. For $0\le t\le 1$ and $x,z\in D$ we have, by the mild formulation and the same
+arguments used to derive \eqref{thirdres},
+\begin{equation}\label{eq:spatial-incr}
+\|u_t(x)-u_t(z)\|_{L_m(\Omega)}
+\le \underbrace{\|V_t(x)-V_t(z)\|_{L_m(\Omega)}}_{(\mathrm I)}
++\underbrace{\Bigl\|\int_0^t\!\!\int_D\bigl(p_{t-r}(x,y)-p_{t-r}(z,y)\bigr)h^{(m)}(u_r(y))\,dy\,dr\Bigr\|_{L_m(\Omega)}}_{(\mathrm{II})} .
+\end{equation}
+For the Gaussian part $(\mathrm I)$, the It\^o isometry and the standard Dirichlet heat-kernel
+estimate $\int_0^t\!\int_D(p_{t-r}(x,y)-p_{t-r}(z,y))^2\,dy\,dr\le C|x-z|$ give, after
+Gaussian hypercontractivity, $(\mathrm I)\le C_m|x-z|^{1/2}$ for every $m\ge2$, uniformly in
+$t\in[0,1]$. For the drift part $(\mathrm{II})$, applying \cref{c:39}--\cref{c:310} (the
+H\"older-in-space estimate \eqref{holder}/\eqref{holderex}) with $\phi=u-V$, $\psi=0$,
+$\|h^{(m)}\|_{\C^{-1}}\le1$ and the a priori bound $[u-V]_{\X}\le C(1+\|h^{(m)}\|^2_{\C^{-1}})\le C$
+of \cref{l:apriori}, we obtain $(\mathrm{II})\le C|x-z|^{\mu}$ for any $\mu\in(0,\tfrac16)$,
+uniformly in $t\in[0,1]$ and in $m$. Choosing $\mu=\tfrac17$ and $m>7$ and invoking the
+Kolmogorov continuity theorem in the spatial variable, we get a constant $C$, independent of
+$m$ and of $t\in[0,1]$, with $\E\|u_t\|_{\C^{1/9}([0,1])}\le C$. The same estimate run on each
+interval $[n,n+1]$, started from the $\F_n$-measurable datum $u_n$ (whose contribution to the
+mild formula is the contraction term $P_{t-n}u_n$, which only \emph{improves} spatial
+regularity, since $\|P_a f\|_{\C^{1/9}}\le \|f\|_{\C^{1/9}}$), yields the uniform-in-time bound
+\begin{equation}\label{eq:holder-unif}
+\sup_{t\ge0}\ \E\,\|u_t\|_{\C^{1/9}([0,1])}\le C<\infty .
+\end{equation}
+(Here we used that $u_t(0)=u_t(1)=0$ by the Dirichlet boundary condition, so the H\"older
+seminorm controls the full $C_0([0,1])$-norm: $\|u_t\|_\infty\le \|u_t\|_{\C^{1/9}}$.)
+Since the embedding $\C^{1/9}([0,1])\cap C_0([0,1])\hookrightarrow C_0([0,1])$ is compact,
+\eqref{eq:holder-unif} and Markov's inequality show that the time-averaged laws
+$\bar\mu_T:=\frac1T\int_0^T \law(u_t)\,dt$ ($T\ge1$) are tight on $E=C_0([0,1])$: for the
+compact set $K_R=\{w\in C_0([0,1]):\|w\|_{\C^{1/9}}\le R\}$,
+\[
+\bar\mu_T(E\setminus K_R)\le \frac1T\int_0^T\frac{\E\|u_t\|_{\C^{1/9}}}{R}\,dt\le\frac{C}{R}\xrightarrow[R\to\infty]{}0,
+\]
+uniformly in $T$. By Prokhorov's theorem $(\bar\mu_T)$ has a weakly convergent subsequence with
+limit $\mu_\star$, and by the Krylov--Bogolyubov theorem $\mu_\star$ is invariant for $\PP$,
+since $\PP$ is Feller on $E$ (it is the pointwise limit of the Feller semigroups $\PP^m$ and
+acts on the path space of the global mild solution granted by the problem statement). Hence
+$\PP$ admits at least one invariant probability measure on $E$.
+
+\paragraph{Irreducibility and uniqueness.}
+The estimates \eqref{secondres} and \eqref{thirdres} are precisely the two ingredients of the
+generalized-coupling criterion of Butkovsky--Wunderlich: they yield that $\PP$ is topologically
+irreducible (every nonempty open set is reached with positive probability from every starting
+point), arguing exactly as in \cite[proof of Theorem~2.7]{BW20}; indeed \eqref{secondres}
+provides a $\law(v_n)$-versus-$\law(\wt v_n)$ closeness in total variation that is small for
+nearby initial data, and \eqref{thirdres} provides the pathwise contraction making the two
+processes meet asymptotically, which together force the supports of $\law(u_n)$ and $\law(v_n)$
+to overlap. Combining the ASF property \eqref{eq:asf-limit} with this irreducibility,
+\cite[Corollary~3.17]{HM06} (equivalently \cite[Theorem~2.8]{BW20}) shows that $\PP$ has
+\emph{at most one} invariant probability measure on $E$.
+
+\paragraph{Conclusion.}
+By the previous two paragraphs, $\PP$ has at least one and at most one invariant probability
+measure on $E=C_0([0,1])$. Therefore the stochastic skew heat equation has a unique invariant
+probability measure.
+\end{proof}
+
+It remains now to prove \cref{L:main}. We will use stochastic sewing.
+
+For $0 \le S < T$, consider the simplices 
+$\Delta_{[S,T]}:=\{(s,t)\in[S,T]^2\colon s< t\}$ and $\Delta^3_{[S,T]}:=\{(s,u,t)\in[S,T]^3\colon s< u< t\}$. 
+If $A_{\cdot,\cdot}$ is a function $\Delta_{[S,T]}\to\R^d$, then we put 
+$\delta A_{s,u,t}:= A_{s,t}-A_{s,u}-A_{u,t},\quad  (s,u,t)\in\Delta^3_{[S,T]}$. 
+Let $(\F_t)_{t\in[0,T]}$ be the filtration generated by the Wiener
+process defining $V$ and denote by  $\E^t[\cdot]:=\E[\cdot|\F_t]$ the conditional expectation given $\F_t$, $t\in[0,T]$. For $x\in D$, $(s,t)\in\Delta_{[0,1]}$ denote
+$
+\sigma^2(s,t,x)=\E (V(t,x)-\E^s V(t,x))^2.
+$
+
+\begin{lemma}\label{L:fkb} There exists $C>0$ such that for any $s,t\in\Delta_{[0,1]}$, $x\in D$ we have 
+$\sigma^2(s,t,x)\ge  C ((1-x)\wedge x \wedge (t-s)^{1/2})$.
+\end{lemma}
+
+
+\begin{proof}
+Fix $x\in D$ and assume without loss of generality that $x\le 1-x$, i.e. $x=x\wedge(1-x)$.
+By the It\^o isometry for the space-time white noise $W$ and the substitution $\rho=t-r$,
+\begin{equation}\label{eq:varform}
+\sigma^2(s,t,x)=\E\bigl(V(t,x)-\E^sV(t,x)\bigr)^2
+=\int_s^t\!\!\int_D p_{t-r}(x,y)^2\,dy\,dr
+=\int_0^{t-s}\Bigl(\int_D p_\rho(x,y)^2\,dy\Bigr)\,d\rho .
+\end{equation}
+By the symmetry $p_\rho(x,y)=p_\rho(y,x)$ of the Dirichlet heat kernel and the
+Chapman--Kolmogorov identity $\int_D p_\rho(x,y)\,p_\rho(y,x)\,dy=p_{2\rho}(x,x)$,
+the inner integral equals $p_{2\rho}(x,x)$; hence
+\begin{equation}\label{eq:varCK}
+\sigma^2(s,t,x)=\int_0^{t-s}p_{2\rho}(x,x)\,d\rho
+=\tfrac12\int_0^{2(t-s)}p_a(x,x)\,da
+\ \ge\ \tfrac12\int_0^{t-s}p_a(x,x)\,da .
+\end{equation}
+We bound $p_a(x,x)$ from below near the diagonal. The Dirichlet kernel on $D=[0,1]$ for
+$\tfrac12\Delta$ admits the method-of-images representation
+\[
+p_a(x,x)=\frac1{\sqrt{2\pi a}}\sum_{k\in\Z}\Bigl(e^{-(2k)^2/(2a)}-e^{-(2k+2x)^2/(2a)}\Bigr),
+\]
+obtained from the whole-line Gaussian kernel by reflecting at the endpoints $0,1$. The
+$k=0$ term equals $\frac1{\sqrt{2\pi a}}\bigl(1-e^{-2x^2/a}\bigr)$. If $a\le x^2$ then
+$1-e^{-2x^2/a}\ge 1-e^{-2}\ge\tfrac34$. The remaining terms ($k\ne0$) are dominated, for
+$0<a\le\frac1{16}$, by
+\[
+\frac1{\sqrt{2\pi a}}\,2\sum_{k\ge1}e^{-(2k-1)^2/(2a)}
+\le \frac1{\sqrt{2\pi a}}\,2\,\frac{e^{-1/(2a)}}{1-e^{-4/(2a)}}\le \frac1{\sqrt{2\pi a}}\cdot\tfrac14,
+\]
+since $e^{-1/(2a)}\le e^{-8}$ for $a\le\frac1{16}$. Therefore there is a universal $c_0>0$ with
+\begin{equation}\label{eq:diaglb}
+p_a(x,x)\ \ge\ \frac{c_0}{\sqrt a}\qquad\text{whenever } a\le x^2\wedge\tfrac1{16},
+\end{equation}
+and one may take $c_0=\tfrac{1}{4\sqrt{2\pi}}$. (A direct numerical evaluation of the
+spectral series gives $p_a(x,x)\sqrt a\ge 0.35$ throughout this range, so \eqref{eq:diaglb}
+holds with room to spare.) Combining \eqref{eq:varCK} and \eqref{eq:diaglb},
+\[
+\sigma^2(s,t,x)\ \ge\ \tfrac12\int_0^{(t-s)\wedge x^2\wedge\frac1{16}}\frac{c_0}{\sqrt a}\,da
+=c_0\sqrt{(t-s)\wedge x^2\wedge\tfrac1{16}}
+\ \ge\ C\bigl((t-s)^{1/2}\wedge x\bigr),
+\]
+using $\sqrt{x^2\wedge\frac1{16}}\ge \tfrac14 x$ for $x\le\tfrac12$ (indeed $x^2\le\frac14\le\frac1{16}\cdot4$,
+so $\sqrt{x^2\wedge\frac1{16}}\ge \tfrac14 x$). By the symmetric roles of $x$ and $1-x$,
+$\sigma^2(s,t,x)\ge C\bigl((1-x)\wedge x\wedge (t-s)^{1/2}\bigr)$, as claimed.
+\end{proof}
+\begin{lemma}\label{L:skb} For $\rho\in(-2,0]$,
+  $\mu\in(0,1]$,  there exists $C=C(\rho,\mu)>0$ so that for any $a\in[0,1]$, $\kappa\in(0,1]$, $x,z\in D$ we have 
+\begin{align*}
+&\int_D p_{\kappa}(x,y) (y\wedge (1-y)\wedge a )^{\rho}\, dy\le C
+  a^\rho (1+\frac{a^2}{\kappa});\\
+&\int_D |p_{\kappa}(x,y)-p_{\kappa}(z,y)| (y\wedge (1-y)\wedge a )^{\rho}\, dy\le C|x-z|^\mu  \kappa^{-\frac\mu2} a^\rho (1+\frac{a^2}{\kappa}).
+\end{align*}
+\end{lemma}
+\begin{proof}
+The bounds follows by a direct calculation 
+using the spectral formula for the Dirichlet heat kernel and the fact that for any $\mu>-1$ there exists a constant $C=C(\mu)>0$ such that for any 
+$\kappa\in[0,1]$ we have $\sum_{n=1}^\infty  e^{-n^2 \kappa } n^\mu\le C \kappa^{-\frac12-\frac\mu2}.$
+\end{proof}
+
+The next corollary follows from \cref{L:fkb} and that \cref{L:skb}
+\begin{corollary}\label{c:key}
+ Let $\rho\in(-4,0]$, $\mu\in(0,1]$. Then there exists $C=C(\rho,\mu)>0$ such that for any $x,z\in D$, $(s,t)\in\Delta_{[0,1]}$, $\kappa\in[ t-s,1]$, we have 
+$\int_D p_{\kappa}(x,y) \sigma(s,t,y)^{\rho}\, dy\le
+C(t-s)^{\frac\rho4}$ and
+$\int_D |p_{\kappa}(x,y)-p_{\kappa}(z,y)| \sigma(s,t,y)^{\rho}\, dy\le C|x-z|^{\mu}(t-s)^{\frac\rho4-\frac\mu2}$. 
+\end{corollary}
+
+Now we can derive some key integral bounds, which eventually imply \cref{L:main}. For a function $\psi\colon\Omega\times[S,T]\times D\to\R$, $\tau\in(0,1]$, $m\ge1$ we consider the following H\"older-type seminorm 
+\begin{equation*}
+[f]_{\C^{\tau,0}L_m{[S,T]}}:=\sup_{s,t\in \Delta_{[S,T]}}\sup_{x\in D}\frac{\|f(t,x)-\E^s f(t,x)\|_{L_m(\Omega)}}{(t-s)^\tau};\label{norm1}. 
+\end{equation*}
+For brevity, we denote $\X:=\C^{\frac34,0}L_m([S,T])$.
+\begin{lemma}\label{L26}
+Let $m\ge2$. Let $w\colon[0,1]\to\R$ be a continuous function, $\mu\in(0,\frac16)$. 
+Then there exists a constant $C=C(\mu,m)>0$ such that for any bounded continuous function $b\colon\R\to\R$, any continuous adapted processes  $\phi,\psi\colon\Omega\times[0,1]\times D\to\R$, $x,z\in D$, and any $0\le S\le T\le T_0\le 1$ with  $T-S\le T_0-T$
+setting  $\Gamma:=C \|b\|_{\C^{-1}}\|w\|_{L_\infty([S,T])}$,
+\begin{equation}\label{cagerm}
+\A_{t}^\phi(x):=\int_0^t \int_D w_r \, p_{T_0-r}(x,y) \, b( V_r(y)+\phi_r(y))d r d y,\quad t\in [0,T],
+\end{equation}
+and setting $\A^{\phi,\psi}_{t}(x):=\A^\phi_t(x)-\A^\psi_t(x)$, $\A^{\phi,\psi}_{s,t}(x):=\A^{\phi,\psi}_{t}(x)-\A^{\phi,\psi}_{s}(x)$ we have
+\begin{align}\label{mainres} 
+&\|\A^\phi_T(x)-\A^\phi_S(x)\|\le  \Gamma  (T-S)^{\frac34}\bigl(1+[\phi]_{\X}(T-S)^{\frac{1}2}\bigr);\\
+&\| \A^{\phi,\psi}_{S,T}(x)\|_{L_m(\Omega)}\le  \Gamma (T-S)^{\frac7{12}}\|\psi-\phi\|^{\frac23}_{\C^{0,0}L_m([S,T])}+ \Gamma(T-S)^{\frac{5}4}\bigl([\phi]_{\X}+[\psi]_{\X}\bigr);\label{mainresdif} \\
+&\|\A^{\phi,\psi}_{S,T}(x)-\A^{\phi,\psi}_{S,T}(z)\|_{L_m(\Omega)}\le  \Gamma |x-z|^\mu (T-S)^{\frac7{12}-\frac\mu2}\|\psi-\phi\|^{\frac23}_{\C^{0,0}L_m([S,T])}\nn\\
+&\hspace{30ex}+ \Gamma |x-z|^\mu                                                                                                                                               (T-S)^{\frac{5}4-\frac\mu2}\bigl([\phi]_{\X}+[\psi]_{\X}\bigr) \label{holderex}. 
+\end{align}
+\end{lemma}
+
+
+\begin{proof}
+	Fix $(S,T,T_0)\in\Delta_{[0,1]}^3$, $x\in D$. 
+We begin with the proof of \eqref{mainres}. 
+We use the stochastic sewing lemma (SSL) \cite[Theorem~2.1]{LeSSL} and consider the germ 
+\begin{equation}\label{aagerm}
+A_{s,t}^\phi:=\E^s\int_s^t \int_D w_r p_{T_0-r}(x,y) b( V(r,y)+\E^s
+\phi(r,y))\,dr dy,\quad (s,t)\in\Delta_{[S,T]}.
+\end{equation}
+We claim that for any $(s,u,t)\in\Delta_{[S,T]}$ we have 
+\begin{equation}\label{claim1}
+\|A_{s,t}^\phi\|_{L_m(\Omega)}\le \Gamma (t-s)^{\frac34};\quad
+\|\E^s\delta A^\phi_{s,u,t}\|_{L_m(\Omega)}\le  \Gamma [\phi]_{\X}(t-s)^{\frac54}.
+\end{equation}
+We see that \eqref{claim1} implies that all the assumptions of \cite[Theorem~2.1]{LeSSL}  are satisfied.  Thus after checking  \eqref{claim1},  the desired bound \eqref{mainres} immediately follows from \cite[Theorem~2.1]{LeSSL}. 
+
+We begin with the first part of \eqref{claim1}. We have for any $(s,t)\in\Delta_{[S,T]}$
+\begin{align*}
+|A_{s,t}^\phi|&\le \int_s^t \int_D w_r  p_{T_0-r}(x,y) |\E^s b( V(r,y)+\E^s \phi(r,y))|\,dr dy\\
+&= \int_s^t \int_D w_r p_{T_0-r}(x,y) |G_{\sigma^2(s,r,y)} b(\E^s V(r,y)+\E^s\phi(r,y))|\,dr dy\\
+&\le \|w\|_{L_\infty([S,T])} \int_s^t \int_D    p_{T_0-r}(x,y) \|G_{\sigma^2(s,r,y)} b\|_{L_\infty(\R)}\,dr dy\\
+&\le C\|w\|_{L_\infty([S,T])}  \|b\|_{\C^{-1}}\int_s^t \int_D p_{T_0-r}(x,y) (\sigma(s,r,y))^{-1}\,dr dy\le \Gamma (t-s)^{\frac34}, 
+\end{align*}
+ where in the last line we used \cref{c:key} with $ \kappa=T_0-r$, $\rho=-1$. Note that $\kappa\ge  T_0-T\ge T-S\ge t-s$ and thus the conditions of \cref{c:key} hold. This shows the first part of  \eqref{claim1}. 
+ 
+To check the second part of  \eqref{claim1}, we write for $(s,u,t)\in\Delta^3_{[S,T]}$
+\begin{align*}
+|\E^s\delta A^\phi_{s,u,t}|&\le\E^s  \int_u^t \int_D w_rp_{T_0-r}(x,y) |\E^u b(V(r,y)+\E^s \phi(r,y))-\E^u b(V(r,y)+\E^u \phi(r,y))|\,drdy\\&
+\le 
+\E^s  \int_u^t \int_D w_rp_{T_0-r}(x,y)  \|G_{\sigma^2(u,r,y)} b\|_{\C^1}|\E^s \phi(r,y))-\E^u \phi(r,y))|\,drdy\\
+&\le \Gamma
+\E^s  \int_u^t \int_D p_{T_0-r}(x,y)  (\sigma(u,r,y))^{-2}|\E^s \phi(r,y))-\E^u \phi(r,y))|\,drdy. 
+\end{align*}
+Therefore, 
+\begin{equation*}
+\|\E^s\delta A^\phi_{s,u,t}\|_{L_m(\Omega)}\le \Gamma[\phi]_{\X}(t-s)^{\frac34}
+\int_u^t \int_D p_{T_0-r}(x,y)  (\sigma(u,r,y))^{-2}\,drdy\le \Gamma [\phi]_{\X}(t-u)^{\frac54}, 
+\end{equation*}
+where in the last inequality we used \cref{c:key} with $\kappa=T_0-r$, $\rho=-2>-4$. We see again  that $\kappa\ge  T_0-T\ge T-S\ge t-s$ and thus the conditions of \cref{c:key} hold. This implies the second part of \eqref{claim1}. 
+Thus, all the conditions of the stochastic sewing lemma are satisfied and \eqref{mainres} follows from  \cite[Theorem~2.1]{LeSSL}. 
+
+
+Equation \eqref{mainresdif} follows again from the SSL. Consider the germ $A_{s,t}:=A_{s,t}^\phi-A_{s,t}^\psi$ and process 
+$\A_{t}:=\A_{t}^\phi-\A_{s}^\psi$, for $ (s,t)\in\Delta_{[S,T]}$
+where $A^\phi$, $\A^\phi$ were define previously and $A^\psi$, $\A^\psi$ are defined analogously. 
+We claim now that for any $(s,u,t)\in\Delta_{[S,T]}$ we have 
+\begin{equation}\label{claimn1}
+	\|A_{s,t}\|_{L_m(\Omega)}\!\le  \Gamma \|\phi-\psi\|^{\frac23}_{\C^{0,0}L_m([S,T])}(t-s)^{\frac7{12}};\,\,
+	\|\E^s\delta A_{s,u,t}\|_{L_m(\Omega)}\!\le  \Gamma ([\phi]_{\X}+[\psi]_{\X})(t-s)^{\frac54}.%\label{claimn2}
+\end{equation}
+We see again that \eqref{claimn1}  implies that all the conditions of the SSL  are satisfied. We also see that the second part of \eqref{claimn1} immediately follows from the second part of \eqref{claim1}. Thus, it remains only to verify the first part of  \eqref{claimn1}. We argue similarly to the first part of the proof and get for any $(s,t)\in\Delta_{[S,T]}$
+\begin{align*}
+	|A_{s,t}|&\le \int_s^t \int_D w_r  p_{T_0-r}(x,y) |\E^s b( V(r,y)+\E^s \phi(r,y))-\E^s b( V(r,y)+\E^s \psi(r,y))|\,dr dy\\
+	&= \int_s^t \int_D w_r p_{T_0-r}(x,y) |G_{\sigma^2(s,r,y)} b(\E^s V(r,y)+\E^s\phi(r,y))-G_{\sigma^2(s,r,y)} b(\E^s V(r,y)+\E^s\psi(r,y))|\,dr dy\\
+	&\le \|w\|_{L_\infty([S,T])} \int_s^t \int_D    p_{T_0-r}(x,y) \|G_{\sigma^2(s,r,y)} b\|_{\C^{\frac23}(\R)}|\E^s\phi(r,y)-\E^s\psi(r,y)|^{\frac23}\,dr dy\\
+	&\le \Gamma\int_s^t \int_D p_{T_0-r}(x,y) (\sigma(s,r,y))^{-\frac53}|\E^s\phi(r,y)-\E^s\psi(r,y)|^{\frac23}\,dr dy. 
+\end{align*}
+Hence, using again \cref{c:key} with $ \kappa=T_0-r$, $\rho=-2$, we derive 
+\begin{align*}
+\|A_{s,t}\|_{L_m(\Omega)}&\le  \Gamma\int_s^t \int_D p_{T_0-r}(x,y) (\sigma(s,r,y))^{-\frac53}\|\E^s\phi(r,y)-\E^s\psi(r,y)\|^{\frac23}_{L_m(\Omega)}\,dr dy\\
+&\le  \Gamma\|\phi-\psi\|^{\frac23}_{\C^{0,0}L_m([S,T])}\int_s^t \int_D p_{T_0-r}(x,y) (\sigma(s,r,y))^{-\frac53}\,dr dy\\
+&\le  \Gamma\|\phi-\psi\|^{\frac23}_{\C^{0,0}L_m([S,T])}(t-s)^{\frac7{12}}. 
+\end{align*}
+This shows the first part of  \eqref{claimn1}. 
+Thus, all the conditions of the stochastic sewing lemma are satisfied and \eqref{mainresdif} follows from \eqref{claimn1}. 
+Finally, we show \eqref{holder}. We use again the stochastic sewing lemma, which we apply similarly to the germ 
+\begin{equation*}
+A_{s,t}:=\E^s\int_s^t \int_D( p_{T_0-r}(x,y)-p_{T_0-r}(z,y))w_r (b( V(r,y)+\E^s \phi(r,y))-b( V(r,y)+\E^s\psi(r,y)))\,dr dy, 
+\end{equation*}
+where $(s,t)\in\Delta_{[S,T]}$
+and the process $\A^{\phi,\psi}_{t}(x)$.
+Arguing exactly as in the first part of the proof and using \cref{c:key}, we derive for any $(s,u,t)\in\Delta_{[S,T]}$ 
+$\|A_{s,t}\|_{L_m(\Omega)}\le  \Gamma |x-z|^\mu
+\|\phi-\psi\|^{\frac23}_{\C^{0,0}L_m([S,T])}(t-s)^{\frac7{12}-\frac\mu2}$
+and $
+\|\E^s\delta A^\phi_{s,u,t}\|_{L_m(\Omega)}\le  \Gamma([\phi]_{\X}+[\psi]_{\X})|x-z|^\mu (t-s)^{\frac54-\frac\mu2}
+$%\end{align*}
+Since $\frac7{12}-\frac\mu2>\frac12$ and $\frac54-\frac\mu2>1$, the conditions of SSL are satisfied, implying \eqref{holder}. 
+\end{proof}
+
+\begin{corollary}\label{c:39}
+Suppose that all the conditions of \cref{L26} are satisfied. Then there exists a constant $C=C(m)>0$ such that bounds \eqref{mainres}, \eqref{mainresdif}, \eqref{holder} hold for any $0\le S\le T\le 1$, $T_0=T$ (without extra restriction $T-S\le T_0-T$). 
+\end{corollary}
+\begin{proof}
+The result follows immediately from \cref{L26} and the taming singularities lemma \cite[Lemma~2.3]{BFG}.
+\end{proof}
+
+\begin{corollary}\label{c:310}
+Let $m\ge2$. Let $w\colon[0,1]\to\R$ be a continuous function, $\mu\in(0,\frac16)$. 
+Then there exists a constant $C=C(\mu,m)>0$ such that for any bounded continuous function $b\colon\R\to\R$, any continuous adapted processes  $\phi,\psi\colon\Omega\times[0,1]\times D\to\R$, $x,z\in D$, and any $0\le S\le T\le 1$ we have 
+\begin{align}%\label{keyb} 
+&\Bigl\|\int_S^T \int_D w_r p_{T-r}(x,y)\Bigl(b( V(r,y)+\phi(r,y))- b( V(r,y)+\psi(r,y))\Bigr)\,dr dy\Bigr\|_{L_m(\Omega)}\nn\\
+&\quad\le  C \|b\|_{\C^{-1}}\|w\|_{L_\infty([S,T])} (T-S)^{\frac14}\|\psi-\phi\|_{\C^{0,0}L_m([S,T])}\nn\\
+&\qquad+ C \|b\|_{\C^{-1}}\|w\|_{L_\infty([S,T])}(T-S)^{\frac54}\bigl(1+[\phi]_{\X}+[\psi]_{\X}\bigr);\\
+&\Bigl\|\int_S^T \int_D  w_r(p_{T-r}(x,y)-p_{T-r}(z,y)) (b( V(r,y)+\phi(r,y))-b( V(r,y)+\psi(r,y)))\,dr dy\Bigr\|_{L_m(\Omega)}\nn\\
+&\quad\le  C \|b\|_{\C^{-1}}\|w\|_{L_\infty([S,T])} |x-z|^\mu \|\psi-\phi\|_{\C^{0,0}L_m([S,T])}\nn\\
+&\qquad+ C \|b\|_{\C^{-1}} \|w\|_{L_\infty([S,T])} |x-z|^\mu (T-S)^{\frac{5}4-\frac\mu2}\bigl(1+[\phi]_{\X}+[\psi]_{\X}\bigr) \nn
+ \end{align}
+\end{corollary}
+\begin{proof}
+The first inequality follows from  \cref{c:39}, bound \eqref{mainresdif} and the Young inequality ${a_1 a_2\le  a_1^{\frac32} + a_2^3}$ applied to $a_1:=(T-S)^{\frac1{6}}\|\psi-\phi\|_{\C^{0,0}L_m([S,T])}^{\frac23}$, $a_2:=(T-S)^{\frac5{12}}$. 
+The second inequality follows in the same way, this time applying the Young inequality to $a_1:=\|\psi-\phi\|_{\C^{0,0}L_m([S,T])}^{\frac23}$, $a_2:=(T-S)^{\frac7{12}-\frac\mu2}$. 
+\end{proof}
+
+
+
+\begin{corollary}\label{c:finfin}
+Let  $m\ge2$, $\mu\in(0,\frac16)$. Then there exists a constant $C=C(\mu,m)>0$ such that for any bounded continuous function $b\colon\R\to\R$, any continuous adapted processes  $\phi,\psi \colon\Omega\times[0,1]\times D\to\R$, $x,z\in D$, $\lambda>1$, and any  $(s,t)\in\Delta_{[0,1]}$ we have
+\[
+I_{s,t}^\lambda(x):=\int_s^t\int_ D e^{-\lambda(t-r)}p_{t-r}(x,y)\left(b( V_r(y)+\phi_r(y))- b( V_r(y)+\psi_r(y))\right)drd y
+\]
+\begin{align}\label{keylam}
+&\|I_{s,t}^\lambda(x)\|_{L_m(\Omega)}\le 
+C \|b\|_{\C^{-1}}                                                                                                                                               \lambda^{-\frac18}\|\phi-\psi\|_{\C^{0,0}L_m([s,t])}+C \|b\|_{\C^{-1}}\lambda^{-\frac{9}8}\bigl(1+[\phi]_{\X}+[\psi]_{\X}\bigr);\\
+&\|I_{s,t}^\lambda(x)-I_{s,t}^\lambda(z)\|_{L_m(\Omega)}\le  C \|b\|_{\C^{-1}} |x-z|^\mu                                                                                                                                                      \|\psi-\phi\|_{\C^{0,0}L_m([s,t])}\nn\\
+ &\qquad\qquad \qquad \qquad\qquad \qquad+ C \|b\|_{\C^{-1}}  |x-z|^\mu \lambda^{-\frac{9}8}\bigl(1+[\phi]_{\X}+[\psi]_{\X}\bigr). \label{holder}
+\end{align}
+\end{corollary}
+\begin{proof}
+Fix $\lambda>1$, let $\eps>0$ be a parameter, which we will choose later. We split the integral in the left hand side of \eqref{keylam} into two: over the time interval $[s,(t-\lambda^{-1+\eps})\vee s]$ and over the interval $[(t-\lambda^{-1+\eps})\vee s, t]$. If $r\le t-\lambda^{-1+\eps}$, then $e^{-\lambda(t-r)}\le e^{-\lambda^\eps}$ and $\|e^{-\lambda (t-\cdot)}\|_{L_\infty([s,(t-\lambda^{-1+\eps})\vee s])}\le e^{-\lambda^\eps}$. Therefore, \cref{c:310} implies 
+\begin{align}\label{tb1}
+&\Bigl\|\int_s^{(t-\lambda^{-1+\eps})\vee s}\int_ D e^{-\lambda(t-r)}p_{t-r}(x,y)\Bigl(b( V(r,y)+\phi(r,y))- b( V(r,y)+\psi(r,y))\Bigr)\,dr dy\Bigr\|_{L_m(\Omega)}\nn\\
+&\quad\le 
+C \|b\|_{\C^{-1}} e^{-\lambda^\eps}(1+\|\phi-\psi\|_{\C^{0,0}L_m([s,t])} +[\phi]_{\X}+[\psi]_{\X}\bigr). 
+\end{align}
+for $C=C(m)$. 
+On the other hand, if $r\in [(t-\lambda^{-1+\eps})\vee s, t]$, then $e^{-\lambda(t-r)}\le 1$ and \cref{c:310} implies 
+\begin{align}\label{tb2}
+&\Bigl\|\int_{(t-\lambda^{-1+\eps})\vee s}^t\int_ D e^{-\lambda(t-r)}p_{t-r}(x,y)\Bigl(b( (V+\phi)(r,y))- b( (V+\psi)(r,y))\Bigr)\,dr dy\Bigr\|_{L_m(\Omega)}\nn\\
+&\qquad\le C \|b\|_{\C^{-1}}                                                                                                                                                                     \lambda^{-\frac14(1-\eps)}\|\phi-\psi\|_{\C^{0,0}L_m([s,t])}+C \|b\|_{\C^{-1}} \lambda^{-\frac54(1-\eps)}\bigl(1+[\phi]_{\X}+[\psi]_{\X}\bigr). 
+\end{align}
+for $C=C(m)$. Choose now $\eps$ such that $\frac54(1-\eps)=\frac{9}8$. Then \eqref{keylam} follows from \eqref{tb1}, \eqref{tb2}, taking into account that for such $\eps$ and some universal $C>0$ we   have $\exp(-\lambda^\eps)\le C \lambda^{-\frac{9}8}$ for all $\lambda\ge1$. 
+Bound \eqref{holder} follows from \cref{c:310}  by exactly the same argument. 
+\end{proof}	
+
+
+
+
+
+\begin{lemma}\label{l:apriori}
+Let $m\ge2$.  Then there exists a constant $C=C(m)>0$ such that for
+any bounded continuous function $b\colon\R\to\R$, a continuous in
+space and  $\F_0$-measurable process $z\colon\Omega\times D\to\R$, any  continuous adapted processes $Z,\rho\colon\Omega\times[0,1]\times D\to\R$ satisfying 
+\begin{equation*}%\label{zequ}
+Z(t,x)=P_t z(x)+ \int_0^t \int_{D} p_{t-r}(x,y)\bigl(b(Z(r,y))+ \rho(r,y)\bigr)\,dydr + V(t,x), t\in[0,1], x\in D, 
+\end{equation*}
+we have 
+$[Z-V]_{\C^{\frac34,0}L_m([0,1])}\le  C (1+\|b\|_{\C^{-1}}^2)(1+\|\rho\|_{ \C^{0,0}L_m([0,1])})$. 
+\end{lemma}	
+
+\begin{proof}
+Let $\phi_t(x):=Z_t(x)-V_t(x)$, $t\in[0,1]$, $x\in D$. 
+For any $(s,t)\in\Delta_{[0,1]}$, ${x\in D}$, by  the projection property of the conditional expectation in $L_m(\Omega)$ (e.g., \cite[Lemma~4.2(i)]{BDGLevy}),
+\begin{align}\label{z1step} 	
+\|(\phi_t-\E^s \phi_t)(x)\|_{L_m(\Omega)}&\le C \|(\phi_t-P_{t-s}\phi_s)(x)\|_{L_m(\Omega)}\\
+&\le  
+C\Bigl\|\int_s^t\int_D p_{t-r}(x,y) b(z_r(y))\,dydr\Bigr\|_{L_m(\Omega)}+(t-s) \|\rho\|_{ \C^{0,0}L_m([0,1])}\nn 
+\end{align}
+for $C=C(m)>0$. 
+To estimate the first term in the right-hand side of the above inequality, we use \cref{c:39} with $w\equiv1$. 
+We get from \eqref{mainres} 
+$$
+\Bigl\|\int_s^t\int_D p_{t-r}(x,y) b(z_r(y))\,dydr\Bigr\|_{L_m(\Omega)}\le C \|b\|_{\C^{-1}} (t-s)^{\frac34}(1+[\phi]_{\X}(t-s)^{\frac12})
+$$
+for $C=C(m)>0$. 	
+Substituting this into \eqref{z1step} we get for any $(s',t')\in\Delta_{[s,t]}$, $x\in D$
+$$
+\|\phi_{t'}(x)-\E^{s'}\phi_{t'}(x)\|_{L_m(\Omega)} \le  C(t'-s')^{\frac34}\|b\|_{\C^{-1}}\bigl(1+\|\rho\|_{\C^{0,0} L_m([0,1])}+[\phi]_{\X}(t-s)^{\frac12}\bigr).
+$$ 
+Let $\ell>0$. Dividing both sides of the above inequality by $(t'-s')^{\frac34}$ and taking supremum in the above inequality over all $s',t'\in \Delta_{[s,t]}$, we deduce for any $(s,t)\in\Delta_{[0,1]}$ such that $|t-s|\le \ell$
+\begin{equation}\label{xminyhn}
+[\phi]_{\X}\le  C \|b\|_{\C^{-1}} (1+\|\rho\|_{\C^{0,0} L_m([0,1])}+ \ell^{\frac12}	[\phi]_{\X}) 
+\end{equation}	
+where $C=C(m)>0$.  By assumptions of the lemma the function $b$ is bounded and hence  $[\phi]_{\X}<\infty$. 
+Take now $\ell>0$ such that 
+$
+C  \|b\|_{\C^{-1}}
+\ell^{\frac12}=\frac12.
+$
+Then we deduce from  \eqref{xminyhn} that for any $(s,t)\in\Delta_{[0,1]}$ such that $|t-s|\le \ell$ we have 
+$[\phi]_{\X}\le C\|b\|_{\C^{-1}} (1+\|\rho\|_{\C^{0,0} L_m([0,1])}).$
+If $\ell>1$, then there is nothing more to prove, this inequality
+implies the lemma's conclusion. Otherwise, if $\ell<1$, for a general $(s,t)\in\Delta_{[0,1]}$ we choose $N\ge2$ such that $1/N\le \ell < 1/(N-1)$
+and define $t_k:=s+k(t-s)/N$ for each $k=0,1,\hdots, N$. Then $t_{k+1}-t_k\le \ell$ and therefore by the above inequality, triangle inequality, and Jensen's inequality 
+$$\|\phi_t(x)-\E^t \phi_s(x)\|_{L_m(\Omega)}
+\le C N^{\frac14} (t-s)^{\frac34} \|b\|_{\C^{-1}}  (1+\|\rho\|_{\C^{0,0} L_m([0,1])}),
+$$ 
+for $C=C(m,\beta)$. 	Since $N^{\frac14}\le 1 + C \|b\|_{\C^{-1}}$,
+we get the bound claimed by the lemma. 
+\end{proof}
+
+
+\begin{corollary}\label{c:hmain}
+Let $u$ be a solution to \eqref{spdeh} and $\wt v$ be a solution to 
+\eqref{spdehhh}. Let $m\ge2$, $\mu\in(0,\frac16)$. Then there exists 
+$C=C(m,\mu)>0$ such that for any $n\in\N$ we have 
+\begin{align*}
+&[u-V]_{\C^{\frac34,0}L_m([n,n+1])}\le  C (1+\|h\|_{\C^{-1}}^2);\\
+&[\wt v-V]_{\C^{\frac34,0}L_m([n,n+1])}\le  C (1+\|h\|_{\C^{-1}}^2)(1+\lambda_n\|u-\wt v\|_{\C^{0,0} L_m([n,n+1])})
+\end{align*}
+
+ 
+\end{corollary}
+\begin{proof}
+The bounds follow directly from the definitions of $u$, $\wt v$ and \cref{l:apriori}. 
+\end{proof}
+\begin{proof}[Proof of \cref{L:main}] 
+Bound \eqref{sdeb2} is a direct combination of \cref{c:finfin} and \cref{c:hmain}.	
+Inequality \eqref{sdeb3} follows immediately from \eqref{holderex} and \cref{c:hmain}. 
+\end{proof}
+
+
+\begin{thebibliography}{BDG25}
+
+\bibitem[BDG25]{BDGLevy}
+Oleg Butkovsky, Konstantinos Dareiotis, and M\'at\'e Gerencs\'er.
+\newblock Strong rate of convergence of the {E}uler scheme for {SDE}s with
+  irregular drift driven by {L}\'evy noise.
+\newblock {\em Ann. Inst. Henri Poincar\'e{} Probab. Stat.}, 61(4), 2025.
+
+\bibitem[BFG21]{BFG}
+Carlo Bellingeri, Peter~K Friz, and M{\'a}t{\'e} Gerencs{\'e}r.
+\newblock Singular paths spaces and applications.
+\newblock {\em Stochastic Analysis and Applications}, pages 1--24, 2021.
+
+\bibitem[BKS20]{BKS18}
+Oleg Butkovsky, Alexei Kulik, and Michael Scheutzow.
+\newblock Generalized couplings and ergodic rates for {SPDE}s and other
+  {M}arkov models.
+\newblock {\em Ann. Appl. Probab.}, 30(1):1--39, 2020.
+
+\bibitem[BW20]{BW20}
+Oleg Butkovsky and Fabrice Wunderlich.
+\newblock Asymptotic strong feller property and local weak irreducibility via
+  generalized couplings.
+\newblock {\em arXiv preprint arXiv:1912.06121}, 2020.
+
+\bibitem[HM06]{HM06}
+Martin Hairer and Jonathan~C. Mattingly.
+\newblock Ergodicity of the 2{D} {N}avier-{S}tokes equations with degenerate
+  stochastic forcing.
+\newblock {\em Ann. of Math. (2)}, 164(3):993--1032, 2006.
+
+\bibitem[L{\^e}20]{LeSSL}
+Khoa L{\^e}.
+\newblock A stochastic sewing lemma and applications.
+\newblock {\em Electron. J. Probab.}, 25:Paper No. 38, 55, 2020.
+
+\end{thebibliography}
+\end{document}
+

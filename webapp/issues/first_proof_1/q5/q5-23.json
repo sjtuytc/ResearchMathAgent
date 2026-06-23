@@ -3,7 +3,7 @@
   "problem_id": "q5",
   "dataset": "first_proof_1",
   "title": "Corollary 'exact-slice' misapplies Lemma geom(3) at proper subgroups (degree mismatch)",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,28 @@
       "role": "agent",
       "body": "In the proof of Corollary cor:exact-slice ('$\\Sigma^k HM$ is exactly a $(k r_G)$-slice'), the nulling of $\\tau^{\\mathcal O}_{\\ge kr_G+1}$ uses 'Lemma geom(3) applied over each $H$'. But geom(3) is proved only at the TOP group $G$ and gives $[N^TS^1,\\Sigma^kHM]^G=0$ when $|T|>k r_G$.\n\nTo null a generator $G_+\\otimes_H N^TS^1$ with H PROPER and $|T|>k r_G$, one needs (by adjunction) $[N^TS^1,\\Sigma^k i_H^*HM]^H=0$, and the H-level geom(3) only gives this when $|T|>k r_H$ with $r_H=[H:\\chi(H)]$. Since $r_H$ can be SMALLER than $r_G$, the hypothesis $|T|>k r_G$ does NOT imply $|T|>k r_H$, so the vanishing is unavailable for the relevant generators. The exact-slice claim is therefore not established; the correct statement likely involves the per-$H$ degrees rather than a single $r_G$, and $\\Sigma^kHM$ may not even be an exact slice in the incomplete setting.\n\nNote: this Corollary is NOT used in the proof of the Main Theorem (the converse uses only geom(2)), so it does not invalidate the theorem — but it is a genuine error in a stated-and-proved auxiliary result and should be corrected or deleted.",
       "created_at": "2026-06-18T01:16:52Z"
+    },
+    {
+      "id": "ccc67a82f",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Re-review against the current `solution.tex`: this specific error is no longer present.\n\nThe current `cor:exact-slice` does **not** apply `lem:geom`(3) at proper $H$. For proper $H\\subsetneq G$ it instead argues that $i_H^*HM\\simeq 0$, hence $i_H^*\\Sigma^k HM\\simeq 0$, so $[N^TS^1, i_H^*\\Sigma^kHM]^H = 0$ trivially. That step is correct: for a geometric Mackey functor $M=\\underline A^{\\mathrm{geo}}$, $(i_H^*M)(H/K)=M(G/K)=0$ for all $K\\subseteq H$ (proper in $G$), so $i_H^*HM$ has vanishing homotopy Mackey functor and is contractible. Thus the degree-mismatch ($r_H$ vs $r_G$) the issue describes does not arise.\n\n**Residual (minor):** the nullity is checked only on generators $G_+\\otimes_H N^TS^1$ with $|T|>kr_G$ (and implicitly their non-negative suspensions); the propagation of nullity through (o1)--(o3) to all of $\\tau^{\\mathcal O}_{\\ge kr_G+1}$ should cite the closure mechanism already established in `lem:cover-conn`. I would downgrade this issue to that one-sentence residual. Note `cor:exact-slice` is not used by `thm:main`.",
+      "created_at": "2026-06-21T22:08:26Z"
+    },
+    {
+      "id": "c203c5e38",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolved: closure mechanism now made explicit in `cor:exact-slice`\n\n**Status of the original error.** The degree-mismatch error (applying `lem:geom`(3) at proper $H$ with $r_H<r_G$) is genuinely absent: at proper $H'\\subsetneq G$ the proof uses $i_{H'}^\\ast HM\\simeq0$ (so $i_{H'}^\\ast\\Sigma^kHM\\simeq0$ and the mapping group vanishes trivially), invoking **no** $H'$-level geometric bound. I have made this explicit and flagged it in-text.\n\n**Residual gap addressed.** The previous proof only checked $[\\,G_+\\otimes_H N^TS^1,\\Sigma^kHM]^G=0$ on the bare generators and asserted nullity of all of $\\tau^{\\mathcal O}_{\\ge kr_G+1}$ without justifying the propagation through (o1)–(o3). I rewrote the proof to supply this rigorously:\n\n1. Restated the goal via the nullification universal property: $\\Sigma^kHM\\to P^{kr_G}_{\\mathcal O}\\Sigma^kHM$ is an equivalence $\\iff$ $[X,\\Sigma^kHM]^G=0$ for **all** $X\\in\\tau^{\\mathcal O}_{\\ge kr_G+1}=\\langle\\mathcal G\\rangle_{\\ge}$.\n\n2. Introduced the closure class $\\mathcal N_W=\\{X:[\\Sigma^\\ell(G/K_+\\otimes X),W]^G=0\\ \\forall K\\subseteq G,\\ \\ell\\ge0\\}$, with $W=\\Sigma^kHM$. Crucially this is the $\\pi_{\\ge0}$-mapping-spectrum (not contractible-mapping-spectrum) version, and it is wrapped in $G/K_+$ so that it is genuinely closed under **(o3)** orbit tensors (via the double-coset splitting $G/K_+\\otimes G/K'_+\\simeq\\bigsqcup G/(K\\cap gK'g^{-1})_+$). I verified closure under (o1) (positive suspensions, cofibers/extensions, and homotopy colimits — including the $\\lim^1$ argument for filtered colimits), (o2) retracts, and (o3).\n\n   *(Remark: the contractible-mapping-spectrum class used in `lem:cover-conn` does **not** work here, because $\\mathrm{Map}^G(C,\\Sigma^kHM)$ has nonzero negative homotopy; the correct nullity notion only constrains $\\pi_{\\ge0}$, which is exactly what the suspension-closed subcategory sees.)*\n\n3. Showed $\\mathcal G\\subseteq\\mathcal N_W$: $G/K_+\\otimes(G_+\\otimes_H N^TS^1)$ is, by the projection formula and the norm–restriction formula `eq:resnorm`, a finite wedge of admissible induced cells $G_+\\otimes_{L_j}N^{i_{L_j}^\\ast T}S^1$ of the **same** underlying cardinality $|T|>kr_G$, hence again in $\\mathcal G$. Vanishing on each such (suspended) generator is then the two-case check: $H'=G$ via `lem:geom`(3) applied to $T'\\sqcup\\ell\\ast$ (cardinality $>kr_G$), and proper $H'$ via $i_{H'}^\\ast\\Sigma^kHM\\simeq0$.\n\nTherefore $\\tau^{\\mathcal O}_{\\ge kr_G+1}\\subseteq\\mathcal N_W$, giving $[X,\\Sigma^kHM]^G=0$ for all such $X$, i.e. $\\Sigma^kHM$ is $\\tau^{\\mathcal O}_{\\ge kr_G+1}$-null and exactly a $(kr_G)$-slice.\n\n**Honest caveats.** The argument relies on standard inputs already used elsewhere in the solution: the projection/norm–restriction formula (`eq:resnorm`), `lem:geom`(3), `lem:index`(3), and $i_{H'}^\\ast HM\\simeq0$ for geometric $M$ at proper $H'$. The double-coset orbit-product splitting and the $\\lim^1$ short exact sequence are standard. `cor:exact-slice` remains independent of `thm:main`. No LaTeX toolchain is available in the workspace, so I verified structural/brace balance by script rather than a full compile.",
+      "created_at": "2026-06-21T22:17:18Z"
+    },
+    {
+      "id": "eve36a8277",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T22:17:22Z"
     }
   ]
 }

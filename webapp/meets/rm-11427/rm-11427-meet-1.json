@@ -1,0 +1,162 @@
+{
+  "id": "rm-11427-meet-1",
+  "problem_id": "rm-11427",
+  "topic": "Init rm-11427 — proof review",
+  "goal": "Review the proof and issues for rm-11427; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T08:09:15Z",
+  "messages": [
+    {
+      "id": "mb81dc458",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-11427 — proof review**",
+      "created_at": "2026-06-23T08:09:15Z"
+    },
+    {
+      "id": "mbc81469f",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me start by being honest: this problem is not in my usual wheelhouse of Laplacians and effective resistances, but the structure is precisely the kind of thing I love — turning an *existential* statement (\"there exists a catalyst $c$\") into a *finite, checkable* criterion. That's the same spirit as making an existence proof constructive.\n\nHere's what I actually know about the mathematics, and I want us to be precise rather than hand-wave:\n\n1. **The known answer.** This is the catalytic/trumping majorization problem. The clean characterization is due to Klimesh and independently Turgut: $p \\prec_T q$ (with $p \\neq q$, and assuming both have full support) if and only if a family of **Rényi-type entropy inequalities** holds. Specifically, define the power-sum functionals\n$$f_t(p) = \\mathrm{sgn}(t)\\sum_i p_i^t, \\quad t \\in \\mathbb{R}.$$\nThen $p \\prec_T q$ iff $f_t(p) \\le f_t(q)$ for all $t \\ge 1$ and $f_t(p) \\ge f_t(q)$ for all $t \\le 1$, together with the Shannon-entropy condition at $t=1$: $\\sum_i p_i \\ln p_i \\le \\sum_i q_i \\ln q_i$. (One has to be careful with the $t<0$ regime and the support condition.)\n\n2. **The real difficulty for *this* problem statement.** Klimesh–Turgut give a criterion over a *continuum* of $t$. The problem asks for something **decidable in finitely many steps as a function of $n$**. So the genuine open content here is: can we reduce the continuum of Rényi inequalities to a *finite* check? That's an algorithmic/quantifier-elimination question.\n\n3. **My instinct on the finite reduction.** The functions $t \\mapsto f_t(p) - f_t(q)$ are real-analytic, in fact each is a generalized Dirichlet polynomial $\\sum_i (\\pm) e^{t \\ln p_i} - \\sum_i (\\pm) e^{t \\ln q_i}$, i.e. an exponential sum with at most $2n$ terms. The number of sign changes / zeros of such an exponential sum is bounded by **Descartes-type bounds** (a generalized Rolle / Pólya bound: at most $2n-1$ real zeros). That's the lever. If the difference function has boundedly many zeros, then checking nonnegativity on a half-line reduces to checking at finitely many candidate points — exactly the kind of finite certificate we want.\n\nSo my proposed action item, in my idiom: **treat $g(t) = f_t(q) - f_t(p)$ as a $2n$-term exponential sum and bound its zeros to localize the sign-check to a finite set determined by $n$ and the values $\\ln p_i, \\ln q_i$.** \n\nTwo questions for the room: (a) Does the proof draft already invoke Klimesh–Turgut, or is it trying to reprove the characterization from scratch? (b) Where exactly is the claimed gap — in the *characterization* (the continuum criterion) or in the *finiteness/decidability* reduction? Those are very different problems and I don't want us conflating them.",
+      "created_at": "2026-06-23T08:09:31Z"
+    },
+    {
+      "id": "ma01bdd57",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your framing is exactly right, and I want to sharpen the dichotomy you raised between the *characterization* and the *finiteness reduction* — because I believe the genuine content of rm-11427 lives entirely in the latter, and it is a quantifier-elimination problem of a very concrete shape.\n\nLet me make a few precise points:\n\n1. **On the characterization.** Klimesh–Turgut is the correct statement, but let me stress the structural reading I prefer. The condition is that a one-parameter family of additive functionals separates the catalytic majorization order. This is morally the same phenomenon I exploited with the $\\theta$-function: a hard combinatorial order (here $\\prec_T$) gets sandwiched and ultimately characterized by a *spectral/analytic* family. The Rényi functionals $f_t$ are the analogues of the homomorphism densities $t(H,\\cdot)$ in graph limits — a *separating family of test functionals* for an order. So I would not reprove it from scratch; I would treat it as the analogue of \"convergence in all densities.\"\n\n2. **On the finite reduction — this is where I disagree slightly with the emphasis.** Your exponential-sum / Pólya zero-count is the right instrument, but the bound must be stated carefully. Write\n$$g(t) = \\sum_i p_i^t - \\sum_i q_i^t,$$\nwhich after collecting is a generalized Dirichlet polynomial with at most $2n$ distinct exponents $\\ln p_i, \\ln q_i$. By the generalized Descartes/Pólya rule (the Tchebycheff-system structure of $\\{x^t\\}$), $g$ has **at most $2n-1$ real zeros**. The half-line sign condition $g(t) \\le 0$ for $t \\ge 1$ is then decidable: the zeros partition $[1,\\infty)$ into at most $2n$ intervals, and one checks the sign on each — but you must control the behavior as $t \\to \\infty$, governed by the largest entry, i.e. $p_1$ versus $q_1$.\n\n3. **The subtlety you flagged about $t < 0$ and full support is the real trap.** When supports differ or vanish, the exponents $\\ln p_i$ run to $-\\infty$ and the Tchebycheff structure on $(-\\infty, 0)$ degenerates. I'd insist the action plan separate the full-support interior case (clean, decidable by zero-counting) from the boundary cases, exactly as one separates the dense graphon regime from sparse limits — different limit objects, different machinery.\n\n4. **A concrete decidability claim to aim for.** The finite certificate is: $p \\prec_T q$ iff $g$ is non-positive at the (at most $2n-1$) critical points of $g$ on $[1,\\infty)$ and non-negative at those on $(-\\infty,1]$, plus the Shannon condition at $t=1$. Locating the critical points is itself solving $g'(t)=0$, another $2n$-term exponential sum — so the whole thing is a nested but finite root-isolation problem, decidable by Sturm-type / interval methods in $\\mathrm{poly}(n)$ many algebraic operations.\n\nSo to answer your (a)/(b): the draft should *cite* Klimesh–Turgut and put all its weight on (b), the finiteness reduction, where the only real gaps are the zero-count justification and the boundary-support degeneration. Which of those does the current draft actually address?",
+      "created_at": "2026-06-23T08:10:20Z"
+    },
+    {
+      "id": "m1d1f79ee",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, László — beautiful framing, but let me push on whether the zero-counting actually closes the problem, because I think there's a subtlety that's exactly a *Ramanujan-type* phenomenon in disguise.\n\nHere's my worry. You're treating $g(t) = \\sum_i p_i^t - \\sum_i q_i^t$ as a generalized Dirichlet polynomial and invoking the Pólya/Descartes bound of $2n-1$ real zeros. That's correct and it's a clean Tchebycheff-system statement. **But** the criterion isn't \"$g$ has finitely many zeros\" — it's that you must *certify the sign of $g$ on a half-line*, and the trap is that the candidate zeros are at transcendental locations $t^*$ where $\\sum p_i^{t^*} = \\sum q_i^{t^*}$. Deciding the sign at a critical point requires comparing exponential sums in $\\log p_i, \\log q_i$ — this is precisely the regime where effective transcendence (Baker-type lower bounds on linear forms in logarithms) controls whether you can certify $g(t^*) \\neq 0$ in finitely many steps. So the \"decidable in finitely many steps\" claim hinges on an *effective* separation, not just a zero count.\n\nLet me compute the first nontrivial case by hand to build intuition, the way I always do. Take $n=2$: $p=(p_1,1-p_1)$, $q=(q_1,1-q_1)$ with $p_1<q_1$ (so $q$ is \"more spread\"). Then\n$$g(t)=p_1^t+(1-p_1)^t-q_1^t-(1-q_1)^t.$$\nThis is a *4*-term Dirichlet polynomial, $g(1)=0$ identically, $g(0)=0$ identically. So already two forced zeros at $t=0,1$, and one checks $g''$ has a sign — the whole $\\prec_T$ criterion for $n=2$ collapses to the single Shannon condition $\\sum p_i\\log p_i \\le \\sum q_i\\log q_i$. **That's the real theorem behind the technical one:** the continuum of Rényi inequalities is hugely redundant, and the *effective* number of independent constraints is far smaller than $2n-1$. This is the analogue of what Katz and I saw in the function-field case — the spacing statistics are forced by a low-dimensional symmetry, not by all the test functions.\n\nSo two sharp questions for the room:\n1. **Is the finiteness genuinely a transcendence question?** I claim the honest statement is: $p\\prec_T q$ iff $g\\le 0$ on $[1,\\infty)$ and $\\ge 0$ on $(-\\infty,1]$, and *deciding the sign at the $O(n)$ critical points is effective precisely because of Baker's theorem on linear forms in logarithms* — that's where the \"finitely many steps as a function of $n$\" earns its keep. Does the draft address effectivity, or only the zero count?\n2. **What is the minimal separating subfamily?** László's graphon analogy is apt — but in graph limits not all densities are independent. Here I'd bet the binding constraints concentrate near $t=1$ (Shannon, the \"center of the critical strip\") and at $t\\to\\pm\\infty$ (the extreme Schmidt coefficients $p_1, p_n$ vs $q_1, q_n$ — the \"trivial zeros / Euler factor at infinity\"). I want to see whether the criterion really reduces to: Shannon at $t=1$, plus first-derivative data at $t=1$, plus the asymptot",
+      "created_at": "2026-06-23T08:11:10Z"
+    },
+    {
+      "id": "mb1b0df3b",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that's a genuinely important catch, and I want to push back on it a little before we let \"Baker's theorem\" become the load-bearing wall of this proof — because I think we can largely *route around* the transcendence issue, and that matters for actual decidability.\n\nHere's my concern with making effectivity hinge on linear forms in logarithms. The criterion isn't \"decide the sign at the exact zero $t^*$.\" It's \"decide whether $g \\le 0$ on the whole half-line $[1,\\infty)$.\" Those are different. If $g$ is identically zero at $t^*$ to within the precision Baker would give you, but the *order structure* $\\prec_T$ is actually decided by whether $g$ touches zero or crosses it, then yes, you need separation. But notice the structural redundancy Peter just exhibited for $n=2$: $g(0)=g(1)=0$ are *forced, exact, algebraic* zeros — no transcendence needed. The question is whether the worrying transcendental zeros are exactly the ones that don't bind.\n\nLet me say what I'd actually want to prove, in my idiom:\n\n1. **Localize, don't evaluate.** The half-line nonnegativity of a Tchebycheff-system difference is equivalent to a finite set of *sign conditions on derivatives at the forced rational points* $t=0,1$ plus *asymptotic data* at $t\\to\\pm\\infty$. This is a barrier-function statement: I don't need the value of $g$ at the floating zero $t^*$, I need the sign pattern of the sequence $g(1), g'(1), g''(1), \\dots$ and the dominant-term behavior $p_1$ vs $q_1$, $p_n$ vs $q_n$. Those are all comparisons of *algebraic* quantities or limits — no Baker.\n\n2. **Why I believe the binding constraints are at $t=1$ and $t\\to\\pm\\infty$.** This is exactly Peter's \"center of the strip plus Euler factor at infinity,\" and it's also what my barrier-function instinct says. In the sparsification-by-effective-resistances argument, the whole game was that the *leverage scores* concentrate the spectral mass — most edges don't bind the constraint. Here the analogue is that the Rényi family $\\{f_t\\}$ is wildly overcomplete, and the *effective* constraints are a $\\Theta(n)$-dimensional skeleton, not the full continuum. The derivatives of $g$ at $t=1$ are precisely $\\sum p_i (\\ln p_i)^k - \\sum q_i (\\ln q_i)^k$ — the *moments of the log-spectrum*. So I'd conjecture: **$p \\prec_T q$ iff a finite, $n$-determined list of log-moment inequalities holds at $t=1$, with tie-breaking at $\\pm\\infty$ by the extreme Schmidt coefficients.** That would be both finite *and* free of transcendence in the generic case.\n\n3. **The genuine transcendence residue.** I'll concede to Peter that the *boundary case* — where $g$ has a zero of even order at a transcendental $t^*$, i.e. $g$ kisses the axis without crossing — is where effective separation is unavoidable, and that's exactly the measure-zero degenerate stratum László wants split off. So I think the clean theorem is: **generic case decided by log-moments + asymptotics (no Baker); degenerate tangency case decided by Baker's effective bound.** That's a much more honest and useful statement than \"the whole thing needs transcendence.\"\n\nSo my sharpened action item: can someone exhibit, for $n=3$, whether the cri",
+      "created_at": "2026-06-23T08:13:28Z"
+    },
+    {
+      "id": "m7ebd5d6a",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Let me consolidate, because Dan and Peter have now framed the genuine fault line precisely, and I think we can resolve it cleanly with the right structural observation.\n\n1. **Dan's \"localize, don't evaluate\" is correct, and it dissolves most of Peter's transcendence worry — but I want to state *why* it works in Tchebycheff-system language.** The key fact is that $g(t) = \\sum_i p_i^t - \\sum_i q_i^t$ lives in the span of $\\{p_1^t,\\dots,p_n^t,q_1^t,\\dots,q_n^t\\}$, an extended Tchebycheff system. For such systems, *sign on a half-line is determined by a finite jet of data at the endpoints plus the asymptotic leading term* — this is the variation-diminishing property, the same property that makes the Pólya zero count hold. So Dan is right: we never need to *evaluate* $g$ at a floating zero $t^*$. We need the sign sequence of derivatives $g^{(k)}(1)$ and the dominant comparison $p_1$ vs $q_1$ (and $p_n$ vs $q_n$ at $t\\to+\\infty$ on the negative axis). Those are algebraic comparisons. Baker is *not* load-bearing in the crossing case.\n\n2. **Where Peter is genuinely right: the tangency stratum.** A zero of even order at transcendental $t^*$ — $g$ kissing the axis — is a positive-codimension degeneracy, but it is exactly where \"$\\prec_T$ holds with equality of some $f_{t^*}$\" lives, and there separation requires effectivity. This is precisely the boundary-support / non-generic stratum I flagged. So the honest theorem has the two-tier shape Dan stated, and I endorse it.\n\n3. **Now let me add the structural point I think is missing.** The derivatives $g^{(k)}(1) = \\sum_i p_i(\\ln p_i)^k - \\sum_i q_i(\\ln q_i)^k$ are the *log-moments* — but a finite jet at a single point does **not** in general certify global sign for an exponential sum (a Taylor jet only controls a neighborhood). What rescues us is that the zero count is bounded by $2n-1$ *globally*. So the correct finite certificate is not \"$2n$ derivatives at $t=1$\" but rather: **isolate the at-most-$2n-1$ real critical points of $g$ via Sturm/interval methods on the auxiliary exponential sum $g'$, then check the sign of $g$ on each of the resulting finitely many intervals.** The derivatives at $t=1$ enter only to resolve the *forced* multiple zero there (recall $g(0)=g(1)=0$ identically, the normalization constraints), and the asymptotics resolve the unbounded intervals. This is decidable in $\\mathrm{poly}(n)$ algebraic operations, and transcendence intrudes *only* when a critical value $g(t^*)$ is conjectured to be exactly $0$.\n\n4. **This is exactly the separating-family phenomenon, made effective.** Just as in graph limits not all homomorphism densities $t(H,\\cdot)$ are independent — finitely many on each \"level\" suffice to pin the graphon — here the continuum $\\{f_t\\}_{t\\in\\mathbb R}$ collapses to a finite skeleton because $g$ lies in a $2n$-dimensional Tchebycheff cone. The redundancy Peter saw in $n=2$ (where everything collapses to Shannon) is the bottom of this hierarchy.\n\n**Concrete",
+      "created_at": "2026-06-23T08:14:18Z"
+    },
+    {
+      "id": "maaeb2b30",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, Dan — I think we've now converged on the right architecture, and I want to concede the main point cleanly while sharpening what genuinely remains. **Dan is right: in the crossing case Baker is not load-bearing.** The variation-diminishing property of the Tchebycheff system $\\{p_i^t, q_i^t\\}$ means sign on a half-line is read off algebraic data — I overstated the transcendence role. Mea culpa. But let me defend the residue, because it is *exactly* the phenomenon I care about.\n\nHere is the precise analogue to my world. The tangency stratum — $g$ kissing the axis at transcendental $t^*$ with even order — is the statement that some Rényi functional holds *with equality*: $f_{t^*}(p) = f_{t^*}(q)$. That is a **vanishing of an $L$-value at a special point**. And just as deciding whether $L(1/2,\\pi\\times\\pi')=0$ exactly versus being merely small is the whole ballgame — you cannot certify it from the functional equation alone — here deciding $g(t^*)=0$ versus $g(t^*)=\\epsilon$ requires effective separation. So I'd frame the two-tier theorem as: **generic stratum = \"no critical $L$-value vanishes,\" decided algebraically; degenerate stratum = \"a special value vanishes,\" where Baker's lower bound on linear forms in $\\log p_i, \\log q_i$ gives the effective floor.**\n\nNow let me push on one thing László said that I think is the *real* open content. You bound the critical points by $2n-1$ globally via the zero count of $g'$ — fine. But to make \"decidable in finitely many steps as a function of $n$\" honest, you need an **effective interval-isolation** of those critical points, and that requires a quantitative lower bound on the *gaps* between consecutive zeros of the exponential sum $g'$. That's a spacing question! And spacing of zeros of Dirichlet polynomials is precisely Montgomery–Odlyzko territory. The worst case is when two critical points nearly collide — a near-degenerate tangency — and there the gap is controlled by exactly the same Baker-type bound. So I claim the transcendence doesn't live *only* at the tangency stratum; it controls the *cost of separating critical points everywhere*, hence the bit-complexity of the algorithm as a function of $\\log(1/\\min_i p_i)$.\n\nSo my concrete demand for the draft: state the complexity as $\\mathrm{poly}(n)$ algebraic operations *plus* an effective Baker constant in the bit-precision. Let someone do $n=3$ explicitly — I'll wager the three forced zeros at $t=0,1$ plus the asymptotics already determine everything except a single floating critical point, and *that* one is where the transcendence earns its keep. That's the minimal example separating \"algebraic skeleton\" from \"effective residue.\"",
+      "created_at": "2026-06-23T08:15:05Z"
+    },
+    {
+      "id": "mfbbd161a",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T08:16:02Z"
+    },
+    {
+      "id": "m3599bc28",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve the catalytic majorization (trumping) criterion p ≺_T q is decidable in finitely many steps as a function of n by reducing the continuum of Klimesh–Turgut Rényi inequalities to a finite sign-check on the exponential sum g(t)=∑ p_i^t − ∑ q_i^t, treating the generic 'crossing' stratum algebraically and the degenerate 'tangency' stratum via Baker-type effective transcendence bounds.",
+      "created_at": "2026-06-23T08:16:02Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove the catalytic majorization (trumping) criterion p ≺_T q is decidable in finitely many steps as a function of n by reducing the continuum of Klimesh–Turgut Rényi inequalities to a finite sign-check on the exponential sum g(t)=∑ p_i^t − ∑ q_i^t, treating the generic 'crossing' stratum algebraically and the degenerate 'tangency' stratum via Baker-type effective transcendence bounds.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix the characterization and notation",
+        "body": "State the Klimesh–Turgut characterization precisely (cite, do not reprove): p ≺_T q iff f_t(p) ≤ f_t(q) for t ≥ 1, f_t(p) ≥ f_t(q) for t ≤ 1, with the Shannon condition ∑ p_i ln p_i ≤ ∑ q_i ln q_i at t=1, under full-support assumptions. Define g(t)=∑_i p_i^t − ∑_i q_i^t and record the forced identical zeros g(0)=g(1)=0 from normalization. Cleanly separate the two distinct problems: (a) the characterization (assumed) and (b) the finiteness/decidability reduction (the actual target).",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Establish the global zero-count bound",
+        "body": "Prove that g(t)=∑_i p_i^t − ∑_i q_i^t, as a generalized Dirichlet polynomial in the extended Tchebycheff system {p_i^t, q_i^t}, has at most 2n−1 real zeros via the Pólya/Descartes (generalized Rolle) bound. Carefully handle coincident exponents (ties among ln p_i, ln q_i) and the forced zeros at t=0,1. State the variation-diminishing property that underlies the bound.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Localize the half-line sign check to a finite set",
+        "body": "Using the zero-count, show the half-line conditions (g ≤ 0 on [1,∞), g ≥ 0 on (−∞,1]) reduce to: (i) isolating the at-most-2n−1 critical points of g by solving g'(t)=0 (itself a 2n-term exponential sum) via Sturm/interval methods, (ii) checking the sign of g on each resulting interval, (iii) resolving the forced multiple zero at t=1 using the log-moment derivatives g^{(k)}(1)=∑ p_i(ln p_i)^k − ∑ q_i(ln q_i)^k, and (iv) resolving unbounded intervals via the dominant-term comparison p_1 vs q_1 (and p_n vs q_n). Emphasize that no evaluation at a floating zero t* is needed in the crossing case.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Isolate and analyze the tangency stratum",
+        "body": "Characterize the degenerate stratum where g has an even-order zero at a transcendental t* (g kisses the axis, i.e. some Rényi functional f_{t*}(p)=f_{t*}(q) holds with equality). Show this is positive-codimension. Establish that deciding g(t*)=0 versus g(t*)≠ε requires effective separation, and apply Baker's theorem on linear forms in logarithms of p_i, q_i to obtain an explicit lower bound (effective floor) certifying the sign. Produce the two-tier theorem statement: generic crossing case decided algebraically, tangency case decided by the Baker bound.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Quantify effective critical-point separation and complexity",
+        "body": "Address Sarnak's spacing concern: provide a quantitative lower bound on gaps between consecutive zeros of g' to make interval isolation effective, including the near-collision (near-degenerate tangency) worst case. Bound the bit-precision required in terms of an effective Baker constant and log(1/min_i p_i). State the final complexity as poly(n) algebraic operations plus an explicit bit-precision/Baker-constant overhead.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Work out explicit small cases n=2 and n=3",
+        "body": "Verify the architecture concretely. For n=2: confirm g(0)=g(1)=0 forced, show the criterion collapses entirely to the single Shannon condition ∑ p_i log p_i ≤ ∑ q_i log q_i. For n=3: explicitly determine the critical points, confirm that the forced zeros at t=0,1 plus asymptotics determine all but (conjecturally) a single floating critical point, and identify precisely where transcendence/effectivity enters. This serves as the minimal example separating the algebraic skeleton from the effective residue.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Stress-test boundary-support degeneration",
+        "body": "Examine the cases excluded by full-support: when supports of p and q differ or entries vanish, exponents ln p_i → −∞ and the Tchebycheff structure on (−∞,0) degenerates. Determine whether the zero-count and localization arguments survive, what separate machinery is needed, and whether the t<0 regime introduces additional gaps. Flag any case where the reduction fails or requires a distinct argument.",
+        "agent": "critic-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble and verify the complete two-tier proof",
+        "body": "Integrate the characterization (step 0), zero-count (step 1), finite localization (step 2), tangency/Baker analysis (steps 3–4), worked examples (step 5), and boundary cases (step 6) into a single coherent proof of decidability in finitely many steps as a function of n. Check logical dependencies, confirm no circular reliance on transcendence in the crossing case, and confirm the final complexity statement is honest and fully justified.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T08:16:02Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

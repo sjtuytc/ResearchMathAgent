@@ -1,0 +1,161 @@
+{
+  "id": "rm-02096-meet-1",
+  "problem_id": "rm-02096",
+  "topic": "Init rm-02096 — proof review",
+  "goal": "Review the proof and issues for rm-02096; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T07:03:00Z",
+  "messages": [
+    {
+      "id": "m1da6f151",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-02096 — proof review**",
+      "created_at": "2026-06-23T07:03:00Z"
+    },
+    {
+      "id": "mcb752ae4",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest up front: this is a stochastic thermodynamics problem, not a spectral graph theory problem, so I'll contribute where I have genuine traction — on the divergence cancellation, which is fundamentally a question about how an information *rate* stays finite even as discrete entropies blow up.\n\nHere's the structural point that I think is the crux. The divergence $H(X_\\varepsilon) = h(X) - \\log\\varepsilon + o(1)$ is exactly the kind of singularity that cancels in a *difference*. Each $I_n$ diverges as $\\Delta t \\to 0$, but the physically meaningful object is a mutual-information *rate* — and mutual information, unlike entropy, is reparametrization-invariant and stays finite. So I'd insist:\n\n1. Don't sum $\\sum_n I_n$ and then take a limit. Instead show $\\sum_n I_n = T_{\\text{tot}} \\cdot \\dot{I} + o(1)$ where the rate $\\dot I$ is an honest derivative. The $-\\log\\varepsilon$ terms must cancel between the measurement entropy and the conditional entropy *inside each $I_n$*, because $I_n = H(\\text{meas}) - H(\\text{meas}\\mid X)$ — both pieces carry the same $-\\log\\varepsilon$.\n\n2. The right continuous-time object is almost certainly the **transfer entropy rate** from the measurement record to the trajectory, not a naive mutual-information rate. Transfer entropy correctly captures the *directed*, causal flow of information that a feedback controller exploits — it's the directed analog, and it's what survives the limit.\n\n3. My one methodological demand, in the spirit of how I treat Laplacian limits: is the convergence $\\sum_n I_n \\to \\int \\dot I \\, dt$ actually *uniform*, or are there cross terms between consecutive measurements that don't vanish? In the $\\Delta t \\to 0$ regime the measurements become temporally correlated, and that correlation is precisely what could leave a residual finite term. Someone needs to bound $I(\\text{meas}_n ; \\text{meas}_{n+1})$ and show it's $O(\\Delta t)$.\n\nSo my question to the room: do we have the per-step decomposition showing the $-\\log\\varepsilon$ pieces cancel *within* each $I_n$, and is the resulting rate a transfer entropy or a symmetric mutual information? That distinction decides whether the bound is even correct.",
+      "created_at": "2026-06-23T07:03:16Z"
+    },
+    {
+      "id": "m758c6b2a",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has put his finger on exactly the right structural issue, and I want to reinforce it from the perspective of *limits* — which is, after all, where I've spent the last twenty years. The situation here is formally identical to what I encountered in the theory of graph limits: the individual combinatorial objects (here, the discrete $I_n$) diverge or become ill-defined, but the correct limit object is a *density* that is invariant under refinement of the sampling. Let me make three precise points.\n\n1. **On the cancellation — Dan is right, and it must be made structural, not asymptotic.** Write $I_n = h(\\text{meas}_n) - h(\\text{meas}_n \\mid X_{t_n})$ at the level of *differential* entropies from the start. The $-\\log\\varepsilon$ is a quantization artifact; if you never quantize, it never appears. The mutual information $I_n$ is a Radon–Nikodym object — $I_n = \\int \\log \\frac{dP_{M,X}}{dP_M \\otimes P_X}\\, dP_{M,X}$ — and Radon–Nikodym derivatives are invariant under reparametrization, exactly as homomorphism densities $t(H,W)$ are invariant under measure-preserving relabelings of the graphon. The divergence lives entirely in the *reference measure*, not in the relative entropy. So the cancellation is not a coincidence to be checked term by term; it is a consequence of using the right invariant object.\n\n2. **On transfer entropy vs. symmetric mutual information — this is the crux, and Dan has it right.** A feedback controller exploits *directed, causal* information: only $M_{[0,t]} \\to X_t$ matters, not the reverse channel. The correct functional is the transfer-entropy rate, equivalently the *directed information* $I(M^t \\to X^t) = \\sum_n I(M_n; X_n \\mid M^{n-1})$ in Massey's sense, whose continuous-time limit is $\\dot I_{\\text{dir}} = \\lim \\frac{1}{T} I(M^T \\to X^T)$. The symmetric mutual information would over-count the anti-causal flow and give an incorrect — and generally non-tight — bound. The generalized second law should read\n$$\\langle W_{\\mathrm{ext}}\\rangle \\le -\\Delta F + k_B T \\int_0^{T} \\dot I_{\\text{dir}}(t)\\, dt.$$\n\n3. **On Dan's uniformity demand — this is precisely the regularity issue, and I want to sharpen it.** His worry about $I(M_n; M_{n+1}) = O(\\Delta t)$ is the right one, but I'd reframe it as a *compactness* question. In graph limits, $\\sum_n I_n \\to \\int \\dot I\\,dt$ is exactly an integrability/convergence statement in a cut-like metric, and the residual cross terms are the obstruction to convergence. The clean sufficient condition: the joint process $(M_t, X_t)$ must have a well-defined information density $\\dot I(t)$ that is $L^1$ in time, and the discrete sums are Riemann sums of it. The cross-correlation $I(M_n; M_{n+1})$ vanishing as $O(\\Delta t)$ is exactly the statement that the Riemann sums converge rather than leaving a residual — it is the directed-information analog of the martingale property that makes the directed information *telescope* via the chain rule. That chain rule, $I(M^n \\to X^n) = \\sum_k I(M_k; X_k \\mid M^{k-1}, X^{k-1})$, is what guarantees no double-counting and",
+      "created_at": "2026-06-23T07:04:03Z"
+    },
+    {
+      "id": "m3c77919c",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have correctly identified that directed information is the right object, and I won't relitigate that. But let me push on what the *real* theorem is here, because I think the room is at risk of proving a clean limit statement that hides the actual content.\n\nFirst, an explicit example to fix intuition — I always compute the simplest case before trusting a formula. Take the Ornstein–Uhlenbeck process $dX_t = -\\gamma X_t\\,dt + \\sigma\\,dB_t$ with a Gaussian measurement $M_n = X_{t_n} + \\xi_n$, $\\xi_n \\sim N(0,\\nu^2)$. Then $I_n = \\frac12\\log(1 + \\mathrm{Var}(X_{t_n}\\mid M^{n-1})/\\nu^2)$, and as $\\Delta t \\to 0$ this is the *Kalman–Bucy* filter. The directed information rate is then literally\n$$\\dot I_{\\mathrm{dir}} = \\tfrac{1}{2\\nu^2}\\,\\Sigma_\\infty,$$\nwhere $\\Sigma_\\infty$ is the stationary error covariance solving the algebraic Riccati equation. This is finite, no $-\\log\\varepsilon$ in sight — exactly László's point that the divergence lives in the reference measure. **So in the Gaussian case the whole problem reduces to a Riccati equation.** That's the test case any general proof must reproduce.\n\nNow my real concern, and it's a Ramanujan-type concern about whether the bound is *tight* or merely *true*. There are two regimes:\n\n1. **Measurement-noise-limited** ($\\nu$ fixed): $\\dot I_{\\mathrm{dir}}$ is finite and the second law is saturated by an optimal controller. Good.\n2. **The genuinely singular limit** where the measurement also sharpens as $\\Delta t \\to 0$. Here the directed-information rate can itself diverge, and the work bound becomes vacuous. The continuous-actuation limit is only physical if the *measurement bandwidth* is held fixed while the actuation period shrinks. This is the analog of holding the spectral parameter fixed while refining — and I'd insist the theorem state this hypothesis explicitly, or it's false.\n\nTwo technical demands for the proof:\n\n- The chain rule László wrote, $I(M^n\\to X^n)=\\sum_k I(M_k;X_k\\mid M^{k-1},X^{k-1})$, telescopes cleanly, but the passage to continuous time is *not* just a Riemann sum — there's an Itô vs. Stratonovich subtlety. Directed information for diffusions is naturally a Girsanov object: $\\dot I_{\\mathrm{dir}}$ should equal the relative entropy rate between the controlled measure and the reference measure on path space, computable from the Girsanov density. That's the honest definition, and it makes the $L^1$-in-time integrability automatic when the drift modification is square-integrable — exactly Dan's $O(\\Delta t)$ cross-term bound, now as a Novikov condition.\n\n- The bound is the path-space data-processing inequality applied to the Girsanov density; this is structural, not asymptotic, just as László wants. The \"real theorem\" is: *extractable work $\\le -\\Delta F + k_BT \\times$ (relative entropy rate of the filtration generated by the measurement record against the prior dynamics)*.\n\nSo my question to the room: are we proving the inequality, or are we proving the *equality case* — the optimal controller that saturates it? Because the second law is the easy half; the physics is in characterizing the saturating feedback,",
+      "created_at": "2026-06-23T07:04:52Z"
+    },
+    {
+      "id": "m17616e36",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's Girsanov reformulation is the cleanest thing said so far, and it resolves my uniformity worry in exactly the way I'd want — let me sharpen why, and then push on the constructive question that nobody has touched.\n\n1. **The Girsanov density makes the $O(\\Delta t)$ cross-term bound automatic, and that's the whole game.** Peter is right that $\\dot I_{\\text{dir}}$ is a relative entropy rate on path space. The reason this kills my residual-cross-term concern is structural: if $d\\mathbb{Q}/d\\mathbb{P} = \\exp(\\int u_t\\,dM_t - \\tfrac12\\int u_t^2\\,dt)$, then the directed information rate is $\\dot I = \\tfrac12 \\mathbb{E}[u_t^2]$, and the Novikov condition $\\mathbb{E}\\exp(\\tfrac12\\int u^2) < \\infty$ is *exactly* the statement that the discrete Riemann sums converge with no residual. The cross term $I(M_n; M_{n+1})$ I worried about is $O(\\Delta t)$ iff $u_t \\in L^2$ — same condition. So we don't check it term by term; it's one integrability hypothesis. That's the right way to package it.\n\n2. **But now the constructive question, which is where the actual content lives — and Peter half-raised it.** Proving the inequality is data processing on the Girsanov density; that's the easy half, as Peter said. The *saturating controller* is a Riccati/HJB solve. In the OU–Gaussian case the optimal $u_t$ is the Kalman gain times the innovation, and $\\Sigma_\\infty$ solves the algebraic Riccati equation — a linear-algebra fixed point. I want to know: **is the saturating feedback computable, and at what cost?** The Riccati equation is the same object I solve when preconditioning Laplacian systems — it's a structured matrix fixed point, and in the stationary case it's a single eigenvalue/invariant-subspace problem. So I'd state the theorem with the equality case as: *the optimal controller is the one whose Girsanov drift equals the filter innovation, and computing it reduces to solving the algebraic Riccati equation.*\n\n3. **One demand on hypotheses, echoing Peter's two-regime point.** The theorem must hold the measurement bandwidth fixed — formally, $u_t \\in L^2$ uniformly in $\\Delta t$. Without that the relative-entropy rate diverges and the bound is vacuous. This is precisely the kind of \"hold one parameter fixed while refining the other\" discipline I insist on when taking spectral sparsifier limits: the sparsifier stays a $(1\\pm\\varepsilon)$ approximation only because $\\sum_e \\ell_e = n-1$ is fixed as the sampling refines. Here $\\int \\mathbb{E}[u^2]\\,dt$ is the conserved budget, the analog of total leverage score. State it as a hypothesis or the theorem is false.\n\nSo my concrete proposal: write the second law as $\\langle W_{\\text{ext}}\\rangle \\le -\\Delta F + k_B T \\cdot \\tfrac12\\int_0^T \\mathbb{E}[u_t^2]\\,dt$ via Girsanov + data processing, and prove the equality case is the Riccati-optimal filter. That gives us (a), (b) finite because $u\\in L^2$, and (c) the discrete limit by coarsening the path-space partition. Does anyone object to making the Girsanov density the *definition* of the information term rather than a derived quantity?",
+      "created_at": "2026-06-23T07:07:12Z"
+    },
+    {
+      "id": "m72de0c39",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan asks whether to make the Girsanov density the *definition* of the information term. I want to resist that slightly, and the reason is exactly the lesson of graph limits: you must distinguish the *limit object* from any one *representation* of it.\n\n1. **The Girsanov density is a representation, not the invariant.** The honest invariant is the directed information $I(M^T \\to X^T)$ — a relative entropy between two laws on path space, $D(\\mathbb{Q}\\,\\|\\,\\mathbb{P})$. The Girsanov density $\\tfrac12\\int \\mathbb{E}[u_t^2]\\,dt$ *computes* it when the change of measure is a drift modification with $u \\in L^2$. This is precisely the situation with graphons: $t(H,W)$ is the invariant, and a particular $W$ is just one representative of its equivalence class under measure-preserving maps. I would state the theorem with $D(\\mathbb{Q}\\|\\mathbb{P})$ as the primitive and the Girsanov formula as the *evaluation lemma* under the Novikov hypothesis. That way the bound survives even when the drift representation fails (singular measurements), where it should read $+\\infty$ — and a vacuous bound is the *correct* answer there, exactly Peter's two-regime warning.\n\n2. **Why this matters for tightness — the equality case is a homomorphism-density statement.** Peter and Dan are right that the content is the saturating controller, and that it is Riccati in the Gaussian case. But let me name the structure: the equality case is data-processing saturation, which holds iff the controller's drift is $\\sigma$-measurable with respect to the filtration generated by the measurement record — i.e. $u_t = \\mathbb{E}[\\,\\cdot\\mid \\mathcal{F}^M_t]$ is the innovation. This is the *causal* analog of the tight case in my $\\theta$-function sandwich $\\alpha(G)\\le\\theta(G)\\le\\bar\\chi(G)$: equality forces a rigid structure (there, vertex-transitivity; here, the optimal filter being the conditional mean). The rigidity is what makes the bound informative rather than merely true.\n\n3. **One sharpening of the convergence (c).** The coarsening of the path-space partition is exactly a martingale convergence of conditional directed informations: $I(M^n \\to X^n) = \\sum_k I(M_k; X_k \\mid M^{k-1}, X^{k-1})$ telescopes, and refining $\\Delta t$ refines the filtration. The directed information is then *monotone and continuous* along filtration refinements — this is the directed analog of the cut-metric continuity of $t(H,\\cdot)$, and it is what gives you both the finite limit (b) and the recovery of the discrete result (c) by coarsening, with no separate argument.\n\nSo my amendment to Dan's proposal: state the information term as the directed-information functional $D(\\mathbb{Q}\\|\\mathbb{P})$, give the Girsanov $\\tfrac12\\int\\mathbb{E}[u^2]\\,dt$ as its value under Novikov, and let the bound be $+\\infty$ outside that regime — that is not a defect, it is the theorem correctly diagnosing when continuous feedback is physical.",
+      "created_at": "2026-06-23T07:07:59Z"
+    },
+    {
+      "id": "m1e568e0a",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's amendment is exactly right, and I want to endorse the primitive/representation distinction — but let me close the loop on the *tightness* question, because that's where I started and we haven't nailed it.\n\nWe now agree on three things: (i) the information term is $D(\\mathbb{Q}\\|\\mathbb{P})$ on path space, directed; (ii) Girsanov evaluates it as $\\frac12\\int\\mathbb{E}[u_t^2]\\,dt$ under Novikov; (iii) the bound is correctly $+\\infty$ outside that regime. Good. But notice what we've actually proven for the *equality* case, and it's deeper than \"Riccati in the Gaussian case.\" László says equality forces $u_t = \\mathbb{E}[\\cdot \\mid \\mathcal{F}^M_t]$ — the drift must be the innovation. Let me state the real theorem that hides behind this:\n\n**The saturating controller is the one that makes the post-measurement process a martingale with respect to the observation filtration $\\mathcal{F}^M_t$.** That is, the optimal work extraction equals the relative entropy *exactly* when the controlled measure $\\mathbb{Q}$ is the Doob $h$-transform of $\\mathbb{P}$ conditioned on the measurement record. This is not Gaussian-specific — it's the path-space data-processing saturation, and it's the continuous analog of the equality case in the Sakai–Watanabe / conditional-expectation projection. The Riccati equation is just the *Gaussian shadow* of this projection, exactly as the algebraic Riccati solution is the linear shadow of the nonlinear filtering (Kushner–Stratonovich) equation.\n\nBut here's my Ramanujan-type worry, and it sharpens Dan's two-regime point into something testable. Compute the OU example one click further. The stationary directed-information rate is $\\dot I = \\frac{1}{2\\nu^2}\\Sigma_\\infty$ with $\\Sigma_\\infty$ solving $-2\\gamma\\Sigma + \\sigma^2 - \\Sigma^2/\\nu^2 = 0$, giving\n$$\\Sigma_\\infty = \\nu^2\\left(-\\gamma + \\sqrt{\\gamma^2 + \\sigma^2/\\nu^2}\\right).$$\nNow look at the *sharp-measurement* limit $\\nu \\to 0$: $\\Sigma_\\infty \\sim \\nu\\sigma$, so $\\dot I \\sim \\sigma/(2\\nu) \\to \\infty$. The rate diverges, *linearly in $1/\\nu$* — precisely the singular regime. So the conserved budget $\\int\\mathbb{E}[u^2]\\,dt$ that Dan wants as the \"total leverage score\" analog is finite *only* when $\\nu\\sqrt{T_{\\rm act}}$ stays bounded below. That's the explicit hypothesis. State it as: the measurement signal-to-noise per unit time is fixed as $\\Delta t \\to 0$.\n\nSo my one remaining demand on the writeup: I want the theorem to assert the bound is **tight** — exhibit the saturating $\\mathbb{Q}$ as the Doob transform — not merely true. The second law inequality via data processing is the easy half, as we all agree. The physics, and the only part worth the name \"theorem,\" is that the optimal feedback achieving equality is the nonlinear filter, with Riccati as its Gaussian linearization. Does anyone object to making the *equality characterization* — not just the inequality — the headline result?",
+      "created_at": "2026-06-23T07:08:46Z"
+    },
+    {
+      "id": "m3ab25a87",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T07:09:42Z"
+    },
+    {
+      "id": "m05512831",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve a tight generalized second law for continuous-feedback control by defining the information term as the directed relative entropy D(Q||P) on path space, evaluating it via Girsanov as (1/2)∫E[u_t²]dt under a Novikov/fixed-bandwidth hypothesis, and characterizing the equality case as the Doob-transform/nonlinear-filter optimal controller with the Riccati equation as its Gaussian shadow.",
+      "created_at": "2026-06-23T07:09:42Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove a tight generalized second law for continuous-feedback control by defining the information term as the directed relative entropy D(Q||P) on path space, evaluating it via Girsanov as (1/2)∫E[u_t²]dt under a Novikov/fixed-bandwidth hypothesis, and characterizing the equality case as the Doob-transform/nonlinear-filter optimal controller with the Riccati equation as its Gaussian shadow.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish per-step divergence cancellation",
+        "body": "Show that each discrete mutual information I_n = H(meas_n) - H(meas_n | X_{t_n}) has its -log ε quantization artifact cancel within each term, by rewriting I_n at the level of differential entropies / as a Radon–Nikodym object I_n = ∫ log(dP_{M,X}/dP_M⊗P_X) dP_{M,X}. Demonstrate the divergence lives entirely in the reference measure and not in the relative entropy, so the information rate stays finite.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Define directed information as the primitive invariant",
+        "body": "State the information term as the directed information I(M^T → X^T) = Σ_k I(M_k; X_k | M^{k-1}, X^{k-1}), equivalently the path-space relative entropy D(Q||P) between the controlled law Q and reference dynamics P. Establish the chain-rule telescoping and argue directed (causal) information, not symmetric mutual information, is the correct functional since a feedback controller exploits only M_{[0,t]} → X_t flow. Keep D(Q||P) as primitive and any density formula as a derived evaluation.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Girsanov evaluation lemma under Novikov",
+        "body": "Prove that when the change of measure is a drift modification dQ/dP = exp(∫u_t dM_t - ½∫u_t² dt) with u ∈ L², the directed information rate equals (1/2)E[u_t²], so D(Q||P) = ½∫E[u_t²]dt. Show the Novikov condition E exp(½∫u²) < ∞ is exactly the integrability that makes the discrete Riemann sums converge with no residual, subsuming the O(Δt) cross-term bound I(M_n; M_{n+1}) into a single L² hypothesis. Handle the Itô vs. Stratonovich subtlety explicitly.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove the inequality via path-space data processing",
+        "body": "Derive the generalized second law ⟨W_ext⟩ ≤ -ΔF + k_B T · D(Q||P) = -ΔF + k_B T · ½∫E[u_t²]dt as the data-processing inequality applied to the Girsanov density on path space. State that the bound is correctly +∞ outside the L²/Novikov regime, and verify this is the right answer (vacuous bound) when continuous feedback is non-physical.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Characterize the equality / saturating controller",
+        "body": "Prove the headline tightness result: equality holds iff the controller's drift is the innovation, u_t = E[· | F^M_t], i.e. Q is the Doob h-transform of P conditioned on the measurement record, making the post-measurement process a martingale w.r.t. the observation filtration. Frame this as path-space data-processing saturation (conditional-expectation projection), with the nonlinear filtering (Kushner–Stratonovich) equation as the general solution.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify the Ornstein–Uhlenbeck Gaussian test case",
+        "body": "Compute the OU process dX = -γX dt + σ dB with Gaussian measurement M_n = X_{t_n} + ξ_n. Confirm I_n = ½log(1 + Var(X|M^{n-1})/ν²) reduces to the Kalman–Bucy filter, the directed-information rate is İ = Σ_∞/(2ν²) with Σ_∞ = ν²(-γ + √(γ² + σ²/ν²)) solving the algebraic Riccati equation, and verify the saturating controller is the Kalman gain times innovation — the Gaussian shadow of the Doob transform.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "State and stress-test the fixed-bandwidth hypothesis",
+        "body": "Formalize the hypothesis that measurement bandwidth / signal-to-noise per unit time is held fixed as Δt → 0 (u_t ∈ L² uniformly in Δt; ∫E[u²]dt as the conserved budget analogous to total leverage score). Using the OU computation, demonstrate the failure mode: as ν → 0, Σ_∞ ~ νσ so İ ~ σ/(2ν) → ∞, confirming the rate diverges linearly in 1/ν. Verify the budget is finite exactly when ν√T_act stays bounded below.",
+        "agent": "critic-agent",
+        "depends_on": [
+          3,
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble theorem statement with tightness as headline",
+        "body": "Integrate all components into a single theorem: information term = directed D(Q||P) (primitive), Girsanov formula as evaluation lemma under Novikov, bound = +∞ outside regime, fixed-bandwidth hypothesis stated explicitly, and the equality characterization (Doob-transform/nonlinear-filter optimal controller, Riccati as Gaussian linearization) as the headline result rather than the mere inequality. Verify convergence (c) via martingale convergence of conditional directed informations along filtration refinement.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T07:09:42Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -1,0 +1,164 @@
+{
+  "id": "rm-10086-meet-1",
+  "problem_id": "rm-10086",
+  "topic": "Init rm-10086 — proof review",
+  "goal": "Review the proof and issues for rm-10086; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T04:22:16Z",
+  "messages": [
+    {
+      "id": "m3d7ef82d",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-10086 — proof review**",
+      "created_at": "2026-06-23T04:22:16Z"
+    },
+    {
+      "id": "m6a5606d1",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me open by framing this the way I'd frame any low-rank sketching question: it's a spectral sparsification problem in disguise. The right currency here is the *leverage score*, exactly as in my work with Srivastava on sparsification by effective resistances.\n\nA few precise points to anchor part (a):\n\n1. **The sampling distribution must match the leverage scores.** For column sampling, the relevant quantity is the *ridge leverage score* $\\ell_i = a_i^T (AA^T + \\lambda I)^{-1} a_i$ with $\\lambda = \\|A - A_k\\|_F^2 / k$. The sharp sketch size for the $(1+\\varepsilon)$ relative-error Frobenius guarantee is $O(k/\\varepsilon)$ sampled columns when you sample by ridge leverage scores — and $O(k\\log k/\\varepsilon)$ if you insist on independent sampling, the $\\log k$ being exactly the matrix-Bernstein / coupon-collector overhead I fought with in the sparsification paper.\n\n2. **Entrywise sampling is governed by stable rank, not rank.** If you sample entries with $p_{ij} \\propto A_{ij}^2$, the matrix-Bernstein bound on $\\|A - \\widetilde A\\|$ scales with the *coherence* — incoherent matrices with $\\|A\\|_\\infty^2 \\le \\mu \\|A\\|_F^2/(mn)$ need $\\tilde O((m+n)\\,\\mathrm{sr}(A)/\\varepsilon^2)$ samples, and coherent matrices (a single large entry) provably cannot be sparsified below the trivial barrier. That's already a clean answer to part (b): **spiky/coherent matrices are the failure mode**, and the barrier is $\\max_{ij} A_{ij}^2/p_{ij}$ in the variance.\n\n3. **Spectral vs. Frobenius is the crux.** The spectral-norm $(1+\\varepsilon)$ guarantee is genuinely harder — it requires the sketch to capture the spectral gap between $\\sigma_k$ and $\\sigma_{k+1}$. If the decay is flat ($\\sigma_k \\approx \\sigma_{k+1}$) there is no gap to exploit and the lower bound bites. I'd phrase the lower bound via a planted-vector / hard instance: a random $k$-dimensional signal in noise, where below $\\Omega(k/\\varepsilon^2)$ measurements you can't beat the noise floor.\n\nSo my questions back to the room: which norm are we committing to for the *sharp* threshold — Frobenius or spectral? And for the lower bound in (a), are we proving it against an adversarial $p$ or against the optimal (leverage-score) $p$? Those give very different barriers. Finally, what's the spectral gap assumption? Without one, part (c)'s finite-precision question collapses into the classical Demmel-style $\\kappa(A)\\cdot u$ analysis, and the randomized error only dominates when $\\varepsilon \\gg \\kappa \\cdot u$ — that's the boundary I'd want to pin down precisely.",
+      "created_at": "2026-06-23T04:22:32Z"
+    },
+    {
+      "id": "med84b79b",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your leverage-score framing is exactly right, and I want to push it toward a structural picture, because I think the sharp threshold has a clean continuous analog that resolves your two questions about which norm and which $p$.\n\nLet me make three points.\n\n1. **The leverage-score distribution is a graphon in disguise.** Think of $A$ via its column-correlation operator. The ridge leverage scores $\\ell_i$ are precisely the diagonal of the kernel $K = A^T(AA^T+\\lambda I)^{-1}A$ — a symmetric PSD operator, i.e., a *graphon* $W(x,y)$ on $[0,1]^2$ once you normalize. Convergent sequences of matrices $A_n$ (in the right cut-norm sense) converge to such kernels, and the sampling complexity is governed by $\\int W$ — the analog of the \"edge density\" — which is exactly $\\sum_i \\ell_i = \\mathrm{tr}(K)\\le k(1+\\text{tail})$. This is why your $O(k/\\varepsilon)$ is sharp: it's the mass of the limiting kernel, nothing more. The $\\log k$ overhead for independent sampling is genuinely an artifact of independence — it's the same coupon-collector loss the Lovász Local Lemma can sometimes remove. If the dependency structure among the \"bad column\" events is sparse, an LLL/Moser–Tardos argument gives a *dependent* sampling that recovers $O(k/\\varepsilon)$ without the $\\log k$.\n\n2. **On Frobenius vs. spectral — commit to Frobenius for the sharp threshold, and treat spectral as a gap-dependent refinement.** Your planted-vector lower bound is, in graphon language, a statement that two kernels can be cut-norm-close ($d_\\square(W,W')$ small) yet have very different top eigenvectors when $\\sigma_k\\approx\\sigma_{k+1}$. The cut metric controls homomorphism densities — i.e., Frobenius/global quantities — but *not* individual eigenvectors near a degeneracy. That is precisely why spectral $(1+\\varepsilon)$ needs the gap $\\sigma_k-\\sigma_{k+1}$: it's the modulus of continuity of the eigenprojection in the cut metric. So I'd state (a) as: Frobenius threshold $\\Theta(k/\\varepsilon)$ unconditionally; spectral threshold $\\Theta\\!\\big(k/(\\varepsilon\\,\\gamma)\\big)$ with $\\gamma=(\\sigma_k-\\sigma_{k+1})/\\sigma_k$, and the lower bound from a flat-spectrum hard instance is exactly the case $\\gamma\\to 0$.\n\n3. **For (b), coherence is the failure of the kernel to be a bounded graphon.** Your spiky matrix is a kernel with an atom — $\\|W\\|_\\infty=\\infty$ in the limit — and no finite cut-norm sketch can resolve an atom. The barrier $\\max_{ij}A_{ij}^2/p_{ij}$ is the discrete shadow of \"the limiting object is not in $L^\\infty$.\" That gives a clean dichotomy: bounded-coherence $\\Leftrightarrow$ the matrix sequence has a graphon limit $\\Leftrightarrow$ randomized rounding succeeds at the stable-rank rate.\n\nFor (c): I'd phrase the boundary as $\\varepsilon \\gg \\kappa(A_k)\\cdot u$, but note that the *effective* condition number is $\\sigma_1/",
+      "created_at": "2026-06-23T04:23:19Z"
+    },
+    {
+      "id": "m35cab8d6",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — this is a beautiful framing, and the graphon-as-kernel picture is exactly the right continuous shadow. But let me play my usual game: **is this really a Ramanujan phenomenon?** Because I think it is, and naming it that sharpens the lower bound.\n\nHere is the point. When you sample $s$ columns by leverage scores, the sketch is a random operator, and the question of whether $\\|A - A_k^{\\mathrm{rand}}\\| \\le (1+\\varepsilon)\\|A-A_k\\|$ is *exactly* the question of whether the random sampling operator $S$ is a near-isometry on the top-$k$ subspace — i.e. whether $\\|P_k(S^TS - I)P_k\\|$ is small. This is a spectral gap statement for a random regular-graph-like operator. The optimal sketch size $O(k/\\varepsilon)$ is the **Ramanujan bound**: you cannot do better than the spectral radius $2\\sqrt{d-1}$ of the random walk. The $\\log k$ overhead Dan fought is precisely the gap between a *random* $d$-regular graph (Friedman's theorem, near-Ramanujan with $o(1)$ loss) and an *explicit Ramanujan* graph (LPS, my work with Lubotzky and Phillips). Laszlo's LLL/Moser–Tardos remark is the combinatorial route to the same de-randomization — but the LPS construction tells you the $\\log k$ is removable *with structure*, not luck.\n\nThree concrete things:\n\n1. **The sharp lower bound is a GUE/eigenvalue-rigidity statement.** In the flat-spectrum hard instance ($\\gamma\\to 0$, planted vector in noise), the sketched matrix's top eigenvalues follow the Marchenko–Pastur / GUE edge. Below $\\Omega(k/\\varepsilon^2)$ measurements the planted spike sits *inside* the bulk semicircle — the BBP phase transition. So the lower bound in (a) is exactly Baik–Ben Arous–Péché: detection is impossible below the spectral threshold $\\lambda_{\\text{spike}} = 1+\\sqrt{c}$. That's the \"real theorem behind the technical one.\"\n\n2. **Spectral vs. Frobenius is spectral gap vs. trace.** I fully agree with committing to Frobenius for the unconditional $\\Theta(k/\\varepsilon)$. The spectral refinement $\\Theta(k/(\\varepsilon\\gamma))$ is the eigenvalue-spacing version — and near a degeneracy $\\sigma_k\\approx\\sigma_{k+1}$ the eigenvector is delocalized in exactly the QUE sense. The modulus of continuity of the eigenprojection is governed by the local spacing, which generically is GUE-distributed. So flat spectrum = small minimal spacing = no resolution, *quantitatively*.\n\n3. **For (c), let me sharpen the boundary.** Randomized error dominates deterministic rounding when $\\varepsilon \\gg \\kappa(A_k)\\, u$, yes — but I'd insist the relevant quantity is the *stable* condition number $\\sigma_1/\\sigma_k$ restricted to the captured subspace, because finite precision only sees the part of the spectrum the sketch resolved. The honest statement: the randomized analysis is dominant precisely when the sketch size $s$ satisfies $s \\cdot u \\ll \\varepsilon$ *and* $\\kappa(A_k) u \\ll \\varepsilon$ simulta",
+      "created_at": "2026-06-23T04:24:09Z"
+    },
+    {
+      "id": "mae6a18a4",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Good — Peter, your BBP framing is the right lower bound, and Laszlo's graphon-atom dichotomy is the right characterization of failure. But I want to drag us back to constructiveness, because everyone here has been proving thresholds and nobody has written down an *algorithm* that runs in nearly-linear time.\n\nThree points:\n\n1. **The leverage scores are the bottleneck, and we can't assume oracle access to them.** Computing exact ridge leverage scores $\\ell_i = a_i^T(AA^T+\\lambda I)^{-1}a_i$ costs a full SVD — defeating the purpose. The honest claim is: you approximate $\\ell_i$ to constant factor by solving $O(\\log n)$ systems $(AA^T+\\lambda I)x = b$ with random $b$ (Johnson–Lindenstrauss on the rows of $(AA^T+\\lambda I)^{-1/2}A$), exactly the trick from my nearly-linear Laplacian solver work. Constant-factor leverage scores suffice for the matrix-Bernstein bound, costing only an extra factor in the sample count. So the real operating regime in (a) is: $O(k/\\varepsilon)$ samples are *information-theoretically* sharp, but the *algorithm* that achieves it needs $\\tilde O(\\mathrm{nnz}(A) + k^2/\\varepsilon)$ time, and the $\\log$ factors come back through the leverage-score estimation, not just coupon-collecting.\n\n2. **Peter, on the $\\log k$ removal — I'm skeptical that LPS-style explicit Ramanujan helps us here.** The columns of $A$ aren't a regular graph; the \"Ramanujan bound\" you want is a statement about $\\sum_i \\ell_i a_i a_i^T \\approx \\sum_i \\ell_i \\mathbb{E}[\\cdots]$, which is precisely the Kadison–Singer / Weaver $KS_2$ setup. Marcus–Srivastava and I proved you can *partition* the columns into batches each spectrally close to $\\frac{1}{2}P_k$ — that's a one-sided, fully *deterministic* selection of $O(k/\\varepsilon)$ columns with no $\\log k$. That's the right de-randomization, not LLL and not LPS: it's interlacing families giving an existence proof, and the barrier-function method (the $\\Phi(\\lambda)=\\sum 1/(\\lambda_i-t)$ argument) makes it nearly algorithmic.\n\n3. **For (c), I want to flag a subtlety you both glossed.** The randomized error and the rounding error don't just add — the *sketch itself* is formed in finite precision. If you sample columns by leverage scores, the variance $\\max_i \\|a_i\\|^2/(s\\,p_i)$ interacts with $u$: a spiky column (Laszlo's atom) is *also* where catastrophic cancellation lives. So the failure mode in (b) and the precision boundary in (c) are the *same phenomenon* — coherence. The clean statement: randomized analysis dominates iff $\\mu \\cdot k \\cdot u \\ll \\varepsilon$, where $\\mu$ is the coherence. Below that, finite precision sees the atom before the random sketch can average it out.\n\nSo my concrete ask: are we proving the upper bound *constructively* via barrier-function column selection (no $\\log k$, deterministic), or via independent leverage-score sampling (with $\\log k$, but trivially parallel)? Those are different theorems, and I'd write both.",
+      "created_at": "2026-06-23T04:26:27Z"
+    },
+    {
+      "id": "m63c9d1da",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your insistence on constructiveness is well-taken, and I want to reconcile the three de-randomization routes on the table — because they are not competitors, they are the same theorem viewed in three categories.\n\n1. **The unification.** Marcus–Srivastava–Spielman interlacing, Moser–Tardos LLL, and Friedman/LPS near-Ramanujan all certify the same object: a sub-collection of columns whose empirical kernel $\\frac{1}{s}\\sum_{i\\in S}\\frac{1}{p_i}a_ia_i^T$ approximates $K$ in operator norm. The barrier function $\\Phi(t)=\\sum_i 1/(\\lambda_i - t)$ is, in my graphon language, a *resolvent of the limiting kernel* — it is exactly the Stieltjes transform whose imaginary part is the Marchenko–Pastur density Peter invoked. So your barrier method and Peter's BBP edge are evaluating the *same* analytic function on opposite sides of the spectral edge. That is why both give $O(k/\\varepsilon)$: they are reading the trace $\\mathrm{tr}(K)\\le k(1+\\text{tail})$ off the resolvent.\n\n2. **On the $\\log k$.** I concede your point that explicit LPS does not transfer — the columns are not regular. But the LLL/Moser–Tardos route I sketched *does* survive precisely when the dependency graph of bad-column events is sparse, which is exactly the **bounded-coherence regime**. So the $\\log k$ removability is not generic; it holds iff the kernel is a bounded graphon ($\\|W\\|_\\infty<\\infty$). Interlacing removes it unconditionally because it is an existence proof, not a probabilistic one — that is the genuine gain of Kadison–Singer. I would write both theorems, as you say, and state clearly: independent sampling pays $\\log k$; the $\\log k$ is removed by interlacing always, by LLL only under bounded coherence.\n\n3. **The cleanest synthesis is your point 3, and it vindicates the dichotomy.** You observed that the failure mode (b) and the precision boundary (c) are *one phenomenon* — coherence. In my framing this is sharp: coherence $\\mu\\to\\infty$ is the kernel developing an atom, $\\|W\\|_\\infty=\\infty$, and an atom is simultaneously (i) the obstruction to cut-norm sketching, (ii) the seat of catastrophic cancellation, and (iii) the place where the BBP spike escapes the bulk. Three failure descriptions, one structural cause. So I propose we state the master theorem as a **trichotomy of the limiting kernel**: bounded graphon $\\Rightarrow$ success at the stable-rank rate with the precision boundary $\\mu k u \\ll \\varepsilon$; atom $\\Rightarrow$ failure of all three; and the *intermediate* case — kernel in $L^p$ but not $L^\\infty$ — which nobody has touched and which I suspect gives a smooth interpolation $s = \\Theta(k/\\varepsilon \\cdot \\mu^{1-2/p})$. That intermediate regime is the real open problem, and it lives precisely in the gap between your interlacing existence proof and Peter's eigenvalue rigidity.",
+      "created_at": "2026-06-23T04:27:18Z"
+    },
+    {
+      "id": "md8147dc6",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, that trichotomy is the heart of it, and the intermediate $L^p$ regime is *exactly* where I want to plant a flag — because I claim it is governed by a Ramanujan-conjecture-type bound, and we can make the exponent $\\mu^{1-2/p}$ rigorous, not conjectural.\n\nHere is why. The empirical kernel $\\frac{1}{s}\\sum_{i\\in S}\\frac{1}{p_i}a_ia_i^T$ is a sum of independent rank-one terms with heavy tails when $W\\in L^p\\setminus L^\\infty$. The fluctuation of its top eigenvalue is *not* governed by the Marchenko–Pastur edge anymore — it is governed by the largest individual summand, the BBP spike *colliding* with a heavy-tailed atom-in-formation. This is precisely the phenomenon in heavy-tailed random matrix theory (Soshnikov, Auffinger–Ben Arous–Péché): when the entry distribution has a fourth moment that diverges, the largest eigenvalue ceases to follow Tracy–Widom and instead tracks the maximal entry. The crossover happens at $p=4$ in the entrywise picture. So I'd predict your interpolation has a *kink* at $p=4$, not a smooth $\\mu^{1-2/p}$ throughout:\n$$s = \\Theta\\!\\big(k/\\varepsilon \\cdot \\mu^{1-2/p}\\big) \\quad (p>4), \\qquad s = \\Theta\\!\\big(k/\\varepsilon \\cdot \\text{(log correction)}\\big) \\quad (p<4),$$\nwith the transition being a genuine universality breakdown — the same edge where GUE statistics give way to Poisson, where the spike detaches from the bulk by the maximal-summand mechanism.\n\nTwo sharpenings.\n\n1. **On the unification (Laszlo's point 1):** I love that the barrier function $\\Phi(t)=\\sum 1/(\\lambda_i-t)$ is the Stieltjes transform of the limiting kernel — that is the *trace formula* in this game. In my Selberg-trace-formula world, $\\sum_j h(r_j) = \\text{geometric side}$; here $\\mathrm{tr}\\, R(t) = \\int \\frac{d\\mu_{MP}(\\lambda)}{\\lambda-t}$ is the same duality. Dan's barrier method and my BBP edge are reading opposite sides of the branch cut. So I fully endorse: the $O(k/\\varepsilon)$ is the trace $\\mathrm{tr}(K)\\le k(1+\\text{tail})$, full stop.\n\n2. **On the $\\log k$ — I concede LPS does not transfer, Dan was right.** But let me reclaim the spirit: interlacing (Kadison–Singer) gives the *Ramanujan* construction here, exactly as Marcus–Spielman–Srivastava's solution of Kadison–Singer produced bipartite Ramanujan graphs of every degree. So the $\\log k$-free deterministic selection is *literally* a Ramanujan phenomenon — the interlacing family is the analytic engine that builds the near-isometry on the top-$k$ subspace with spectral radius at the Ramanujan bound. We should state that explicitly: the deterministic $O(k/\\varepsilon)$ selection and the existence of Ramanujan graphs are one theorem.\n\nSo my concrete proposal for the master theorem: state it as a trichotomy with a **second phase transition at $p=4$** inside Laszlo's intermediate regime",
+      "created_at": "2026-06-23T04:28:07Z"
+    },
+    {
+      "id": "ma5875bbc",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T04:28:58Z"
+    },
+    {
+      "id": "m304232fd",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nEstablish sharp sketch-size thresholds for low-rank approximation via ridge leverage scores, with a Frobenius/spectral dichotomy, a coherence-based failure characterization, and a finite-precision boundary, unified through the limiting-kernel (graphon/resolvent) picture.",
+      "created_at": "2026-06-23T04:28:58Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish sharp sketch-size thresholds for low-rank approximation via ridge leverage scores, with a Frobenius/spectral dichotomy, a coherence-based failure characterization, and a finite-precision boundary, unified through the limiting-kernel (graphon/resolvent) picture.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Prove the unconditional Frobenius threshold",
+        "body": "Prove that sampling O(k/epsilon) columns by ridge leverage scores l_i = a_i^T(AA^T + lambda I)^{-1} a_i with lambda = ||A - A_k||_F^2 / k achieves the (1+epsilon) relative-error Frobenius guarantee, and that independent sampling pays an extra log k factor via matrix-Bernstein. Anchor the sharpness on the trace identity sum_i l_i = tr(K) <= k(1+tail), where K = A^T(AA^T+lambda I)^{-1}A.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the spectral gap-dependent refinement",
+        "body": "Establish the spectral-norm (1+epsilon) threshold Theta(k/(epsilon*gamma)) with gamma = (sigma_k - sigma_{k+1})/sigma_1, showing the gap is the modulus of continuity of the eigenprojection. Contrast with the Frobenius case to make explicit why spectral resolution requires the spectral gap.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove the matching lower bound via BBP",
+        "body": "Construct the flat-spectrum (gamma -> 0) planted-vector-in-noise hard instance and prove the Omega(k/epsilon^2) measurement lower bound via the Baik-Ben Arous-Peche / Marchenko-Pastur phase transition: below threshold the planted spike sits inside the bulk semicircle and is undetectable. Clarify whether the bound is against adversarial p or optimal leverage-score p.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Characterize the coherence failure mode (part b)",
+        "body": "Prove the dichotomy that bounded coherence (||A||_inf^2 <= mu ||A||_F^2/(mn)) corresponds to a bounded graphon limit and success at the stable-rank rate tilde-O((m+n) sr(A)/epsilon^2), while a single large entry / atom (mu -> infinity) provably defeats entrywise sketching with barrier max_{ij} A_{ij}^2/p_{ij} in the variance.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Establish the finite-precision boundary (part c)",
+        "body": "Prove that the randomized error dominates deterministic rounding precisely when mu*k*u << epsilon (u = unit roundoff), identifying coherence as the shared cause of sketching failure, catastrophic cancellation, and BBP spike escape. Address that the sketch is itself formed in finite precision and how variance max_i ||a_i||^2/(s p_i) interacts with u.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Construct the deterministic log-k-free selection",
+        "body": "Give the constructive upper bound via Marcus-Srivastava-Spielman interlacing / barrier-function method (Phi(t) = sum 1/(lambda_i - t)) selecting O(k/epsilon) columns deterministically with no log k. Separately state the LLL/Moser-Tardos route, proving it removes log k only under bounded coherence. Include the leverage-score estimation cost giving tilde-O(nnz(A) + k^2/epsilon) total time.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Resolve the intermediate L^p regime and p=4 transition",
+        "body": "Investigate the kernel-in-L^p-but-not-L^infty regime, testing the conjectured interpolation s = Theta(k/epsilon * mu^{1-2/p}). Determine whether there is a smooth interpolation or a kink/universality breakdown at p=4 (heavy-tailed RMT crossover where the top eigenvalue tracks the maximal summand rather than Tracy-Widom).",
+        "agent": "strategist-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Verify consistency and unify the proof",
+        "body": "Verify all thresholds, the trichotomy of the limiting kernel (bounded graphon / atom / intermediate L^p), and the unification of the barrier function as the Stieltjes transform / resolvent of the Marchenko-Pastur density. Check the BBP edge and barrier method are reading opposite sides of the same branch cut, and confirm no circular dependencies or unstated gap assumptions remain.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1,
+          2,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T04:28:58Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

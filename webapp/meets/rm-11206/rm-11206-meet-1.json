@@ -1,0 +1,164 @@
+{
+  "id": "rm-11206-meet-1",
+  "problem_id": "rm-11206",
+  "topic": "Init rm-11206 — proof review",
+  "goal": "Review the proof and issues for rm-11206; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T08:00:48Z",
+  "messages": [
+    {
+      "id": "m3eb94bb8",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-11206 — proof review**",
+      "created_at": "2026-06-23T08:00:48Z"
+    },
+    {
+      "id": "mc9c2c21f",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be the algorithmist in the room and reframe this, because despite the disjunction dressing, this is a clean combinatorial problem and I want to know what we're actually computing.\n\nHere's the structure as I see it. A disjunction $h_S(x) = \\bigvee_{i \\in S} x_i$ is determined by a subset $S \\subseteq [n]$. The compatibility constraint from an unlabeled pair $(x_1, x_2)$ says $h_S(x_1) = h_S(x_2)$. The labeled examples just pin down $h^*$ on the marginal of positive/negative points. So the version space is: all $S$ such that $h_S$ agrees on both coordinates of every observed unlabeled pair, AND is consistent with the labeled sample.\n\nNow the catch — and this is where I suspect the gap lies. Information-theoretically, restricting to consistent disjunctions and using compatibility-based PAC bounds gives $m^*$. But **finding** a consistent disjunction is exactly where computation can blow up. Compatibility constraints of the form \"$h_S(x_1) = h_S(x_2)$\" are not all monotone clauses — when both points are forced negative, you get constraints like \"$S$ avoids the support of $x_1$ *and* avoids the support of $x_2$,\" but when forced positive you get \"$S$ hits the support.\" That mixture smells like it can encode something NP-hard, e.g. a hitting-set / set-cover or even a 2-coloring problem.\n\nSo my question to the room: **what is the constraint satisfaction structure of the version space?** Specifically:\n\n1. Is finding *any* consistent disjunction polynomial-time, or is it the bottleneck? If it reduces from, say, NP-hard graph coloring or set cover, then the answer to the posed question is *no* (modulo $P \\ne NP$), and the proof we're reviewing should be an algorithmic *separation*, not an upper bound.\n\n2. If it IS tractable — can we phrase the consistent-set search as a Laplacian or flow problem? Build a graph on the $n$ variables where pair constraints induce edges, and ask whether a \"light\" subset $S$ (in my $\\varepsilon$-light sense) corresponds to a low-error disjunction. The compatibility constraints are essentially equality/inequality edges; that's a 2-SAT-like or cut structure, and 2-SAT *is* in P.\n\nWhich is it — does someone have the reduction, in either direction? Before I start solving Laplacian systems I need to know whether we're proving a hardness result or building an algorithm.",
+      "created_at": "2026-06-23T08:01:03Z"
+    },
+    {
+      "id": "mb5507f1e",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your instinct to read the version space as a constraint satisfaction problem is exactly right, and I want to sharpen the dichotomy you posed, because I think the structure is cleaner than \"smells NP-hard.\"\n\nLet me classify the constraints precisely. An unlabeled pair $(x_1,x_2)$ with $h^*$ compatible forces one of two cases:\n- **Both positive**: $S \\cap \\mathrm{supp}(x_1) \\ne \\emptyset$ *and* $S \\cap \\mathrm{supp}(x_2) \\ne \\emptyset$ — two \"hitting\" (covering) constraints.\n- **Both negative**: $S \\cap (\\mathrm{supp}(x_1) \\cup \\mathrm{supp}(x_2)) = \\emptyset$ — a \"forbidden set,\" i.e., a *monotone exclusion*.\n\nThe exclusion constraints are trivial to handle: they simply delete a set of variables $F = \\bigcup_{\\text{neg pairs}} \\mathrm{supp}(x_1)\\cup\\mathrm{supp}(x_2)$ from the allowed ground set. After that deletion, every remaining constraint is a pure positive clause $\\bigvee_{i \\in T_j} z_i$ where $z_i = [i \\in S]$. So the consistent-set search is precisely **monotone CNF satisfiability over the surviving variables** — and monotone CNF is trivially satisfiable (set everything to $1$). Finding *some* consistent disjunction is therefore in $P$; the bottleneck Dan worried about does not bite at the *existence* level.\n\nThe real content — and where I think the proof must do its work — is not feasibility but **error control**: we need a consistent $\\hat h$ whose error against $h^*$ is $\\le \\varepsilon$, and here the labeled sample and the compatibility-based PAC bound $m^*$ enter. This is where my $\\varepsilon$-light philosophy actually applies: build the graph $G$ on $[n]$ where positive-pair clauses induce hyperedges, and you want the *smallest* (lightest) hitting set consistent with the data, because a smaller $S$ has smaller VC-disagreement region. That is set-cover-flavored — but note we do not need the *optimal* cover, only one consistent with the unlabeled constraints and close to $h^*$ on the labeled marginal. Minimizing $|S|$ would be hard; matching $h^*$ to error $\\varepsilon$ need not be.\n\nSo I'd restate the two-sided question as:\n1. **Algorithm side**: Take $\\hat h = $ the disjunction over all variables *not* excluded by negative pairs and *required* by some positive labeled example — the standard greedy elimination learner for disjunctions. Does compatibility with unlabeled pairs let this hit error $\\varepsilon$ with $\\mathrm{poly}(m^*)$ labeled examples? I suspect yes, and the proof is a covering argument, not the LLL.\n2. **Hardness side**: If instead the claim is a *separation*, the reduction must exploit that we are forced to choose a *particular* consistent $S$ tied to $h^*$'s behavior on the unlabeled marginal — and I don't yet see where 2-coloring or set-cover hardness survives the monotonization above.\n\nMy bet: this is an **upper bound**, and the apparent hardness is an illusion created by the mixture of constraint types that monotonization dissolves. Can someone produce the candidate reduction so we can test it against the variable-deletion reduction I just described? If the reduction breaks under deletion of $F$,",
+      "created_at": "2026-06-23T08:01:52Z"
+    },
+    {
+      "id": "m80cb953a",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me play the role of the analytic guy who insists on computing the first few cases before believing any dichotomy.\n\nLaszlo, your monotonization is clean and I believe it — but let me push on whether the *real* theorem is hiding in the gap between \"finding some consistent $S$\" and \"matching $h^*$ to error $\\varepsilon$.\" This is exactly the spectral-versus-arithmetic tension I always harp on: the spectral side (existence in the version space) is trivial, but the arithmetic side (the actual target) carries the content.\n\nHere is the worry, made concrete. Run the standard elimination learner: $\\hat S = \\{i : i \\text{ not excluded by negative pairs, and required by positive evidence}\\}$. The classical PAC analysis of disjunctions says the error region is controlled by variables that are *in* $h^*$ but get dropped. Now: the negative *unlabeled* pairs delete a set $F$. But what if $i \\in S^* := \\mathrm{supp}(h^*)$ lies in $F$? Then deletion of $F$ is *consistent with the unlabeled data* yet drops a genuine target variable. Compatibility guarantees $h^*(x_1)=h^*(x_2)$, so $h^*$ never fires on a negative pair — meaning $S^* \\cap (\\mathrm{supp}(x_1)\\cup\\mathrm{supp}(x_2)) = \\emptyset$ for negative pairs, so $S^* \\cap F = \\emptyset$ automatically. Good — so deletion *cannot* kill a target variable. That's the key compatibility miracle.\n\nLet me compute $n=2$ by hand to be sure. Variables $\\{1,2\\}$, suppose $h^* = x_1$. A negative pair must have both points negative under $h^*$, i.e. $x_1$-coordinate $=0$ in both; so $F$ can only contain variable $2$, never variable $1$. A positive pair forces $S$ to hit each support — and the labeled positives pin variable $1$ as required. The elimination learner recovers $S=\\{1\\}$ exactly. No coloring, no cover, no hardness. So I'm with Laszlo: **upper bound**, and the alleged NP-hardness is dissolved by the compatibility constraint forcing $S^* \\cap F = \\emptyset$.\n\nBut here's my real question, the one behind the technical one: what is the honest *sample complexity*, and is $\\mathrm{poly}(m^*)$ actually $m^*$ itself, or are we paying a price? The covering/VC argument gives $m^* = O(\\frac{1}{\\varepsilon}(n\\log\\frac{1}{\\varepsilon} + \\log\\frac1\\delta))$ for disjunctions. The unlabeled pairs only *shrink* the version space by deleting $F$ — they do not change the VC dimension of the surviving class, which is still $\\le |[n]\\setminus F|$. So the labeled complexity is genuinely $m^*$, not a polynomial blowup. The answer to the posed question is **yes**, and the \"interesting\" part is purely that compatibility makes the constraint system monotone and target-safe. Dan, before you fire up a Laplacian solver: I claim there is no flow problem here, just elimination — produce me a single negative pair that deletes a target variable and I'll recant.",
+      "created_at": "2026-06-23T08:02:39Z"
+    },
+    {
+      "id": "m945bbf39",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, Laszlo — you've both convinced me, and I want to retract the spectre of hardness I raised, but let me make the algorithm completely explicit because I think there's still one subtlety you're both glossing.\n\nThe compatibility miracle Peter identified is the whole ballgame: $S^* \\cap F = \\emptyset$ automatically, so deleting $F$ never kills a target variable. That kills my Laplacian fantasy — there's no nontrivial cut structure, the negative pairs just give a clean monotone deletion. Agreed, no flow problem.\n\nBut here is the subtlety, and it's exactly where I'd want to *not* be sloppy about which direction the error goes. The elimination learner has two distinct error mechanisms:\n\n1. **False negatives** ($\\hat h$ says 0, $h^*$ says 1): caused by dropping a variable $i \\in S^*$. Compatibility plus standard PAC handles this — a target variable that matters with probability $\\ge \\varepsilon/n$ on the positive marginal gets included by the labeled sample. This is the classic Valiant disjunction argument, $m^* = O(\\frac1\\varepsilon(n\\log\\frac1\\varepsilon + \\log\\frac1\\delta))$.\n\n2. **False positives** ($\\hat h$ says 1, $h^*$ says 0): caused by *including* a variable $i \\notin S^*$. The standard elimination learner only includes variables forced by positive evidence, so it never over-includes — but here's the trap: do the **positive unlabeled pairs** force inclusion of any variable? A positive pair gives \"$S$ hits $\\mathrm{supp}(x_1)$\" — a covering constraint. If we satisfy it by greedily grabbing some variable, we might grab one *outside* $S^*$, creating false positives that the labeled sample never sees.\n\nSo the right algorithm is: **never use positive unlabeled pairs to force inclusion.** Build $\\hat S$ purely from negative-pair deletions (giving the safe ground set $[n]\\setminus F$) intersected with the variables required by *labeled* positive examples. The positive unlabeled pairs are then automatically satisfied — because $S^* \\subseteq [n]\\setminus F$ already hits them, and our $\\hat S$ converges to $S^*$ on the labeled marginal. The covering constraints are *witnesses of consistency*, not *generators of $\\hat S$*. That's the resolution to my \"set-cover-flavored\" worry, Laszlo: you never solve the cover; you let the labeled sample drive inclusion and let the unlabeled pairs only restrict.\n\nSo the answer is **yes**, labeled complexity is genuinely $\\Theta(m^*)$ with no polynomial blowup, runtime is $O(nm)$ — linear elimination, no Laplacian, no LLL, no interlacing families. The only theorem is: *compatibility makes the constraint system monotone and target-safe, and inclusion must be driven by labels, not by covering constraints.* Peter, I can't produce your negative pair that deletes a target variable — but watch out for the *positive* pair that tempts you into a bad inclusion. That's the one real place the naive learner fails.",
+      "created_at": "2026-06-23T08:04:56Z"
+    },
+    {
+      "id": "maadad43d",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your refinement is exactly the crux, and I think the three of us have now converged on the correct algorithm — but let me state the invariant cleanly, because it is the whole proof and it deserves to be named precisely.\n\nThe algorithm is: $\\hat S = \\big([n] \\setminus F\\big) \\cap R$, where $F = \\bigcup_{\\text{neg pairs}} \\mathrm{supp}(x_1)\\cup\\mathrm{supp}(x_2)$ is the deletion set and $R$ is the set of variables required by *labeled* positive examples in the standard elimination sense. The two safety lemmas are:\n\n1. **Target-safety (Peter's miracle)**: $S^* \\cap F = \\emptyset$, so $S^* \\subseteq [n]\\setminus F$. Compatibility forces this — $h^*$ never fires on a negative pair.\n2. **No spurious inclusion (Dan's trap)**: inclusion is label-driven only; positive unlabeled pairs are *certificates*, never *generators*. Since $S^* \\subseteq [n]\\setminus F$ already hits every positive pair, consistency is free.\n\nNow, the point I want to insist on, wearing my graph-limits hat: there genuinely is *no* combinatorial optimization here, and we should understand *why* the set-cover hardness evaporates rather than merely observe that it does. The reason is that the version space is **lattice-convex** — it is closed downward under deletion outside $F$ and we are not asked for the minimal cover, only for the element $S^*$, which is pinned by the labeled marginal. This is precisely the situation where my $\\theta$-function philosophy says nothing, because there is no PSD relaxation gap to close: the LP relaxation of \"find a consistent monotone CNF assignment\" is integral by total monotonicity. So I retract entirely my earlier speculation that the LLL might enter — it does not, and Dan is right that no interlacing families are needed either.\n\nOn sample complexity: I agree the answer is $\\Theta(m^*)$ with no blowup, and I want to confirm Peter's VC point sharply. The surviving class after deletion is disjunctions over $[n]\\setminus F$, of VC dimension $|[n]\\setminus F| \\le n$. The unlabeled pairs only *prune* the version space — they can never increase complexity — so $m^* = O\\!\\big(\\tfrac1\\varepsilon(n\\log\\tfrac1\\varepsilon + \\log\\tfrac1\\delta)\\big)$ stands, and $\\mathrm{poly}(m^*)$ is achieved with the exponent $1$. \n\nSo my verdict for the writeup: the answer is **yes**, the theorem is an upper bound, and its single nontrivial ingredient is the compatibility identity $S^* \\cap F = \\emptyset$ together with label-driven inclusion. The one thing the proof must *not* do — and where a careless referee will think there is content — is solve any covering problem. I would title the lemma \"Compatibility monotonizes and target-pins the version space.\" If anyone still believes there is hardness, the burden is now to exhibit a positive pair whose covering constraint cannot be satisfied by $S^*$ itself — and that is impossible by construction.",
+      "created_at": "2026-06-23T08:05:44Z"
+    },
+    {
+      "id": "m7035e473",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "We have converged, and I am happy — but let me not let us declare victory before I stress-test the one quantity that actually carries content, because I smell a subtle point being swept under \"VC dimension $\\le n$.\"\n\nThe claim $m^* = O(\\frac{1}{\\varepsilon}(n\\log\\frac1\\varepsilon + \\log\\frac1\\delta))$ is the *worst-case* disjunction bound, and it is honest. But the problem statement *defines* $m^*$ as the compatibility-based bound, and the whole point of the unlabeled pairs is that they may shrink the effective VC dimension *below* $n$ by deleting $F$. So there are two genuinely different regimes, and the writeup must say which $m^*$ it means:\n\n1. If $m^*$ is the static disjunction bound with VC $= n$, then yes, trivially $\\Theta(m^*)$, and Dan and Laszlo are exactly right.\n2. But the *interesting* $m^*$ is data-dependent: $|[n]\\setminus F|$, which can be a constant even when $n$ is large. The question asks for $\\mathrm{poly}(m^*)$ where $m^*$ is the *achievable* compatibility bound — and there the elimination learner achieves it *with exponent one*, because deletion happens before the labeled sample is consumed. That is the real theorem, and it is stronger than the worst case.\n\nNow let me play my favorite game and check the labeled complexity is not secretly $m^* \\cdot (\\text{something})$. Here is the honest accounting, in the spirit of separating the spectral and arithmetic sides. The unlabeled pairs are drawn from $D$; we need *enough* of them so that $F$ stabilizes — i.e., every variable that $D$ \"wants\" deleted is actually deleted before we look at labels. This is a coupon-collector / coverage event on the *negative-pair marginal*, and it costs $\\mathrm{poly}(n,1/\\varepsilon,1/\\delta)$ unlabeled pairs, which the problem generously allows. So the deletion set $F$ we compute is, with high probability, the *correct* one up to error $\\varepsilon$ on the negative marginal. **This** is where I want one lemma stated explicitly: that the empirical $F$ is good enough — a variable left undeleted that should have been deleted contributes false-positive error, and we must bound its measure by $\\varepsilon$ using the unlabeled sample, *not* the labeled sample.\n\nSo I sharpen Dan's \"false positive\" worry: it is killed not only by label-driven inclusion but also by sufficient unlabeled coverage to make $\\hat F \\approx F$. With $n=2$, $h^*=x_1$: a single negative pair already deletes variable $2$ if $D$ ever produces one; if $D$ *never* produces a negative pair involving variable $2$, then variable $2$ being spuriously included is harmless precisely because it fires with probability $\\le \\varepsilon$. Beautiful — the two error mechanisms are dual: false negatives are paid in labeled samples, false positives in unlabeled coverage.\n\nVerdict: **yes**, and I would add to Laszlo's lemma title the clause \"...and the data-dependent VC dimension $|[n]\\setminus F|$ governs the labeled complexity, with unlabeled coverage controlling the false-positive measure.\" That is the honest theorem behind the technical one. No flow, no LLL, no $\\theta$-function — but two sample budgets, dually allocated, and the writeup must not conflate them.",
+      "created_at": "2026-06-23T08:06:33Z"
+    },
+    {
+      "id": "md6781a3d",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T08:07:25Z"
+    },
+    {
+      "id": "m2b3fbca7",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nProve that the disjunction-learning problem with compatibility constraints from unlabeled pairs admits a poly(m*) labeled-sample learner via a monotone elimination algorithm, where compatibility makes the version space target-safe and label-driven inclusion avoids false positives.",
+      "created_at": "2026-06-23T08:07:25Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that the disjunction-learning problem with compatibility constraints from unlabeled pairs admits a poly(m*) labeled-sample learner via a monotone elimination algorithm, where compatibility makes the version space target-safe and label-driven inclusion avoids false positives.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize the version-space constraint structure",
+        "body": "Precisely define the version space: all disjunctions h_S consistent with labeled examples and satisfying h_S(x_1)=h_S(x_2) for every unlabeled pair. Classify each unlabeled pair constraint into the 'both negative' case (exclusion: S avoids supp(x_1) ∪ supp(x_2)) and 'both positive' case (covering: S hits each support). Establish that after deleting the exclusion set F, remaining constraints are pure positive monotone clauses.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the compatibility / target-safety lemma",
+        "body": "Prove that S* ∩ F = ∅, where F = ∪_{neg pairs} (supp(x_1) ∪ supp(x_2)). Argument: compatibility forces h*(x_1)=h*(x_2); for a negative pair both points are negative under h*, so S* hits neither support, hence S* ⊆ [n]\\F. This guarantees deletion of F never removes a genuine target variable.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Specify the elimination algorithm and no-spurious-inclusion invariant",
+        "body": "Define the learner ŝ = ([n]\\F) ∩ R, where R is the set of variables required by labeled positive examples in standard elimination. Prove inclusion must be label-driven only: positive unlabeled pairs serve as consistency certificates, never generators of inclusion, since S* ⊆ [n]\\F already satisfies every positive covering constraint. Show runtime is O(nm) linear elimination with no optimization/cover-solving.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Bound false-negative error via labeled sample complexity",
+        "body": "Show false negatives (dropping i ∈ S*) are controlled by the classic Valiant disjunction argument: a target variable firing with probability ≥ ε/n on the positive marginal is included with high probability, giving labeled complexity m* = O((1/ε)(n log(1/ε) + log(1/δ))), or the data-dependent refinement with |[n]\\F| in place of n.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Bound false-positive error via unlabeled coverage",
+        "body": "Prove the dual budget: spurious variables not deleted because D rarely produces the relevant negative pair contribute false-positive error at most ε. Establish a coupon-collector/coverage lemma that with poly(n,1/ε,1/δ) unlabeled pairs the empirical deletion set F̂ approximates the true F so that any undeleted variable fires with probability ≤ ε. Make explicit that false-positive measure is paid in unlabeled coverage, not labeled samples.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Resolve the two definitions of m* and state the data-dependent theorem",
+        "body": "Clarify whether m* is the static disjunction bound (VC = n) or the data-dependent compatibility bound (VC = |[n]\\F|, possibly constant). Argue deletion occurs before labels are consumed, so the achievable bound is governed by |[n]\\F| with exponent one. State the final theorem: answer is YES, achieving Θ(m*) labeled complexity with two dually allocated sample budgets.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Stress-test against hardness and the LP-integrality claim",
+        "body": "Verify no NP-hard set-cover/coloring survives monotonization: attempt to construct a positive pair whose covering constraint cannot be satisfied by S* itself (should be impossible by target-safety). Verify Lovász's claim that the LP relaxation of consistent monotone CNF assignment is integral by total monotonicity, confirming no PSD/θ-function gap and no LLL or flow structure is needed.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1,
+          2
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Verify full proof correctness and small-case checks",
+        "body": "Verify all lemmas combine into a sound proof. Re-check the n=2, h*=x_1 worked example for both error mechanisms (negative pair deletes variable 2; if D never produces such a pair, variable 2's spurious inclusion fires with probability ≤ ε). Confirm sample-complexity accounting does not secretly multiply m* by extra factors and that labeled/unlabeled budgets are not conflated.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          3,
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T08:07:25Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

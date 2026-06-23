@@ -1,0 +1,154 @@
+{
+  "id": "rm-11830-meet-1",
+  "problem_id": "rm-11830",
+  "topic": "Init rm-11830 — proof review",
+  "goal": "Review the proof and issues for rm-11830; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T13:26:12Z",
+  "messages": [
+    {
+      "id": "md9beeda2",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-11830 — proof review**",
+      "created_at": "2026-06-23T13:26:12Z"
+    },
+    {
+      "id": "mc65788ef",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be honest about my expertise here: this is a term-rewriting problem, and my home turf is spectral graph theory. But I think I can offer something structural, because the relative termination question has a *flavor* I recognize — it's about isolating a \"heavy\" subsystem ($\\to_R$ steps) inside a larger relation ($\\to_{R \\cup S}$) and certifying that the heavy part can only fire finitely often.\n\nHere's how I'd frame it algorithmically. The classical DP method works because it gives an *exact characterization*: $SN(\\to_R)$ iff no infinite minimal chain. For the relative version, the analogue of my potential/barrier-function thinking is: we need an invariant that strictly decreases on every $\\to_R$-step and is *non-increasing* on every $\\to_S$-step. That asymmetry is exactly what a reduction pair must capture in this setting. So:\n\n1. **Definition.** I'd define $DP_{rel}(R,S) = DP(R) \\cup DP(S)$ but with a *marking* that distinguishes which pairs come from $R$. A relative chain is then a chain over this combined set, and the soundness condition for termination should require: no infinite chain containing infinitely many $R$-derived dependency pairs. This mirrors the \"infinitely many $\\to_R$-steps\" formulation in the problem statement exactly.\n\n2. **The reduction pair processor** then splits into two demands, just like my asymmetric barrier: a pair $(\\succsim, \\succ)$ where *all* DPs and rules are weakly decreasing in $\\succsim$, the $R$-derived DPs are strictly decreasing in $\\succ$, and the $S$-rules are weakly decreasing. You remove the strictly-decreasing $R$-pairs. This is the analogue of \"the strictly decreasing edges can fire only finitely often.\"\n\nMy one sharp question for the rewriting experts in the room: **is the minimality/exactness direction (1) actually a theorem here, or only soundness?** In the ordinary case the *iff* relies on the minimal chain characterization. For the relative case, can we still extract an infinite minimal $R/S$-chain from an infinite $R/S$-derivation, given that $S$-steps may be non-terminating on their own? That's where I'd expect the proof to break, and I'd want to see the precise lemma. What's the analogue of the \"every infinite derivation has an infinite minimal subterm chain\" argument when $S$ alone need not terminate?",
+      "created_at": "2026-06-23T13:26:26Z"
+    },
+    {
+      "id": "m4f03e1f0",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your asymmetric-barrier framing is exactly right in spirit, but I think your Definition 1 conflates two things that the relative setting forces us to keep apart. Let me sharpen this.\n\nThe crux is your own sharp question, and I believe the answer reveals why $DP_{rel}(R,S) = DP(R) \\cup DP(S)$ is *not* quite the right object. In the ordinary DP method, minimality means: in an infinite chain we may assume every strict subterm of every term in the chain is terminating. The whole machinery — the subterm criterion, the dependency graph — rests on this. But in the relative world, \"terminating\" must be replaced by \"$R/S$-terminating,\" i.e., subterms admit no infinite derivation *with infinitely many $R$-steps*. A subterm may happily admit an infinite pure-$S$ derivation. So:\n\n1. **Two kinds of dependency pairs, not a marked union.** $S$ contributes pairs only insofar as $S$-steps can *propagate* an $R$-redex upward to enable the next $R$-step. So you need $DP(R)$ (the \"heavy\" pairs that must fire finitely often) *together with* the rules of $S$ themselves acting at the chain level — not $DP(S)$. The right object is a chain alternating $DP(R)$-steps with $\\to_{R\\cup S}^*$ rewriting in between. This is precisely the relative analogue, and it is why your $DP(S)$ is the wrong contribution: $S$ enters as *reductions in context*, not as dependency pairs.\n\n2. **The minimal chain lemma does survive**, but with the corrected minimality notion. Take an infinite $\\to_{R\\cup S}$-derivation with infinitely many $R$-steps. Among all subterms started along it, pick a *minimal non-$R/S$-terminating* subterm at each $R$-step — this exists by König's lemma / minimal counterexample exactly as in Arts–Giesl, because the property \"admits infinitely many $R$-steps\" is closed under the right limits. The point Dan worried about — $S$ not terminating alone — is harmless: we never demand subterms be $S$-terminating, only $R/S$-terminating. So direction (1), the *iff*, holds.\n\n3. **The reduction pair processor then reads off cleanly.** A pair $(\\succsim,\\succ)$ with: $R \\cup S \\subseteq \\succsim$ (closure under context for the in-between rewriting), $DP(R) \\subseteq \\succsim$, and a *subset* of $DP(R)$ in $\\succ$ — remove that subset. Crucially $S$ need only be weakly decreasing, never strict, which is exactly your asymmetric barrier. The subterm criterion adapts verbatim once minimality is $R/S$-minimality.\n\nThis is, incidentally, structurally identical to my $\\theta$-function sandwich philosophy: $S$ plays the role of the \"free\" weakly-decreasing constraints and $R$ the objective you strictly improve. One caution for property (3): to *strictly extend* the known criteria (e.g. those that reduce $SN(R/S)$ to ordinary DP problems by treating $S$-rules as extra rewrite rules), we must exhibit an $(R,S)$ where the relative dependency graph decomposes but no ordinary DP encoding does — I suspect the separating example is a small one where $S$ is non-terminating but $R/S$-terminating, which the ordinary reductions simply cannot represent. Let me propose we construct that witness explicitly; it will also stress-test whether the minimal chain lemma in",
+      "created_at": "2026-06-23T13:27:16Z"
+    },
+    {
+      "id": "m168f06a6",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Laszlo, you've put your finger on the real theorem: $S$ enters as *reduction in context*, not as dependency pairs. That's correct and it's the whole game. Let me push on it with my instinct, which is always: compute the smallest case first, and then ask whether the *iff* is genuine or a soundness mirage.\n\n**The separating witness.** Here is a tiny one. Take $R = \\{ f(x) \\to f(g(x)) \\}$ and $S = \\{ g(x) \\to x \\}$. Then $S$ alone is terminating, that's too easy. Instead twist it: $R = \\{ a \\to b \\}$, $S = \\{ c \\to c \\}$ with no interaction — trivially $SN(R/S)$ holds since $\\to_R$ fires once, yet $S$ is wildly non-terminating. Any ordinary DP encoding that throws $S$-rules in as ordinary rules sees the loop $c \\to c$ and *fails*. This is exactly Laszlo's point (3): the relative dependency graph has the $R$-pair in a component disjoint from the $S$-cycle, so it decomposes; the naive ordinary reduction cannot, because it cannot represent \"$S$ may loop in the background harmlessly.\" That's your strict-extension witness, and it's a one-liner.\n\n**Now the sharp question Dan raised, which I do not think is fully settled.** The minimal chain lemma. Laszlo says pick a *minimal non-$R/S$-terminating subterm*. Fine — but the subtlety is the **closure under limits**. In Arts–Giesl the property \"non-terminating\" is $\\Pi^0_1$ and König's lemma applies to a finitely-branching reduction tree. Here the property is \"admits a derivation with *infinitely many* $R$-steps\" — that's a genuinely different combinatorial object, a Büchi-type acceptance condition, not mere infiniteness of the path. You must verify that an infinite path with infinitely many $R$-steps, restricted to a minimal subterm at each $R$-step, *still has infinitely many $R$-steps*. The danger: all the $R$-activity escapes to ever-larger subterms while each fixed minimal subterm sees only finitely many. So the lemma needs a pigeonhole/Ramsey argument on the marking, not just König. I'd want that lemma stated with the Büchi condition explicit — it's the relative analogue of \"infinitely often\" versus \"eventually,\" exactly the distinction that makes quantum unique ergodicity hard versus easy.\n\nSo my proposal: state the minimal chain lemma as a **Ramsey extraction** — color each $R$-step by the minimal non-$R/S$-terminating subterm carrying it; finitely (well, boundedly) many active positions, infinitely many $R$-steps, hence some subterm carries infinitely many. That's where the *iff* is really earned, and I'd bet the whole framework's correctness rests on this single combinatorial lemma. Laszlo, is the position set actually bounded along the derivation, or do we need a stronger argument?",
+      "created_at": "2026-06-23T13:28:04Z"
+    },
+    {
+      "id": "m0e4ae833",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, you've found the crux, and it's exactly where I'd want to plant my feet. Let me reframe your Ramsey worry in the language I trust — a barrier/potential argument — because I think it sharpens what \"bounded position set\" really needs to mean.\n\nThe danger you name — \"all the $R$-activity escapes to ever-larger subterms\" — is precisely the failure mode I worry about with barrier functions when the support of the active set drifts. In my effective-resistance sparsification, the reason the greedy/sampling argument works is that the total leverage is *conserved*: $\\sum_e \\ell_e = n-1$. The relative analogue we need is a **conservation law for $R$-activity along the derivation**. So my question to both of you: is there a quantity $\\Phi$ on terms such that every $\\to_R$-step strictly decreases $\\Phi$ at the firing position and every $\\to_S$-step does not *create* new $R$-activity below a fixed position? If so, the position set is effectively bounded *not* because positions are few, but because $R$-activity cannot be exported downward indefinitely without a corresponding decrease somewhere.\n\nConcretely, I'd resolve Peter's question as follows:\n\n1. **Boundedness is not of the position set, but of the *minimal-subterm depth* per $R$-step.** Each $\\to_R$-step fires at some position $p$; the minimal non-$R/S$-terminating subterm carrying it sits at some $q \\le p$. The set of distinct subterm *terms* that are minimal non-$R/S$-terminating along a single chain is bounded — they are subterms of the finitely many redex contexts in $R \\cup S$, up to substitution. That's the Ramsey color class, and it's finite *as a color set*, which is all the pigeonhole needs. So I agree with Peter: König alone is insufficient, but the coloring is by a bounded alphabet, and the Büchi extraction goes through.\n\n2. **The asymmetry is the conservation law.** This is exactly Laszlo's \"$S$ weakly decreasing, $R$ strictly decreasing.\" In barrier-function terms: $S$-steps preserve $\\Phi$, $R$-steps spend it. An infinite chain with infinitely many $R$-steps would spend $\\Phi$ infinitely, contradicting boundedness below — *provided* $\\Phi$ is well-founded on the minimal subterms. That well-foundedness is exactly $R/S$-minimality, and it survives because we never demanded $S$-termination.\n\nSo I'd state the master lemma as: **(Conservation + Büchi extraction)** — color $R$-steps by their minimal non-$R/S$-terminating subterm (finite color alphabet from the rule set), apply infinite pigeonhole to get one color firing infinitely, and that color's subterm gives the infinite minimal relative chain. The reduction pair $(\\succsim, \\succ)$ is then literally the discretized $\\Phi$: $R \\cup S \\subseteq \\succsim$, the removed $DP(R)$-subset in $\\succ$. \n\nOne thing I'd insist on for property (3): Peter's $R=\\{a\\to b\\}, S=\\{c\\to c\\}$ witness is clean but it's a *disconnected* separation — the dependency graph trivially decomposes. To really show strict extension over the known reductions, I want a witness where $S$'s non-termination is *entangled* with $R$ — where an $S$-loop sits on the path between two $R$-pairs in the graph but the relative reduction pair still kills the $R$-pair because $S$ need only be weakly decreasing. That's the analogue of an edge",
+      "created_at": "2026-06-23T13:30:24Z"
+    },
+    {
+      "id": "mab891100",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your conservation-law framing is the right instinct, but I want to correct one subtle point in your step 1, because it is precisely where the Büchi extraction can quietly fail, and it bears on Peter's worry about boundedness.\n\nYou wrote that the minimal non-$R/S$-terminating subterms along a chain form a *finite color alphabet from the rule set*. That is not literally true: under substitution there are infinitely many distinct minimal subterms. What is bounded is the set of **positions relative to the redex of the firing rule** — the $R$-pair $\\langle \\ell^\\#, t^\\# \\rangle$ records exactly the position $q \\le p$ where $t$ sits inside $\\ell$, and there are only finitely many such pairs since $|DP(R)|$ is finite. So the correct color alphabet is $DP(R)$ itself, not the subterm-up-to-substitution. The pigeonhole then yields a single dependency pair firing infinitely often — but, and this is the gap, firing infinitely often *at possibly different subterm instances*. That is weaker than an infinite chain at one subterm.\n\nThe repair is exactly the standard Arts–Giesl device, transported: we do not need one subterm forever, we need an infinite *chain* — a sequence of pairs where the instantiated right-hand side of one $\\to_{R\\cup S}^*$-rewrites to the instantiated left-hand side of the next. Here is the clean statement, and I claim it is a theorem:\n\n**Minimal Relative Chain Lemma.** From any infinite $\\to_{R\\cup S}$-derivation with infinitely many $\\to_R$-steps, one extracts an infinite sequence $\\langle s_1^\\#, t_1^\\# \\rangle, \\langle s_2^\\#, t_2^\\#\\rangle, \\dots$ of (instantiated) pairs from $DP(R)$ such that $t_i^\\# \\to_{R\\cup S}^* s_{i+1}^\\#$, and each $t_i^\\#\\sigma$ is $R/S$-terminating below the root.\n\nThe proof is *not* König alone and *not* pigeonhole alone — Peter is right. It is the minimal-counterexample induction of Arts–Giesl, where \"non-terminating\" is replaced everywhere by \"admits infinitely many $R$-steps,\" combined with the observation that the connecting $\\to_{R\\cup S}^*$ segments absorb all the pure-$S$ activity. The $S$-steps never appear as chain links; they live inside the $\\to_{R\\cup S}^*$ glue. This is the precise sense in which $S$ is *reduction in context* and not a contributor of dependency pairs — it answers my earlier point (1) rigorously.\n\nNow to Peter's \"does $R$-activity escape downward?\" The answer: it cannot escape *out of the chain*, because every $\\to_R$-step that lands strictly inside the chosen minimal subterm would contradict its minimality (the subterm would then itself admit infinitely many $R$-steps below, and we would have chosen *that* smaller one). So the active $R$-steps are exactly captured at chain links. This is your conservation law, Dan, but I'd state it sharply: the invariant being conserved is *the membership of the active redex in the minimal-subterm position*, and it is well-founded precisely because $R/S$-minimality is, with no demand on $S$.\n\nOn property (3), Dan, I fully agree Peter's witness is too disconnected. Let me commit to the entangled separating example:\n$$R = \\{\\, f(s(x)) \\to f(x) \\,\\}, \\qquad S = \\{\\, g(x) \\to",
+      "created_at": "2026-06-23T13:31:13Z"
+    },
+    {
+      "id": "meaff823b",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, your Minimal Relative Chain Lemma is exactly right, and the correction to Dan's color alphabet — it's $DP(R)$, finite, not the subterms up to substitution — is the precise fix I was groping for. Let me lock down the one piece that's still informal, because I think it's where the *iff* is genuinely earned and not a soundness mirage.\n\nThe statement \"fires infinitely often at possibly different instances\" versus \"an infinite chain at one subterm\" — this is *exactly* the infinitely-often-versus-eventually distinction that makes QUE a Büchi condition rather than a reachability one. In my work with Lindenstrauss the whole difficulty was that positive entropy \"infinitely often\" along the Hecke orbit had to be promoted to a measure-theoretic statement everywhere; the cheap pigeonhole gives you a recurring symbol, the *theorem* gives you the chain. So let me state the extraction as a genuine Ramsey-on-pairs, not single pigeonhole:\n\n- Color each *ordered pair* of consecutive $R$-steps $(i,j)$, $i<j$, by the dependency pair in $DP(R)$ at step $i$ together with whether $t_i^\\#\\sigma \\to_{R\\cup S}^* s_j^\\#\\tau$ holds. Finite alphabet. Infinite Ramsey gives a monochromatic infinite subsequence — and *that* gives the chain links, with the pure-$S$ activity absorbed into the $\\to_{R\\cup S}^*$ glue, exactly as Laszlo says. This is the relative analogue of passing from \"recurrence infinitely often\" to \"an actual orbit,\" and it's why König alone fails: König gives an infinite path, Ramsey gives an infinite *chain* with the Büchi acceptance preserved.\n\nTwo things I insist on before we declare victory:\n\n**(a) The minimality must be $R/S$-minimal, and we must check the limit closure.** The property \"$t\\sigma$ admits a derivation with infinitely many $R$-steps\" — is it closed under the relevant limits so the minimal counterexample exists? Laszlo's argument that an escaping $R$-step inside the chosen subterm contradicts minimality is the right one, but it tacitly uses that $R/S$-non-termination of a term implies it of *some* fixed-depth subterm. With $S$ possibly looping, I want the explicit guarantee that the minimal subterm is reached at *bounded depth* — otherwise the \"minimal\" choice is not well-defined. Is the subterm ordering well-founded here? It is, because subterm is well-founded on finite terms regardless of $S$ — good, that's the one place $S$'s non-termination is genuinely harmless.\n\n**(b) On property (3), Laszlo, finish your $f(s(x))\\to f(x)$ example with the entangled $S$** — I want to see the relative dependency graph where the $S$-loop sits *on the arc* between two $R$-pairs and the reduction-pair processor still removes the $R$-pair because $S$ is only weakly decreasing. My disconnected $\\{a\\to b\\}/\\{c\\to c\\}$ proves the strict extension trivially, but yours proves the *modularity* is genuinely finer — that's the real content of (3), and it's the analogue of an expander edge that the naive encoding cannot see.\n\nSo: I'm convinced (1) is a real theorem provided the extraction is stated as Ramsey-on-pairs with $R/S$-minimality. The subterm criterion then transports verbatim, since it only ever uses that subterm is well-founded.",
+      "created_at": "2026-06-23T13:32:03Z"
+    },
+    {
+      "id": "m26903122",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T13:32:55Z"
+    },
+    {
+      "id": "m3ded3651",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nEstablish the relative termination DP framework by proving that SN(R/S) holds iff there is no infinite minimal relative chain, where S enters as reduction-in-context rather than as dependency pairs, with the key Minimal Relative Chain Lemma earned via a Ramsey-on-pairs extraction under R/S-minimality.",
+      "created_at": "2026-06-23T13:32:55Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish the relative termination DP framework by proving that SN(R/S) holds iff there is no infinite minimal relative chain, where S enters as reduction-in-context rather than as dependency pairs, with the key Minimal Relative Chain Lemma earned via a Ramsey-on-pairs extraction under R/S-minimality.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Fix definitions for the relative DP framework",
+        "body": "Formally define the relative dependency-pair setting: use DP(R) as the heavy pairs that must fire finitely often, with S-rules entering only as reduction-in-context via the connecting steps. Define an R/S-minimal relative chain as a sequence of DP(R) pairs <s_i#, t_i#> with t_i# ->*_{R∪S} s_{i+1}#, where each t_i#σ is R/S-terminating below the root (admits no derivation with infinitely many R-steps). Make explicit that minimality is R/S-minimality, not S-termination.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove well-foundedness of the minimal-subterm choice",
+        "body": "Verify the limit-closure / well-definedness conditions flagged by Sarnak: show the property 't σ admits a derivation with infinitely many R-steps' admits a minimal counterexample, using that the subterm ordering is well-founded on finite terms regardless of S's non-termination. Confirm the minimal non-R/S-terminating subterm is reached at bounded depth so the 'minimal' choice is well-defined even when S loops.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove the Minimal Relative Chain Lemma via Ramsey-on-pairs",
+        "body": "Prove: from any infinite ->_{R∪S} derivation with infinitely many R-steps, one extracts an infinite R/S-minimal relative chain. Correct Spielman's color-alphabet error: the finite color alphabet is DP(R) itself (since |DP(R)| is finite), not subterms-up-to-substitution. Color ordered pairs of consecutive R-steps by the DP(R) pair plus the connecting reachability, apply infinite Ramsey to obtain a monochromatic subsequence forming actual chain links, with pure-S activity absorbed into the ->*_{R∪S} glue. Show escaping R-activity into a chosen minimal subterm contradicts minimality, establishing the conservation property.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Audit the iff: distinguish soundness from completeness",
+        "body": "Critically check that the extraction is genuinely a Büchi-type 'infinitely often' argument and not a soundness mirage. Confirm König's lemma alone is insufficient (gives an infinite path, not a chain with infinitely many R-steps preserved) and that single pigeonhole only yields a recurring symbol, not a chain at consistent instances. Verify the Ramsey-on-pairs argument actually closes the completeness direction and that no R-activity 'escapes to ever-larger subterms.'",
+        "agent": "critic-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Formulate the asymmetric reduction pair processor",
+        "body": "State and prove the reduction pair processor: a pair (≿, ≻) with R ∪ S ⊆ ≿ (closure under context for the in-between rewriting), DP(R) ⊆ ≿, and a subset of DP(R) in ≻, permitting removal of that strictly-decreasing subset. Crucially S need only be weakly decreasing (never strict), realizing the asymmetric barrier/conservation law. Prove the subterm criterion transports verbatim, using only that the subterm relation is well-founded.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Construct the entangled strict-extension witness",
+        "body": "Complete Lovász's entangled example beginning R = {f(s(x)) -> f(x)} with an S whose non-termination sits ON the arc between two R-pairs in the relative dependency graph, yet the reduction-pair processor still removes the R-pair because S is only weakly decreasing. Show that the disconnected witness R={a->b}, S={c->c} only proves trivial strict extension, whereas the entangled example demonstrates genuinely finer modularity that no ordinary DP encoding (treating S-rules as ordinary rewrite rules) can represent.",
+        "agent": "solver-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify all lemmas and the separating example",
+        "body": "Independently check the Minimal Relative Chain Lemma proof, the well-foundedness argument, the reduction pair processor soundness, and explicitly compute the relative dependency graph for the entangled witness to confirm it decomposes while the naive ordinary reduction fails on the S-cycle. Confirm the end-to-end iff characterization and the claimed strict extension over known SN(R/S)-to-DP reductions.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T13:32:55Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

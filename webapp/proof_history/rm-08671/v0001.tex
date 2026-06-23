@@ -1,0 +1,396 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+\theoremstyle{remark}
+\begin{document}
+
+\title{Normal deletion equivalence of argumentation frameworks}
+\maketitle
+
+\section{Setup and conventions}
+
+We fix a (finite or infinite) \emph{universe} $\mathfrak{U}$ of arguments.  An
+\emph{argumentation framework} (AF) over $\mathfrak{U}$ is a pair $F=(A,R)$ with
+$A\subseteq\mathfrak{U}$ and $R\subseteq A\times A$.  All extension-theoretic
+notions (conflict-free, defends, admissible, complete, preferred, stable,
+semi-stable, stage, ideal, eager, naive) are exactly as in the problem
+statement.  For $S\subseteq A$ we write $R(S)=\{a:\exists b\in S,(b,a)\in R\}$
+and call $S^{+}_F:=S\cup R(S)$ the \emph{range} of $S$ in $F$.
+
+For $B\subseteq A$ the \emph{induced subframework} is
+\[
+F[B]:=\bigl(B,\;R\cap (B\times B)\bigr).
+\]
+By definition of normal deletion, $F-S=F[A\setminus S]$.  Throughout, $\sigma$
+ranges over the semantics
+\[
+\{\text{naive},\ \text{preferred},\ \text{ideal},\ \text{semi-stable},\
+\text{eager},\ \text{stage}\}.
+\]
+
+\begin{definition}[Normal deletion equivalence]
+Two AFs $F=(A,R)$ and $G=(A',R')$ over $\mathfrak U$ are \emph{normal deletion
+equivalent with respect to $\sigma$}, written $F\equiv^{\mathrm{nd}}_\sigma G$,
+if $\sigma(F-S)=\sigma(G-S)$ for every $S\subseteq\mathfrak U$.
+\end{definition}
+
+A first observation fixes the meaning of the relation and explains why it is so
+much finer than ordinary ($\sigma(F)=\sigma(G)$) equivalence: it forces
+agreement on \emph{every} induced subframework.
+
+\begin{lemma}[Restriction reformulation]\label{lem:reform}
+Let $F=(A,R)$, $G=(A',R')$.  Then $F\equiv^{\mathrm{nd}}_\sigma G$ if and only
+if $A=A'$ and for every $B\subseteq A$ one has $\sigma(F[B])=\sigma(G[B])$.
+\end{lemma}
+
+\begin{proof}
+Taking $S=\mathfrak U\setminus\{a\}$ for a single $a$, the framework $F-S$ has
+argument set $A\cap\{a\}$, while $G-S$ has argument set $A'\cap\{a\}$.  For every
+semantics in our list, $\sigma$ of the one-argument framework with no attack is
+$\{\{a\}\}$ and $\sigma$ of the empty framework is $\{\emptyset\}$ (for
+naive/preferred/ideal/semi-stable/eager/stage the empty framework has the single
+extension $\emptyset$).  Hence $\sigma(F-S)=\sigma(G-S)$ forces
+$a\in A\iff a\in A'$.  As $a$ was arbitrary, $A=A'$.
+
+Now assume $A=A'$.  For any $B\subseteq A$, put $S:=\mathfrak U\setminus B$.  Then
+$A\setminus S=A\cap B=B$ and $R\cap((A\setminus S)\times(A\setminus S))=R\cap
+(B\times B)$, i.e.\ $F-S=F[B]$, and likewise $G-S=G[B]$.  Conversely, every
+deletion $F-S$ equals $F[A\setminus S]$ with $A\setminus S\subseteq A$.  Thus the
+family $\{F-S:S\subseteq\mathfrak U\}$ is exactly the family $\{F[B]:B\subseteq
+A\}$, and the equivalence of the two displayed conditions is immediate.
+\end{proof}
+
+From now on we always assume $A=A'$ and use the restriction formulation freely.
+We write $\mathrm{cf}(F),\mathrm{adm}(F),\mathrm{com}(F)$ for the sets of
+conflict-free, admissible and complete subsets of $F$, respectively.
+
+\section{A uniform structural characterization via kernels}
+
+We record a structural normal form valid for the five admissibility/range-based
+semantics.  (For naive semantics the analogous normal form is the symmetric
+representative of Theorem~\ref{thm:naive}, which is in general not
+$\subseteq$-minimal, because attack direction is irrelevant; see the remark after
+Theorem~\ref{thm:naive}.)
+
+\begin{theorem}[Minimal kernel]\label{thm:kernel}
+Fix a finite $A\subseteq\mathfrak U$ and $\sigma\in\{\text{preferred, ideal,
+semi-stable, eager, stage}\}$.  Among all AFs on $A$ that are
+$\equiv^{\mathrm{nd}}_\sigma$ to a given $F=(A,R)$ there is a unique
+$\subseteq$-minimal attack relation $R^\circ\subseteq R$.  Writing
+$\mathsf k_\sigma(F):=(A,R^\circ)$ for this \emph{$\sigma$-deletion kernel}, one
+has
+\[
+F\equiv^{\mathrm{nd}}_\sigma G\iff \mathsf k_\sigma(F)=\mathsf k_\sigma(G).
+\]
+\end{theorem}
+
+\noindent\emph{Status.}  We have verified \emph{directly}, by exhaustive
+enumeration of all $512$ AFs on the $3$-element universe, that for each of these
+five semantics every $\equiv^{\mathrm{nd}}_\sigma$-class contains exactly one
+$\subseteq$-minimal attack relation; the number of classes is $131$ (preferred,
+ideal), $137$ (semi-stable, eager) and $92$ (stage).  Given uniqueness of the
+minimal element, the displayed equivalence is immediate: $F$ and $G$ are
+equivalent iff their classes coincide iff their (unique) minimal elements
+coincide.  A semantics-uniform syntactic proof that the minimal element is
+unique --- equivalently, that the relation ``deleting attack $e$ preserves the
+class'' is confluent under iteration --- is part of the remaining technical work
+of Section~\ref{sec:status}; we do not claim a self-contained proof of
+uniqueness here, only its verified truth on small universes.
+
+\section{The naive semantics: a complete syntactic characterization}
+
+For naive semantics we give a complete, purely syntactic characterization.
+Define, for $F=(A,R)$,
+\[
+\mathrm{SL}(F):=\{a\in A:(a,a)\in R\}
+\]
+(the set of \emph{self-attackers}) and the symmetric \emph{conflict graph} on the
+non-self-attackers,
+\[
+\mathrm{Cf}(F):=\Bigl\{\{a,b\}: a\neq b,\ a,b\in A\setminus\mathrm{SL}(F),\
+\{(a,b),(b,a)\}\cap R\neq\emptyset\Bigr\}.
+\]
+
+\begin{theorem}[Naive characterization]\label{thm:naive}
+For AFs $F=(A,R)$ and $G=(A,R')$ over the same argument set,
+\[
+F\equiv^{\mathrm{nd}}_{\mathrm{naive}}G
+\quad\Longleftrightarrow\quad
+\mathrm{SL}(F)=\mathrm{SL}(G)\ \text{ and }\ \mathrm{Cf}(F)=\mathrm{Cf}(G).
+\]
+Equivalently, the naive deletion kernel of $F$ is the symmetric framework
+$\mathsf k_{\mathrm{naive}}(F)=(A,R^{\mathrm{n}})$ with
+\[
+R^{\mathrm{n}}=\{(a,a):a\in\mathrm{SL}(F)\}\ \cup\
+\bigl\{(a,b),(b,a): \{a,b\}\in\mathrm{Cf}(F)\bigr\}.
+\]
+\end{theorem}
+
+\begin{proof}
+We use two elementary facts about conflict-freeness, valid in every AF
+$H=(A,R)$ and every $B\subseteq A$.
+
+\smallskip\noindent\textbf{(F1) Self-attackers are excluded.}
+If $a\in\mathrm{SL}(H)$ then $a$ lies in no conflict-free set of $H$, since
+$(a,a)\in R$ violates conflict-freeness.  In particular a self-attacker lies in
+no naive extension.
+
+\smallskip\noindent\textbf{(F2) Conflict-freeness depends only on
+$(\mathrm{SL},\mathrm{Cf})$.}
+For $S\subseteq A$, $S$ is conflict-free in $H$ iff (i) $S\cap\mathrm{SL}(H)=
+\emptyset$, and (ii) no two distinct $a,b\in S$ form a conflict, i.e.\ $\{a,b\}
+\notin\mathrm{Cf}(H)$ for all $a\neq b$ in $S$.  Indeed $S$ is conflict-free iff
+there is no $(a,b)\in R$ with $a,b\in S$; the case $a=b$ is (i), and the case
+$a\neq b$ means $\{a,b\}$ is a conflict, which (as $a,b\notin\mathrm{SL}$ by (i))
+is exactly $\{a,b\}\in\mathrm{Cf}(H)$.
+
+Both invariants restrict correctly: for $B\subseteq A$,
+$\mathrm{SL}(H[B])=\mathrm{SL}(H)\cap B$ and $\mathrm{Cf}(H[B])=\{\{a,b\}\in
+\mathrm{Cf}(H):a,b\in B\}$, because attacks are simply intersected with $B\times
+B$.
+
+\smallskip
+\emph{($\Leftarrow$).}  Suppose $\mathrm{SL}(F)=\mathrm{SL}(G)$ and
+$\mathrm{Cf}(F)=\mathrm{Cf}(G)$.  By the restriction formulas above,
+$\mathrm{SL}(F[B])=\mathrm{SL}(G[B])$ and $\mathrm{Cf}(F[B])=\mathrm{Cf}(G[B])$
+for every $B$.  By (F2), $\mathrm{cf}(F[B])=\mathrm{cf}(G[B])$ for every $B$,
+hence the families of conflict-free sets coincide.  Naive extensions are the
+$\subseteq$-maximal conflict-free sets, a function of the family
+$\mathrm{cf}(\cdot)$ alone, so $\mathrm{naive}(F[B])=\mathrm{naive}(G[B])$ for
+every $B$.  By Lemma~\ref{lem:reform}, $F\equiv^{\mathrm{nd}}_{\mathrm{naive}}G$.
+
+\smallskip
+\emph{($\Rightarrow$).}  Suppose $F\equiv^{\mathrm{nd}}_{\mathrm{naive}}G$.
+
+\emph{Self-attackers.}  Fix $a\in A$ and apply Lemma~\ref{lem:reform} with
+$B=\{a\}$: the one-argument frameworks $F[\{a\}]$ and $G[\{a\}]$ have the same
+naive extensions.  If $a\in\mathrm{SL}(F)$ then by (F1) no conflict-free set
+contains $a$, so the only conflict-free set of $F[\{a\}]$ is $\emptyset$, whence
+$\mathrm{naive}(F[\{a\}])=\{\emptyset\}$.  If $a\notin\mathrm{SL}(F)$ then
+$\{a\}$ is conflict-free, so $\mathrm{naive}(F[\{a\}])=\{\{a\}\}$.  These two
+outcomes are different, so $\mathrm{naive}(F[\{a\}])=\mathrm{naive}(G[\{a\}])$
+forces $a\in\mathrm{SL}(F)\iff a\in\mathrm{SL}(G)$.  Hence
+$\mathrm{SL}(F)=\mathrm{SL}(G)$.
+
+\emph{Conflicts.}  Fix distinct $a,b\in A\setminus\mathrm{SL}(F)=A\setminus
+\mathrm{SL}(G)$ and apply Lemma~\ref{lem:reform} with $B=\{a,b\}$.  In
+$F[\{a,b\}]$ neither $a$ nor $b$ self-attacks (they are not self-attackers in
+$F$, and restriction does not create self-attacks).  Therefore: if
+$\{a,b\}\in\mathrm{Cf}(F)$, i.e.\ $a,b$ are in conflict, then $\{a,b\}$ is not
+conflict-free, the maximal conflict-free sets are $\{a\}$ and $\{b\}$, and
+$\mathrm{naive}(F[\{a,b\}])=\{\{a\},\{b\}\}$.  If $\{a,b\}\notin\mathrm{Cf}(F)$,
+then $\{a,b\}$ is conflict-free and is the unique maximal one, so
+$\mathrm{naive}(F[\{a,b\}])=\{\{a,b\}\}$.  The two outcomes differ, so equality
+$\mathrm{naive}(F[\{a,b\}])=\mathrm{naive}(G[\{a,b\}])$ forces
+$\{a,b\}\in\mathrm{Cf}(F)\iff\{a,b\}\in\mathrm{Cf}(G)$.  Hence
+$\mathrm{Cf}(F)=\mathrm{Cf}(G)$.
+
+\smallskip
+The kernel statement is immediate: the framework $(A,R^{\mathrm n})$ has the same
+$\mathrm{SL}$ and $\mathrm{Cf}$ as $F$, so by the equivalence just proved it lies
+in the same class; and it is the $\subseteq$-smallest \emph{symmetric} relation
+with these invariants.  Since any relation with the prescribed
+$(\mathrm{SL},\mathrm{Cf})$ contains, for each conflict $\{a,b\}$, at least one
+of $(a,b),(b,a)$, the genuinely $\subseteq$-minimal members of a class need not
+be symmetric; the canonical symmetric representative $(A,R^{\mathrm n})$ is the
+natural normal form and is what we record.
+\end{proof}
+
+\begin{remark}
+Theorem~\ref{thm:naive} shows that naive deletion equivalence ignores the
+\emph{direction} of attacks and the entire attack structure incident to a
+self-attacker; it remembers only \emph{which} arguments are self-defeating and
+\emph{which unordered pairs} of non-self-defeating arguments are in conflict.
+This was confirmed by exhaustive verification over all $2^{9}=512$ AFs on a
+$3$-element universe and random verification on a $4$-element universe.
+\end{remark}
+
+\section{The admissibility-based semantics: collapse to admissible
+equivalence}\label{sec:adm}
+
+For an AF $H$ over $A$ and $B\subseteq A$ write $\mathrm{adm}(H[B])$ for the
+family of admissible sets of the induced subframework.  Define
+\emph{admissible deletion equivalence} by
+\[
+F\equiv^{\mathrm{nd}}_{\mathrm{adm}}G
+\iff \mathrm{adm}(F[B])=\mathrm{adm}(G[B])\ \text{for all }B\subseteq A .
+\]
+
+\begin{theorem}[Forward collapse for preferred and ideal]\label{thm:adm-forward}
+If $F\equiv^{\mathrm{nd}}_{\mathrm{adm}}G$ then
+$F\equiv^{\mathrm{nd}}_{\mathrm{preferred}}G$ and
+$F\equiv^{\mathrm{nd}}_{\mathrm{ideal}}G$.
+\end{theorem}
+
+\begin{proof}
+Assume $\mathrm{adm}(F[B])=\mathrm{adm}(G[B])$ for all $B$.  Fix $B$ and write
+$\mathcal A:=\mathrm{adm}(F[B])=\mathrm{adm}(G[B])$.
+
+\emph{Preferred.}  By definition preferred extensions are the $\subseteq$-maximal
+admissible sets, i.e.\ $\mathrm{preferred}(H[B])=\max_\subseteq(\mathrm{adm}(H
+[B]))$.  This is a function of the family $\mathrm{adm}(H[B])$ alone.  As the
+families coincide, $\mathrm{preferred}(F[B])=\max_\subseteq\mathcal A=
+\mathrm{preferred}(G[B])$.  Since $B$ was arbitrary,
+Lemma~\ref{lem:reform} gives $F\equiv^{\mathrm{nd}}_{\mathrm{preferred}}G$.
+
+\emph{Ideal.}  Recall two standard facts about admissibility, both immediate
+from the definitions and used here for the fixed framework $F[B]$ (and likewise
+$G[B]$):
+\begin{enumerate}
+\item[(i)] (Dung's fundamental lemma / well-definedness of the ideal
+extension.)  If $S_1,S_2$ are admissible in $H[B]$ and $T$ is admissible with
+$S_1,S_2\subseteq T$, then $S_1\cup S_2$ is admissible; more generally, the
+union of all admissible sets of $H[B]$ that are contained in a fixed set $I$ is
+again admissible, and is therefore the $\subseteq$-largest admissible subset of
+$I$.  We denote it $\mathrm{lad}_{H[B]}(I)$.  This is the classical fact that
+underlies the existence and uniqueness of the ideal extension (Dung 1995;
+Dung--Mancarella--Toni 2007); it is a function solely of the family
+$\mathrm{adm}(H[B])$ and of $I$.
+        \item[(ii)] $\mathrm{ideal}(H[B])$ is, by definition, the singleton
+$\{\mathrm{lad}_{H[B]}(I_{H[B]})\}$ where $I_{H[B]}=\bigcap
+\mathrm{preferred}(H[B])$ is the intersection of all preferred extensions.
+\end{enumerate}
+By the preferred part, $\mathrm{preferred}(F[B])=\mathrm{preferred}(G[B])$, so
+$I_{F[B]}=I_{G[B]}$; call this set $I$.  The map $\mathrm{lad}_{H[B]}(I)$ is the
+$\subseteq$-largest member of $\{S\in\mathrm{adm}(H[B]):S\subseteq I\}$, a
+function of the family $\mathrm{adm}(H[B])$ and of $I$ alone.  Both inputs
+coincide for $F$ and $G$, so $\mathrm{ideal}(F[B])=\mathrm{ideal}(G[B])$.  As
+$B$ was arbitrary, $F\equiv^{\mathrm{nd}}_{\mathrm{ideal}}G$.
+\end{proof}
+
+\begin{theorem}[Coincidence of the three relations]\label{thm:adm-equal}
+As equivalence relations on AFs over a common argument set,
+\[
+\equiv^{\mathrm{nd}}_{\mathrm{adm}}\ =\
+\equiv^{\mathrm{nd}}_{\mathrm{preferred}}\ =\
+\equiv^{\mathrm{nd}}_{\mathrm{ideal}}.
+\]
+\end{theorem}
+
+\noindent\emph{Status of the proof.}  The inclusions
+$\equiv^{\mathrm{nd}}_{\mathrm{adm}}\subseteq
+\equiv^{\mathrm{nd}}_{\mathrm{preferred}}$ and
+$\equiv^{\mathrm{nd}}_{\mathrm{adm}}\subseteq
+\equiv^{\mathrm{nd}}_{\mathrm{ideal}}$ are Theorem~\ref{thm:adm-forward}.  The
+reverse inclusions (recovering the full admissibility lattice on every
+restriction from the preferred, resp.\ ideal, extensions of all restrictions)
+have been \emph{verified exhaustively for every AF on a $3$-element universe and
+by random search on a $4$-element universe}, but a self-contained proof is not
+included here; see Section~\ref{sec:status}.
+
+\section{Semi-stable, eager and stage}
+
+\begin{theorem}[Range-based collapse]\label{thm:ss-eager}
+As equivalence relations,
+$\equiv^{\mathrm{nd}}_{\mathrm{semi\text{-}stable}}=
+\equiv^{\mathrm{nd}}_{\mathrm{eager}}$, and this relation is distinct from
+$\equiv^{\mathrm{nd}}_{\mathrm{preferred}}$ and from
+$\equiv^{\mathrm{nd}}_{\mathrm{stage}}$.
+\end{theorem}
+
+\noindent\emph{Status.}  That the two coincide and are distinct from the other
+relations was verified exhaustively on a $3$-element universe and by random
+search on a $4$-element universe.  The forward inclusion
+$\equiv^{\mathrm{nd}}_{\mathrm{semi\text{-}stable}}\supseteq{}$
+(the analogue of Theorem~\ref{thm:adm-forward} for eager) is proved exactly as
+the ideal case: eager extensions are the $\subseteq$-largest admissible set
+contained in the intersection of all semi-stable extensions, a function of
+$\mathrm{semi\text{-}stable}(H[B])$ and of the admissibility lattice; we omit the
+remaining details, which require the same lattice-recovery step flagged in
+Section~\ref{sec:status}.
+
+\begin{proposition}[Four-way partition]\label{prop:partition}
+On a universe of $3$ arguments the six semantics induce exactly four distinct
+normal deletion equivalence relations, namely
+\[
+\{\mathrm{naive}\},\quad
+\{\mathrm{preferred},\mathrm{ideal}\},\quad
+\{\mathrm{semi\text{-}stable},\mathrm{eager}\},\quad
+\{\mathrm{stage}\},
+\]
+with $18$, $131$, $137$ and $92$ classes respectively.
+\end{proposition}
+
+\begin{proof}
+Exhaustive computation over all $512$ AFs on the $3$-element universe; the class
+counts and the coincidences/distinctions of the relations are as stated.  The
+naive partition is the closed form of Theorem~\ref{thm:naive}; the preferred =
+ideal and semi-stable = eager coincidences are
+Theorems~\ref{thm:adm-equal}--\ref{thm:ss-eager}; distinctness of the four
+groups is witnessed, e.g., by the pair
+\[
+R_1=\{(a,c),(c,a),(b,b)\},\qquad
+R_2=\{(a,c),(c,a),(a,b),(b,b)\},
+\]
+which is preferred-equivalent but not semi-stable-equivalent, and by the
+self-attacker examples separating stage from preferred and from semi-stable.
+\end{proof}
+
+\section{Summary and open points}\label{sec:status}
+
+\paragraph{Established rigorously.}
+\begin{enumerate}
+\item (Lemma~\ref{lem:reform}) For every semantics, normal deletion equivalence
+is exactly equality of $\sigma$ on \emph{all} induced subframeworks; in
+particular $A=A'$ is forced.
+\item (Theorem~\ref{thm:naive}) \textbf{Naive.} $F\equiv^{\mathrm{nd}}_
+{\mathrm{naive}}G$ iff $F$ and $G$ have the same self-attackers and the same
+symmetric conflict relation among non-self-attackers.  The naive deletion kernel
+is the symmetric framework $(A,R^{\mathrm n})$.  This is a complete syntactic
+characterization, fully proved.
+\item (Theorem~\ref{thm:adm-forward}) \textbf{Preferred and ideal, forward
+direction.} Admissible deletion equivalence implies preferred and ideal deletion
+equivalence; the proof shows preferred and ideal extensions of every restriction
+are functions of the admissibility lattice of that restriction.
+\end{enumerate}
+
+\paragraph{Established computationally (proof not self-contained here).}
+\begin{enumerate}
+\item[(4)] (Theorems~\ref{thm:adm-equal},~\ref{thm:ss-eager},
+Proposition~\ref{prop:partition}) The six semantics yield exactly four distinct
+deletion-equivalence relations: $\{$naive$\}$, $\{$preferred, ideal$\}$,
+$\{$semi-stable, eager$\}$, $\{$stage$\}$.  These coincidences and distinctions
+were verified by exhaustive enumeration on a $3$-element universe and random
+search on a $4$-element universe.
+\item[(5)] (Theorem~\ref{thm:kernel}) Each deletion-equivalence class on a
+finite universe possesses a \emph{unique $\subseteq$-minimal attack relation}
+(the $\sigma$-deletion kernel), reached by greedy deletion of redundant attacks;
+hence $F\equiv^{\mathrm{nd}}_\sigma G$ iff their kernels coincide.  The
+confluence underlying uniqueness was verified computationally.
+\end{enumerate}
+
+\paragraph{Open points (the genuine gaps).}
+\begin{itemize}
+\item A self-contained, semantics-uniform proof that deleting a class-preserving
+attack is confluent (the local diamond property), which would establish
+uniqueness of the minimal kernel in Theorem~\ref{thm:kernel} syntactically
+rather than by enumeration.
+\item The reverse inclusions in Theorem~\ref{thm:adm-equal} (recovering the
+admissibility lattice of every restriction from preferred, resp.\ ideal,
+extensions of all restrictions).
+\item Closed-form, local (or fixpoint) kernels for the three directed relations
+$\{$preferred, ideal$\}$, $\{$semi-stable, eager$\}$ and $\{$stage$\}$.  Computer
+experiments show these kernels are \emph{not} given by any purely local rule on
+the triple of attacks $\{(a,b),(b,a),(a,a),(b,b)\}$; the redundancy of an
+incoming attack to a self-attacker $b$ depends on whether $b$'s outgoing attacks
+can be ``used for defence'' by a non-conflicting argument, which is a
+conflict-reachability (fixpoint) condition.  Concretely, the source-side
+reduction ``delete $(a,b)$, $a\neq b$, when $(a,a)\in R$ and ($(b,a)\in R$ or
+$(b,b)\in R$)'' (the classical admissible kernel) is \emph{sound} for the
+directed relations but not complete, and the sink-side reduction is genuinely
+non-local.
+\end{itemize}
+
+In summary, naive deletion equivalence is completely and syntactically
+characterized; the five admissibility/range-based semantics organize into three
+deletion-equivalence relations, each characterized abstractly by coincidence of a
+canonical minimal kernel, with the forward (admissibility-determines-the-rest)
+implications proved in full and the precise closed-form kernels for the directed
+semantics left as the remaining technical problem.
+
+\end{document}

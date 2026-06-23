@@ -1,0 +1,159 @@
+{
+  "id": "rm-00505-meet-1",
+  "problem_id": "rm-00505",
+  "topic": "Init rm-00505 — proof review",
+  "goal": "Review the proof and issues for rm-00505; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T11:51:09Z",
+  "messages": [
+    {
+      "id": "m266b03c5",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-00505 — proof review**",
+      "created_at": "2026-06-23T11:51:09Z"
+    },
+    {
+      "id": "m8d9c3b78",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me be direct: this problem is not really about graphs, but the structural issue is one I recognize from spectral arguments — it's a question of putting mass on the right measure-zero set. The cleanest fix is a **spike-and-slab prior**: $\\mu = \\alpha \\delta_1 + (1-\\alpha)\\nu$ where $\\nu \\ll$ Lebesgue and $\\delta_1$ is an atom at $\\theta=1$. Then $P(H) = \\alpha > 0$, and after $n$ successes,\n$$\nP(H \\mid X_1=\\dots=X_n=1) = \\frac{\\alpha}{\\alpha + (1-\\alpha)\\int_0^1 \\theta^n\\, d\\nu(\\theta)} \\to 1,\n$$\nsince $\\int_0^1 \\theta^n d\\nu \\to 0$ by dominated convergence. That satisfies (i) and (ii) immediately and stays coherent with standard updating. So requirement (iii) — invariance under reparametrization — is the only genuinely hard constraint.\n\nHere's where I want precision, the analogue of asking \"what's the spectral gap?\": **a bare atom at $\\theta=1$ is not reparametrization-invariant**, because under a smooth bijection $\\theta \\mapsto g(\\theta)$ the slab density transforms by a Jacobian but the atom doesn't, and worse, the boundary point $\\theta=1$ is special only because of the parametrization of the *event* \"all successes,\" not of the parameter. So we need an invariant characterization of the hypothesis.\n\nMy proposal: don't privilege $\\theta=1$ as a point; privilege the **event** $A = \\{X_i = 1 \\ \\forall i\\}$ directly, in the spirit of de Finetti. The universal hypothesis is the tail event $A$, and by de Finetti's theorem $P(A) = \\int \\theta^\\infty d\\mu(\\theta) = \\mu(\\{1\\})$ — so confirmability of $H$ is *exactly* the requirement that the mixing measure charge the boundary. The atom is forced; the only freedom is how. Reparametrization invariance should then be imposed not on $\\mu$ but on the predictive distribution, which is what de Finetti exchangeability already guarantees is parametrization-free.\n\nTwo concrete things I'd want the group to nail down:\n1. **Rate.** With $d\\nu \\sim (1-\\theta)^{\\beta}d\\theta$ near $1$, we get $\\int\\theta^n d\\nu \\sim n^{-(\\beta+1)}$, so the posterior odds for $H$ grow like $\\alpha n^{\\beta+1}$ — a clean, tunable confirmation rate. That's the \"leverage score\" of the boundary.\n2. **Solomonoff connection.** The algorithmic-probability route gives the atom *automatically*: the universal semimeasure assigns positive prior to the computable hypothesis \"output $1$ forever,\" because it has finite description length $2^{-K(H)}>0$. That's the discrete analogue of the spike, and it's reparametrization-robust because $K$ is invariant up to additive constants. I'd push us to make that equivalence — spike-and-slab $\\Leftrightarrow$ description-length prior — precise, because it's the strongest justification for why charging the boundary is principled rather than ad hoc.\n\nSo my proposed action plan: (a) adopt spike-and-slab as the existence proof, (b) reframe via de Finetti so the atom is canonical rather than arbitrary, (c) prove the predictive-invariance statement that handles (iii), and (d) connect to $K(H)$ for",
+      "created_at": "2026-06-23T11:51:28Z"
+    },
+    {
+      "id": "me8d24d9f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your de Finetti reframing is exactly right, and it dissolves the reparametrization worry more cleanly than you stated. Let me push it further. The point is that the universal hypothesis $H$ is *not* a statement about the parameter $\\theta$ at all — it is the tail event $A=\\bigcap_i\\{X_i=1\\}$ in the exchangeable sequence space $\\{0,1\\}^\\infty$. Tail events are intrinsic to the sequence; they know nothing about how we coordinatize the mixing measure. By de Finetti, $P(A)=\\mu(\\{1\\})$, and the mixing measure $\\mu$ is *uniquely determined by the exchangeable law* — so there is no freedom to reparametrize away. Any smooth bijection $g$ of $[0,1]$ that you apply to $\\theta$ simply pushes $\\mu$ forward, and since $g(1)=1$ is forced for any reparametrization fixing \"certain success,\" the atom transforms covariantly. So invariance (iii) is automatic the moment you stop thinking of $H$ as $\\{\\theta=1\\}$ and think of it as a tail event.\n\nNow let me add the structural piece I always look for — what does the *extremal object* look like? Here is my graph-limits instinct. The mixing measure $\\mu$ is precisely the analogue of a graphon: it is the limit object that captures the entire exchangeable law, just as a graphon captures the limit of a convergent dense graph sequence. The Aldous–Hoover theorem is literally the two-dimensional de Finetti, and graphons are its mixing measures. In that picture, \"all successes\" is the degenerate graphon $W\\equiv 1$ — the constant graphon, the most rigid extremal point. The spike-and-slab decomposition is exactly the statement that the limit space is the *closure* of the absolutely continuous interior together with its boundary atoms, and confirmability requires charging that boundary. This is the same phenomenon as in the cut metric: the boundary points of graphon space are not negligible; they are where the rigid structures live.\n\nOn your two concrete points:\n\n1. **Rate.** I agree completely, and I'd note the calculation $\\int_0^1\\theta^n(1-\\theta)^\\beta\\,d\\theta=B(n+1,\\beta+1)\\sim \\Gamma(\\beta+1)\\,n^{-(\\beta+1)}$ is exact, a Beta integral. So the posterior odds for $H$ grow like $\\alpha\\,n^{\\beta+1}/\\Gamma(\\beta+1)$ — and crucially the *exponent* $\\beta+1$ is a reparametrization invariant, because it measures the order of contact of $\\nu$ with the boundary, a property of the measure near $\\theta=1$ that no smooth change of coordinates can alter. That is the right invariant to report, not the constant $\\alpha$.\n\n2. **Solomonoff $\\Leftrightarrow$ spike-and-slab.** This is the deepest point and I think the equivalence is genuine but needs care. The universal semimeasure $M$ assigns $H=$\"$1^\\infty$\" weight $\\sim 2^{-K(1^\\infty)}>0$, and Solomonoff's predictive bound says $\\sum_n (M(1^{n+1}\\mid 1^n)-1)^2 \\le K(\\text{truth})\\ln 2 <\\infty$ — so convergence to certainty is forced with a *computable* rate governed by description length. The clean statement I'd want us to prove: a spike-and-slab prior with atom weight $\\alpha$ and a *computable* slab is, up to",
+      "created_at": "2026-06-23T11:52:15Z"
+    },
+    {
+      "id": "m9d800dca",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — beautiful, and the de Finetti reframing is exactly right. But let me push on whether this is *really* the phenomenon, because I think there's a finer structure you're both glossing.\n\nYou've shown $P(A) = \\mu(\\{1\\})$ and the rate is governed by the order of contact $\\beta+1$. Good. But here's my question: **is the atom genuinely forced, or is there a fully continuous resolution?** I claim there is, and it's the more honest one. Consider what happens if you do *not* charge the boundary but instead change the notion of confirmation to the predictive probability of *continued* success:\n$$\nP(X_{n+1}=1 \\mid X_1=\\dots=X_n=1) = \\frac{\\int_0^1 \\theta^{n+1}\\,d\\nu}{\\int_0^1 \\theta^n\\,d\\nu} = 1 - \\frac{\\beta+1}{n} + O(n^{-2})\n$$\nfor $d\\nu \\sim (1-\\theta)^\\beta d\\theta$. This $\\to 1$ with *no atom at all*. So the \"zero-prior obstruction\" is partly an artifact of insisting on the posterior of a measure-zero event rather than the predictive degree of confirmation — which is the operationally meaningful quantity, exactly as in my work on equidistribution where what matters is the *limiting measure*, not pointwise mass.\n\nNow, the analogy I actually trust here is spectral. The exponent $\\beta+1$ is the order of vanishing of $\\int \\theta^n d\\nu$ — this is precisely a **density-of-states near the spectral edge** problem. In the Selberg trace formula the boundary behavior of the spectral measure at the edge controls the count $\\sum_j h(r_j)$; here the behavior of $\\nu$ near $\\theta=1$ is the edge density, and $n$ plays the role of the heat-kernel time $t \\to 0$. The Beta integral $B(n+1,\\beta+1)$ is a Tauberian statement: edge exponent $\\leftrightarrow$ decay rate, *exactly* the Karamata theorem. So the genuine invariant isn't the atom weight $\\alpha$ — Laszlo is right to discard it — it's this edge exponent, and it is a reparametrization invariant for the same reason a spectral edge exponent is coordinate-free.\n\nOn Solomonoff: I want to be the skeptic. The universal semimeasure gives $2^{-K(1^\\infty)}$, fine, but $K(1^\\infty)$ is finite while $K$ of a *generic* $\\theta\\in[0,1]$ is infinite — almost every $\\theta$ is incomputable. So the Solomonoff prior is *not* a spike-and-slab with an absolutely continuous slab; it's a spike-and-slab where the slab is **purely atomic, supported on computable reals**, a countable dense set. That's a genuinely different object. The equivalence Dan wants holds only after coarse-graining the computable atoms into an effective continuous density. Before we claim \"spike-and-slab $\\Leftrightarrow$ description-length prior,\" we must show the computable-slab measure satisfies the same edge Tauberian asymptotics — and there I'd bet the relevant exponent is $\\beta = 0$, the Laplace case, because the universal semimeasure weights short programs and \"$\\theta$ near $1$\" has bounded complexity. Let's *compute* the $n=1,2,3$ predictive probabilities for the universal semimeasure by hand before we assert the equivalence.",
+      "created_at": "2026-06-23T11:53:04Z"
+    },
+    {
+      "id": "m65d4836d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, that's a sharp objection and it forces me to concede something — but let me push back on where it leaves us, because I think you've actually *clarified* the equivalence rather than killed it.\n\nFirst, on your continuous resolution: yes, the predictive quantity $P(X_{n+1}=1\\mid X_1=\\dots=X_n=1)\\to 1$ with no atom, and I agree this is operationally the honest object. But it does **not** satisfy requirement (ii) as stated — the *posterior of $H$* stays at zero. So we have a genuine fork: either we accept \"confirmation = predictive convergence\" (no atom, your route) or we insist on \"confirmation = posterior mass\" (atom forced, my route). These aren't competitors; they're the two halves of a barrier-function argument. The predictive ratio $1-(\\beta+1)/n$ is the *derivative*, and $P(H)=\\mu(\\{1\\})$ is the *boundary term*. You only get a positive boundary term when the edge exponent makes $\\int\\theta^n d\\nu$ summable enough — and $\\sum_n (\\beta+1)/n$ diverging is exactly the signature that the predictive convergence is *too slow* to deposit mass at the boundary. That's a Borel–Cantelli / second-moment statement, and it's the right way to unify both views.\n\nNow the part I'll concede cleanly: you're right that the Solomonoff slab is **purely atomic on computable reals**, not absolutely continuous. So my proposed equivalence \"spike-and-slab $\\Leftrightarrow$ description-length prior\" is false *as stated*. But here's where I disagree with your guess that the relevant exponent is $\\beta=0$. The universal semimeasure doesn't weight \"$\\theta$ near $1$\" — it weights *programs*, and the programs accumulating near $\\theta=1$ are things like \"output $1$ except every $k$-th symbol,\" with complexity $K\\sim\\log k$. The density of computable points near $\\theta=1$ weighted by $2^{-K}$ is what plays the role of $d\\nu$, and its order of contact is set by how program length scales with distance-to-boundary. That's a computation, and I agree with you completely: **let's just do $n=1,2,3$ by hand** for the universal semimeasure. I'll wager the effective edge exponent is *not* an integer — it'll have a $\\log$ correction, because $\\sum_k 2^{-K(k)}$ over the boundary-approaching programs behaves like $\\sum 1/(k\\log^2 k)$, not like a clean Beta integral.\n\nSo my revised action plan: (a) report the **edge exponent $\\beta+1$** as the invariant, per Laszlo and Peter — drop $\\alpha$; (b) state the two-pronged confirmation theorem, predictive-derivative vs. boundary-mass, with the divergence/convergence of $\\sum 1/n^{\\beta+1}$ as the dividing line; (c) compute the universal-semimeasure predictives explicitly and extract its *effective* edge exponent, fully expecting a logarithmic Tauberian correction rather than Peter's $\\beta=0$. If we get the log correction, that's the honest statement of the Solomonoff–slab relationship: not an equivalence, but an explicit edge-asymptotics match.",
+      "created_at": "2026-06-23T11:55:24Z"
+    },
+    {
+      "id": "m78ae6bd1",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Excellent — Peter, Dan, you have isolated the real invariant, and I want to make the Tauberian picture fully rigorous because I think it settles the Solomonoff computation before we grind out $n=1,2,3$ by hand.\n\nHere is the clean statement. Let $F(n)=\\int_0^1\\theta^n\\,d\\nu(\\theta)$. This is the *moment sequence* of $\\nu$, and the entire question is a Mellin/Tauberian correspondence between the behavior of $\\nu$ near the edge $\\theta=1$ and the decay of $F(n)$. Substituting $\\theta=e^{-s}$, $F(n)\\approx\\int_0^\\infty e^{-ns}\\,d\\tilde\\nu(s)$ is a Laplace transform, and Karamata's theorem gives: if $\\nu([1-\\delta,1])\\sim c\\,\\delta^{\\,\\beta+1}$ as $\\delta\\to0$, then $F(n)\\sim c\\,\\Gamma(\\beta+2)\\,n^{-(\\beta+1)}$. So the edge exponent is *the* invariant, exactly as Peter says, and it is coordinate-free for the same reason the order of a zero is coordinate-free.\n\nNow to Dan's wager about the logarithmic correction. I think you are right and I can name *why*. The Solomonoff slab is the discrete measure $\\nu_K=\\sum_{p}2^{-|p|}\\delta_{\\theta(p)}$ over programs $p$ converging to $1$. The programs approaching $\\theta=1$ — \"output $1$ except every $k$-th symbol\" — sit at distance $\\delta_k\\sim 1/k$ with weight $2^{-K(k)}\\sim 1/(k\\log^2 k)$ once you account for the prefix-free coding of the integer $k$ (that $\\log^2 k$ is the price of a self-delimiting description of $k$). Therefore\n$$\n\\nu_K([1-\\delta,1])\\;\\sim\\;\\sum_{k\\ge 1/\\delta}\\frac{1}{k\\log^2 k}\\;\\sim\\;\\frac{1}{\\log(1/\\delta)},\n$$\nwhich is a *slowly varying* edge measure, not a power law. By Karamata with a slowly-varying factor, this gives\n$$\nF_K(n)\\;\\sim\\;\\frac{1}{\\log n},\n$$\ni.e. the **effective edge exponent is $\\beta+1=0$ with a logarithmic gain** — neither Peter's clean $\\beta=0$ Beta behavior nor an integer exponent, but Dan's predicted log correction. The honest statement is: the Solomonoff prior lives at the *critical edge*, the boundary between the predictive-convergence regime and the boundary-mass regime, lifted into positivity only by slow variation.\n\nLet me connect this to the unification Dan proposed via Borel–Cantelli, because graph limits give the right picture. The boundary of graphon space is reached only along sequences whose cut-distance to the constant graphon $W\\equiv1$ decays — and the *rate* of that decay is precisely the order of contact $\\beta+1$. The dividing line $\\sum_n F(n)<\\infty$ versus $=\\infty$ is the analogue of whether the limit point is an isolated extremal vertex of the graphon space or a limit of interior points; the spike is an isolated extremal point ($F$ summable, atom forced), while the Solomonoff measure is the marginal case where $F_K(n)\\sim 1/\\log n$ is *not* summable, so the boundary carries no atom yet predictive conf",
+      "created_at": "2026-06-23T11:56:11Z"
+    },
+    {
+      "id": "m02aeecaf",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, that $1/\\log n$ is gorgeous and I believe it — but let me now insist we *check the constant*, because the Tauberian gives you the order, never the leading coefficient, and the whole Solomonoff-vs-slab story turns on whether the predictive ratio actually tends to $1$ or stalls at some $c<1$. So let me do the hand computation Dan and I promised, because it disciplines the asymptotics.\n\nWith $F_K(n)\\sim a/\\log n$ slowly varying, the predictive is\n$$\nP(X_{n+1}=1\\mid 1^n)=\\frac{F_K(n+1)}{F_K(n)}=\\frac{\\log n}{\\log(n+1)}=1-\\frac{1}{n\\log n}+O\\!\\Big(\\frac{1}{n\\log^2 n}\\Big).\n$$\nNote the contrast with the power-law slab, where the gap was $(\\beta+1)/n$. Here the predictive *converges to certainty strictly slower* — gap $\\sim 1/(n\\log n)$ — yet $\\sum_n 1/(n\\log n)=\\infty$, so by Dan's Borel–Cantelli dividing line **no atom is deposited**. This is the precise sense in which Solomonoff sits exactly at the critical edge: it confirms predictively, never by boundary mass. That settles Dan's wager and my $\\beta=0$ guess simultaneously — neither was right; the truth is the marginal slowly-varying case.\n\nBut here is the finer structure I don't want us to gloss, the analogue of asking \"is this really Ramanujan or just $3/16$?\" The constant in $F_K(n)\\sim a/\\log n$ depends on the prefix coding convention — change the universal machine and you shift $K$ by an additive constant, hence rescale $a$. The *ratio* $F_K(n+1)/F_K(n)$ is machine-independent to leading order, but the *rate of approach* $1/(n\\log n)$ is **machine-invariant**, just as a spectral edge exponent is coordinate-free while the spectral measure's normalization is not. So the honest invariant of the Solomonoff framework is not an exponent $\\beta+1$ at all but the *slowly-varying class* — its membership in the de Haan/Karamata hierarchy at the critical edge. I'd state the final theorem this way:\n\n1. **Power-law slab** ($\\nu\\sim(1-\\theta)^\\beta$): predictive gap $(\\beta+1)/n$, $F$ summable iff $\\beta>0$, atom only when forced by hand.\n2. **Solomonoff/critical edge**: predictive gap $\\sim 1/(n\\log n)$, $F_K\\sim a/\\log n$ *not* summable, no atom, confirmation purely predictive.\n3. The reparametrization-invariant content is the Karamata index plus the slowly-varying correction — exactly the edge density-of-states.\n\nSo my verdict on requirement (ii) as posed: the Solomonoff route does *not* give positive posterior mass to $H$; it gives predictive confirmation. If the problem demands literal posterior $\\to 1$, you must add Dan's atom — and that atom is the one genuinely non-invariant ingredient, justified only by a description-length argument that is itself machine-dependent up to a constant. That's the real theorem behind the technical one, and we should state it without flinching.",
+      "created_at": "2026-06-23T11:57:00Z"
+    },
+    {
+      "id": "md65dd956",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T11:57:56Z"
+    },
+    {
+      "id": "m6209602d",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nResolve the universal-confirmation problem by reframing the hypothesis H as the de Finetti tail event A={all successes}, whose probability equals the mixing measure's boundary atom, then characterize confirmation via the reparametrization-invariant edge exponent / Karamata slowly-varying class and reconcile the spike-and-slab (posterior-mass) and Solomonoff (predictive) routes.",
+      "created_at": "2026-06-23T11:57:56Z"
+    }
+  ],
+  "plan": {
+    "summary": "Resolve the universal-confirmation problem by reframing the hypothesis H as the de Finetti tail event A={all successes}, whose probability equals the mixing measure's boundary atom, then characterize confirmation via the reparametrization-invariant edge exponent / Karamata slowly-varying class and reconcile the spike-and-slab (posterior-mass) and Solomonoff (predictive) routes.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish spike-and-slab existence proof",
+        "body": "Define mu = alpha*delta_1 + (1-alpha)*nu with nu absolutely continuous w.r.t. Lebesgue. Prove P(H)=alpha>0 (requirement i) and that P(H | X_1=...=X_n=1) = alpha/(alpha + (1-alpha)*int theta^n dnu) -> 1 by dominated convergence (requirement ii). This is the baseline existence proof that confirmability is achievable.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Reframe hypothesis as de Finetti tail event to secure invariance",
+        "body": "Recast H not as the parameter point {theta=1} but as the tail event A = intersection of {X_i=1} in {0,1}^infinity. Prove via de Finetti that P(A)=mu({1}), that the mixing measure mu is uniquely determined by the exchangeable law, and that any smooth reparametrization g fixing 'certain success' satisfies g(1)=1 so the atom transforms covariantly. Conclude requirement (iii) reparametrization-invariance holds automatically because tail events are intrinsic to sequence space.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Compute the edge exponent and prove it is the invariant",
+        "body": "For d_nu ~ (1-theta)^beta dtheta near 1, evaluate the exact Beta integral int_0^1 theta^n (1-theta)^beta dtheta = B(n+1, beta+1) ~ Gamma(beta+1) n^{-(beta+1)}. Prove that the exponent beta+1 (order of contact of nu with the boundary) is reparametrization-invariant while the atom weight alpha is not, and establish via Karamata's Tauberian theorem the correspondence: nu([1-delta,1]) ~ c*delta^{beta+1} iff F(n)=int theta^n dnu ~ c*Gamma(beta+2) n^{-(beta+1)}.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "State the two-pronged confirmation theorem with summability dividing line",
+        "body": "Formalize the fork: predictive confirmation P(X_{n+1}=1|1^n)=F(n+1)/F(n)=1-(beta+1)/n -> 1 (no atom needed) versus posterior boundary-mass confirmation P(H)>0 (atom required). Prove that boundary mass is deposited iff F(n) is summable enough, with the dividing line being convergence/divergence of sum_n F(n), framed as a Borel-Cantelli / second-moment statement. This unifies the predictive-derivative and boundary-term views.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Compute the Solomonoff universal-semimeasure asymptotics",
+        "body": "Model the Solomonoff slab as the purely atomic measure nu_K = sum_p 2^{-|p|} delta_{theta(p)} supported on computable reals. For programs approaching theta=1 ('output 1 except every k-th symbol') at distance delta_k ~ 1/k with prefix-free weight 2^{-K(k)} ~ 1/(k log^2 k), derive nu_K([1-delta,1]) ~ 1/log(1/delta) (slowly varying). Apply Karamata with slowly-varying factor to obtain F_K(n) ~ a/log n, and compute the predictive gap P(X_{n+1}=1|1^n)=log n/log(n+1)=1 - 1/(n log n) + O(1/(n log^2 n)).",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify the n=1,2,3 hand computations and the critical-edge claim",
+        "body": "Explicitly compute the universal-semimeasure predictive probabilities for n=1,2,3 to discipline the asymptotics, confirming the leading-order behavior. Verify that sum_n 1/(n log n) = infinity, hence F_K is NOT summable, hence NO atom is deposited: Solomonoff confirms purely predictively, sitting exactly at the critical edge between the predictive-convergence and boundary-mass regimes. Confirm this refutes both the naive beta=0 Beta guess and an integer-exponent guess.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Assess machine-dependence and the true invariant",
+        "body": "Critically examine which quantities are genuinely invariant: show the constant a in F_K(n)~a/log n depends on the prefix-coding convention (K shifts by additive constant under change of universal machine, rescaling a), but the rate of approach 1/(n log n) and the membership in the de Haan/Karamata slowly-varying class are machine-invariant. Articulate the honest meta-theorem: requirement (ii) literal posterior->1 requires Dan's atom, the one non-invariant ingredient justified only by a description-length argument that is itself machine-dependent up to a constant.",
+        "agent": "critic-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Assemble final theorem statement and verdict on requirements (i)-(iii)",
+        "body": "Synthesize into a final theorem with three cases: (1) power-law slab nu~(1-theta)^beta giving predictive gap (beta+1)/n, F summable iff beta>0, atom only when forced; (2) Solomonoff/critical edge giving gap ~1/(n log n), F_K~a/log n not summable, no atom, purely predictive confirmation; (3) reparametrization-invariant content = Karamata index plus slowly-varying correction (edge density-of-states). State clearly whether the problem's requirement (ii) demands literal posterior->1 (atom forced) or admits predictive confirmation, and deliver the final verdict on all three requirements.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T11:57:56Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

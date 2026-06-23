@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "BGLS step: convexity does not directly give Hessian PSD (need C^2 at the point)",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "In Corollary (cor:psd) the conclusion $\\sum_i\\gamma_i H^{(i)}\\succeq 0$ is obtained from the Abel summation $L=\\sum_{k<n}(c_k-c_{k+1})\\sigma_k+c_n\\sigma_n$ together with the claim 'Hess$\\,\\sigma_k\\succeq0$ by BGLS.'\n\nBGLS supplies only the **convexity** of $\\sigma_k=\\sum_{i\\le k}\\lambda_i$. Convexity is a global statement and does NOT by itself yield a PSD Hessian at a specific point: that requires $\\sigma_k$ to be twice differentiable there. The implication actually needed is\n$$\\sigma_k\\text{ convex and }C^2\\text{ at }(\\alpha,\\beta)\\ \\Longrightarrow\\ \\operatorname{Hess}\\sigma_k(\\alpha,\\beta)\\succeq0.$$\nThe twice-differentiability holds because at simple roots each $\\gamma_i$ (hence each $\\sigma_k$) is real-analytic (implicit function theorem applied to $\\partial_x f\\neq0$), but the solution never states this, never invokes the 'convex+$C^2$ ⇒ Hessian PSD' lemma, and never ties the differentiability to the simple-rootedness guaranteed (post-reduction) by $T_\\epsilon^2$ and Nuij. The logical chain 'BGLS ⇒ Hess$\\,\\sigma_k\\succeq0$' is therefore incomplete as written.\n\nFix: state a regularity lemma (analyticity of the ordered root map on the simple-root locus) and the standard convex-analysis fact, applied only inside $U=\\{p,q,p\\boxplus q\\text{ all simple}\\}$.",
       "created_at": "2026-06-17T18:01:28Z"
+    },
+    {
+      "id": "c6c5a0911",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Resolved.** The gap was that Corollary (cor:psd) inferred $\\operatorname{Hess}\\sigma_k(z_0)\\succeq0$ from BGLS *convexity* alone, without (a) the convex+$C^2$⇒PSD principle and (b) twice-differentiability of $\\sigma_k$ at the evaluation point. I made both explicit and tied the regularity to the simple-root reduction.\n\n**What I added / changed in solution.tex:**\n\n1. **Lemma (lem:convC2): convex $+$ $C^2$ at a point $\\Rightarrow$ Hessian PSD.** Full proof via the one-dimensional restriction $\\phi(t)=g(z_0+th)$: convexity gives the nonnegative symmetric second difference, and the second-order Taylor expansion (the hypothesis) shows this quotient $\\to\\phi''(0)=h^\\ast\\operatorname{Hess}g(z_0)h$. So $\\operatorname{Hess}g(z_0)\\succeq0$. This is the standard convex-analysis fact, now stated and proved rather than asserted.\n\n2. **Lemma (lem:reg): real-analyticity of the ordered hyperbolic eigenvalues on the simple-spectrum locus.** Proof via the real-analytic implicit function theorem applied to $F(z,t)=f(z-te)$ at a *simple* root: $\\partial_t F(z_0,\\lambda_i(z_0))=g_0'(\\lambda_i(z_0))\\neq0$ because $g_0(s)=f(z_0-se)$ has simple zeros. The local analytic root functions are forced (by ordering/continuity on disjoint neighbourhoods) to coincide with the $\\lambda_i$; hence each $\\sigma_k=\\sum_{i\\le k}\\lambda_i$ is real-analytic, in particular $C^2$, near $z_0$.\n\n3. **Explicit combination** of Theorem (BGLS) $+$ lem:reg $+$ lem:convC2, stated as the precise implication used: *simple spectrum at $z_0$ $\\Rightarrow$ $\\operatorname{Hess}\\sigma_k(z_0)\\succeq0$*, recorded as a labelled equation (eq:Hesssigmak-PSD).\n\n4. **Localization to the simple-spectrum point.** The Corollary now evaluates everything at $z_0=(0,\\alpha,\\beta)$, where, by the eigenvalue identity $\\lambda_i(z)=x-\\rho_{n+1-i}(a,b)$, the spectrum is $\\{-\\gamma_{n+1-i}\\}$ — pairwise distinct exactly because $p\\boxplus q$ has simple roots after the $T_\\epsilon^2$/Nuij reduction (Lemma simple). The Abel-summation Hessian identity is asserted only at $z_0$ (where $L$ is $C^2$), and the restricted-Hessian/principal-submatrix step is done at $z_0$.\n\n5. **Standing-assumptions lemma in Step 1 (lem:rootreg):** ties the simple-rootedness (post-reduction) to smoothness of the ordered root map at $(\\alpha,\\beta)$ via lem:reg, which is what makes the Jacobian and the Hessians $H^{(i)}$ used in Lemma (hess) and the Corollary exist classically in the first place.\n\n6. **Removed the hand-wavy \"distributional Hessian\" remark**; we never use a distributional/everywhere statement. The final parenthetical now states plainly that the whole argument lives at the single simple-spectrum point $z_0$, which is precisely where the $H^{(i)}$ are defined and where convex$\\Rightarrow$PSD is licensed.\n\n**Checks:** all `\\ref`/`\\eqref` resolve (no missing/duplicate labels), braces/environments balanced. Numerically verified for $n=3$ that $\\sum_j\\gamma_j H^{(j)}\\succeq0$ with $\\gamma$ decreasing (eigenvalues $\\ge0$ up to FD error), confirming the corollary's conclusion. (No LaTeX toolchain available in the sandbox, so I could not run pdflatex.)\n\nThe logical chain 'BGLS $\\Rightarrow$ $\\operatorname{Hess}\\sigma_k\\succeq0$' is now complete: convexity (BGLS) + $C^2$ (lem:reg, IFT on the simple-root locus) $\\Rightarrow$ PSD (lem:convC2), applied only at the simple-spectrum point.",
+      "created_at": "2026-06-21T21:38:21Z"
+    },
+    {
+      "id": "eva975e4b5",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T21:38:25Z"
     }
   ]
 }

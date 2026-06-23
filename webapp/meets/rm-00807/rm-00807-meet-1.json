@@ -1,0 +1,151 @@
+{
+  "id": "rm-00807-meet-1",
+  "problem_id": "rm-00807",
+  "topic": "Init rm-00807 — proof review",
+  "goal": "Review the proof and issues for rm-00807; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T22:33:55Z",
+  "messages": [
+    {
+      "id": "mab7e7a77",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-00807 — proof review**",
+      "created_at": "2026-06-22T22:33:55Z"
+    },
+    {
+      "id": "m4ba2542d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me approach this the way I'd approach any linear operator question: write the thing in coordinates and look at how it acts on the natural basis. Set $\\varphi(z) = \\sum_{n\\geq 0} c_n z^n$. The functional equation is *linear* in $\\varphi$, so the solution space is a vector space, and our job is to pin down its dimension by reading off the coefficient recursion.\n\nLook at the right-hand side combination $\\varphi(z^2) + \\lambda\\varphi(\\lambda z^2) + \\lambda^2\\varphi(\\lambda^2 z^2)$. This is exactly a root-of-unity filter: for a monomial $z^{2n}$ the factor is $1 + \\lambda^{n+1} + \\lambda^{2(n+1)}$, which equals $3$ when $n \\equiv 2 \\pmod 3$ and $0$ otherwise. So that whole sum collapses to $3\\sum_{n \\equiv 2 (3)} c_n z^{2n}$ — a clean projection onto a residue class. That's the key structural simplification; the seemingly messy $\\lambda$-twisted terms are just a Fourier projection on $\\mathbb{Z}/3$.\n\nSo the equation becomes, comparing powers of $z$:\n$$3\\sum_n c_n z^{3n+1} = 3\\sum_n c_n z^{6n+1} + 3\\sum_{n\\equiv 2(3)} c_n z^{2n}.$$\nNow we match exponents. The left side lives on exponents $\\equiv 1 \\pmod 3$; let me check the right side is consistent and grind out the recursion. Once I have the recursion I can compute the dimension of the analytic solution space directly — I claim it's exactly $2$, matching the family $a + bz/(1-z)$, but I want to verify by checking that the recursion forces $c_n$ for $n\\geq 1$ to all be equal (giving the geometric series $bz/(1-z)$) with $c_0=a$ free.\n\nBefore I do the full induction: what's the exponent bookkeeping? LHS exponents $3n+1$; RHS first term $6n+1$ (the even multiples of $3$, plus $1$); RHS projection term $2n$ with $n\\equiv 2$, i.e. exponents $\\in\\{4,10,16,\\dots\\}=\\{6k+4\\}$. Those are $\\equiv 1\\pmod 3$ — good, everything's on the same residue class, so the equation is non-degenerate exactly there and gives *no* constraint on coefficients $c_n$ with $n\\not\\equiv 1\\pmod 3$. **That worries me**: it suggests the kernel might be bigger than two-dimensional unless those free-looking coefficients get tied down by some other matched exponent. Can someone confirm whether every $c_n$ appears in *some* matched equation, or are there genuinely unconstrained coefficients? That's the crux of whether the statement is true.",
+      "created_at": "2026-06-22T22:34:10Z"
+    },
+    {
+      "id": "maf2caf7d",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your Fourier projection on $\\mathbb{Z}/3$ is exactly right, and your worry is precisely the heart of the matter. Let me push the bookkeeping all the way through, because I think the structure is more rigid than your concern suggests.\n\nWrite the equation as an identity of power series. Comparing coefficients of $z^m$ for each $m$:\n\n- **LHS**: $3z\\varphi(z^3) = 3\\sum_n c_n z^{3n+1}$ — contributes $3c_n$ at $m = 3n+1$.\n- **RHS term 1**: $3z\\varphi(z^6) = 3\\sum_n c_n z^{6n+1}$ — contributes $3c_k$ at $m = 6k+1$.\n- **RHS projection**: $3\\sum_{n\\equiv 2(3)} c_n z^{2n}$ — contributes $3c_n$ at $m = 2n$ with $n \\equiv 2 \\pmod 3$, i.e. at $m \\in \\{4,10,16,\\dots\\} = \\{6j+4\\}$.\n\nSo the equation is **vacuous** unless $m \\equiv 1 \\pmod 3$ (everything lives there, as you noted). Now fix $m = 3n+1$ and ask which of the three contributions are present. Crucially, the residues of $m$ modulo $6$ decide this:\n\n- $m \\equiv 1 \\pmod 6$: LHS gives $3c_n$ (with $n$ even, $n=2k$); RHS term 1 gives $3c_k$; projection absent. **Equation:** $c_{2k} = c_k$.\n- $m \\equiv 4 \\pmod 6$: LHS gives $3c_n$ ($n$ odd); RHS term 1 absent; projection gives $3c_{n'}$ where $2n' = m = 3n+1$. **Equation:** $c_n = c_{(3n+1)/2}$.\n\nSo **every** $n \\ge 1$ *does* get tied down — there are no genuinely free coefficients beyond $c_0 = a$ and one more. The relation $c_{2k}=c_k$ already collapses each coefficient to its odd part, and the second relation $c_n = c_{(3n+1)/2}$ stitches the odd residues together. This is nothing but a connectivity statement on a graph: put a vertex for each $n \\ge 1$, and edges $\\{k, 2k\\}$ and $\\{n, (3n+1)/2\\}$. The claim \"$c_n$ all equal for $n\\ge1$\" is precisely the claim that **this graph is connected** — a Collatz-flavored dynamical system. Reachability of $1$ from every $n$ is exactly what forces $c_n \\equiv b$.\n\nSo the problem reduces to a connectivity question on an infinite graph, and the statement is *true* iff that graph is connected. This is the same philosophy as my graph-limits work: the analytic rigidity is governed entirely by the combinatorial structure of the orbit graph. The remaining task is to prove connectivity — and the $3n+1$ flavor means we should not expect a one-line argument, but the two move-types together (halving, and the $n \\mapsto (3n+1)/2$ step) are richer than pure Collatz and may well admit a clean descent. Let me propose: show that from any $n$ one can always *decrease* via a finite sequence of the inverse moves to reach $1$. That descent argument, not raw probability, is what closes this.",
+      "created_at": "2026-06-22T22:34:56Z"
+    },
+    {
+      "id": "mb7cf8aa2",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Beautiful — Dan's Fourier projection on $\\mathbb{Z}/3$ and László's reduction to a Collatz-flavored orbit graph are exactly right. But let me play my usual game: compute the first few cases by hand to see the *real* dynamics, because I don't trust a Collatz analogy until I've watched the orbits.\n\nWe have two moves on integers $n \\ge 1$:\n- **Halving:** $c_{2k} = c_k$, so $2k \\leftrightarrow k$.\n- **The arithmetic step:** for $n$ odd (so $m = 3n+1 \\equiv 4 \\pmod 6$), $c_n = c_{(3n+1)/2}$.\n\nThe key point László glossed: I claim we should run the moves in the *contracting* direction and we get genuine descent. From any $n$, strip out all factors of $2$ (move 1) to reach an odd $n_0$. Then apply move 2: $n_0 \\mapsto (3n_0+1)/2$. Now $3n_0+1$ is even, and crucially it's $\\equiv 0 \\pmod 2$ — but how divisible? Here's the real content. Take $n_0$ odd; then $(3n_0+1)/2$ — let me just compute:\n\n- $1 \\to (4)/2 = 2 \\to 1$. Closes immediately. Good, $1$ is fixed.\n- $3 \\to (10)/2 = 5 \\to (16)/2 = 8 \\to 4 \\to 2 \\to 1$. So $3$ reaches $1$. \n- $5 \\to 8 \\to 1$ (via halving). \n- $7 \\to (22)/2 = 11 \\to (34)/2 = 17 \\to (52)/2 = 26 \\to 13 \\to (40)/2 = 20 \\to 5 \\to 1$. Reaches $1$.\n\nSo far everything reaches $1$ — but notice this is **forward Collatz** $n \\mapsto (3n+1)/2$, which is exactly the conjecturally-but-not-provably-terminating map! That should set off alarm bells: if connectivity *required* forward Collatz convergence, the problem would be open, not solvable. So László's descent in the *forward* direction is the wrong tool. The right move is to use the edges as an **undirected** graph and find a *guaranteed* descent — and I think the inverse of move 2 supplies it. From $n$, when is $n$ in the image of the odd-step? We need $m$ odd with $(3m+1)/2 = n$, i.e. $m = (2n-1)/3$, valid when $2n \\equiv 1 \\pmod 3$, i.e. $n \\equiv 2 \\pmod 3$. That gives $m = (2n-1)/3 < n$ — a genuine decrease! \n\nSo: given any $n>1$, either it's even (halve, decrease), or it's odd. If odd and $n \\equiv 2 \\pmod 3$ — impossible, odd $n\\equiv 2 \\pmod 3$ can still happen, e.g. $n=5$: $(2\\cdot5-1)/3 = 3 < 5$, descent. The cases to corner are odd $n$ with $n \\equiv 0,1 \\pmod 3$. There you must go *up* once via $n \\mapsto (3n+1)/2$ and then hope to come back down. **This is exactly the Collatz obstruction in disguise** — and that's the gap I want flagged. Before we declare victory, someone must prove that the *undirected* graph with both edge types is connected, which is genuinely subtler than a monotone descent. My instinct from the trace-formula world: the right invari",
+      "created_at": "2026-06-22T22:35:44Z"
+    },
+    {
+      "id": "m53595306",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's caution is exactly right, and it's the kind of thing I'd insist on before claiming an algorithm works: don't confuse \"a descent exists in some direction\" with \"the undirected graph is connected.\" But let me argue that here we actually *can* guarantee descent, because we have a third move we haven't used: the halving edge $\\{n, 2n\\}$ is available in *both* directions for free, and that's what breaks the Collatz obstruction.\n\nHere's the descent I want to nail down. Take any odd $n > 1$. The arithmetic edge connects $n$ to $(3n+1)/2$. But $3n+1$ is even — write $3n+1 = 2^a \\cdot t$ with $t$ odd. Then by chaining halving edges, $n$ is connected to $t = (3n+1)/2^a$, the *fully-reduced* odd part, not just to $(3n+1)/2$. The question is whether $t < n$.\n\n- If $a \\geq 2$, i.e. $4 \\mid 3n+1$, then $t \\leq (3n+1)/4 < n$ for $n \\geq 1$. **Guaranteed descent to a smaller odd number.**\n- The bad case is $a = 1$, i.e. $3n+1 \\equiv 2 \\pmod 4$, i.e. $n \\equiv 1 \\pmod 4$.\n\nSo odd $n \\equiv 3 \\pmod 4$ descend immediately. For $n \\equiv 1 \\pmod 4$ I want a second relation. This is exactly the bipartite-expansion bookkeeping I'd do for a sparsifier: I have *two* generating moves and I should check whether their combined action is contracting on a potential function, not whether either alone is. Peter found a genuine downward edge from $n \\equiv 2 \\pmod 3$; I've found one from $n \\equiv 3 \\pmod 4$. The right move is to tabulate the residue classes mod $12$ and check that the *union* of available descending edges covers every class — then connectivity follows by strong induction with no Collatz needed.\n\nSo my proposed action item, concretely: define the potential $\\Phi(n) = \\log n$ and prove the lemma — *for every odd $n>1$, at least one of the moves (full odd-part of $(3n+1)$, or the inverse step $(2n-1)/3$ when $n\\equiv 2\\pmod 3$) yields a neighbor with strictly smaller $\\Phi$.* If that covers all residues we're done, and it's a finite check, not an open problem. Can someone grind the mod-12 table while I verify $a\\geq 2$ doesn't secretly fail? That's the whole proof, and it stays elementary.",
+      "created_at": "2026-06-22T22:37:59Z"
+    },
+    {
+      "id": "m8e1e15a9",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, before we grind the mod-12 table, let me sharpen the descent lemma, because I think the two downward edges you and Peter found already cover everything — and the proof is cleaner than a residue enumeration. Let me restate the moves as an undirected graph on odd integers $\\geq 1$ (halving edges contract every $n$ to its odd part, so vertices *are* the odd numbers):\n\nFor odd $n$, let $D(n)$ = the odd part of $(3n+1)/2$ — the \"up-ish\" Collatz neighbor. And the genuine downward edge, Peter's inverse step, exists when $n \\equiv 2 \\pmod 3$: $n \\sim m$ with $m = (2n-1)/3 < n$.\n\nNow here is the key dichotomy, which I'll phrase as the connectivity claim:\n\n- **If $n \\equiv 3 \\pmod 4$**: then $3n+1 \\equiv 10 \\equiv 2 \\pmod 4$... wait — let me be careful: $n\\equiv 3 \\pmod 4 \\Rightarrow 3n+1 \\equiv 10 \\equiv 2 \\pmod 4$, so $a=1$, *no* guaranteed descent there. It is $n \\equiv 1 \\pmod 4$ that gives $3n+1 \\equiv 4 \\equiv 0 \\pmod 4$, hence $a \\geq 2$ and $D(n) \\leq (3n+1)/4 < n$. So Dan, your two cases are swapped — let me fix the bookkeeping, since this is exactly the kind of off-by-a-residue that sinks a \"finite check.\"\n\nSo the **descending edges** are:\n1. $n \\equiv 1 \\pmod 4 \\Rightarrow$ descent via $D(n) < n$ (the $a\\ge 2$ case).\n2. $n \\equiv 2 \\pmod 3 \\Rightarrow$ descent via $(2n-1)/3 < n$.\n\nThe uncovered odd residues are those with $n \\equiv 3 \\pmod 4$ **and** $n \\not\\equiv 2 \\pmod 3$, i.e. $n \\equiv 0,1 \\pmod 3$. By CRT mod $12$, odd $n \\equiv 3 \\pmod 4$ means $n \\in \\{3,7,11\\} \\pmod{12}$; excluding $\\equiv 2 \\pmod 3$ ($n\\equiv 11$) leaves $n \\equiv 3, 7 \\pmod{12}$. These are the genuinely stubborn classes — and Peter is right that here a single move goes *up*. **This is the real gap**, and no amount of relabeling removes it.\n\nBut I claim it is closable without Collatz, by a *two-step* descent, which is the analogue of looking at a longer word in the generators rather than a single edge — exactly the spirit of expansion arguments. Take $n \\equiv 3 \\pmod{12}$. Then $n\\equiv 3\\pmod 4$, so $D(n)=(3n+1)/2$ (the $a=1$ case, this is odd). Compute its residue: with $n\\equiv 3\\pmod 4$, $(3n+1)/2 \\equiv 5 \\equiv 1\\pmod 4$? Let me verify on $n=3$: $D(3)=5\\equiv 1\\pmod 4$ — yes, and $5\\equiv 2\\pmod 3$, so from $5$ Peter's edge descends to $3$. That is a 2-cycle, not progress; so for $n=3$ we instead use $5 \\equiv 1\\pmod 4$: $D(5) = $ odd part of",
+      "created_at": "2026-06-22T22:38:46Z"
+    },
+    {
+      "id": "me67e41e2",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Hold on — we're about to drown in a mod-12 case-chase that secretly *is* Collatz wearing a disguise. Let me cut through it the way I'd cut through a trace-formula computation: find the invariant, not the descent.\n\nHere's the thing that's been bugging me. The undirected graph László wrote down has two move types on odd $n$: the halving collapse (so vertices are odd integers) and the edge $n \\sim D(n) = \\mathrm{oddpart}((3n+1)/2)$. But $D$ is *exactly* the Syracuse map. So \"this undirected graph is connected\" is **literally equivalent** to the Collatz conjecture — undirected connectivity of the Collatz graph to the component of $1$ is what Collatz asserts. We have not escaped anything by going undirected; we've just renamed it. Dan's hope that the second move-direction \"breaks the obstruction\" is wishful — the inverse step $(2n-1)/3$ is just the inverse edge of $D$, so the undirected graph is the Collatz graph, period.\n\n**So the statement as posed cannot be provable through this connectivity route** — unless the connectivity we actually need is *weaker* than full Collatz. And here's where I think we've made an error upstream. Let me question the reduction itself. We are not asked whether all $c_n$ ($n\\ge1$) are *forced equal* — we're asked whether the analytic solution space is exactly $2$-dimensional. **Convergence on $\\mathbb D$ is a constraint we've thrown away.** The recursion $c_{2k}=c_k$ and $c_n = c_{(3n+1)/2}$ propagates values along Collatz orbits, but analyticity demands $\\limsup |c_n|^{1/n}\\le 1$. \n\nNow watch: suppose the Collatz graph had a component *not* containing $1$ — say a divergent trajectory or a nontrivial cycle. On a nontrivial cycle the $c_n$ are forced equal, contributing a bounded (hence harmless) family. On a *divergent* orbit, the coefficients are constant along an infinite set of integers going to infinity — that's also bounded, hence analytic. So a priori such components would give *extra* solutions and **disprove** the statement. The whole question is therefore: does every $n$ reach $1$? That genuinely is Collatz.\n\nSo my claim, sharply: **this problem is either equivalent to Collatz (open), or the intended solution avoids the orbit-graph entirely.** I'd bet on the latter. The honest move is to go back to the *functional equation on $\\mathbb D$* and use analyticity globally — e.g. test against the operator's action near the boundary, or use that $\\varphi(z)-\\varphi(z^2)$ type combinations satisfy a contraction. Before anyone grinds another residue: can someone confirm or kill my assertion that $D=$ Syracuse, because if it stands, the combinatorial route is a dead end and we need the complex-analytic input that we discarded when we passed to coefficients.",
+      "created_at": "2026-06-22T22:39:34Z"
+    },
+    {
+      "id": "mb126fa19",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T22:40:23Z"
+    },
+    {
+      "id": "m2a5b4bd5",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nAnalyze the linear functional equation by reducing it via a Z/3 Fourier projection to a coefficient recursion, then determine whether the resulting orbit-graph connectivity is genuinely Collatz-equivalent or whether discarded analyticity constraints on the disk provide the missing rigidity to pin the solution space to dimension 2.",
+      "created_at": "2026-06-22T22:40:23Z"
+    }
+  ],
+  "plan": {
+    "summary": "Analyze the linear functional equation by reducing it via a Z/3 Fourier projection to a coefficient recursion, then determine whether the resulting orbit-graph connectivity is genuinely Collatz-equivalent or whether discarded analyticity constraints on the disk provide the missing rigidity to pin the solution space to dimension 2.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Verify the Fourier projection and coefficient recursion",
+        "body": "Confirm Dan's root-of-unity filter: that varphi(z^2)+lambda*varphi(lambda z^2)+lambda^2*varphi(lambda^2 z^2) collapses to 3*sum_{n=2 mod 3} c_n z^{2n}. Then rigorously derive the coefficient-matching equations across powers of z, establishing that the equation is vacuous unless m = 1 mod 3, and producing the two relations c_{2k}=c_k and c_n=c_{(3n+1)/2}.",
+        "agent": "verifier-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Correct and fix the mod-6/mod-4 bookkeeping",
+        "body": "Resolve the disputed residue arithmetic between Dan and Laszlo: determine precisely which odd n give guaranteed descent. Verify whether 3n+1 has 2-adic valuation a>=2 exactly for n = 1 mod 4 (giving D(n) <= (3n+1)/4 < n), and confirm Peter's inverse edge (2n-1)/3 < n exists exactly for n = 2 mod 3. Produce a correct mod-12 table of descending edges.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Determine whether the orbit graph equals the Collatz graph",
+        "body": "Critically assess Peter's central claim that the undirected graph with edges {n,2n} and n~oddpart((3n+1)/2) is literally the Syracuse/Collatz graph, so that connectivity to the component of 1 is equivalent to the Collatz conjecture. Decide definitively whether the combinatorial connectivity route is a dead end or whether the needed connectivity is strictly weaker than full Collatz.",
+        "agent": "critic-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Re-examine the discarded analyticity constraint",
+        "body": "Investigate Peter's key observation that passing to coefficients discarded the analyticity requirement limsup |c_n|^{1/n} <= 1 on the disk D. Analyze whether divergent Collatz orbits or nontrivial cycles produce bounded coefficient families that would yield extra analytic solutions (disproving dimension 2), or whether analyticity imposes a finer constraint that forces equality without invoking full Collatz.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Develop the complex-analytic approach on the disk",
+        "body": "Attempt the route Peter advocates: work directly with the functional equation 3z*varphi(z^3) = 3z*varphi(z^6) + projection on D, using global analyticity. Explore combinations like varphi(z)-varphi(z^2), boundary/near-boundary behavior, or contraction/fixed-point arguments to constrain the solution space without reducing to orbit-graph connectivity.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify the candidate two-dimensional solution family",
+        "body": "Directly verify that the family a + b z/(1-z) satisfies the original functional equation, confirming c_0 = a free and c_n = b for all n >= 1. Establish this gives a 2-dimensional subspace of solutions, providing the lower bound on dimension independent of the connectivity/analyticity upper-bound argument.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Synthesize the final proof or document the obstruction",
+        "body": "Combine the results: if the analytic approach (step 4) closes the upper bound, assemble the complete proof that the solution space is exactly 2-dimensional. If instead the problem is shown equivalent to Collatz (step 2) with no analytic rescue (step 3), document precisely why the statement as posed is open or requires reinterpretation, and flag the exact remaining gap.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          4,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T22:40:23Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

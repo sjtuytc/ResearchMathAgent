@@ -1,0 +1,151 @@
+{
+  "id": "rm-04343-meet-1",
+  "problem_id": "rm-04343",
+  "topic": "Init rm-04343 — proof review",
+  "goal": "Review the proof and issues for rm-04343; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T10:12:36Z",
+  "messages": [
+    {
+      "id": "mfb290f4f",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-04343 — proof review**",
+      "created_at": "2026-06-23T10:12:36Z"
+    },
+    {
+      "id": "mc66b6c7a",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me set up the linear algebra cleanly, because for me this problem lives in the matrix exponential, not in any cut structure.\n\nWrite the generator $Q$ and $\\Lambda = \\mathrm{diag}(\\lambda_i)$. Conditional on the modulating chain, the survival of \"no event yet\" is governed by the *defective* semigroup $e^{(Q-\\Lambda)t}$. Concretely, for any initial law $\\mu$ (a row vector),\n$$\\Pr(T_1^\\mu > t) = \\mu\\, e^{(Q-\\Lambda)t}\\mathbf{1}.$$\nThis is the key object: $A := Q - \\Lambda$ is the sub-generator killing trajectories at rate $\\lambda_{J(t)}$. So the whole question reduces to comparing two quadratic-form-like quantities:\n$$\\pi\\, e^{At}\\mathbf{1} \\quad\\text{vs.}\\quad \\alpha\\, e^{At}\\mathbf{1}, \\qquad \\alpha = \\frac{\\pi\\Lambda}{\\pi\\Lambda\\mathbf{1}}.$$\n\nNow here's the clean observation. Let $f(t) = \\pi e^{At}\\mathbf{1}$ be the time-stationary survival function. I claim $\\alpha$ is exactly $-\\dot f$ normalized. Differentiate: $\\dot f(t) = \\pi A e^{At}\\mathbf{1} = \\pi(Q-\\Lambda)e^{At}\\mathbf{1}$. Since $\\pi Q = 0$, we get $\\dot f(t) = -\\pi\\Lambda e^{At}\\mathbf{1}$. At $t=0$: $\\dot f(0) = -\\pi\\Lambda\\mathbf{1} = -\\sum_i\\pi_i\\lambda_i =: -c$. And the event-stationary survival is $g(t) = \\alpha e^{At}\\mathbf{1} = \\frac{1}{c}\\pi\\Lambda e^{At}\\mathbf{1} = -\\dot f(t)/c$.\n\nSo the entire claim $T_1^\\pi \\ge_{\\mathrm{st}} T_1^\\alpha$ becomes a statement purely about the function $f$:\n$$f(t) \\ge -\\frac{\\dot f(t)}{c} = \\frac{-\\dot f(t)}{-\\dot f(0)}, \\quad\\text{i.e.}\\quad \\frac{-\\dot f(t)}{f(t)} \\le -\\dot f(0) = c \\ \\text{for all } t.$$\nEquivalently: the hazard rate of $T_1^\\pi$ is at most its value at $0$. **So the conjecture is equivalent to: the time-stationary inter-event survival function $f$ has hazard rate maximized at $t=0$**, i.e. $-\\dot f/f$ is... we need it bounded by $c$ everywhere. Note $-\\dot f(t)/f(t) = \\frac{\\pi\\Lambda e^{At}\\mathbf 1}{\\pi e^{At}\\mathbf 1}$ is a $\\Lambda$-weighted average of the state occupation under the killed dynamics.\n\nThis is a Chebyshev/association question: is $\\frac{\\pi\\Lambda e^{At}\\mathbf{1}}{\\pi e^{At}\\mathbf{1}} \\le \\pi\\Lambda\\mathbf{1}$? It says killing correlates *negatively* with high-$\\lambda$ states over time — high-intensity states deplete faster, so the surviving mass drifts toward low-$\\lambda$ states,",
+      "created_at": "2026-06-23T10:12:53Z"
+    },
+    {
+      "id": "mbbc887d9",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your reduction is exactly right, and the final inequality is the crux. Let me push on the structural meaning, because I think there is a clean monotonicity argument hiding here.\n\nDefine $h(t) = -\\dot f(t)/f(t)$, the hazard rate. You want $h(t) \\le h(0) = c$. I claim something stronger is true: $h$ is *monotone nondecreasing in $t$*... no — let me be careful, because the extremal intuition cuts the other way. Consider the $\\Lambda$-weighted law on states conditioned on survival,\n$$\\nu_t(i) = \\frac{(\\pi e^{At})_i}{\\pi e^{At}\\mathbf 1}, \\qquad h(t) = \\mathbb E_{\\nu_t}[\\lambda_i] = \\langle \\nu_t, \\lambda\\rangle.$$\nSo the question is whether the *conditional mean intensity given survival to time $t$* stays below its initial value $c = \\langle \\pi, \\lambda\\rangle$. This is precisely an \"inspection paradox\" statement: surviving trajectories are biased toward low-$\\lambda$ states.\n\nHere is the key computation. Differentiate $h$:\n$$\\dot h = -\\frac{\\ddot f}{f} + \\Big(\\frac{\\dot f}{f}\\Big)^2 = -\\frac{\\ddot f}{f} + h^2.$$\nNow $\\ddot f = \\pi A^2 e^{At}\\mathbf 1$, and using $\\pi Q=0$ repeatedly one finds $-\\ddot f(t)/f(t) = \\langle \\nu_t, (\\lambda - \\text{(drift term from }Q)) \\rangle$ — the second moment of the killing rate under $\\nu_t$ *plus* a $Q$-transport correction. Concretely $\\dot h(t) = \\mathrm{Var}_{\\nu_t}(\\lambda) - \\langle \\nu_t, (Q\\lambda)\\rangle$ where $(Q\\lambda)_i = \\sum_j Q_{ij}\\lambda_j$ measures how the chain pushes intensity. The variance term is $\\ge 0$ — that alone would make $h$ increasing and *refute* the conjecture! So everything hinges on the sign of the transport term $\\langle \\nu_t, Q\\lambda\\rangle$.\n\nThis tells me the conjecture is **not** universally true — it requires the modulating dynamics to dominate the variance inflation. The natural counterexample is a *slow* chain ($Q \\to 0$ scaling, $\\varepsilon Q$): then the transport term vanishes, $\\dot h \\approx \\mathrm{Var}_{\\nu_t}(\\lambda) > 0$ whenever $\\lambda$ is non-constant, so $h(t)$ exceeds $c$ for small $t>0$, giving $T_1^\\pi \\not\\ge_{\\mathrm{st}} T_1^\\alpha$. In the slow limit this is just a static mixture of exponentials: $f(t) = \\sum_i \\pi_i e^{-\\lambda_i t}$, a hyperexponential, whose hazard rate is famously *decreasing*... \n\n— wait, that is the opposite sign, so let me reconcile: for a mixture of exponentials the hazard rate is decreasing, which means $h(t)\\le h(0)$ and the conjecture *holds* in the static limit. So my variance computation has a sign error in the transport bookkeeping; the correct statement must be $\\dot h(t) = -\\mathrm{Var}_{\\nu_t}(\\lambda) + (\\text{transport",
+      "created_at": "2026-06-23T10:13:38Z"
+    },
+    {
+      "id": "m51fdf80b",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan's reduction is clean, and Laszlo, you caught your own sign error, which is the whole ballgame. Let me settle it, because I want to compute the static case *by hand* first, the way I always do.\n\nIn the slow limit $f(t)=\\sum_i \\pi_i e^{-\\lambda_i t}$, a hyperexponential. The hazard is\n$$h(t)=\\frac{\\sum_i \\pi_i \\lambda_i e^{-\\lambda_i t}}{\\sum_i \\pi_i e^{-\\lambda_i t}}=\\mathbb{E}_{\\nu_t}[\\lambda].$$\nDifferentiate: $\\dot h(t)=-\\mathrm{Var}_{\\nu_t}(\\lambda)\\le 0$. So in the static case the hazard is **decreasing**, $h(t)\\le h(0)=c$, and the conjecture *holds*. Note the sign: it is $-\\mathrm{Var}$, not $+\\mathrm{Var}$. Laszlo, your bookkeeping had the transport and variance roles inverted — the variance is the *good* term here, it pushes the hazard down because survival biases $\\nu_t$ toward small $\\lambda_i$ (the inspection paradox in your favor).\n\nNow the real question is whether transport can ruin this. Let me reconcile the general formula. With $A=Q-\\Lambda$, $\\nu_t \\propto \\pi e^{At}$,\n$$\\dot h(t) = -\\mathrm{Var}_{\\nu_t}(\\lambda) + \\langle \\nu_t, \\Lambda Q^{\\!*}\\!\\cdots\\rangle$$\n— I don't trust either of us on the transport term written that way. Let me give the conceptual reason it should still come out right, and it is *exactly* a quantum-ergodicity/spectral statement. The operator $A=Q-\\Lambda$ is, up to the $\\pi$-symmetrization, conjugate to a self-adjoint operator: put $D=\\mathrm{diag}(\\sqrt{\\pi_i})$ and assume $Q$ is $\\pi$-reversible; then $\\tilde A = D A D^{-1}$ is symmetric, with a Perron eigenvalue $-\\rho<0$ and eigenvector $v$. As $t\\to\\infty$, $\\nu_t \\to$ the Perron measure, and $h(t)\\to\\rho$, the spectral abscissa — a constant. So $h$ interpolates between $h(0)=c=\\langle\\pi,\\lambda\\rangle$ and $h(\\infty)=\\rho$. The clean claim is that $h$ is *monotone decreasing* to $\\rho$, i.e. the survival function $f$ is **log-convex** (completely monotone, in fact, in the reversible case!).\n\nThat's the real theorem: **in the reversible case $f$ is completely monotone**, hence a genuine mixture of exponentials, hence DFR (decreasing failure rate), hence $h(t)\\le h(0)=c$ — the conjecture holds. Reversibility is the analogue of the spectral theorem here; $\\tilde A$ symmetric $\\Rightarrow$ $e^{\\tilde A t}$ has a positive spectral measure $\\Rightarrow$ $f(t)=\\int e^{-\\rho t}d\\mu(\\rho)$.\n\nSo my proposed dichotomy:\n1. **Reversible $Q$**: conjecture TRUE, via complete monotonicity / spectral theorem. This is rock solid — someone should write the two lines.\n2. **Non-reversible $Q$**: here $\\",
+      "created_at": "2026-06-23T10:14:26Z"
+    },
+    {
+      "id": "mca913f18",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Good — Peter, the reversible case is settled and I agree it's two lines: $\\tilde A = D(Q-\\Lambda)D^{-1}$ symmetric $\\Rightarrow$ $f(t) = \\pi e^{At}\\mathbf 1 = (\\sqrt\\pi)\\, e^{\\tilde A t}(\\sqrt\\pi)^T$ has a positive spectral representation, so $f$ is completely monotone and DFR. Done.\n\nBut I want to nail down the *general* transport term explicitly, because that's where the truth lives and I refuse to wave hands. Let me just compute. With $\\nu_t = \\pi e^{At}/f(t)$ a row vector and $h(t) = \\nu_t \\Lambda \\mathbf 1 = \\langle\\nu_t,\\lambda\\rangle$:\n$$\\dot\\nu_t = \\nu_t A - (\\nu_t A\\mathbf 1)\\nu_t = \\nu_t A + h\\,\\nu_t,$$\nsince $\\nu_t A\\mathbf 1 = \\nu_t(Q-\\Lambda)\\mathbf 1 = -h$. Then\n$$\\dot h = \\dot\\nu_t\\,\\lambda = \\nu_t A\\lambda + h\\langle\\nu_t,\\lambda\\rangle = \\nu_t(Q-\\Lambda)\\lambda + h^2 = \\langle\\nu_t, Q\\lambda\\rangle - \\langle\\nu_t,\\lambda^2\\rangle + h^2.$$\nSo **exactly**\n$$\\boxed{\\dot h(t) = -\\mathrm{Var}_{\\nu_t}(\\lambda) + \\langle\\nu_t, Q\\lambda\\rangle.}$$\nThis confirms Peter's sign and pins the transport term as $\\langle\\nu_t,Q\\lambda\\rangle$, with no ambiguity. In the static limit $Q\\to 0$ it's pure $-\\mathrm{Var}\\le 0$: DFR, conjecture holds.\n\nNow the question is sharp and *constructive*: can we choose $Q,\\Lambda$ making $\\langle\\nu_0, Q\\lambda\\rangle > \\mathrm{Var}_{\\nu_0}(\\lambda)$ at $t=0$? At $t=0$, $\\nu_0 = \\pi$, and $\\langle\\pi, Q\\lambda\\rangle = (\\pi Q)\\lambda = 0$ since $\\pi Q = 0$! So $\\dot h(0) = -\\mathrm{Var}_\\pi(\\lambda) \\le 0$ *always* — the hazard always starts decreasing, irreversible or not. The conjecture can only fail if transport overwhelms variance at some *later* $t>0$ where $\\nu_t Q \\ne 0$.\n\nSo here's my proposed counterexample search, very concretely: take a fast directed cycle (maximally non-reversible) that, conditioned on survival, *pumps* mass from low-$\\lambda$ states into high-$\\lambda$ states faster than killing depletes them. We need $\\langle\\nu_t,Q\\lambda\\rangle$ large and positive — i.e. $Q$ pushes the surviving distribution uphill in $\\lambda$. A 3-state rotation $1\\to2\\to3\\to1$ with $\\lambda = (0,0,M)$ for large $M$ is the natural candidate. Let me ask the operational question: can someone integrate the $3\\times 3$ system, or shall I set it up as a Laplacian-type solve and just compute $h(t)$ numerically to see if it ever exceeds $c$?",
+      "created_at": "2026-06-23T10:16:41Z"
+    },
+    {
+      "id": "md75c3c0f",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, that boxed identity is the right object, and the observation $\\dot h(0) = -\\mathrm{Var}_\\pi(\\lambda) \\le 0$ is the cleanest fact in the room — it kills any naive small-$t$ counterexample. But let me warn against over-optimism on the directed cycle, and then propose the structure I think actually governs the general case.\n\nThe transport term $\\langle \\nu_t, Q\\lambda\\rangle$ is the homomorphism-density analog here: it measures how $Q$ correlates the surviving measure $\\nu_t$ with the *upward* direction of $\\lambda$. Your 3-cycle with $\\lambda=(0,0,M)$ is exactly the kind of extremal blow-up I'd expect to be decisive, but watch the self-defeating mechanism: to pump mass into state 3 you must route it through 3, where it is killed at rate $M$. So the very states $Q\\lambda$ wants to populate are the ones the killing semigroup $e^{At}$ strips out fastest. This is the same tension I flagged — and it suggests the transport term is *automatically throttled* by the killing it tries to feed.\n\nLet me make that precise as a candidate Lyapunov inequality. Write the survival-conditioned generator $A = Q - \\Lambda$. The claim $h(t) \\le c$ for all $t$ is equivalent to: $f(t) e^{ct}$ is nonincreasing, i.e. $g(t) := \\log f(t) + ct$ has $\\dot g = c - h \\ge 0$. So I want $h \\le c$ globally, not merely $\\dot h(0)\\le 0$. Here is the cleaner reformulation via my old friend the spectral abscissa: by Perron–Frobenius for $A$ (which is essentially nonnegative off-diagonal), $h(\\infty) = \\rho$, the dominant eigenvalue of $-A$, and $\\rho \\le \\max_i \\lambda_i$. The real question is whether $h$ can *overshoot* $c$ in the transient before settling to $\\rho$.\n\nSo I'd reframe the search, Dan: don't just integrate the 3-cycle numerically — compute $\\sup_t h(t) - c$ as a function of the rotation rate $r$ and $M$, because the conjecture is a statement about whether this overshoot can ever be positive. My structural bet: scale $Q \\to rQ$ and take $r,M\\to\\infty$ jointly. In that double limit the killed dynamics becomes a singularly perturbed system, and the surviving measure $\\nu_t$ should concentrate on a quasi-stationary distribution where transport and killing balance. If overshoot occurs anywhere, it is in that scaling window — that is the \"right extremal structure.\" Set it up, run it; I expect a genuine refutation lives in the strongly non-reversible regime, consistent with Peter's reversible dichotomy.",
+      "created_at": "2026-06-23T10:17:28Z"
+    },
+    {
+      "id": "m652cf6e1",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Let me run the 3-cycle by hand before we trust any singular-perturbation lore, because I always compute the first case explicitly. Take $1\\to2\\to3\\to1$ at rate $r$, so $Q = r(P-I)$ with $P$ the cyclic permutation, and $\\lambda=(0,0,M)$. By symmetry $\\pi=(1/3,1/3,1/3)$, $c=M/3$, $\\mathrm{Var}_\\pi(\\lambda)=M^2\\cdot\\frac13 - (M/3)^2 = \\frac{2M^2}{9}$. So $\\dot h(0)=-2M^2/9$, hugely negative — the hazard plummets initially. The transport term at $t=0$ vanishes as Dan proved, but $Q\\lambda = r(P-I)\\lambda$; let's see where it points: $(Q\\lambda)_i = r(\\lambda_{i+1}-\\lambda_i)$, so $Q\\lambda = r(0-0,\\,M-0,\\,0-M)=r(0,M,-M)$. The transport term $\\langle\\nu_t,Q\\lambda\\rangle = rM(\\nu_t(2)-\\nu_t(3))$ is positive exactly when survival has piled mass onto state $2$, the antechamber just *before* the killing state $3$.\n\nThat's the mechanism Laszlo fears, but here's the throttle made quantitative: surviving mass in state $2$ flows into state $3$ at rate $r$ and is immediately incinerated at rate $M$. The quasi-stationary balance gives $\\nu(3)\\approx \\frac{r}{r+M}\\nu(2)$, so $\\nu(2)-\\nu(3)\\approx \\nu(2)\\frac{M}{r+M}>0$ — genuinely positive! The transport term is $\\approx rM\\nu(2)\\frac{M}{r+M}$, and we must beat $\\mathrm{Var}_{\\nu_t}(\\lambda)$, which in the QSD is small because $\\nu(3)$ is small. **This is exactly a Ramanujan-type spectral-gap question**: does the killed semigroup's transient overshoot the spectral abscissa? My instinct from the reversible spectral theorem says complete monotonicity is *fragile* — it is the analogue of GUE versus Poisson; lose self-adjointness and the spectral measure $d\\mu(\\rho)$ can go complex, and complex exponentials *oscillate*, which is precisely how $h$ can overshoot $c$. So I now bet *against* universality: the directed cycle with $r\\sim M$ should give $\\sup_t h(t) > c$. Dan, integrate the $3\\times3$ system at $r=M=10$; I predict an overshoot of order a few percent, located near $t\\sim 1/M$. If it appears, the conjecture is **false**, and the true theorem is exactly Peter's dichotomy: reversibility $\\Leftrightarrow$ complete monotonicity $\\Leftrightarrow$ the inequality holds.",
+      "created_at": "2026-06-23T10:18:14Z"
+    },
+    {
+      "id": "m89c156ef",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-23T10:19:07Z"
+    },
+    {
+      "id": "m31382ac8",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nResolve whether the time-stationary inter-event survival dominates the event-stationary one by reducing to the hazard-rate inequality h(t) <= c for the killed semigroup, proving it in the reversible case via complete monotonicity, and testing the non-reversible directed-cycle for an overshoot counterexample.",
+      "created_at": "2026-06-23T10:19:07Z"
+    }
+  ],
+  "plan": {
+    "summary": "Resolve whether the time-stationary inter-event survival dominates the event-stationary one by reducing to the hazard-rate inequality h(t) <= c for the killed semigroup, proving it in the reversible case via complete monotonicity, and testing the non-reversible directed-cycle for an overshoot counterexample.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Verify the reduction to a hazard-rate inequality",
+        "body": "Confirm rigorously that Pr(T_1^mu > t) = mu e^{(Q-Lambda)t} 1, that alpha = pi Lambda / (pi Lambda 1), and that g(t) = -f'(t)/c where f(t) = pi e^{At} 1, A = Q - Lambda. Establish that the conjecture T_1^pi >=_st T_1^alpha is exactly equivalent to the hazard rate h(t) = -f'(t)/f(t) = <nu_t, lambda> satisfying h(t) <= h(0) = c for all t, with nu_t = pi e^{At}/f(t).",
+        "agent": "verifier-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the reversible case via complete monotonicity",
+        "body": "For pi-reversible Q, set D = diag(sqrt(pi_i)) and show tilde A = D A D^{-1} is symmetric. Conclude f(t) = (sqrt pi) e^{tilde A t} (sqrt pi)^T admits a positive spectral representation, hence f is completely monotone, a genuine mixture of exponentials, and DFR (decreasing failure rate). Deduce h(t) <= h(0) = c, proving the conjecture in the reversible case. Write this as a clean two-line theorem.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Establish the exact derivative identity for the hazard",
+        "body": "Verify the boxed identity dot h(t) = -Var_{nu_t}(lambda) + <nu_t, Q lambda> by computing dot nu_t = nu_t A + h nu_t (using nu_t A 1 = -h) and dot h = dot nu_t lambda. Confirm the corollary dot h(0) = -Var_pi(lambda) <= 0 using pi Q = 0, which rules out any small-t counterexample. Identify <nu_t, Q lambda> as the transport term whose sign and magnitude govern possible overshoot for t>0.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Set up the 3-state directed cycle test case",
+        "body": "Construct Q = r(P - I) with P the cyclic permutation 1->2->3->1, lambda = (0,0,M). Confirm pi = (1/3,1/3,1/3), c = M/3, Var_pi(lambda) = 2M^2/9, and Q lambda = r(0, M, -M), so the transport term is rM(nu_t(2) - nu_t(3)). Derive the quasi-stationary balance nu(3) approx (r/(r+M)) nu(2) and write down the explicit 3x3 linear ODE system for f(t) and h(t) ready for integration.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Numerically integrate and search for hazard overshoot",
+        "body": "Integrate the 3x3 system at r = M = 10 (and nearby values), computing h(t) and the overshoot sup_t h(t) - c. Check Peter's prediction of a few-percent overshoot near t ~ 1/M. Then sweep the joint scaling r, M -> infinity (with ratio fixed) per Laszlo's singular-perturbation suggestion to locate the maximal overshoot in the strongly non-reversible regime. Record whether sup_t h(t) > c occurs anywhere.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Critically assess the throttling versus pumping tension",
+        "body": "Evaluate whether the killing of the pumped antechamber-to-killing-state mass (transport feeding state 3 where rate M strips it) automatically throttles <nu_t, Q lambda> below Var_{nu_t}(lambda), or whether the directed cycle genuinely overcomes it. Cross-check the analogy with complex (oscillatory) spectral measures for non-self-adjoint A and assess whether the numerical overshoot is real and robust to discretization rather than a transient artifact.",
+        "agent": "critic-agent",
+        "depends_on": [
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Formulate the final dichotomy theorem or counterexample",
+        "body": "If overshoot is confirmed, write up the explicit non-reversible counterexample disproving universality and state the sharp theorem: reversibility <=> complete monotonicity <=> the inequality holds. If no overshoot is found despite strong non-reversibility, attempt a global Lyapunov-type proof that <nu_t, Q lambda> <= Var_{nu_t}(lambda) for all t (equivalently f(t)e^{ct} nonincreasing), establishing the conjecture in general.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          1,
+          5
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T10:19:07Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

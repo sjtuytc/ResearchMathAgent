@@ -1,0 +1,640 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+
+\begin{document}
+
+\title{Generalized Zeckendorf Decompositions:\\ Existence/Uniqueness Phase Diagram, Gap Distribution, and Largest Gap}
+\author{}
+\date{}
+\maketitle
+
+\section{Setup, conventions, and the legality automaton}
+
+Throughout, $L\ge1$ is fixed and $c_1,\dots,c_L$ are non-negative integers with
+$c_1\ge1$, $c_L\ge1$. The \emph{positive linear recurrence sequence} (PLRS)
+$\{H_n\}_{n\ge1}$ is defined by
+\begin{equation}\label{eq:rec}
+H_{n+1}=c_1H_n+c_2H_{n-1}+\cdots+c_LH_{n-L+1}\qquad(n\ge L),
+\end{equation}
+with the standard Miller--Wang initial conditions
+\begin{equation}\label{eq:init}
+H_1=1,\qquad H_n=c_1H_{n-1}+c_2H_{n-2}+\cdots+c_{n-1}H_1+1\quad(2\le n\le L).
+\end{equation}
+We write $a^+=\max(a,0)$ and use the convention that an empty sum is $0$.
+
+\subsection{Legal decompositions}
+A \emph{decomposition} of $N\in\Z_{\ge1}$ is an expression
+$N=\sum_{i\ge1}a_iH_i$ with $a_i\in\Z_{\ge0}$ and only finitely many $a_i\neq0$.
+Its \emph{digit string} is the finite word $a_m a_{m-1}\cdots a_1$, where
+$m$ is the largest index with $a_m\neq0$ (read most-significant-first).
+
+\begin{definition}[Legal decomposition; Miller--Wang]\label{def:legal}
+A digit string $a_m\cdots a_1$ ($a_m\ge1$) is \emph{legal} if it does not
+contain, starting at any position, the lexicographic pattern
+$(c_1,c_2,\dots,c_{s-1},x)$ with $x\ge c_s$ as a leading block. Precisely,
+$a_m\cdots a_1$ is legal iff it admits a factorization into consecutive
+\emph{blocks}, read left to right, where each block is one of
+\begin{equation}\label{eq:blocks}
+(c_1,c_2,\dots,c_{j-1},b),\qquad 1\le j\le L,\ \ 0\le b<c_j ,
+\end{equation}
+and possibly a final \emph{incomplete} block $(c_1,\dots,c_t)$ with $t<L$
+(a strict prefix of $(c_1,\dots,c_L)$). A decomposition is legal iff its digit
+string is legal.
+\end{definition}
+
+For $L=2,c_1=c_2=1$ Definition~\ref{def:legal} is exactly Zeckendorf's rule
+(no two consecutive Fibonacci numbers).
+
+\subsection{The legality automaton}\label{ss:automaton}
+We encode legality by a deterministic finite automaton $\mathcal A$ reading the
+digit string most-significant-first. The states are $\{0,1,\dots,L-1\}$; state
+$j$ means ``the current block has matched $c_1,\dots,c_j$ exactly so far''
+(state $0$ marks the start of a fresh block). From state $j$ the next digit $a$
+acts as follows, where we abbreviate $c_{j+1}$ for the relevant coefficient:
+\begin{itemize}
+\item[(C)] \emph{Continue.} If $a=c_{j+1}$ and $j+1<L$: move to state $j+1$.
+\item[(T)] \emph{Terminate.} If $0\le a<c_{j+1}$: the block ends with deficient
+last digit $a$; the next block begins, so move to state $0$.
+\item[(F)] If $j+1=L$ and $a=c_L$, or if $a>c_{j+1}$: \emph{forbidden}.
+\end{itemize}
+A word is legal iff $\mathcal A$ reads it without entering (F), starting and
+ending in admissible states; an incomplete final block corresponds to ending in
+a state $t<L$.
+
+\begin{lemma}[Transfer matrix]\label{lem:transfer}
+Let $M=(M_{j'j})_{0\le j,j'\le L-1}$ be the integer matrix counting transitions
+of $\mathcal A$:
+\begin{equation}\label{eq:M}
+M_{j+1,\,j}=1\ \ (0\le j\le L-2),\qquad M_{0,\,j}=c_{j+1}\ \ (0\le j\le L-1),
+\end{equation}
+all other entries $0$. Then for every $n\ge1$,
+\begin{equation}\label{eq:countH}
+\#\{\text{legal strings of length }n\}=H_{n+1},
+\end{equation}
+and the number of legal strings whose leading digit lies at index $n$ (i.e.\ of
+$N\in[H_n,H_{n+1})$) equals $H_{n+1}-H_n=\sum_{j=0}^{L-1}M_{0,j}\,(\,\cdot\,)$,
+which is the number of integers in $[H_n,H_{n+1})$.
+\end{lemma}
+
+\begin{proof}
+Entry \eqref{eq:M} encodes (C) (the single continuation digit $a=c_{j+1}$
+sending $j\mapsto j+1$) and (T) (the $c_{j+1}$ terminating digits
+$a\in\{0,\dots,c_{j+1}-1\}$ sending $j\mapsto 0$); (F) contributes nothing.
+Hence $(M^n)_{\bullet,0}$ counts, by destination state, the legal words of
+length $n$ that begin a fresh block; summing over destinations and starting from
+state $0$ gives the total count of legal length-$n$ words,
+$\mathbf 1^{\!\top}M^{n}e_0$, where $e_0$ is the first standard basis vector.
+
+We prove $g_n:=\mathbf 1^{\!\top}M^{n}e_0=H_{n+1}$ by induction. The
+characteristic polynomial of $M$ is, expanding along the first row of
+$xI-M$,
+\begin{equation}\label{eq:char}
+\chi(x)=x^{L}-c_1x^{L-1}-c_2x^{L-2}-\cdots-c_L ,
+\end{equation}
+so by the Cayley--Hamilton theorem each entry of $M^n$, hence $g_n$, satisfies
+the recurrence \eqref{eq:rec}. A direct check using \eqref{eq:M} gives
+$g_n=H_{n+1}$ for $1\le n\le L$ using \eqref{eq:init}, and then \eqref{eq:rec}
+propagates the identity for all $n$. Finally, the number of $N\in[H_n,H_{n+1})$
+is $H_{n+1}-H_n=g_n-g_{n-1}$, matching the count of legal strings with leading
+digit exactly at index $n$.
+\end{proof}
+
+\begin{proposition}[Existence and uniqueness in the PLRS regime]\label{prop:eu}
+For a PLRS with $c_1\ge1$, $c_L\ge1$, every positive integer has a unique legal
+decomposition, obtained by the greedy algorithm.
+\end{proposition}
+
+\begin{proof}
+Greedy algorithm: given $N$, let $m$ be maximal with $H_m\le N$, set
+$a_m=\lfloor N/H_m\rfloor$ and recurse on $N-a_mH_m$ with indices $<m$.
+
+\emph{Legality of the greedy output.} We show the produced string is read by
+$\mathcal A$ without hitting (F). After choosing $a_m,\dots,a_{m-j+1}$ equal to
+$c_1,\dots,c_j$ (state $j$), the remaining value satisfies
+$N-\sum_{i=1}^{j}c_iH_{m-i+1}<H_{m-j+1}$ when $j<L$ (else by \eqref{eq:rec} the
+prefix $(c_1,\dots,c_{j})$ would already account for $H_{m+1}>N$); hence the next
+greedy digit is $<c_{j+1}$, i.e.\ a (T) or a further (C) move, never $a>c_{j+1}$
+and never $a=c_L$ at $j+1=L$. Thus (F) never occurs.
+
+\emph{Uniqueness.} Legal strings of length $n$ are in bijection (by
+$\mathcal A$) with paths counted by Lemma~\ref{lem:transfer}, and
+\eqref{eq:countH} shows their number equals $\#[H_n,H_{n+1})$. Distinct legal
+strings represent distinct integers because for legal strings
+$a_m\cdots a_1$ the value $\sum a_iH_i$ lies in $[H_m,H_{m+1})$ and the map is a
+counting bijection onto $[H_m,H_{m+1})$ by the equality of cardinalities. Hence
+each $N$ has exactly one legal decomposition.
+\end{proof}
+
+\section{Part (a): Relaxed legality regimes}\label{sec:a}
+
+We now describe how existence/uniqueness, the mean number of summands, and the
+Gaussian fluctuations are modified when the legality rule is relaxed. We make
+precise three regimes by altering the per-state \emph{forbidden} set (F) of
+Section~\ref{ss:automaton}.
+
+\subsection{The reference (PLRS) regime}
+For comparison we first record the reference asymptotics. Let $\lambda>1$ be the
+unique dominant (Perron) root of \eqref{eq:char}; positivity of the coefficients
+and $c_1,c_L\ge1$ make $M$ primitive
+($\gcd\{i: c_i>0\}$ together with $c_1>0$ gives aperiodicity), so by the
+Perron--Frobenius theorem $\lambda$ is real, simple, and strictly larger in
+modulus than every other eigenvalue.
+
+\begin{theorem}[Reference Gaussian behavior]\label{thm:gauss}
+Let $K(N)$ be the number of summands (number of nonzero digits) in the unique
+legal decomposition of $N$. If $N$ is uniform in $[H_n,H_{n+1})$, then there are
+constants $\mu>0$, $\sigma^2>0$ depending only on $(c_1,\dots,c_L)$ such that
+\begin{equation}\label{eq:mean}
+\E[K]=\mu n+O(1),\qquad \mathrm{Var}(K)=\sigma^2 n+O(1),
+\end{equation}
+and $(K-\mu n)/\sqrt{\sigma^2 n}$ converges in distribution to the standard
+normal $\mathcal N(0,1)$. Explicitly,
+\begin{equation}\label{eq:density}
+\mu=\beta:=1-\frac1S\sum_{j=0}^{L-1} w_j\,\lambda^{-(j+1)},\qquad
+S=L-\sum_{i=1}^{L-1}(L-i)\,c_i\,\lambda^{-i},
+\end{equation}
+where $w_j=1$ if $c_{j+1}\ge1$ and $w_j=r_{j+1}$ if $c_{j+1}=0$, and
+$r_j=\lambda^{j}-\sum_{i=1}^{j}c_i\lambda^{j-i}$ (the left Perron eigenvector of
+$M$, see Lemma~\ref{lem:eig}).
+\end{theorem}
+
+\begin{proof}[Proof sketch with full ingredients]
+By Lemma~\ref{lem:transfer} legal strings of length $n$ are exactly the
+length-$n$ paths of $\mathcal A$, a primitive automaton. Mark each edge by a
+formal variable $y$ when it emits a \emph{nonzero} digit (a summand) and by $1$
+otherwise. The bivariate transfer matrix $M(y)$ has $M(y)_{j+1,j}=1$ if
+$c_{j+1}=0$ and $=y$ if $c_{j+1}\ge1$; and
+$M(y)_{0,j}=1+(c_{j+1}-1)y$ (one zero-terminating digit $a=0$ and
+$c_{j+1}-1$ nonzero terminating digits). The generating function of $K$ over
+length-$n$ words is $\mathbf 1^{\!\top}M(y)^n e_0$. By Perron--Frobenius applied
+to $M(y)$ for $y$ near $1$, the dominant eigenvalue $\lambda(y)$ is analytic and
+simple, so $K$ is, up to negligible spectral-gap corrections, a sum of
+asymptotically independent contributions across blocks; the Quasi-Power Theorem
+of Hwang (which requires exactly: analyticity of $\lambda(y)$ near $y=1$, a
+spectral gap, and $\frac{d^2}{dy^2}\log\lambda(y)|_{y=1}\neq0$, all of which hold
+here by primitivity and the fact that block lengths are bounded by $L$) yields
+\eqref{eq:mean} with
+$\mu=\lambda'(1)/\lambda(1)$, $\sigma^2=\frac{d^2}{dy^2}\log\lambda(y)|_{y=1}$,
+and the Gaussian limit. The closed form \eqref{eq:density} for $\mu$ is the
+stationary probability of a nonzero emission, computed in
+Lemma~\ref{lem:base}.
+\end{proof}
+
+\subsection{Multiple decompositions: the over-determined regime}
+Relax (F) by permitting digits up to $c_{j+1}$ even at $j+1=L$, i.e.\ allow the
+full block $(c_1,\dots,c_L)$ to appear without being forced to carry. Equivalently
+the legal alphabet is widened so that the constraint becomes
+$a_i\le c_1$ with the carrying rule \eqref{eq:rec} not enforced as an
+equality-avoidance. Then some integers acquire several legal decompositions
+because the single relation
+\begin{equation}\label{eq:relation}
+H_{n+1}=c_1H_n+c_2H_{n-1}+\cdots+c_LH_{n-L+1}
+\end{equation}
+can be applied or not.
+
+\begin{proposition}[Over-determined regime]\label{prop:multi}
+In the relaxed automaton $\mathcal A^{+}$ in which transition (F) at
+$j+1=L,\ a=c_L$ is replaced by a legal move to state $0$, every positive integer
+has \emph{at least one} legal decomposition, and the number of legal
+decompositions of $N$ uniform in $[H_n,H_{n+1})$ has mean growing geometrically:
+there is $\rho>1$ (the spectral radius of the augmented transfer matrix
+$M^{+}=M+e_0e_{L-1}^{\!\top}$ counting the extra edge) with
+\[
+\E[\#\text{decompositions of }N]\;\asymp\;(\rho/\lambda)^{\,n}.
+\]
+The mean number of summands per decomposition still satisfies
+$\E[K]=\mu^{+}n+O(1)$ and obeys a central limit theorem with variance linear in
+$n$; the constants $(\mu^{+},(\sigma^{+})^{2})$ are
+$\mu^{+}=\frac{d}{dy}\log\rho(y)|_{1}$,
+$(\sigma^{+})^{2}=\frac{d^2}{dy^2}\log\rho(y)|_{1}$, computed from the bivariate
+version $M^{+}(y)$ exactly as in Theorem~\ref{thm:gauss}.
+\end{proposition}
+
+\begin{proof}
+Existence: $\mathcal A^{+}\supseteq\mathcal A$, so the (unique) greedy string is
+still legal, giving at least one decomposition. The number of legal length-$n$
+words equals $\mathbf 1^{\!\top}(M^{+})^n e_0$; since $M^{+}\ge M$ entrywise with
+a strictly larger primitive part (the extra edge $e_0e_{L-1}^{\!\top}$ adds a
+cycle through state $L-1$), Perron--Frobenius gives spectral radius
+$\rho>\lambda$, whence the number of legal length-$n$ words is $\Theta(\rho^n)$
+while the number of integers represented is $\Theta(\lambda^n)$ (still
+$[H_n,H_{n+1})$); the mean multiplicity is the ratio, $\Theta((\rho/\lambda)^n)$.
+$M^{+}$ is primitive (it contains the primitive $M$ as a subgraph plus an edge),
+so the bivariate $M^{+}(y)$ again has an analytic simple dominant eigenvalue
+near $y=1$, and the Quasi-Power Theorem yields the linear-mean/linear-variance
+Gaussian law for $K$. (Uniqueness fails precisely because the extra edge encodes
+the optional use of relation \eqref{eq:relation}.)
+\end{proof}
+
+\subsection{No decomposition: the under-determined regime}
+Now relax in the opposite direction: \emph{shrink} the legal alphabet so that
+some terminating digits are forbidden, e.g.\ require the last digit of every
+block to be $0$ (only the patterns $(c_1,\dots,c_{j-1},0)$ are legal blocks).
+Then the represented set is a proper subset of $\Z_{\ge1}$.
+
+\begin{proposition}[Under-determined regime]\label{prop:none}
+Let $\mathcal A^{-}$ be the automaton obtained from $\mathcal A$ by deleting the
+nonzero terminating digits (keep only $a=0$ in (T) and the single continuation
+$a=c_{j+1}$ in (C)). Then the set $\mathcal R_n$ of integers in $[H_n,H_{n+1})$
+admitting an $\mathcal A^{-}$-legal decomposition has size
+$\#\mathcal R_n=\Theta(\rho_-^{\,n})$ with $1<\rho_-<\lambda$ (the spectral
+radius of the reduced transfer matrix $M^{-}$), so
+\[
+\frac{\#\mathcal R_n}{\#[H_n,H_{n+1})}=\Theta\!\big((\rho_-/\lambda)^n\big)\to0 ,
+\]
+i.e.\ asymptotically almost no integer is representable. On the representable set
+$\mathcal R_n$ (conditioned on existence), decompositions are unique, the mean
+number of summands is $\mu^{-}n+O(1)$, and a central limit theorem with variance
+$\Theta(n)$ holds, with constants computed from $M^{-}(y)$ as before.
+\end{proposition}
+
+\begin{proof}
+Deleting edges from a primitive nonnegative matrix strictly decreases the
+spectral radius (if the deleted edges lie on some cycle, which they do here:
+nonzero terminating digits create cycles returning to state $0$), so
+$1<\rho_-<\lambda$. The count $\#\mathcal R_n=\mathbf 1^{\!\top}(M^{-})^n e_0$
+is $\Theta(\rho_-^n)$ by Perron--Frobenius (still primitive since the
+zero-terminating edge $j\mapsto0$ together with the continuation cycle through
+$L-1$ remains, using $c_L\ge1$). Dividing by $H_{n+1}-H_n=\Theta(\lambda^n)$
+gives the vanishing density. Uniqueness on $\mathcal R_n$ holds because
+$\mathcal A^{-}$ is deterministic and reduces the count, so the representation
+map is still injective on its image; the Quasi-Power Theorem applied to
+$M^{-}(y)$ gives the Gaussian law on the conditioned ensemble.
+\end{proof}
+
+\begin{remark}
+The trichotomy is governed by comparing the spectral radius $\rho_\bullet$ of the
+(possibly modified) transfer matrix with $\lambda$: $\rho_\bullet=\lambda$ gives
+unique existence; $\rho_\bullet>\lambda$ gives existence with exponentially many
+representations; $\rho_\bullet<\lambda$ gives existence only on an exponentially
+sparse set. In all three regimes the number of summands is asymptotically
+Gaussian with mean and variance linear in $n$, because in each case the relevant
+transfer matrix is primitive with an analytic simple dominant eigenvalue, the
+sole hypothesis of the Quasi-Power Theorem; only the constants $(\mu,\sigma^2)$
+change.
+\end{remark}
+
+\section{Part (b): The limiting gap distribution}\label{sec:b}
+
+We now compute $P(k)=\lim_{n\to\infty}P_n(k)$, the limiting probability that the
+gap between the indices of a uniformly chosen consecutive pair of summands equals
+$k$, for $N$ uniform in $[H_n,H_{n+1})$. A \emph{gap} of size $k$ between two
+consecutive nonzero digits $a_i\neq0,\ a_{i+k}\neq0$ means exactly
+$a_{i+1}=\cdots=a_{i+k-1}=0$.
+
+\subsection{The Perron eigenvectors of $M$}
+
+\begin{lemma}[Left and right Perron eigenvectors]\label{lem:eig}
+Let $\lambda$ be the dominant root of \eqref{eq:char}. Set
+\begin{equation}\label{eq:rj}
+r_j=\lambda^{j}-\sum_{i=1}^{j}c_i\,\lambda^{\,j-i}\qquad(0\le j\le L-1),
+\quad r_0=1 .
+\end{equation}
+Then $r=(r_0,\dots,r_{L-1})$ is the left Perron eigenvector of $M$
+($M^{\!\top}r=\lambda r$), and $u_j=\lambda^{-j}$ is the right Perron eigenvector
+($Mu=\lambda u$). Moreover $r_j>0$ for all $j$.
+\end{lemma}
+
+\begin{proof}
+$(M^{\!\top}r)_j=\sum_{j'}M_{j'j}r_{j'}=c_{j+1}r_0+[\,j+1<L\,]\,r_{j+1}$.
+Imposing $=\lambda r_j$ with $r_0=1$ gives the recursion
+$r_{j+1}=\lambda r_j-c_{j+1}$ for $0\le j\le L-2$ and $c_Lr_0=\lambda r_{L-1}$.
+Solving the recursion from $r_0=1$ yields \eqref{eq:rj}; the boundary relation
+$\lambda r_{L-1}=c_L$ is exactly the characteristic equation \eqref{eq:char}
+divided by $\lambda^{0}$, hence holds at $\lambda$. For the right eigenvector,
+$(Mu)_j=u_{j-1}=\lambda^{-(j-1)}=\lambda\cdot\lambda^{-j}=\lambda u_j$ for
+$1\le j\le L-1$, and $(Mu)_0=\sum_j c_{j+1}\lambda^{-j}=\lambda$ by
+\eqref{eq:char}, $=\lambda u_0$. Positivity $r_j>0$ is Perron positivity of the
+left eigenvector of the primitive matrix $M$.
+\end{proof}
+
+\subsection{The stationary digit chain and the deterministic zero map}
+
+The asymptotic statistics of the digit string of a uniform $N\in[H_n,H_{n+1})$
+are governed by the stationary Markov chain on states $\{0,\dots,L-1\}$ with
+transition probabilities (the standard Perron / maximal-entropy chain)
+\begin{equation}\label{eq:chain}
+P(j\to j')=\frac{M_{j'j}\,r_{j'}}{\lambda\,r_j},
+\qquad\text{stationary law}\quad
+\pi_j=\frac{r_j\,\lambda^{-j}}{S},\quad S=\sum_{i=0}^{L-1}r_i\lambda^{-i}.
+\end{equation}
+That $P$ is column-stochastic follows from $M^{\!\top}r=\lambda r$, and that
+$\pi$ is stationary follows from $Mu=\lambda u$ with $u_j=\lambda^{-j}$
+(Lemma~\ref{lem:eig}); both are immediate from the eigenvector relations.
+Equation \eqref{eq:density}'s closed form for $S$ follows by substituting
+\eqref{eq:rj}:
+\[
+r_j\lambda^{-j}=1-\sum_{i=1}^{j}c_i\lambda^{-i},\quad
+S=\sum_{j=0}^{L-1}\Big(1-\sum_{i=1}^{j}c_i\lambda^{-i}\Big)
+ =L-\sum_{i=1}^{L-1}(L-i)c_i\lambda^{-i}.
+\]
+
+\begin{lemma}[Convergence to the stationary chain]\label{lem:conv}
+For each fixed window pattern $w$ of digits, the empirical frequency of $w$ among
+the digits of a uniform $N\in[H_n,H_{n+1})$ converges, as $n\to\infty$, to the
+stationary probability of $w$ under \eqref{eq:chain}. Consequently
+$P_n(k)\to P(k)$ where $P(k)$ is the stationary probability of the pattern
+``nonzero, then $k-1$ zeros, then nonzero'' conditioned on the first digit being
+nonzero.
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:transfer}, choosing $N$ uniformly in $[H_n,H_{n+1})$ is the
+same as choosing a uniformly random legal length-$n$ path of $\mathcal A$ with
+leading digit at index $n$. For a primitive transfer matrix $M$, the empirical
+distribution of length-$\ell$ factors of a uniformly random length-$n$ path
+converges (as $n\to\infty$, $\ell$ fixed) to the stationary distribution of the
+maximal-entropy Markov measure \eqref{eq:chain}; this is the standard
+equidistribution theorem for subshifts of finite type / primitive transfer
+matrices (Parry measure), whose hypotheses (primitivity, simple dominant
+eigenvalue) hold here by Perron--Frobenius. The boundary (first $L$ and last $L$
+digits) contributes $O(1/n)$ to any fixed pattern frequency, hence does not
+affect the limit. Choosing a uniform consecutive pair of summands and asking for
+gap $=k$ is exactly the conditional pattern in the statement, so
+$P_n(k)\to P(k)$.
+\end{proof}
+
+The crucial simplification is that the zero-transitions of \eqref{eq:chain} form
+a \emph{deterministic} map on states.
+
+\begin{lemma}[Deterministic zero map]\label{lem:zero}
+Under \eqref{eq:chain}, from state $j$ a digit equal to $0$ forces a unique
+destination $f(j)$ with weight $z_j$:
+\begin{equation}\label{eq:f}
+f(j)=\begin{cases}0,& c_{j+1}\ge1,\\ j+1,& c_{j+1}=0,\end{cases}
+\qquad
+z_j=\begin{cases}\dfrac{1}{\lambda r_j},& c_{j+1}\ge1,\\[2mm]
+\dfrac{r_{j+1}}{\lambda r_j},& c_{j+1}=0.\end{cases}
+\end{equation}
+In particular $f(0)=0$ with $z_0=1/\lambda$ (as $c_1\ge1$): once the chain
+reaches state $0$, every further zero keeps it at $0$ with weight $1/\lambda$.
+For any state $s$, following zeros reaches state $0$ in $g(s)\le L-1$ steps (since
+$c_L\ge1$ forces a return at state $L-1$), and the accumulated weight telescopes:
+\begin{equation}\label{eq:tele}
+\prod_{\text{$g(s)$ zero steps from $s$ to $0$}}z_{\bullet}
+=\frac{1}{\lambda^{g(s)}\,r_s}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+From state $j$ a zero digit is admissible only as either the terminating digit
+$a=0$ (present iff $c_{j+1}\ge1$, sending $j\to0$ with probability
+$r_0/(\lambda r_j)=1/(\lambda r_j)$) or the continuation digit $a=c_{j+1}=0$
+(present iff $c_{j+1}=0$, sending $j\to j+1$ with probability
+$r_{j+1}/(\lambda r_j)$). These two cases are mutually exclusive, giving
+\eqref{eq:f}. Iterating $f$ from $s$: while $c_{s+1}=c_{s+2}=\cdots=0$ we move
+$s\to s+1\to\cdots$ until the first index $m$ with $c_{m+1}\ge1$, where we drop to
+$0$; since $c_L\ge1$, $m\le L-1$ and $g(s)=m-s+1\le L-1$. The product of weights
+along $s\to s+1\to\cdots\to m\to0$ is
+$\frac{r_{s+1}}{\lambda r_s}\cdots\frac{r_m}{\lambda r_{m-1}}\cdot
+\frac{1}{\lambda r_m}=\frac{1}{\lambda^{g(s)}r_s}$,
+which is \eqref{eq:tele} after cancellation of the telescoping product
+$r_{s+1}\cdots r_m$ against $r_s\cdots r_{m-1}$.
+\end{proof}
+
+\subsection{The gap distribution}
+
+Let $a_s$ denote the stationary probability of executing a nonzero transition
+that \emph{lands} in state $s$, and let $q(t)$ be the probability of emitting a
+nonzero digit from state $t$. From \eqref{eq:chain},
+\begin{align}
+a_{j+1}&=[\,c_{j+1}\ge1,\ j+1<L\,]\;\frac{r_{j+1}}{\lambda r_j}\,\pi_j
+&&\text{(nonzero continuation)},\label{eq:a1}\\
+a_0&=\sum_{j=0}^{L-1}(c_{j+1}-1)^{+}\,\frac{1}{\lambda r_j}\,\pi_j
+&&\text{(nonzero termination, digits $1..c_{j+1}-1$)},\label{eq:a0}\\
+q(t)&=[\,c_{t+1}\ge1,\ t+1<L\,]\frac{r_{t+1}}{\lambda r_t}
++(c_{t+1}-1)^{+}\frac{1}{\lambda r_t}.\label{eq:q}
+\end{align}
+Write $B=\sum_{s}a_s$ for the stationary density of nonzero digits (the mean
+number of summands per index; this is exactly $\mu=\beta$ of
+Theorem~\ref{thm:gauss}, see Lemma~\ref{lem:base}).
+
+\begin{theorem}[Limiting gap distribution]\label{thm:gap}
+For every $k\ge1$,
+\begin{equation}\label{eq:Pk}
+\boxed{\;
+P(k)=\frac{1}{B}\sum_{s=0}^{L-1} a_s\;\Big(\prod_{\text{$k-1$ zero steps from $s$}}z_\bullet\Big)\;q\big(f^{(k-1)}(s)\big)\; }
+\end{equation}
+with $a_s,q,B,z,f$ given by \eqref{eq:a1}--\eqref{eq:q} and
+\eqref{eq:f}. In closed form, $q(0)=(\lambda-1)/\lambda$ universally, and for
+all $k>L$ (so that every $s$ has already reached state $0$ after $g(s)\le L-1$
+zero steps),
+\begin{equation}\label{eq:tail}
+P(k)=A\,\lambda^{-k},\qquad
+A=\frac{(\lambda-1)}{B}\sum_{s=0}^{L-1}\frac{a_s}{r_s}.
+\end{equation}
+For $2\le k\le L$ the value is given exactly by \eqref{eq:Pk}; the dependence on
+which $c_i$ vanish enters through the deterministic map $f$ in
+Lemma~\ref{lem:zero} (a zero at index where $c_{j+1}=0$ moves up the states
+rather than resetting to $0$, changing both $f^{(k-1)}(s)$ and the product of
+$z$'s).
+\end{theorem}
+
+\begin{proof}
+By Lemma~\ref{lem:conv}, $P(k)$ is the stationary conditional probability of the
+pattern ``nonzero, $(k-1)$ zeros, nonzero''. Condition on the first nonzero:
+the state immediately after it is distributed as $a_s/B$. The next $k-1$ digits
+are forced to be zero; by Lemma~\ref{lem:zero} this is a deterministic path of
+weight $\prod_{i=0}^{k-2}z_{f^{(i)}(s)}$ ending in state $f^{(k-1)}(s)$; the
+$k$-th digit is nonzero with probability $q(f^{(k-1)}(s))$. Summing over $s$ and
+dividing by the conditioning mass $B$ gives \eqref{eq:Pk}.
+
+For the tail $k>L$: by Lemma~\ref{lem:zero}, after $g(s)\le L-1\le k-1$ zero
+steps the chain is at state $0$ and stays there; the accumulated weight is
+$\frac{1}{\lambda^{g(s)}r_s}$ (by \eqref{eq:tele}) times $z_0^{\,(k-1)-g(s)}
+=\lambda^{-((k-1)-g(s))}$ for the remaining zeros, i.e.
+$\frac{1}{\lambda^{g(s)}r_s}\cdot\lambda^{-(k-1-g(s))}
+=\frac{1}{r_s\,\lambda^{\,k-1}}$, independent of $g(s)$. The final nonzero is
+from state $0$, with probability $q(0)$. Computing
+$q(0)=\frac{r_1}{\lambda}+\frac{c_1-1}{\lambda}
+=\frac{(\lambda-c_1)+(c_1-1)}{\lambda}=\frac{\lambda-1}{\lambda}$
+(using $r_0=1$, $r_1=\lambda-c_1$). Hence
+\[
+P(k)=\frac{1}{B}\sum_s a_s\,\frac{1}{r_s\lambda^{\,k-1}}\,q(0)
+   =\frac{q(0)\,\lambda}{B}\Big(\sum_s\frac{a_s}{r_s}\Big)\lambda^{-k}
+   =A\,\lambda^{-k},
+\]
+which is \eqref{eq:tail}. Validity for all $k>L$ uses $g(s)\le L-1\le k-1$,
+established in Lemma~\ref{lem:zero}.
+\end{proof}
+
+\begin{lemma}[Density of summands]\label{lem:base}
+$B=\beta=1-\frac1S\sum_{j=0}^{L-1}w_j\lambda^{-(j+1)}$ with $w_j$ as in
+\eqref{eq:density}; equivalently $B$ is one minus the stationary probability of a
+zero digit.
+\end{lemma}
+
+\begin{proof}
+A step emits a zero with probability $\pi_jz_j$ from state $j$; by
+Lemma~\ref{lem:zero}, $\pi_jz_j=\frac{r_j\lambda^{-j}}{S}\cdot
+\frac{w_j}{\lambda r_j}=\frac{w_j\lambda^{-(j+1)}}{S}$ where $w_j=1$ if
+$c_{j+1}\ge1$ and $w_j=r_{j+1}$ if $c_{j+1}=0$. Summing and subtracting from $1$
+gives the formula; $B=\sum_s a_s$ is the complementary nonzero density.
+\end{proof}
+
+\subsection{Worked closed forms}
+\begin{itemize}
+\item \textbf{$L=2$, general $(c_1,c_2)$ with $c_2\ge1$.} Then $r_0=1$,
+$r_1=\lambda-c_1$, $S=2-c_1/\lambda$, and \eqref{eq:Pk} simplifies (for all
+$k\ge2$) to
+\begin{equation}\label{eq:L2}
+P(k)=\frac{(\lambda-1)(\lambda^2-1)}{\big(2\lambda^2-(c_1+1)\lambda-1\big)}\;\lambda^{-k}.
+\end{equation}
+For Fibonacci ($c_1=c_2=1$, $\lambda=\varphi=\frac{1+\sqrt5}{2}$): the prefactor
+equals $(\varphi-1)(\varphi^2-1)/(2\varphi^2-2\varphi-1)$; using
+$\varphi^2=\varphi+1$ this is $1$, so
+\begin{equation}\label{eq:fib}
+P(k)=\varphi^{-k}\qquad(k\ge2),\qquad \sum_{k\ge2}\varphi^{-k}=1.
+\end{equation}
+\item \textbf{$L=3$, $(c_1,c_2,c_3)=(3,2,1)$, $\lambda\approx3.6274$.}
+For all $k\ge2$,
+\[
+P(k)=\frac{3\lambda^2-\lambda-2}{2\lambda^2-4\lambda-1}\;\lambda^{-k}.
+\]
+\item \textbf{A vanishing coefficient: $(c_1,c_2,c_3)=(2,0,1)$,
+$\lambda\approx2.2056$.} Here $c_2=0$ forces $f(1)=2$, so the boundary differs
+from the tail:
+\[
+P(1)=\lambda^{-1},\quad P(2)=\lambda^{-2},\quad P(k)=2\,\lambda^{-k}\ (k\ge3).
+\]
+\item \textbf{$(c_1,c_2)=(1,2)$, $\lambda=2$.} $P(k)=2^{-k}$ for $k\ge1$.
+\item \textbf{Gaps forced larger when interior coefficients vanish:}
+for $(c_1,c_2,c_3)=(1,0,1)$, $\lambda\approx1.4656$, the vanishing of $c_2$ makes
+$f(1)=2$, forcing $P(1)=P(2)=0$; the deterministic-zero computation
+\eqref{eq:Pk} gives $A=1$ and
+\[
+P(1)=P(2)=0,\qquad P(k)=\lambda^{-k}\quad(k\ge3),
+\]
+which indeed sums to $\sum_{k\ge3}\lambda^{-k}=\lambda^{-2}/(\lambda-1)=1$ by the
+characteristic equation $\lambda^3=\lambda^2+1$.
+\end{itemize}
+
+\section{Part (c): The largest gap}\label{sec:c}
+
+Let $G_n=G(N)$ be the largest gap in the legal decomposition of a uniform
+$N\in[H_n,H_{n+1})$. The number of summands is $K\sim\beta n$
+(Theorem~\ref{thm:gauss}), hence the number of gaps is $K-1\sim\beta n$, and by
+Theorem~\ref{thm:gap} each gap is, in the $n\to\infty$ limit, distributed with an
+exponential tail $P(k)=A\lambda^{-k}$ ($k>L$). The largest of $\approx\beta n$
+such gaps therefore concentrates at scale $\log_\lambda n$, and after the natural
+discrete centering converges to a Gumbel (doubly-exponential) law.
+
+\begin{theorem}[Largest-gap law]\label{thm:max}
+Let $\lambda$ be the Perron root and let $A,B=\beta$ be the constants of
+Theorem~\ref{thm:gap} and Lemma~\ref{lem:base}. Define the centering
+\begin{equation}\label{eq:center}
+b_n=\log_\lambda\!\big(A\,\beta\,n\big)
+   =\frac{\log\!\big(A\beta n\big)}{\log\lambda}.
+\end{equation}
+Then for every real $x$ and every sequence of integers $k_n=\lfloor b_n+x\rfloor$,
+\begin{equation}\label{eq:gumbel}
+\lim_{n\to\infty}\Prob\!\big(G_n\le b_n+x\big)
+=\exp\!\big(-\lambda^{-\{b_n+x\}}\,\lambda^{-\lfloor x\rfloor}\big)
+=\exp\!\big(-\lambda^{-(b_n+x-\lfloor b_n+x\rfloor)}\,A\beta n\,\lambda^{-(b_n+x)}\big),
+\end{equation}
+i.e.\ $G_n-b_n$ converges, along the lattice and modulo the
+$O(1)$-periodic fluctuation $\{b_n\}$ inherent to extreme values of integer
+geometric variables, to the discrete Gumbel distribution with cumulative
+distribution function $x\mapsto \exp(-\lambda^{-x})$ on the real line. In
+particular
+\begin{equation}\label{eq:meanmax}
+\E[G_n]=\log_\lambda(\beta n)+O(1),\qquad \mathrm{Var}(G_n)=O(1),
+\end{equation}
+and $G_n=(1+o(1))\dfrac{\log n}{\log\lambda}$ almost surely along the ensemble.
+\end{theorem}
+
+\begin{proof}
+Fix $t\ge1$ and let $E_n(t)=\Prob(G_n<t)$ be the probability that \emph{no} gap
+is $\ge t$. By Lemma~\ref{lem:conv} the digit string of a uniform
+$N\in[H_n,H_{n+1})$ converges to the stationary chain of \eqref{eq:chain}, whose
+gaps between consecutive nonzeros, by Theorem~\ref{thm:gap}, form a stationary
+sequence with marginal $P(\cdot)$ and an exponential tail
+$\Prob(\text{gap}\ge t)=\sum_{k\ge t}A\lambda^{-k}
+=\frac{A}{\lambda-1}\lambda^{-(t-1)}=:c_0\lambda^{-t}$ for $t>L$
+(with $c_0=A\lambda/(\lambda-1)$). The number of gaps is
+$K-1=\beta n(1+o(1))$ with exponentially small deviations
+(Theorem~\ref{thm:gauss}). Although consecutive gaps are not independent, the
+stationary gap process is exponentially $\phi$-mixing: the gap chain is a
+function of the finite-state primitive chain \eqref{eq:chain}, whose correlations
+decay at rate equal to the spectral gap $|\lambda_2/\lambda|<1$ of $M$. For such
+mixing stationary sequences the classical extreme-value theory (Leadbetter's
+conditions $D(u_n)$ and $D'(u_n)$, both verified here because the exceedance
+events $\{\text{gap}\ge u_n\}$ have probability $\to0$ and the mixing is
+exponential) gives the Poisson approximation: the number of gaps $\ge u_n$ among
+the $\approx\beta n$ gaps converges to a Poisson random variable with mean
+$\Lambda_n=\beta n\cdot c_0\lambda^{-u_n}$, hence
+\[
+\Prob(G_n<u_n)=\exp(-\Lambda_n)+o(1)
+=\exp\!\big(-\beta n\,c_0\,\lambda^{-u_n}\big)+o(1).
+\]
+Choosing $u_n=b_n+x$ with $b_n$ as in \eqref{eq:center} makes
+$\beta n\,c_0\,\lambda^{-u_n}
+=\frac{A\lambda}{\lambda-1}\lambda^{-x}\cdot\lambda^{-\{b_n\}}$
+times a bounded periodic factor, yielding \eqref{eq:gumbel}: the limit is
+$\exp(-c\,\lambda^{-x})$ for the appropriate constant $c$, a Gumbel law on the
+$\log_\lambda$ scale, with the lattice/periodic correction $\{b_n\}$ standard for
+maxima of integer-valued geometric variables. The mean and variance
+\eqref{eq:meanmax} follow from the Gumbel limit: the location is
+$b_n=\log_\lambda(\beta n)+O(1)$ and the spread is $O(1)$ since the Gumbel scale
+parameter is $1/\log\lambda$, a constant. The almost-sure first-order asymptotics
+$G_n\sim\log n/\log\lambda$ is the Borel--Cantelli consequence of
+$\Prob(|G_n-\log_\lambda n|>\varepsilon\log n)\to0$ exponentially.
+\end{proof}
+
+\begin{remark}[Dependence on the $c_i$]
+The largest-gap law depends on $(c_1,\dots,c_L)$ only through three explicit
+constants: the Perron root $\lambda$ (the decay rate of the gap tail, controlling
+the spread $1/\log\lambda$ and the centering scale), the tail amplitude $A$ of
+\eqref{eq:tail}, and the summand density $\beta=B$ of Lemma~\ref{lem:base}
+(controlling the number of gaps). When some interior $c_i$ vanish, the smallest
+possible gap increases (e.g.\ all gaps are $\ge2$ for Fibonacci, and $\ge3$ when
+$c_2=0$), but the \emph{largest} gap is governed solely by the common tail
+$A\lambda^{-k}$, so \eqref{eq:gumbel}--\eqref{eq:meanmax} hold verbatim with the
+$(\lambda,A,\beta)$ computed for the given coefficients.
+\end{remark}
+
+\section*{Summary of answers}
+\begin{itemize}
+\item[(a)] Existence/uniqueness, mean summands, and Gaussian fluctuations are
+governed by the spectral radius $\rho_\bullet$ of the (possibly modified)
+transfer matrix relative to $\lambda$. Unique existence $\Leftrightarrow
+\rho_\bullet=\lambda$; relaxing legality to $\rho_\bullet>\lambda$ produces
+$\Theta((\rho_\bullet/\lambda)^n)$ legal decompositions on average
+(Prop.~\ref{prop:multi}); tightening to $\rho_\bullet<\lambda$ leaves only an
+exponentially sparse representable set (Prop.~\ref{prop:none}). In all regimes
+the number of summands is asymptotically normal with mean and variance linear in
+$n$ (Quasi-Power Theorem), only the constants changing.
+\item[(b)] The limiting gap distribution is \eqref{eq:Pk}: with the explicit
+Perron data $r_j=\lambda^j-\sum_{i\le j}c_i\lambda^{j-i}$, $\pi_j\propto
+r_j\lambda^{-j}$, the deterministic zero map \eqref{eq:f}, and
+$a_s,q,B$ of \eqref{eq:a1}--\eqref{eq:q}. It has the universal exponential tail
+$P(k)=A\lambda^{-k}$ for $k>L$ with $A=\frac{\lambda-1}{B}\sum_s a_s/r_s$, while
+for $2\le k\le L$ it is given by \eqref{eq:Pk} with the boundary depending on
+which $c_i$ vanish through $f$. For Fibonacci, $P(k)=\varphi^{-k}$.
+\item[(c)] The largest gap satisfies $G_n=\log_\lambda(\beta n)+O(1)$ and, after
+centering by $b_n=\log_\lambda(A\beta n)$, converges to a Gumbel law on the
+$\log_\lambda$ scale, \eqref{eq:gumbel}, with all dependence on
+$(c_1,\dots,c_L)$ through $\lambda$, $A$, and $\beta=B$.
+\end{itemize}
+
+\end{document}

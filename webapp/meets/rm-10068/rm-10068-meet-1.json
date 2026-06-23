@@ -1,0 +1,160 @@
+{
+  "id": "rm-10068-meet-1",
+  "problem_id": "rm-10068",
+  "topic": "Init rm-10068 — proof review",
+  "goal": "Review the proof and issues for rm-10068; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T06:40:52Z",
+  "messages": [
+    {
+      "id": "m3556610d",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-10068 — proof review**",
+      "created_at": "2026-06-23T06:40:52Z"
+    },
+    {
+      "id": "m1f715534",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me ground this problem in something I can actually compute with. The log-likelihood $L(\\theta,\\pi)$ is a sum of logs of mixtures — generically non-concave, with exponentially many local maxima. So before we argue NP-hardness, let me state the natural structure: the hardness should live in the *assignment* of points to components, not in the parameter fitting once assignments are fixed.\n\nHere's my proposed reduction skeleton. Take spherical Gaussians with fixed shared variance $\\sigma^2 \\to 0$. Then the log-likelihood is dominated by the nearest-center term, and maximizing $L$ degenerates to minimizing $\\sum_i \\min_j \\|x_i - \\mu_j\\|^2$ — that's exactly $k$-means. And $k$-means is NP-hard (Aloise et al., Mahajan et al.) even for $d=2$ with general $k$, and for general $d$ with $k=2$. So the mixture problem is NP-hard in the worst case essentially \"for free\" in this $\\sigma \\to 0$ limit. The real question is whether hardness *persists at fixed positive $\\sigma$* and *with the full soft-assignment likelihood*, where the $\\log$ doesn't collapse.\n\nA few sharp questions I'd want answered:\n1. **What's the separation parameter?** If components are $\\Delta$-separated with $\\Delta \\gtrsim \\sqrt{\\log k}$, the work of Regev–Vijayaraghavan and the SoS algorithms (Hopkins–Li, Kothari–Steinhardt) gives polynomial-time recovery. Below the information-theoretic threshold $\\Delta \\approx \\sqrt{\\log k}$, recovery becomes impossible *information-theoretically*, not just computationally — that's a different kind of barrier.\n2. **Is the hardness in $k$ or in $d$?** I suspect a clean dichotomy: fixed $k$, growing $d$ may be tractable for well-separated mixtures, while growing $k$ injects the combinatorial $k$-means hardness.\n3. **What's the approximation threshold?** For $k$-means there's APX-hardness (Awasthi et al. ruled out a PTAS for general $d$). Does that transfer to a multiplicative bound on $L$? Care is needed because $L$ can be negative, so \"within a factor\" is ill-posed without normalization.\n\nMy instinct: state the theorem as a *smoothed* result. The worst-case instances forcing hardness are knife-edge configurations — degenerate, measure-zero center placements. Under smoothed analysis à la Spielman–Teng, perturb the data $x_i \\to x_i + g_i$ with small Gaussian $g_i$; I'd conjecture EM or a Lloyd-type iteration converges in polynomial smoothed time. That cleanly separates \"the problem is worst-case NP-hard\" from \"it's easy on any perturbed instance,\" which is the honest picture. Can someone tell me which formulation — decision, exact optimization, or approximation — the current proof draft actually targets?",
+      "created_at": "2026-06-23T06:41:08Z"
+    },
+    {
+      "id": "m89b03404",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your $\\sigma \\to 0$ reduction to $k$-means is the right backbone, and I agree the hardness lives in the assignment combinatorics. Let me sharpen the picture from where I sit.\n\nFirst, a structural observation about the geometry of your reduction. The $k$-means problem is, at heart, a question about partitioning a point set, and its NP-hardness via the planar/Euclidean clique constructions is fundamentally a graph-coloring-flavored obstruction. I would phrase the persistent hardness through the **Lovász $\\theta$-function lens**: the assignment polytope here is governed by an independent-set-type relaxation, and the gap between the SDP relaxation and the integral optimum is exactly where the NP-hardness must reside. When you keep $\\sigma$ bounded away from $0$, you are *softening* the partition — replacing a $0/1$ assignment matrix by a doubly-stochastic responsibility matrix $r_{ij} = \\pi_j f(x_i\\mid\\theta_j)/\\sum_\\ell \\pi_\\ell f(x_i\\mid\\theta_\\ell)$. That is precisely the LP/SDP relaxation of the hard combinatorial core. So the honest question is: does the soft relaxation *close the integrality gap*? For perfect-graph-like configurations it would; generically it does not, and the hardness survives.\n\nSecond, on your three questions:\n\n1. **Separation threshold $\\Delta \\approx \\sqrt{\\log k}$.** This is a phase transition, and I'd insist we state it as such. Below it the obstruction is information-theoretic (no estimator wins), above it polynomial. The intermediate regime — computational-but-not-information-theoretic hardness — is where SoS lower bounds live, and that is the genuinely interesting band.\n\n2. **$k$ versus $d$.** I agree with your dichotomy. Fixed $k$, growing $d$: this is morally a *bounded-rank* problem, and the limit object is clean — think of the empirical distribution of the $x_i$ converging to a measure, and the mixture-fitting becoming a deconvolution against a $k$-atom prior. Growing $k$ injects the full combinatorial $k$-means hardness.\n\n3. **Approximation threshold.** Your worry about $L$ being negative is decisive — a *multiplicative* guarantee on $L$ is ill-posed. The correct normalized object is the **excess log-likelihood relative to the single-component fit**, or equivalently a KL divergence $\\mathrm{KL}(\\hat P \\| P_{\\text{mix}})$, which is nonnegative and scale-invariant. Phrase the APX-hardness as: no PTAS for minimizing this KL gap. That transfers the Awasthi et al. result cleanly.\n\nNow my one genuine addition. I am skeptical that EM enjoys *polynomial smoothed* time — the Local Lemma intuition cuts the other way here. The bad events are \"two centers collide\" or \"a center captures no mass,\" and these events are *highly dependent* across the iteration trajectory; the dependency graph is not sparse, so an LLL-style argument promising escape from bad basins does not go through. Smoothing kills *measure-zero* degeneracies, yes, but it does not obviously kill the exponentially-many *full-measure* local maxima that EM can fall into. So I'd weaken the conjecture: smoothing gives polynomial time for *recovery up to the information threshold*, not for EM specifically. State the positive result for an SoS/spectral algorithm, not for the heuristic.\n\nConcretely, my proposed division of the writeup",
+      "created_at": "2026-06-23T06:41:57Z"
+    },
+    {
+      "id": "m149bf7e7",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have set up the right scaffolding, and I want to push on the *spectral* heart of this, because that's where I think the real theorem lives.\n\nLet me start with an explicit example, as I always do. Take $k=2$ spherical Gaussians in $\\mathbb{R}^d$, equal weights, means $\\pm\\mu$, identity covariance. The likelihood landscape is governed entirely by the spectrum of the empirical second-moment matrix $\\hat\\Sigma = \\frac1n\\sum_i x_i x_i^\\top$. The signal sits in the top eigenvector, separation $\\Delta = 2\\|\\mu\\|$, and the noise floor is the Marchenko–Pastur edge at $(1+\\sqrt{d/n})^2$. The phase transition Dan and László are calling \"$\\Delta \\approx \\sqrt{\\log k}$\" is, for fixed $k$, really the **BBP transition** of random matrix theory: the top eigenvalue detaches from the bulk precisely when the signal-to-noise crosses $(d/n)^{1/4}$. So before we invoke SoS lower bounds, I'd insist we identify *which* transition we're naming — the information-theoretic $\\sqrt{\\log k}$ for large $k$, versus the BBP/MP edge for fixed $k$ growing $d$. These are genuinely different phenomena and the writeup must not conflate them.\n\nNow, the question I always ask: **is this a Ramanujan phenomenon?** Here's the analogy that I think is *not* an analogy. László says the soft responsibility matrix $r_{ij}$ is the SDP relaxation of the partition, and the integrality gap is where hardness lives. Fine — but the gap between the spectral relaxation and the integral optimum is controlled by the *spectral gap* of the responsibility operator. A mixture is efficiently recoverable exactly when the associated graph/operator is an *expander* in the relevant sense — that's the BGS (Bourgain–Gamburd–Sarnak) expansion philosophy transplanted: good separation $\\Leftrightarrow$ spectral gap $\\Leftrightarrow$ no integrality gap $\\Leftrightarrow$ polynomial time. The computational-but-not-information-theoretic band László loves is precisely the regime where the operator is *almost-Ramanujan but not quite* — the second eigenvalue hovers near the threshold.\n\nTwo sharp points for the action plan:\n\n1. **On EM and László's smoothing skepticism — I side with László.** EM is a gradient flow on the likelihood, and the local maxima are full-measure, like trapped quantum states. This is *arithmetic quantum chaos* in disguise: the bad basins are scarred states that do *not* equidistribute. My QUE work with Lindenstrauss says scarring fails generically on arithmetic surfaces — but here there's *no Hecke symmetry* to force equidistribution, so EM can and will scar. Smoothing won't fix it. State the positive result for a spectral/SoS algorithm, never for EM.\n\n2. **On the approximation threshold.** László's KL normalization is correct, but I want the *moments*. The right object is the Rankin–Selberg-style pairing: the excess log-likelihood is a quadratic form in the responsibility matrix, and its concentration is governed by the fourth moment of the eigenvalue distribution. The APX-hardness threshold should fall out of a *second-moment computation* on $\\mathrm{KL}(\\hat P\\|P_{\\mathrm{mix}})$ — exactly the kind of moment calculation Keating",
+      "created_at": "2026-06-23T06:42:47Z"
+    },
+    {
+      "id": "mafa3a1d4",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, I love the BBP framing — and it actually lets me make the algorithmics *explicit*, which is what I care about. Let me connect your spectral picture to a concrete computational recipe and then register one disagreement.\n\nThe recovery algorithm in the fixed-$k$, growing-$d$, well-separated regime should be: project onto the top-$k$ subspace of $\\hat\\Sigma$ (the BBP-detached eigenvectors), then cluster in $k$ dimensions. The point is that *projection is the right preconditioner* — it's exactly the spectral sparsification philosophy from my work with Srivastava. We don't need all $d$ coordinates; we need the $O(k)$ directions carrying signal, and the effective-resistance/leverage-score intuition tells us which. This is provably nearly-linear once the gap is open.\n\nNow my one technical insistence, sharpening László and Peter. You both say \"soft responsibilities = SDP relaxation, hardness lives in the integrality gap.\" I want this stated *operator-theoretically and constructively*. Build the responsibility operator $R$ with $R_{ij} = \\pi_j f(x_i\\mid\\theta_j)/\\sum_\\ell \\pi_\\ell f(x_i\\mid\\theta_\\ell)$. The relevant object is the normalized Laplacian $\\mathcal{L} = I - D^{-1/2} R^\\top R D^{-1/2}$. Recoverability $\\Leftrightarrow$ spectral gap $\\lambda_2(\\mathcal{L}) \\geq c\\,\\Delta^2$ $\\Leftrightarrow$ Cheeger-type bound on the cluster cut. That is *Cheeger's inequality* doing the work Peter attributes to BBP — they coincide here, and we should prove the equivalence rather than asserting it.\n\nOn EM scarring: I concede to you and László that smoothing won't kill full-measure local maxima. But let me defend a *restricted* smoothed claim. Smoothing the data perturbs $\\hat\\Sigma$, and by my Spielman–Teng analysis the perturbed matrix has its eigenvalue gaps lower-bounded with high probability — no near-degenerate eigenvalues, which are precisely the configurations where the spectral projection step fails. So the honest smoothed theorem is: **the spectral algorithm, not EM, runs in polynomial smoothed time**, because smoothing guarantees a BBP gap. That's a clean, provable statement; EM I abandon entirely.\n\nSo for the action plan, three concrete deliverables I'll commit to:\n1. Prove $\\Delta$-separation $\\Leftrightarrow$ spectral gap of $\\mathcal{L}$ via Cheeger, identifying the constant.\n2. Give the explicit project-then-cluster algorithm with a Laplacian-solve runtime $O(nk\\log^c n)$ for the inner step.\n3. State the smoothed guarantee for *that algorithm*, with the BBP gap as the high-probability event.\n\nOne question back to all of you: for the APX-hardness lower bound on $\\mathrm{KL}(\\hat P \\| P_{\\mathrm{mix}})$ — Peter, your second-moment computation — is the gap-creating gadget the same $k$-means clique construction at $\\sigma\\to 0$, or do we need a genuinely soft gadget at fixed $\\sigma$? Because the former is hardness for free, and I suspect the *real* theorem requires the latter.",
+      "created_at": "2026-06-23T06:45:05Z"
+    },
+    {
+      "id": "m19736baf",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your final question is the crux, and I want to answer it sharply: **the $\\sigma\\to 0$ clique gadget is hardness for free, and it is not the theorem we want.** It is a measure-zero, knife-edge construction — exactly the kind of degeneracy smoothing destroys. The real theorem must produce a gap-creating gadget at *fixed* $\\sigma$, where the responsibility matrix is genuinely soft and the integrality gap survives the relaxation. Let me say precisely what I think that gadget is.\n\nRecall the perfect-graph picture I raised. The soft responsibilities $r_{ij}$ live in the doubly-stochastic relaxation; for *perfect-graph-like* configurations the SDP is tight and there is no gap, so hardness vanishes. The hard instances are therefore exactly the configurations whose associated conflict graph is **imperfect** — it contains an odd hole or odd antihole. That is the structural source of the integrality gap, and by my Perfect Graph Theorem it is the *only* source. So the fixed-$\\sigma$ gadget should be built from a frustrated odd cycle of overlapping components: $k$ Gaussians arranged so each consistently \"wants\" to merge with two neighbors, but an odd parity obstruction forbids a globally consistent soft assignment. This is robust to perturbation precisely because imperfection is an open condition, not a measure-zero one.\n\nNow, to reconcile your Cheeger story with Peter's BBP story — and I think you are both right but at different scales. Your $\\lambda_2(\\mathcal{L}) \\geq c\\Delta^2$ is the *fixed-$k$* statement; Peter's $\\sqrt{\\log k}$ is the *large-$k$* statement. The bridge is the graphon. Let the number of components grow and look at the limit object: the responsibility operator $R$ converges to a graphon-like kernel $W(x,y)$ on the data measure, and $\\lambda_2(\\mathcal{L})$ converges to the spectral gap of the limiting operator. The two phase transitions are then *one transition stated in two limits of the same graphon spectrum* — Cheeger at finite $k$, the information-theoretic edge as the graphon degenerates. The writeup should prove them as a single statement about $\\lambda_2$ of the limit kernel, not as two unrelated phenomena.\n\nOn the approximation threshold: Peter's second-moment computation and my KL normalization agree, but I want the lower bound anchored to the imperfect gadget. The APX-hardness should read: **no PTAS for minimizing $\\mathrm{KL}(\\hat P \\,\\|\\, P_{\\mathrm{mix}})$**, with the gap manufactured by the odd-hole construction at fixed $\\sigma$, whose integrality gap is bounded below by the fractional-chromatic-vs-clique gap $\\chi_f/\\omega$ of the conflict graph. That is a clean, soft, perturbation-stable reduction — not hardness for free.\n\nSo my proposed division: I take the structural lemma — *fixed-$\\sigma$ hardness $\\Leftrightarrow$ imperfection of the conflict graph $\\Leftrightarrow$ $\\theta$-SDP integrality gap* — Dan takes the Cheeger/positive side, Peter takes the moment/threshold computation, and we glue via the graphon limit.",
+      "created_at": "2026-06-23T06:45:54Z"
+    },
+    {
+      "id": "mb55ed8bf",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László, your odd-hole gadget is beautiful, and the graphon bridge is exactly the unification I wanted — but I want to stress-test the claim that the two transitions are *one statement about $\\lambda_2$ of the limit kernel*, because I think there's a subtlety that is precisely a Ramanujan phenomenon.\n\nHere is the issue. When you pass to the graphon limit, you are computing $\\lambda_2$ of a *deterministic* kernel $W(x,y)$. But the actual responsibility operator $R$ is a *random* perturbation of that kernel — finite $n$, finite $k$. The relevant spectral edge is therefore not $\\lambda_2(W)$ but the edge of the *random* operator, and the gap between them is governed by whether $R$ is **Ramanujan**, i.e. whether its nontrivial spectrum sits inside the Marchenko–Pastur bulk $[\\,( \\sqrt{k/n})^2$-type window$\\,]$ with no stragglers. This is exactly the Friedman theorem / almost-Ramanujan story for random regular graphs transplanted to the responsibility operator. So I'd amend the unified statement:\n\n- **Fixed $k$ (Dan/Cheeger):** $\\lambda_2(\\mathcal{L}) \\geq c\\Delta^2$ is the BBP-detached eigenvalue — a *single* outlier above the bulk. Recoverable.\n- **Large $k$ (graphon edge):** the question is whether the $k-1$ \"signal\" eigenvalues stay separated from the bulk *collectively*, and this is the Ramanujan band — the second eigenvalue of $R$ hovering at $2\\sqrt{k}/\\sqrt{\\cdots}$, the Alon–Boppana floor.\n\nThe computational-but-not-information-theoretic gap László loves is then *precisely* the gap between Alon–Boppana (what spectral methods can certify) and the true information threshold (what exists). SoS lower bounds live there because SoS is, morally, certifying a Ramanujan-type bound it cannot quite achieve.\n\nTwo concrete commitments. First, on the APX-hardness moment computation: I'll do the second-moment calculation on $\\mathrm{KL}(\\hat P\\|P_{\\mathrm{mix}})$ for László's odd-hole gadget, and I predict the integrality gap $\\chi_f/\\omega$ will appear as the *ratio of the fourth moment to the squared second moment* of the responsibility spectrum — a participation ratio, exactly as in eigenvalue-statistics computations à la Keating–Snaith. That ties the combinatorial gap to a spectral observable.\n\nSecond, a warning for the writeup: do *not* claim the graphon limit commutes with the spectral edge unconditionally. It commutes only when the random fluctuations are Ramanujan-controlled; near the odd-hole frustration, the limit kernel is *non-self-adjoint* on the wrong measure and the edge can detach anomalously. We need a lemma — call it the *no-straggler lemma* — guaranteeing no eigenvalue escapes the bulk except the genuine signal. Without it, the gluing across scales has a hole exactly where the hardness lives.",
+      "created_at": "2026-06-23T06:46:42Z"
+    },
+    {
+      "id": "med7a9c96",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T06:47:40Z"
+    },
+    {
+      "id": "mdc19eea1",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nEstablish that worst-case optimization of Gaussian mixture log-likelihood is NP-hard via a perturbation-stable fixed-sigma odd-hole gadget (not the free sigma->0 k-means reduction), while proving a matching positive spectral/SoS recovery result above separation, unified across scales by a graphon spectral-gap analysis.",
+      "created_at": "2026-06-23T06:47:40Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish that worst-case optimization of Gaussian mixture log-likelihood is NP-hard via a perturbation-stable fixed-sigma odd-hole gadget (not the free sigma->0 k-means reduction), while proving a matching positive spectral/SoS recovery result above separation, unified across scales by a graphon spectral-gap analysis.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Formalize problem and normalize the objective",
+        "body": "State the precise computational problem (decision vs. exact optimization vs. approximation) for fitting a k-component Gaussian mixture. Replace the sign-indefinite log-likelihood L by the nonnegative, scale-invariant excess objective KL(P_hat || P_mix) (excess log-likelihood relative to the single-component fit). Fix the separation parameter Delta, the dimension d, and component count k as explicit regime variables, and distinguish the information-theoretic threshold Delta ~ sqrt(log k) (large k) from the BBP/Marchenko-Pastur edge (fixed k, growing d).",
+        "agent": "strategist-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Construct the fixed-sigma odd-hole hardness gadget",
+        "body": "Build the gap-creating reduction at fixed positive sigma (not the measure-zero sigma->0 k-means clique construction). Arrange k Gaussians as a frustrated odd cycle of overlapping components where each component wants to merge with two neighbors but an odd-parity obstruction forbids a globally consistent soft assignment. Prove the integrality gap survives because imperfection of the conflict graph is an open (perturbation-stable) condition, and tie the surviving gap to chi_f/omega of the conflict graph via the Perfect Graph Theorem.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Prove APX-hardness via second-moment computation",
+        "body": "Using the odd-hole gadget, prove there is no PTAS for minimizing KL(P_hat || P_mix). Carry out the second-moment computation on the KL objective, showing the integrality gap chi_f/omega emerges as the ratio of the fourth moment to the squared second moment (participation ratio) of the responsibility spectrum. Anchor the APX lower bound to the gadget rather than to the free sigma->0 reduction.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Prove the positive recovery result via Cheeger spectral gap",
+        "body": "Define the responsibility operator R with R_ij = pi_j f(x_i|theta_j)/sum_l pi_l f(x_i|theta_l) and the normalized Laplacian L = I - D^{-1/2} R^T R D^{-1/2}. Prove the equivalence (with explicit constant): Delta-separation <=> spectral gap lambda_2(L) >= c*Delta^2 <=> Cheeger-type cluster-cut bound. Give the explicit project-then-cluster algorithm (project onto top-k BBP-detached eigenvectors of empirical second moment, cluster in k dimensions) with a Laplacian-solve inner step of runtime O(n k log^c n).",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "State and prove the smoothed guarantee for the spectral algorithm",
+        "body": "Following Spielman-Teng smoothed analysis, perturb data x_i -> x_i + g_i and show the perturbed empirical second-moment matrix has eigenvalue gaps lower-bounded with high probability, guaranteeing the BBP gap as a high-probability event. Conclude that the spectral (project-then-cluster) algorithm runs in polynomial smoothed time. Explicitly do NOT claim this for EM: justify that full-measure local maxima (scarred basins, no Hecke symmetry to force equidistribution) are not removed by smoothing.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Unify the two transitions via the graphon limit and prove the no-straggler lemma",
+        "body": "Show the fixed-k Cheeger statement and the large-k information-theoretic edge are one statement about lambda_2 of the limiting graphon kernel W(x,y) on the data measure. Crucially, prove the no-straggler lemma: the random responsibility operator R is an almost-Ramanujan perturbation of W, with no nontrivial eigenvalue escaping the Marchenko-Pastur bulk except the genuine signal (single BBP outlier for fixed k; k-1 collectively separated signal eigenvalues above the Alon-Boppana floor for large k). Identify the SoS/computational-but-not-information-theoretic band as the gap between the Alon-Boppana-certifiable bound and the true threshold. Verify the graphon-spectral-edge commutation holds only under this Ramanujan control, flagging non-self-adjoint anomalies near the odd-hole frustration.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Verify consistency, constants, and threshold non-conflation",
+        "body": "Check that the hardness (steps 1-2) and tractability (steps 3-4) regimes are genuinely separated and do not overlap, that the separation thresholds are not conflated (sqrt(log k) information-theoretic vs. BBP/MP edge vs. Alon-Boppana band), that the Cheeger constant c is consistent with the graphon limit, and that the perturbation-stability of the gadget is incompatible with the smoothed positive result only outside the recoverable regime. Confirm the APX moment computation's chi_f/omega gap matches the participation-ratio claim.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          5
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Critique scope, gaps, and over-claims",
+        "body": "Stress-test the proof: confirm the fixed-sigma gadget truly avoids being hardness-for-free, challenge whether the no-straggler lemma actually closes the gluing hole where hardness lives, scrutinize whether the EM-abandonment is fully justified versus a weaker restricted claim, and check the KL normalization makes the APX-hardness statement well-posed. Identify any remaining gaps between the upper and lower bounds and recommend final framing for the writeup.",
+        "agent": "critic-agent",
+        "depends_on": [
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T06:47:40Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

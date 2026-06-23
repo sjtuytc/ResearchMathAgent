@@ -1,0 +1,662 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{enumitem}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\Tbox}{\mathcal{T}}
+\newcommand{\Abox}{\mathcal{A}}
+\newcommand{\KB}{\mathcal{K}}
+\newcommand{\Sig}{\Sigma}
+\newcommand{\Map}{\mathcal{M}}
+\newcommand{\src}{\mathsf{s}}
+\newcommand{\trg}{\mathsf{t}}
+\newcommand{\Scn}{\mathcal{S}}
+\newcommand{\Cfg}{\mathsf{C}}
+\newcommand{\Cor}{\mathcal{C}}
+\newcommand{\Nat}{\mathbb{N}}
+
+\begin{document}
+
+\title{A Parameterized Generator of Knowledge-Base Exchange Benchmarks}
+\author{}
+\date{}
+\maketitle
+
+\begin{abstract}
+We answer the design question affirmatively and constructively. We fix a precise
+formal model of \emph{knowledge-base (KB) exchange scenarios}, define a finite
+library of \emph{primitive scenario patterns}, define a binary \emph{disjoint
+composition} operator on scenarios, and exhibit an algorithm $\textsc{Gen}$ that,
+on any user configuration, deterministically (given a seed) outputs a complete,
+well-formed KB exchange scenario. We prove (Theorems
+\ref{thm:wellformed}--\ref{thm:complexity}) that $\textsc{Gen}$ terminates, always
+produces a well-formed scenario, realizes \emph{each} of the six required tuning
+dimensions monotonically (with the single intrinsic coupling that a cycle forces
+at least one value-invention site, the precise achievable region being
+characterized), can produce scenarios of arbitrary size, and runs in time linear in the size of its output. This establishes that a
+generator with the demanded properties exists and gives its explicit
+implementation.
+\end{abstract}
+
+\section{Formal model}\label{sec:model}
+
+We work in a function-free first-order vocabulary, which subsumes the
+description-logic/ontology setting (concepts are unary predicates, roles are
+binary predicates). This keeps the constructions explicit while remaining
+faithful to the ``TBox/ABox'' terminology of the problem.
+
+\begin{definition}[Vocabulary and atoms]\label{def:vocab}
+A \emph{signature} $\Sig$ is a finite set of predicate symbols, each with an
+arity in $\{1,2\}$ (unary $=$ \emph{concept}, binary $=$ \emph{role}). Fix three
+pairwise disjoint countably infinite sets: \emph{constants} $\mathsf{Const}$,
+\emph{nulls} (labeled nulls / Skolem terms) $\mathsf{Null}$, and \emph{variables}
+$\mathsf{Var}$. A \emph{term} is an element of
+$\mathsf{Const}\cup\mathsf{Null}\cup\mathsf{Var}$. An \emph{atom} over $\Sig$ is
+$P(t_1,\dots,t_a)$ with $P\in\Sig$ of arity $a$ and $t_i$ terms. An atom is
+\emph{ground} if it contains no variables.
+\end{definition}
+
+\begin{definition}[KB]\label{def:kb}
+A \emph{knowledge base} over $\Sig$ is a pair $\KB=(\Tbox,\Abox)$ where:
+\begin{itemize}[nosep]
+\item the \emph{TBox} $\Tbox$ is a finite set of \emph{tuple-generating
+dependencies} (TGDs) over $\Sig$, i.e.\ closed formulas
+\[
+\forall \bar x\,\Big(\phi(\bar x)\;\rightarrow\;\exists\bar y\,\psi(\bar x,\bar y)\Big),
+\]
+where $\phi$ (the \emph{body}) and $\psi$ (the \emph{head}) are conjunctions of
+atoms over $\Sig$ using variables and constants;
+\item the \emph{ABox} $\Abox$ is a finite set of ground atoms over $\Sig$ whose
+terms lie in $\mathsf{Const}\cup\mathsf{Null}$.
+\end{itemize}
+The \emph{size} $|\KB|$ is the total number of symbol occurrences in $\Tbox$ and
+$\Abox$. Standard DL axioms embed in this format: a concept inclusion
+$A\sqsubseteq B$ is $\forall x\,(A(x)\to B(x))$; an existential restriction
+$A\sqsubseteq\exists r.B$ is $\forall x\,(A(x)\to\exists y\,(r(x,y)\wedge B(y)))$;
+a role inclusion $r\sqsubseteq s$ is $\forall x,y\,(r(x,y)\to s(x,y))$. We use FO
+semantics: an interpretation $I$ \emph{satisfies} a TGD iff every homomorphic
+image of the body extends to a homomorphic image of the head; $I\models\KB$ iff
+$I$ satisfies every TGD of $\Tbox$ and contains every atom of $\Abox$.
+\end{definition}
+
+\begin{definition}[KB exchange scenario]\label{def:scenario}
+A \emph{KB exchange scenario} is a tuple
+\[
+\Scn=\bigl(\Sig_\src,\Sig_\trg,\KB_\src,\KB_\trg,\Map,\Cor\bigr)
+\]
+where $\Sig_\src,\Sig_\trg$ are disjoint signatures (source, target),
+$\KB_\src=(\Tbox_\src,\Abox_\src)$ is a KB over $\Sig_\src$,
+$\KB_\trg=(\Tbox_\trg,\Abox_\trg)$ is a KB over $\Sig_\trg$, $\Map$ is a finite
+set of \emph{source-to-target TGDs} (st-TGDs) — TGDs whose bodies use only
+$\Sig_\src$ and whose heads use only $\Sig_\trg$ — and $\Cor$ is a finite set of
+\emph{correspondences}, each a pair $(X,Y)$ with $X\in\Sig_\src$, $Y\in\Sig_\trg$
+of equal arity, together with a nonempty finite set $\mathsf{int}(X,Y)$ of
+\emph{admissible interpretations}, where each interpretation is an st-TGD over
+$\{X\}\cup\{Y\}$ that ``maps $X$ to $Y$'' (formalized in
+Def.~\ref{def:correspondence-menu}). The \emph{installed} interpretation of each
+correspondence is the unique element of $\Map$ derived from it. The semantics of
+$\Scn$ is the standard data-exchange semantics: the set of \emph{solutions} for a
+source instance $J_\src\models\KB_\src$ is
+\[
+\mathrm{Sol}(\Scn,J_\src)=\{\,J_\trg : J_\src\cup J_\trg\models \Map,\ J_\trg\models\KB_\trg\,\}.
+\]
+\end{definition}
+
+\begin{definition}[Correspondence interpretation menu]\label{def:correspondence-menu}
+For a matched pair $(X,Y)$ of arity $1$ we fix the canonical finite menu of
+admissible logical formalizations
+\[
+\mathsf{int}(X,Y)=\{\iota_{\sqsubseteq},\ \iota_{=},\ \iota_{\exists}\},
+\]
+\[
+\iota_{\sqsubseteq}=\forall x\,(X(x)\to Y(x)),\quad
+\iota_{=}=\{\forall x\,(X(x)\to Y(x)),\ \forall x\,(Y(x)\to X(x))\},
+\]
+\[
+\iota_{\exists}=\forall x\,(X(x)\to\exists y\,(R_{XY}(x,y)\wedge Y(y))),
+\]
+where $R_{XY}$ is a fresh target role attached to $(X,Y)$. For arity $2$ the
+analogous menu uses role inclusion, role equivalence, and a value-inventing
+projection. These three are pairwise non-equivalent as logical theories (proven
+in Lemma~\ref{lem:menu-distinct}); the menu may be extended by the user, the
+results below only use that $|\mathsf{int}(X,Y)|\ge 2$ is attainable.
+\end{definition}
+
+\begin{definition}[Configuration]\label{def:config}
+A \emph{configuration} is a tuple
+\[
+\Cfg=(n,\;v,\;g_\src,\;g_\trg,\;g_\Cor,\;\kappa,\;\mu,\;\mathit{seed})\in\Nat^{7}\times\Nat,
+\]
+subject to $g_\src,g_\trg,g_\Cor\in\Nat$ (requested numbers of withheld source
+axioms, target axioms, and correspondences respectively; the algorithm clamps
+each to the available number $N=v+\kappa+n$ of pattern sites), $\kappa\in\{0,1\}$
+(cyclicity switch), $v\in\{0,\dots,n\}$ (number of value-invention sites),
+$\mu\ge 1$ (target multiplicity of correspondence interpretations), and
+$\mathit{seed}$ a PRNG seed. We call $n$ the \emph{scale}.
+\end{definition}
+
+\section{Primitive patterns}\label{sec:patterns}
+
+We define a finite library $\mathcal{P}=\{\Pi_{\mathrm{copy}},
+\Pi_{\mathrm{inv}}, \Pi_{\mathrm{cyc}}\}$ of \emph{primitive scenario patterns}.
+Each $\Pi$ is a function from a fresh-name supply $f\in\Nat$ to a scenario
+$\Pi(f)$ whose signatures are disjoint for distinct $f$ (achieved by indexing
+every predicate symbol by $f$). We write predicates with subscript $f$.
+
+\begin{definition}[Copy pattern $\Pi_{\mathrm{copy}}(f)$]\label{def:copy}
+$\Sig_\src=\{A_f\}$, $\Sig_\trg=\{B_f\}$ (both unary);
+$\Tbox_\src=\Tbox_\trg=\emptyset$;
+$\Abox_\src=\{A_f(a_f)\}$ with $a_f\in\mathsf{Const}$ fresh;
+$\Abox_\trg=\emptyset$; $\Cor=\{(A_f,B_f)\}$ with menu as in
+Def.~\ref{def:correspondence-menu}; the installed st-TGD is
+$\iota_{\sqsubseteq}=\forall x\,(A_f(x)\to B_f(x))$, so
+$\Map=\{\forall x\,(A_f(x)\to B_f(x))\}$.
+\end{definition}
+
+\begin{definition}[Value-invention pattern $\Pi_{\mathrm{inv}}(f)$]\label{def:inv}
+$\Sig_\src=\{A_f\}$, $\Sig_\trg=\{B_f,R_f\}$ ($A_f,B_f$ unary, $R_f$ binary);
+$\Tbox_\src=\emptyset$; $\Tbox_\trg=\emptyset$;
+$\Abox_\src=\{A_f(a_f)\}$, $\Abox_\trg=\emptyset$;
+$\Cor=\{(A_f,B_f)\}$ with installed interpretation $\iota_\exists$, so
+\[
+\Map=\bigl\{\forall x\,(A_f(x)\to\exists y\,(R_f(x,y)\wedge B_f(y)))\bigr\}.
+\]
+This is the only pattern whose installed st-TGD has an existential head variable;
+it forces a fresh null in every solution.
+\end{definition}
+
+\begin{definition}[Cycle pattern $\Pi_{\mathrm{cyc}}(f)$]\label{def:cyc}
+$\Sig_\src=\{A_f\}$, $\Sig_\trg=\{U_f,W_f,P_f\}$ ($U_f,W_f$ unary, $P_f$
+binary); $\Tbox_\src=\emptyset$;
+\[
+\Tbox_\trg=\bigl\{\;\forall x\,(U_f(x)\!\to\!\exists y\,(P_f(x,y)\wedge W_f(y))),\;
+\forall x\,(W_f(x)\!\to\!\exists y\,(P_f(x,y)\wedge U_f(y)))\;\bigr\};
+\]
+$\Abox_\src=\{A_f(a_f)\}$, $\Abox_\trg=\emptyset$;
+$\Cor=\{(A_f,U_f)\}$, installed
+$\Map=\{\forall x\,(A_f(x)\to U_f(x))\}$.
+The two target TGDs form a directed cycle $U_f\to W_f\to U_f$ in the dependency
+graph (Def.~\ref{def:depgraph}); the scenario is not weakly acyclic.
+\end{definition}
+
+\begin{definition}[Dependency graph]\label{def:depgraph}
+For a TGD set $\Delta$, the (position) \emph{dependency graph}
+$G(\Delta)$ has a node for every predicate position $\langle P,i\rangle$ and an
+edge $\langle P,i\rangle\to\langle Q,j\rangle$ whenever some TGD has $P(\dots
+x\dots)$ at position $i$ in its body and $Q(\dots x\dots)$ at position $j$ in its
+head with the same frontier variable $x$; the edge is \emph{special} if instead
+$Q$'s position $j$ holds an existentially quantified head variable. $\Delta$ is
+\emph{weakly acyclic} iff $G(\Delta)$ has no cycle through a special edge
+\cite{FaginKMP05}. We say a scenario \emph{has a cycle} if
+$G(\Tbox_\trg\cup\Map)$ contains a directed cycle through a special edge.
+\end{definition}
+
+\begin{lemma}[Menu non-equivalence]\label{lem:menu-distinct}
+The three theories $\iota_{\sqsubseteq}$, $\iota_{=}$, $\iota_{\exists}$ of
+Def.~\ref{def:correspondence-menu} are pairwise logically inequivalent.
+\end{lemma}
+
+\begin{proof}
+We exhibit, for each unordered pair, an interpretation satisfying one and not the
+other. Let the domain be $\{p,q\}$.
+\begin{itemize}[nosep]
+\item $\iota_{\sqsubseteq}$ vs.\ $\iota_{=}$: take $X^I=\emptyset$, $Y^I=\{p\}$.
+Then $\iota_\sqsubseteq$ holds vacuously, while
+$\forall x(Y(x)\to X(x))$ fails at $p$, so $\iota_=$ fails.
+\item $\iota_{\sqsubseteq}$ vs.\ $\iota_{\exists}$: take $X^I=\{p\}$,
+$Y^I=\{p\}$, $R_{XY}^I=\emptyset$. Then $\iota_\sqsubseteq$ holds, but
+$\iota_\exists$ needs some $y$ with $R_{XY}(p,y)$, which fails. Hence they differ.
+(They also differ on signature: $\iota_\exists$ mentions $R_{XY}$.)
+\item $\iota_{=}$ vs.\ $\iota_{\exists}$: take $X^I=\{p\}$, $Y^I=\{p\}$,
+$R_{XY}^I=\emptyset$. Then $\iota_=$ holds (both inclusions hold) but
+$\iota_\exists$ fails as above.
+\end{itemize}
+Each pair is separated, so the three are pairwise inequivalent.
+\end{proof}
+
+\section{Composition}\label{sec:compose}
+
+\begin{definition}[Disjoint composition]\label{def:compose}
+Let $\Scn_1,\Scn_2$ be scenarios over pairwise disjoint signatures (all
+predicate symbols indexed by distinct fresh names). Their \emph{disjoint
+composition} $\Scn_1\oplus\Scn_2$ is the componentwise union:
+\[
+\Sig_\bullet=\Sig_\bullet^{(1)}\cup\Sig_\bullet^{(2)},\quad
+\Tbox_\bullet=\Tbox_\bullet^{(1)}\cup\Tbox_\bullet^{(2)},\quad
+\Abox_\bullet=\Abox_\bullet^{(1)}\cup\Abox_\bullet^{(2)},
+\]
+for $\bullet\in\{\src,\trg\}$, and $\Map=\Map_1\cup\Map_2$,
+$\Cor=\Cor_1\cup\Cor_2$. The operator $\oplus$ is associative and commutative on
+disjoint scenarios; we write $\bigoplus_{i=1}^m\Scn_i$ for an iterated disjoint
+composition.
+\end{definition}
+
+The next lemma is the structural backbone: because the components share no
+symbols, the semantics, the dependency-graph structure, and all six metrics
+decompose additively.
+
+\begin{lemma}[Modularity]\label{lem:modularity}
+Let $\Scn=\bigoplus_{i=1}^m\Scn_i$ be a disjoint composition. Then:
+\begin{enumerate}[label=(\alph*),nosep]
+\item (Signature partition) $\Sig_\src=\bigsqcup_i\Sig_\src^{(i)}$ and
+$\Sig_\trg=\bigsqcup_i\Sig_\trg^{(i)}$ are disjoint unions; every TGD in
+$\Tbox_\src\cup\Tbox_\trg\cup\Map$ uses symbols from exactly one component.
+\item (Dependency graph) $G(\Tbox_\trg\cup\Map)$ is the disjoint union of the
+graphs $G(\Tbox_\trg^{(i)}\cup\Map_i)$; in particular it has a cycle through a
+special edge iff some component does.
+\item (Solutions factor) For any source instance
+$J_\src=\bigsqcup_i J_\src^{(i)}$ with $J_\src^{(i)}$ over $\Sig_\src^{(i)}$,
+$\mathrm{Sol}(\Scn,J_\src)=\{\bigsqcup_i J_\trg^{(i)} :
+J_\trg^{(i)}\in\mathrm{Sol}(\Scn_i,J_\src^{(i)})\}$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(a) By construction each $\Scn_i$ uses predicate symbols indexed by the fresh
+names allocated to component $i$, and these index sets are pairwise disjoint;
+hence the unions are disjoint and every formula, being drawn verbatim from one
+$\Scn_i$, mentions only that component's symbols.
+
+(b) Nodes of $G$ are predicate positions; by (a) the node set partitions by
+component. An edge of $G$ comes from a single TGD (Def.~\ref{def:depgraph}),
+which by (a) belongs to one component, so both endpoints lie in that component;
+no edge crosses components. Thus $G$ is the disjoint union claimed, and a
+directed cycle (special or not) lives entirely within one component's subgraph.
+
+(c) ($\supseteq$) If each $J_\trg^{(i)}\in\mathrm{Sol}(\Scn_i,J_\src^{(i)})$ then
+$J_\src^{(i)}\cup J_\trg^{(i)}\models\Map_i$ and
+$J_\trg^{(i)}\models\KB_\trg^{(i)}$. A TGD $\delta\in\Map$ lies in some
+$\Map_{i_0}$ and mentions only $\Sig^{(i_0)}$ symbols; a homomorphism of its body
+into $\bigsqcup J_\src\cup\bigsqcup J_\trg$ must land entirely in component $i_0$
+(by (a) the body atoms force the matched facts to be $\Sig^{(i_0)}$-facts, present
+only in $J^{(i_0)}$); since $J_\src^{(i_0)}\cup J_\trg^{(i_0)}\models\delta$ the
+head is satisfied there, hence in the union. The same argument applies to each
+$\delta\in\Tbox_\trg$. So $\bigsqcup_i J_\trg^{(i)}\in\mathrm{Sol}(\Scn,J_\src)$.
+
+($\subseteq$) Conversely let $J_\trg\in\mathrm{Sol}(\Scn,J_\src)$ and put
+$J_\trg^{(i)}:=J_\trg\!\restriction\!\Sig_\trg^{(i)}$ (the facts over component
+$i$'s target symbols). By (a) the restrictions partition $J_\trg$. Any
+$\delta\in\Map_i\cup\Tbox_\trg^{(i)}$ mentions only $\Sig^{(i)}$ symbols, so a
+body homomorphism into the global instance equals one into
+$J_\src^{(i)}\cup J_\trg^{(i)}$, and its head atoms (also $\Sig^{(i)}$-atoms)
+satisfied in $J_\trg$ are satisfied in $J_\trg^{(i)}$. Hence
+$J_\src^{(i)}\cup J_\trg^{(i)}\models\Map_i$ and
+$J_\trg^{(i)}\models\KB_\trg^{(i)}$, i.e.\
+$J_\trg^{(i)}\in\mathrm{Sol}(\Scn_i,J_\src^{(i)})$.
+\end{proof}
+
+\section{The generator}\label{sec:gen}
+
+We now define metrics making the six dimensions measurable, then the algorithm.
+
+\begin{definition}[Six metrics]\label{def:metrics}
+For a scenario $\Scn$ define:
+\begin{enumerate}[label=\textbf{M\arabic*.},nosep]
+\item $\mathsf{inv}(\Scn)=$ number of st-TGDs and target TGDs in
+$\Map\cup\Tbox_\trg$ with at least one existentially quantified head variable
+(value-invention sites).
+\item $\mathsf{gap}_\src(\Scn)=$ number of axioms (ABox facts and TBox TGDs) that
+were generated by the patterns but withheld from $\KB_\src$.
+\item $\mathsf{gap}_\trg(\Scn)=$ analogously, axioms withheld from $\KB_\trg$.
+\item $\mathsf{gap}_\Cor(\Scn)=|\{c\in\Cor : c$ has no installed st-TGD in
+$\Map\}|$, the number of unmapped correspondences.
+\item $\mathsf{cyc}(\Scn)=1$ if $G(\Tbox_\trg\cup\Map)$ has a cycle through a
+special edge, else $0$.
+\item $\mathsf{mult}(\Scn)=\prod_{c\in\Cor}|\mathsf{int}(c)|$, the number of
+distinct global formalizations obtainable by independently choosing one admissible
+interpretation per correspondence.
+\end{enumerate}
+A scenario is \emph{well-formed} if (i) $\Sig_\src\cap\Sig_\trg=\emptyset$, (ii)
+every TGD in $\Map$ has body over $\Sig_\src$ and head over $\Sig_\trg$, (iii)
+every TGD in $\Tbox_\bullet$ and ABox fact is over $\Sig_\bullet$
+($\bullet\in\{\src,\trg\}$), and (iv) each correspondence has a nonempty menu.
+\end{definition}
+
+\begin{remark}[Semantic grounding of M1 and M6]\label{rem:semantic}
+The syntactic counts M1 and M6 coincide with their intended semantic meanings on
+the scenarios produced by $\textsc{Gen}$.
+\emph{(M1, value invention.)} Run the restricted (standard) chase of
+$\Abox_\src$ with $\Map\cup\Tbox_\trg$. Each existential-head TGD of a component
+fires (each component's source ABox has one fact, by
+Defs.~\ref{def:copy}--\ref{def:cyc}, and the only non-existential firings copy a
+constant), and weakly acyclic components ($\kappa=0$) make the chase terminate,
+introducing one fresh null per existential-head firing; thus the number of
+distinct labeled nulls in the canonical universal solution restricted to the
+acyclic part equals $\mathsf{inv}$. Hence $\mathsf{inv}$ measures value invention
+in the precise sense of nulls in a universal solution, not merely a syntactic tag.
+\emph{(M6, multiplicity.)} The interpretations counted in $\mathsf{mult}$ are
+pairwise inequivalent \emph{as logical theories} (Lemmas~\ref{lem:menu-distinct},
+\ref{lem:mult}). Since $\textsc{Gen}$ attaches each correspondence's roles
+$R_k$ as \emph{fresh} target symbols not constrained by $\Tbox_\trg$, the
+separating interpretations built in those lemmas also satisfy $\Tbox_\trg$
+(they assign the fresh $R_k$ freely), so the interpretations remain pairwise
+inequivalent \emph{relative to the target TBox} $\Tbox_\trg$, which is the
+benchmark-relevant notion.
+\end{remark}
+
+\begin{algorithm}[t]
+\caption{$\textsc{Gen}(\Cfg)$ — KB exchange scenario generator}
+\label{alg:gen}
+\begin{algorithmic}[1]
+\Require Configuration $\Cfg=(n,v,g_\src,g_\trg,g_\Cor,\kappa,\mu,\mathit{seed})$
+with $v\in\{0,\dots,n\}$, $g_\src,g_\trg,g_\Cor\in\Nat$ (clamped to $N=v+\kappa+n$), $\kappa\in\{0,1\}$, $\mu\ge 1$.
+\Ensure A well-formed KB exchange scenario $\Scn$.
+\State initialize PRNG with $\mathit{seed}$; $\Scn\gets$ empty scenario; $f\gets 0$
+\Comment{fresh-name counter}
+\State \textbf{withheld}$_\src\gets\emptyset$; \textbf{withheld}$_\trg\gets\emptyset$
+\For{$i=1$ \textbf{to} $v$}\Comment{value-invention sites}
+  \State $\Scn\gets\Scn\oplus\Pi_{\mathrm{inv}}(f)$; $f\gets f+1$
+\EndFor
+\If{$\kappa=1$}\Comment{ensure at least one special-edge cycle}
+  \State $\Scn\gets\Scn\oplus\Pi_{\mathrm{cyc}}(f)$; $f\gets f+1$
+\EndIf
+\For{$i=1$ \textbf{to} $n$}\Comment{bulk copy patterns to reach scale}
+  \State $\Scn\gets\Scn\oplus\Pi_{\mathrm{copy}}(f)$; $f\gets f+1$
+\EndFor
+\State let $\Pi^{(1)},\dots,\Pi^{(N)}$ be the patterns added so far ($N=v+\kappa+n$)
+\For{$i=1$ \textbf{to} $\min(g_\src,N)$}\Comment{source incompleteness}
+  \State move the (unique) ABox fact of $\Pi^{(i)}$ from $\Abox_\src$ into
+  \textbf{withheld}$_\src$
+\EndFor
+\For{$i=1$ \textbf{to} $\min(g_\trg,N)$}\Comment{target incompleteness}
+  \State append a fresh target TGD $\tau_i=\forall x\,(B^{(i)}(x)\to C_i(x))$ with
+  $C_i$ a fresh target concept, then move $\tau_i$ into \textbf{withheld}$_\trg$
+\EndFor
+\For{$i=1$ \textbf{to} $\min(g_\Cor,N)$}\Comment{correspondence incompleteness}
+  \State delete from $\Map$ the installed st-TGD of $\Pi^{(i)}$, marking its
+  correspondence \emph{unmapped} (the correspondence stays in $\Cor$)
+\EndFor
+\For{\textbf{each} correspondence $c\in\Cor$}\Comment{interpretation multiplicity}
+  \State extend $\mathsf{int}(c)$ to exactly $\mu$ pairwise-inequivalent st-TGDs
+  by the construction of Lemma~\ref{lem:mult}
+\EndFor
+\State attach \textbf{withheld}$_\src$, \textbf{withheld}$_\trg$ to $\Scn$ as the
+gold-standard hidden axioms
+\State \Return $\Scn$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}[Realizing arbitrary multiplicity]\label{lem:mult}
+For every matched pair $(X,Y)$ and every $\mu\ge 1$ there is an explicit set of
+$\mu$ pairwise logically inequivalent admissible interpretations.
+\end{lemma}
+
+\begin{proof}
+For $k=0,1,\dots,\mu-1$ let $R_k$ be fresh distinct target roles and define
+\[
+\iota_k=\forall x\,\Big(X(x)\to\exists y_1\cdots\exists y_k\big(Y(x)\wedge
+\textstyle\bigwedge_{j=1}^{k}R_j(x,y_j)\big)\Big),
+\]
+with $\iota_0=\forall x\,(X(x)\to Y(x))$. Each $\iota_k$ is a valid st-TGD with
+body over $\{X\}\subseteq\Sig_\src$ and head over
+$\{Y,R_1,\dots,R_k\}\subseteq\Sig_\trg$, hence admissible. For $0\le k<\ell\le
+\mu-1$, the interpretation $I$ with domain $\{p\}$, $X^I=Y^I=\{p\}$,
+$R_j^I=\emptyset$ for all $j$, satisfies $\iota_k$ iff $k=0$ would require no
+$R$-witness — more precisely $I\models\iota_k$ iff $k=0$, since for $k\ge1$ the
+head needs some $y_1$ with $R_1(p,y_1)$, absent in $I$. To separate two indices
+$k<\ell$ with $k\ge 1$, take $I'$ on domain $\{p,w_1,\dots,w_k\}$ with
+$X^{I'}=Y^{I'}=\{p\}$ and $R_j^{I'}=\{(p,w_j)\}$ for $1\le j\le k$,
+$R_j^{I'}=\emptyset$ for $j>k$. Then $I'\models\iota_k$ (witnesses
+$y_j=w_j$) but $I'\not\models\iota_\ell$ because position $\ell>k$ needs a
+$y_\ell$ with $R_\ell(p,y_\ell)$, and $R_\ell^{I'}=\emptyset$. Hence all $\mu$
+formulas are pairwise inequivalent.
+\end{proof}
+
+\section{Correctness}\label{sec:correctness}
+
+\begin{theorem}[Termination and well-formedness]\label{thm:wellformed}
+On every configuration $\Cfg$, $\textsc{Gen}(\Cfg)$ halts and returns a
+well-formed KB exchange scenario.
+\end{theorem}
+
+\begin{proof}
+\emph{Termination.} Every loop in Alg.~\ref{alg:gen} is a \texttt{for} loop with
+a bound fixed before entry ($v$, $1$, $n$, $\min(g_\bullet,N)$, or $|\Cor|\le N$),
+and each iteration performs finitely many constant-time symbol allocations and a
+single $\oplus$ or edit. Hence the algorithm executes $O(v+n+\kappa+|\Cor|)$
+steps and halts.
+
+\emph{Well-formedness.} We verify the four conditions of
+Def.~\ref{def:metrics}. (i) Each primitive $\Pi(f)$ uses symbols indexed by the
+unique fresh value $f$, and the counter $f$ strictly increases at every
+allocation, so all components have disjoint signatures and
+$\Sig_\src\cap\Sig_\trg=\emptyset$ (within each pattern the source and target
+symbols are explicitly disjoint by Defs.~\ref{def:copy}--\ref{def:cyc}, and
+across patterns the index differs). By Lemma~\ref{lem:modularity}(a) these
+disjointness properties are preserved by $\oplus$.
+(ii) Every st-TGD ever inserted into $\Map$ is the installed interpretation of
+some pattern; by Defs.~\ref{def:copy}--\ref{def:cyc} and
+Lemma~\ref{lem:mult} its body is over the source symbol $A_f$ (resp.\ $X$) and
+its head over target symbols, satisfying the source-to-target shape; deletions
+(line for $g_\Cor$) preserve this.
+(iii) Target TGDs added for $g_\trg$ have body $B^{(i)}(x)$ and head $C_i(x)$
+with $B^{(i)},C_i\in\Sig_\trg$; pattern TBoxes are over their own target
+signatures; ABox facts $A_f(a_f)$ are over $\Sig_\src$; moving an axiom to a
+\textbf{withheld} set does not change which signature it is over. So all
+TBox/ABox axioms (present or withheld) respect their side.
+(iv) Each correspondence's menu is initialized nonempty
+(Def.~\ref{def:correspondence-menu}) and the multiplicity loop only enlarges it
+(Lemma~\ref{lem:mult}); unmapping a correspondence (line for $g_\Cor$) removes
+its installed st-TGD from $\Map$ but leaves the correspondence and its nonempty
+menu in $\Cor$. All four conditions hold.
+\end{proof}
+
+\begin{theorem}[The six dimensions are realized, independently and monotonically]
+\label{thm:dimensions}
+Let $\Scn=\textsc{Gen}(\Cfg)$. Then the six metrics of
+Def.~\ref{def:metrics} satisfy
+\[
+\mathsf{inv}(\Scn)=v+\kappa\cdot 2,\quad
+\mathsf{gap}_\src(\Scn)=\min(g_\src,N),\quad
+\mathsf{gap}_\trg(\Scn)=\min(g_\trg,N),
+\]
+\[
+\mathsf{gap}_\Cor(\Scn)=\min(g_\Cor,N),\quad
+\mathsf{cyc}(\Scn)=\kappa,\quad
+\mathsf{mult}(\Scn)=\mu^{\,|\Cor|}=\mu^{\,N},
+\]
+where $N=v+\kappa+n$. Consequently each metric is a nondecreasing function of its
+governing parameter with the others fixed, and the parameters
+$v,g_\src,g_\trg,g_\Cor,\kappa,\mu$ control the six dimensions independently.
+\end{theorem}
+
+\begin{proof}
+We compute each metric on the output, using
+Lemma~\ref{lem:modularity}(b),(c) for additivity.
+
+\textbf{M1 ($\mathsf{inv}$).} The installed st-TGDs with an existential head
+variable are exactly those of the $v$ copies of $\Pi_{\mathrm{inv}}$ (each
+contributes one, Def.~\ref{def:inv}). $\Pi_{\mathrm{copy}}$ installs
+$\iota_\sqsubseteq$ (no existential, Def.~\ref{def:copy}); $\Pi_{\mathrm{cyc}}$
+installs $A_f\to U_f$ (no existential in $\Map$) but its target TBox
+$\Tbox_\trg$ contains \emph{two} TGDs with existential heads
+(Def.~\ref{def:cyc}). The multiplicity loop enlarges only the menus
+$\mathsf{int}(c)$, not $\Map$ or $\Tbox_\trg$, so it does not change
+$\mathsf{inv}$. Withholding source ABox facts and adding target inclusion TGDs
+(both quantifier-free heads) does not add existentials. Hence
+$\mathsf{inv}(\Scn)=v+2\kappa$.
+
+\textbf{M2--M3 ($\mathsf{gap}_\src,\mathsf{gap}_\trg$).} The source-incompleteness
+loop moves exactly $\min(g_\src,N)$ ABox facts into \textbf{withheld}$_\src$, and
+no other step removes source axioms; so $\mathsf{gap}_\src=\min(g_\src,N)$.
+Symmetrically the target-incompleteness loop creates and withholds exactly
+$\min(g_\trg,N)$ target TGDs, giving $\mathsf{gap}_\trg=\min(g_\trg,N)$.
+
+\textbf{M4 ($\mathsf{gap}_\Cor$).} The correspondence-incompleteness loop deletes
+the installed st-TGD of exactly $\min(g_\Cor,N)$ patterns while keeping their
+correspondences in $\Cor$; these are precisely the correspondences with no
+installed st-TGD, and no other step unmaps a correspondence. Hence
+$\mathsf{gap}_\Cor=\min(g_\Cor,N)$.
+
+\textbf{M5 ($\mathsf{cyc}$).} If $\kappa=1$ the component $\Pi_{\mathrm{cyc}}$ is
+present. Its position dependency graph contains, from the two TGDs of
+Def.~\ref{def:cyc}, edges $\langle U_f,1\rangle\to\langle W_f,1\rangle$ and
+$\langle W_f,1\rangle\to\langle U_f,1\rangle$, where each head's bound variable
+$y$ occupies the unary position of $W_f$ resp.\ $U_f$ as an \emph{existential}
+head variable, making both edges \emph{special}
+(Def.~\ref{def:depgraph}).\footnote{Concretely, in
+$\forall x(U_f(x)\to\exists y(P_f(x,y)\wedge W_f(y)))$ the frontier variable $x$
+of $U_f$ propagates to $P_f$ position $1$, and the existential $y$ fills $W_f$
+position $1$ and $P_f$ position $2$; the edge $\langle U_f,1\rangle\to\langle
+W_f,1\rangle$ carrying $x\!\rightsquigarrow\!y$ is special because $W_f$'s
+position is occupied by the existential $y$.} These two special edges form a
+directed cycle $\langle U_f,1\rangle\to\langle W_f,1\rangle\to\langle U_f,1\rangle$
+through special edges, so by Lemma~\ref{lem:modularity}(b) the whole scenario has
+such a cycle and $\mathsf{cyc}=1$. If $\kappa=0$, every remaining component is
+$\Pi_{\mathrm{copy}}$ or $\Pi_{\mathrm{inv}}$, whose target TBoxes are empty and
+whose $\Map$ st-TGDs go from source to target only; thus every edge of $G$ runs
+from a source position to a target position and back-edges are impossible, so $G$
+is a DAG and has no special-edge cycle, giving $\mathsf{cyc}=0$. Therefore
+$\mathsf{cyc}=\kappa$.
+
+\textbf{M6 ($\mathsf{mult}$).} After the multiplicity loop every correspondence
+$c\in\Cor$ has $|\mathsf{int}(c)|=\mu$ pairwise-inequivalent interpretations
+(Lemma~\ref{lem:mult}). There is exactly one correspondence per pattern, so
+$|\Cor|=N$, and
+$\mathsf{mult}(\Scn)=\prod_{c\in\Cor}\mu=\mu^{N}$. The choices are independent
+across correspondences because distinct correspondences use disjoint signatures
+(Lemma~\ref{lem:modularity}(a)), so any combination of selections yields a
+well-formed, distinct global formalization, and by Lemma~\ref{lem:mult} no two of
+the $\mu^N$ combinations are logically equivalent.
+
+\emph{Monotonicity and (near-)independence.} Each metric is governed by a single
+parameter, monotonically: $\mathsf{gap}_\src$ by $g_\src$, $\mathsf{gap}_\trg$ by
+$g_\trg$, $\mathsf{gap}_\Cor$ by $g_\Cor$, $\mathsf{cyc}$ by $\kappa$, and
+$\mathsf{mult}$ by $\mu$; increasing the governing parameter (with the rest
+fixed) weakly increases that metric. The only coupling is between $\kappa$ and
+$\mathsf{inv}$: the cycle pattern necessarily uses two existential-head TGDs, so
+$\mathsf{inv}=v+2\kappa$. This coupling is intrinsic (a special-edge cycle
+requires at least one existential head, so $\mathsf{cyc}=1\Rightarrow
+\mathsf{inv}\ge 1$) and is therefore not an artifact of $\textsc{Gen}$. The exact
+achievable region is characterized in Theorem~\ref{thm:region}; in particular,
+once $\kappa$ is fixed, $v$ tunes $\mathsf{inv}$ freely and the other four metrics
+are fully independent.
+\end{proof}
+
+\begin{theorem}[Achievable region]\label{thm:region}
+The set of metric vectors realizable by $\textsc{Gen}$ over all configurations is
+exactly
+\[
+R=\Bigl\{(I,G_\src,G_\trg,G_\Cor,c,m)\in\Nat^6 :\;
+c\in\{0,1\},\ I\ge 2c,\ m=\mu^{N}\text{ for some }\mu\ge1,\ N\ge \max(I-c,\,G_\src,G_\trg,G_\Cor)\Bigr\},
+\]
+i.e.\ the value-invention count $I$ must satisfy $I\ge 2c$ when a cycle is
+present, the three gap counts are bounded by the scale $N=v+\kappa+n$, and
+$\mathsf{mult}$ ranges over perfect $N$-th powers. The single inequality
+$I\ge 2c$ is the unique interaction constraint; all other axes are mutually
+unconstrained.
+\end{theorem}
+
+\begin{proof}
+\emph{($\subseteq$).} By Theorem~\ref{thm:dimensions} every output has
+$\mathsf{inv}=v+2\kappa$ with $v\ge 0$, hence $I:=\mathsf{inv}\ge 2\kappa=2c$;
+$\mathsf{cyc}=\kappa\in\{0,1\}$; $\mathsf{gap}_\bullet=\min(g_\bullet,N)\le N$;
+and $\mathsf{mult}=\mu^N$. Also $N=v+\kappa+n\ge v+\kappa=I-c$ and $N\ge n\ge g_\bullet
+\ge\min(g_\bullet,N)=G_\bullet$. So the output vector lies in $R$.
+
+\emph{($\supseteq$).} Given a target vector in $R$, set $\kappa:=c$,
+$v:=I-2c\ (\ge 0)$, choose $\mu$ with $m=\mu^N$, and pick $n:=N-v-\kappa\ge 0$
+(possible since $N\ge I-c=v+\kappa$). Set $g_\bullet:=G_\bullet\ (\le N)$;
+since the patterns provide $N$ withholding sites and $G_\bullet\le N$, the
+incompleteness loops withhold exactly $G_\bullet$ axioms, giving
+$\mathsf{gap}_\bullet=\min(G_\bullet,N)=G_\bullet$. By
+Theorem~\ref{thm:dimensions} the output then has metric vector
+$(v+2\kappa,G_\src,G_\trg,G_\Cor,\kappa,\mu^N)=(I,G_\src,G_\trg,G_\Cor,c,m)$.
+\end{proof}
+
+\begin{theorem}[Arbitrary size]\label{thm:size}
+For every $s\in\Nat$ there is a configuration $\Cfg$ with
+$|\textsc{Gen}(\Cfg)|\ge s$; moreover $|\textsc{Gen}(\Cfg)|=\Theta(N+\mu N)$
+where $N=v+\kappa+n$, so size grows without bound in $n$ and in $\mu$.
+\end{theorem}
+
+\begin{proof}
+Each $\Pi_{\mathrm{copy}}(f)$ contributes a constant number $c_0>0$ of symbol
+occurrences (one ABox fact and one st-TGD), and components are disjoint so their
+sizes add (Lemma~\ref{lem:modularity}(a)). Hence with $v=\kappa=0$ and scale $n$
+we have $|\textsc{Gen}(\Cfg)|\ge c_0 n$; choosing $n=\lceil s/c_0\rceil$ gives
+size $\ge s$. In general the patterns contribute $\Theta(N)$ occurrences and the
+multiplicity loop adds $\Theta(\mu)$ interpretation formulas per correspondence,
+i.e.\ $\Theta(\mu N)$ total, whence $|\textsc{Gen}(\Cfg)|=\Theta(N+\mu N)
+=\Theta(\mu N)$, unbounded in $n$ and $\mu$.
+\end{proof}
+
+\begin{theorem}[Determinism, repeatability, complexity]\label{thm:complexity}
+$\textsc{Gen}$ is deterministic given $\Cfg$ (including its seed): two runs on the
+same $\Cfg$ produce identical scenarios. It runs in time and space
+$O(\mu N)=O(|\textsc{Gen}(\Cfg)|)$, i.e.\ linear in the output size.
+\end{theorem}
+
+\begin{proof}
+\emph{Determinism/repeatability.} Every choice in Alg.~\ref{alg:gen} is either a
+deterministic loop with bounds fixed by $\Cfg$, a deterministic edit, or a draw
+from the PRNG, which is itself a deterministic function of $\mathit{seed}$. The
+fresh-name counter $f$ evolves deterministically. Hence the output is a function
+of $\Cfg$ alone, so reruns coincide.
+
+\emph{Complexity.} The pattern loops perform $N=v+\kappa+n$ iterations, each a
+constant-size $\oplus$ (adding $O(1)$ symbols and one graph component). The three
+incompleteness loops perform $O(N)$ constant-time edits. The multiplicity loop
+performs, per correspondence, the construction of Lemma~\ref{lem:mult}, which
+writes $\sum_{k=0}^{\mu-1}O(k)=O(\mu^2)$ symbols if interpretations are stored
+explicitly with all their atoms; storing them in the size-optimal incremental
+form (interpretation $\iota_k$ as $\iota_{k-1}$ plus the single conjunct
+$\exists y_k\,R_k(x,y_k)$) writes $O(1)$ new symbols per increment, hence
+$O(\mu)$ per correspondence and $O(\mu N)$ overall. Summing, the running time is
+$O(N+\mu N)=O(\mu N)$, matching the output size of Theorem~\ref{thm:size}; space
+is dominated by the stored scenario, also $O(\mu N)$.
+\end{proof}
+
+\section{Conclusion}\label{sec:conc}
+
+\begin{corollary}[Main result]\label{cor:main}
+A parameterized KB exchange benchmark generator with all the required properties
+exists. Algorithm~\ref{alg:gen} ($\textsc{Gen}$) is such a generator: it is
+deterministic and repeatable (Thm.~\ref{thm:complexity}), always outputs a
+well-formed KB exchange scenario (Thm.~\ref{thm:wellformed}), monotonically
+controls the six demanded dimensions (independently up to the single intrinsic
+constraint that cyclicity forces value invention; the exact achievable region is
+given in Thm.~\ref{thm:region}) — value invention, source
+incompleteness, target incompleteness, correspondence incompleteness, cyclicity,
+and interpretation multiplicity (Thm.~\ref{thm:dimensions}) — produces scenarios
+of arbitrary size by composing the primitive patterns
+$\{\Pi_{\mathrm{copy}},\Pi_{\mathrm{inv}},\Pi_{\mathrm{cyc}}\}$ via disjoint
+composition $\oplus$ (Thm.~\ref{thm:size}, Lemma~\ref{lem:modularity}), and runs
+in time linear in its output (Thm.~\ref{thm:complexity}).
+\end{corollary}
+
+\begin{proof}
+Immediate from Theorems~\ref{thm:wellformed}--\ref{thm:complexity} and
+Lemmas~\ref{lem:menu-distinct}--\ref{lem:mult}.
+\end{proof}
+
+\begin{remark}[Faithfulness to the iBench analogy]
+$\textsc{Gen}$ mirrors the iBench methodology: \emph{primitives} (here
+$\Pi_{\mathrm{copy}},\Pi_{\mathrm{inv}},\Pi_{\mathrm{cyc}}$) play the role of
+iBench's mapping primitives; \emph{disjoint composition} $\oplus$ plays the role
+of iBench's primitive instantiation and replication to reach scale; the
+\textbf{withheld} axiom sets provide a \emph{gold standard} against which a tool's
+recovered mapping can be scored on the incompleteness dimensions. The novelty
+demanded by the KB (as opposed to relational) setting — value invention via
+existential heads, KB-level (TBox) cyclicity, and the multiplicity of admissible
+logical formalizations of one correspondence — is captured by
+$\Pi_{\mathrm{inv}}$, $\Pi_{\mathrm{cyc}}$, and the menu construction of
+Lemma~\ref{lem:mult}, respectively.
+\end{remark}
+
+\begin{thebibliography}{9}
+\bibitem{FaginKMP05} R.~Fagin, P.~G.~Kolaitis, R.~J.~Miller, L.~Popa,
+\emph{Data exchange: semantics and query answering}, Theoretical Computer
+Science \textbf{336} (2005), 89--124.
+\end{thebibliography}
+
+\end{document}

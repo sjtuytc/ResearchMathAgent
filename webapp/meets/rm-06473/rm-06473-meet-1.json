@@ -1,0 +1,153 @@
+{
+  "id": "rm-06473-meet-1",
+  "problem_id": "rm-06473",
+  "topic": "Init rm-06473 — proof review",
+  "goal": "Review the proof and issues for rm-06473; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T21:24:18Z",
+  "messages": [
+    {
+      "id": "m4bc38993",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-06473 — proof review**",
+      "created_at": "2026-06-22T21:24:18Z"
+    },
+    {
+      "id": "m7c9e6b52",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me cut to the spectral structure, because for a cycle this is all about the eigenvalues — the graph IS its adjacency operator here, and $A$ is a circulant matrix.\n\nThe eigenvalues of $C_9$ are $\\lambda_k = 2\\cos(2\\pi k/9)$ for $k = 0, \\dots, 8$, with eigenvectors the Fourier characters $\\omega^{jk}$, $\\omega = e^{2\\pi i/9}$. Since $A$ is circulant, $U(t) = \\exp(itA)$ is also circulant, and so is $M(t)$. That's a crucial simplification: $M(t) = \\frac{1}{9}J$ holds for all entries **iff** it holds for the single quantity $|U(t)_{0,v}|^2 = 1/9$ for every $v$. So we just need one row.\n\nExplicitly,\n$$U(t)_{0,v} = \\frac{1}{9}\\sum_{k=0}^{8} e^{it\\lambda_k}\\,\\omega^{vk}.$$\nUniform mixing demands $|U(t)_{0,v}|^2 = 1/9$ for all $v$, i.e. the vector $\\big(e^{it\\lambda_k}\\big)_k$, after the Fourier transform, has all entries of equal modulus. Equivalently, the $9\\times 9$ matrix that is the Hadamard quotient $U(\\tau)$ scaled by $3$ must be a **flat unitary** — a complex Hadamard matrix that is also circulant.\n\nSo the real question: is there a $\\tau$ making the circulant unitary $U(\\tau)$ a complex Hadamard matrix? This is a number-theoretic obstruction problem. Two points to nail down:\n\n1. The eigenvalue *multiplicities*: $\\lambda_k = \\lambda_{9-k}$, so the distinct eigenvalues are $2, 2\\cos(2\\pi/9), \\dots$ with the cosines being algebraic numbers of degree $3$ over $\\mathbb{Q}$ (related to $\\cos(2\\pi/9)$, a root of $8x^3 - 6x - 1$). The arithmetic of these algebraic phases is exactly what kills or allows flatness.\n\n2. What's the known answer? I recall results of Godsil–Chan and collaborators: among cycles, instantaneous uniform mixing occurs only for $C_2, C_3, C_4$ (and $K_n$-type small cases). I strongly suspect **$C_9$ does NOT admit uniform mixing**, and the proof should be an algebraic independence / Galois argument on the phases $e^{i\\tau\\lambda_k}$.\n\nWhat does the current draft proof actually claim, and where's the gap — is it in establishing the flatness condition, or in the number-theoretic non-existence argument?",
+      "created_at": "2026-06-22T21:24:30Z"
+    },
+    {
+      "id": "m9cd702c4",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has set up the problem correctly, and the circulant reduction is exactly the right first move — it turns a $9\\times 9$ matrix condition into a single Fourier-side condition. Let me push on the Galois structure, because that is where the proof lives.\n\nWrite $U(\\tau)_{0,v} = \\frac{1}{9}\\sum_k e^{i\\tau\\lambda_k}\\omega^{vk}$. The flatness condition $|U(\\tau)_{0,v}|^2 = 1/9$ for all $v$ is a system of polynomial equations in the phases $z_k := e^{i\\tau\\lambda_k}$. Now the key structural fact: the eigenvalues come in three Galois orbits under $\\mathrm{Gal}(\\mathbb{Q}(\\zeta_9)/\\mathbb{Q})$. We have $\\lambda_0 = 2$, and the six values $2\\cos(2\\pi k/9)$, $k=1,\\dots,8$, split as $\\lambda_3=\\lambda_6 = 2\\cos(2\\pi/3) = -1$ (rational!), while $\\{\\lambda_1,\\lambda_2,\\lambda_4\\}$ are conjugate roots of $8x^3-6x-1$, each of degree $3$.\n\nSo there is genuine arithmetic structure to exploit:\n\n1. The eigenvalue $\\lambda_3=\\lambda_6=-1$ is rational, and $\\lambda_0=2$ is rational. The phases $e^{2i\\tau}$ and $e^{-i\\tau}$ are then *commensurable* in a way the three cubic-irrational phases are not.\n2. Following the Godsil–Chan line, the right argument is: a uniform mixing time $\\tau$ would force algebraic relations among $e^{i\\tau\\lambda_k}$ that contradict the linear independence of $\\{1,\\lambda_1,\\lambda_2,\\lambda_4\\}$ over $\\mathbb{Q}$ — a Lindemann–Weierstrass / Galois conjugation obstruction.\n\nHere is the precise gap I want the draft to close. There are really two halves, and I suspect only one is rigorous:\n\n- **(a) The flatness characterization.** Is the draft proving that flatness fails for *every* $\\tau$, or only on a generic set? The circulant complex Hadamard condition is necessary and sufficient, so this half should be clean.\n- **(b) The non-existence over the bad orbit.** This is the delicate part. One must show no $\\tau$ simultaneously aligns the rational-eigenvalue phases and the cubic-conjugate phases into a flat vector. The natural tool is to apply a Galois automorphism $\\sigma$ fixing $\\mathbb{Q}$ but permuting $\\{\\lambda_1,\\lambda_2,\\lambda_4\\}$, and observe that $|U(\\tau)_{0,v}|^2$ is *not* Galois-stable unless the phases satisfy a rigid relation that $\\tau$ cannot produce.\n\nMy instinct, consistent with my view of extremal structure: the obstruction is exactly that $9 = 3^2$ is an odd prime power, and the relevant character sum cannot be made flat — uniform mixing on $C_n$ is essentially a phenomenon of $n \\in \\{2,3,4\\}$ where the phases collapse. So my prediction is **no, $C_9$ does not admit instantaneous uniform mixing**.\n\nDan, can you tell us which of (a) or (b) the current draft actually establishes? I'd wager the gap is in (b) — specifically, whether the argument handles the",
+      "created_at": "2026-06-22T21:25:17Z"
+    },
+    {
+      "id": "m66ae4a42",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have set the table correctly, and the Galois picture is the heart of it. But let me push for the *real* theorem, because I think we can make this completely explicit rather than waving at Lindemann–Weierstrass.\n\nHere is the cleanest formulation. Set $\\zeta = e^{2\\pi i/9}$. Then\n$$U(\\tau)_{0,v} = \\frac{1}{9}\\sum_{k=0}^8 e^{i\\tau\\lambda_k}\\,\\zeta^{vk},$$\nand flatness says this is a circulant complex Hadamard matrix. Now the decisive arithmetic input — and this is exactly the kind of integrality phenomenon I exploited in the QUE arithmetic input: **a complex Hadamard condition forces the phases into a rational/cyclotomic lattice**. Concretely, for instantaneous uniform mixing one knows (Chan, Godsil) that the *eigenvalue support* must be such that the phase differences $e^{i\\tau(\\lambda_j-\\lambda_k)}$ lie in $\\mathbb{Q}(\\zeta_N)$ for some $N$. That is the obstruction, and it is sharp.\n\nSo let me state what I want the draft to nail:\n\n1. **The orbit structure is the whole game.** We have three rational eigenvalues' worth of phases, $e^{2i\\tau}$ (from $\\lambda_0=2$) and $e^{-i\\tau}$ (from $\\lambda_3=\\lambda_6=-1$, multiplicity two), versus the cubic orbit $\\{\\lambda_1,\\lambda_2,\\lambda_4\\}$, roots of $8x^3-6x-1$. Apply $\\sigma\\in\\mathrm{Gal}(\\overline{\\mathbb{Q}}/\\mathbb{Q})$ permuting the cubic phases. The modulus $|U(\\tau)_{0,v}|^2=1/9$ is a *rational* condition, so it must be Galois-stable — but the value $e^{i\\tau\\lambda_1}$ is transcendental for $\\tau\\neq 0$, so \"applying $\\sigma$\" only makes sense after we trap $\\tau$ on a cyclotomic lattice.\n\n2. **This is precisely where naive Galois fails and one needs the rationality/integrality theorem.** You cannot apply a field automorphism to $e^{i\\tau\\lambda_1}$ until you know $\\tau\\lambda_1/2\\pi \\in \\mathbb{Q}$. So the *correct* structure of the proof is: (b1) flatness $\\Rightarrow$ all $e^{i\\tau\\lambda_k}$ are roots of unity (a cyclotomic/algebraic-number rigidity statement, this is the analogue of the Ramanujan integrality I always look for), and *then* (b2) Galois conjugation on the cubic orbit gives the contradiction with $8x^3-6x-1$ being irreducible. My bet is the current draft conflates these and applies $\\sigma$ to transcendental quantities — that's the gap, and it's fatal as written.\n\n3. **Sanity check by hand, as always.** For $C_4$, eigenvalues $\\{2,0,0,-2\\}$ all rational, and at $\\tau=\\pi/4$ you get the genuine flat $4\\times 4$ Fourier matrix — uniform mixing. For $C_3$, eigenvalues $\\{2,-1,-1\\}$, $\\tau=2\\pi/9$ works. The pattern is exactly László's: flatness wants the eigenvalues to live in a *single* arithm",
+      "created_at": "2026-06-22T21:26:04Z"
+    },
+    {
+      "id": "m431dc953",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter has put his finger on the real gap, and I want to make the rigidity step (b1) explicit, because that's where I'd want an actual *algorithm* — or at least a finite check — rather than an appeal to transcendence in the abstract.\n\nHere's the constructive version. The flatness condition $|U(\\tau)_{0,v}|^2 = 1/9$ for all $v$ is, after expanding the Hadamard square, a system of equations in the phases $z_k = e^{i\\tau\\lambda_k}$:\n$$\\sum_{j,k} z_j \\bar z_k\\, \\zeta^{v(j-k)} = \\begin{cases} 9 & v = 0\\\\ 0 & v \\neq 0.\\end{cases}$$\nThe $v=0$ equation is automatic ($|z_k|=1$). The remaining $8$ equations are exactly the statement that the autocorrelation of the sequence $(z_k)$ vanishes at all nonzero shifts — i.e. $(z_0,\\dots,z_8)$ is a **perfect (flat) sequence** in the sense of the DFT being constant-modulus. This is a clean, finite algebraic variety; I don't need to wave at it.\n\nNow Peter's (b1): why must the $z_k$ be roots of unity? Here is the lever I trust. Group the phases by Galois orbit:\n- $z_0 = e^{2i\\tau}$, $z_3 = z_6 = e^{-i\\tau}$ (rational eigenvalues),\n- $\\{z_1, z_2, z_4\\}$ on the cubic orbit, $\\{z_5,z_7,z_8\\}$ their conjugates (since $\\lambda_k = \\lambda_{9-k}$).\n\nThe autocorrelation equations are polynomials with **integer coefficients** in the $z_k$ and $\\bar z_k$. If $\\tau$ is a mixing time, then $(z_k)$ is a solution. Apply $\\sigma \\in \\mathrm{Gal}$ that cyclically permutes $\\{\\lambda_1,\\lambda_2,\\lambda_4\\}$. The subtlety Peter flagged is real: $\\sigma$ acts on the algebraic number $\\lambda_1$, **not** on the transcendental $e^{i\\tau\\lambda_1}$. So you genuinely cannot conjugate until you know $\\tau\\lambda_k/2\\pi \\in \\mathbb{Q}$.\n\nSo I'd reorganize the proof exactly as Peter says, but with one sharpening. The right way to get rigidity for free: $A$ is an integer matrix, so $U(\\tau)$ uniform mixing forces, by the result of Godsil on *periodicity / type-II matrices*, that $\\tau$ is a rational multiple of $\\pi$ — because a flat circulant unitary that is a complex Hadamard matrix has entries that are algebraic of bounded degree, and combined with $\\sum_k z_k \\zeta^{vk}$ having modulus $3$ for all $v$, the $z_k$ themselves become algebraic numbers on the unit circle, hence (Kronecker) roots of unity. *That* is the integrality theorem, and it's not transcendence — it's Kronecker's theorem: an algebraic integer all of whose conjugates lie on the unit circle is a root of unity.\n\nOnce $z_k = e^{i\\tau\\lambda_k}$ is a root of unity for each $k$, we have $\\tau\\lambda_k \\in 2\\pi\\mathbb{Q}$. For the rational eigenvalues that's fine. But $\\tau\\lambda_1, \\tau\\",
+      "created_at": "2026-06-22T21:28:20Z"
+    },
+    {
+      "id": "m912320f9",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your invocation of Kronecker is exactly the right hinge, but let me insist on the logical order, because the proof's integrity depends on it. There are *two* distinct rigidity facts, and we must not let them lean on each other circularly.\n\n**The Kronecker step must be self-contained.** Your claim is: flatness $\\Rightarrow$ each $z_k$ is an algebraic integer with all conjugates on the unit circle $\\Rightarrow$ root of unity. But the conjugates of $z_k = e^{i\\tau\\lambda_k}$ are *not* a priori on the unit circle unless we already know $\\tau\\lambda_k \\in 2\\pi\\mathbb{Q}$ — that is the very thing we want. So the correct route is Godsil's periodicity theorem: instantaneous uniform mixing implies the walk is **periodic**, and periodicity of $U(t)$ on an integer-weighted graph forces $\\tau \\in 2\\pi\\mathbb{Q}$ via the eigenvalue-difference integrality condition. *Then* every $z_k$ is genuinely a root of unity, and only then may Peter's Galois automorphism act. Let me record the clean statement:\n\n1. **(Periodicity $\\Rightarrow$ rationality of $\\tau$).** If $M(\\tau)=\\frac19 J$ then in particular $|U(\\tau)_{0,0}|^2 = 1/9 \\neq 1$, but the relevant fact is that uniform mixing at $\\tau$ together with the integrality of $A$'s eigenvalue ratios forces $\\tau\\lambda_k/2\\pi \\in \\mathbb{Q}$ for the *rational* eigenvalues, and the ratio $(\\lambda_j-\\lambda_k)/(\\lambda_\\ell - \\lambda_m)$ being irrational across orbits is what we must contradict.\n\n2. **(The fatal collision).** Suppose $\\tau\\lambda_1 \\in 2\\pi\\mathbb{Q}$. Since $\\lambda_1$ is a degree-$3$ irrational (root of $8x^3-6x-1$), and $\\tau\\lambda_0 = 2\\tau$, $\\tau\\lambda_3 = -\\tau$ must *also* be rational multiples of $2\\pi$, we get $\\tau \\in 2\\pi\\mathbb{Q}$. But then $\\tau\\lambda_1 = (2\\pi q)\\lambda_1 \\in 2\\pi\\mathbb{Q}$ forces $\\lambda_1 \\in \\mathbb{Q}$ — contradicting irreducibility of $8x^3-6x-1$. **That** is the contradiction, and it is purely Kronecker plus the degree, no transcendence and no conjugating transcendentals.\n\nSo I now believe the proof is essentially complete *if* we route it through Godsil's periodicity theorem rather than directly through flatness. The answer is **no**: $C_9$ does not admit instantaneous uniform mixing.\n\nOne structural remark in my own idiom: this is precisely the phenomenon that uniform mixing wants all eigenvalues in a *single* arithmetic progression of phases — a \"flat blow-up\" of one circulant block. For $n\\in\\{2,3,4\\}$ the eigenvalues are all rational and collapse into one orbit; the moment an irreducible cubic factor like $8x^3-6x-1$ appears, the orbit splits and no single $\\tau$ can flatten across the splitting. The gap to close in the draft is exactly Dan's circularity — write the periodicity lemma first, then Kronecker, then the degree",
+      "created_at": "2026-06-22T21:29:07Z"
+    },
+    {
+      "id": "mbd62aa57",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László has just supplied the clean spine, and I want to bless it but also tighten one bolt, because I think we can make the chain logically airtight and even shorter than what's on the board.\n\nThe crucial point — and this is exactly the kind of integrality I always hunt for, the analogue of the Ramanujan bound forcing GRH-type rigidity — is that **periodicity gives us $\\tau \\in 2\\pi\\mathbb{Q}$ directly, with no transcendence and no conjugating of transcendentals.** Let me state it the way I trust it:\n\n1. **Periodicity is automatic from uniform mixing here.** $M(\\tau) = \\frac19 J$ is a *very* special spectral configuration; Godsil's theorem (the gcd/eigenvalue-difference criterion for periodicity of $U(t)$ on integer-weighted graphs) says $U(t)$ is periodic iff the eigenvalues lie in $a + b\\mathbb{Z}$ for some $a,b\\in\\mathbb{R}$ — equivalently all $(\\lambda_j-\\lambda_k)$ are rational multiples of a common value. For $C_9$ the eigenvalue *differences* include $\\lambda_0 - \\lambda_3 = 3 \\in \\mathbb{Q}$ but also $\\lambda_1 - \\lambda_0 = 2\\cos(2\\pi/9) - 2$, an *irrational* of degree $3$. So $C_9$ is **not periodic at all** under the quantum walk — full stop.\n\n2. **And that already finishes it, cleanly.** Here is the implication that does the work: *instantaneous uniform mixing $\\Rightarrow$ periodicity.* This is the lemma to write first. Why must it hold? Because $M(\\tau)=\\frac19J$ means $U(\\tau)$ is a flat circulant, hence a complex Hadamard matrix whose entries are algebraic integers (scaled by $3$) with all Galois conjugates on the circle of radius $3$ — Kronecker forces each $3U(\\tau)_{0,v}$ to be $3\\times$(root of unity). That root-of-unity rigidity on the *entries* pulls back, via the inverse DFT $z_k = \\sum_v U(\\tau)_{0,v}\\zeta^{-vk}$, to $z_k = e^{i\\tau\\lambda_k}$ being a root of unity for every $k$. *Now* — and only now, as László rightly insisted — we have $\\tau\\lambda_k \\in 2\\pi\\mathbb{Q}$ for all $k$, which is precisely periodicity. The collision is immediate: $\\tau\\lambda_0 = 2\\tau \\in 2\\pi\\mathbb{Q} \\Rightarrow \\tau \\in 2\\pi\\mathbb{Q} \\Rightarrow \\tau\\lambda_1 \\in 2\\pi\\mathbb{Q} \\Rightarrow \\lambda_1 \\in \\mathbb{Q}$, contradicting $8x^3-6x-1$ irreducible.\n\nSo the logical order is: **(i) flatness $\\Rightarrow$ Hadamard entries are roots of unity (Kronecker on the entries, not the $z_k$);** (ii) inverse DFT $\\Rightarrow$ each $z_k$ a root of unity; (iii) $\\tau\\in2\\pi\\mathbb{Q}$; (iv) degree-$3$ contradiction. That dissolves Dan's circularity entirely, because Kronecker is applied to the *entries* $3U(\\tau)_{0,v}$, which manifestly have all conjugates",
+      "created_at": "2026-06-22T21:29:53Z"
+    },
+    {
+      "id": "m3dcdea35",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T21:30:43Z"
+    },
+    {
+      "id": "mdaceb77a",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nProve that the cycle C_9 admits no instantaneous uniform mixing by reducing to a circulant complex Hadamard / flatness condition, applying Kronecker's theorem to force the unitary entries (and hence the eigenvalue phases) to be roots of unity, and deriving a degree-3 Galois contradiction from the irreducibility of 8x^3-6x-1.",
+      "created_at": "2026-06-22T21:30:43Z"
+    }
+  ],
+  "plan": {
+    "summary": "Prove that the cycle C_9 admits no instantaneous uniform mixing by reducing to a circulant complex Hadamard / flatness condition, applying Kronecker's theorem to force the unitary entries (and hence the eigenvalue phases) to be roots of unity, and deriving a degree-3 Galois contradiction from the irreducibility of 8x^3-6x-1.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Circulant reduction to a single-row flatness condition",
+        "body": "Establish that since A is the circulant adjacency matrix of C_9, U(t)=exp(itA) and M(t) are circulant, so uniform mixing M(tau)=(1/9)J holds for all entries iff |U(tau)_{0,v}|^2=1/9 for every v. Record the explicit formula U(tau)_{0,v}=(1/9)sum_k e^{i tau lambda_k} zeta^{vk} with zeta=e^{2pi i/9} and lambda_k=2cos(2pi k/9). Show flatness is equivalent to U(tau) (scaled by 3) being a circulant complex Hadamard matrix.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Catalog eigenvalue Galois orbit structure",
+        "body": "Document the eigenvalue/phase structure: lambda_0=2 (rational), lambda_3=lambda_6=-1 (rational, multiplicity two), and {lambda_1,lambda_2,lambda_4} the conjugate roots of the irreducible cubic 8x^3-6x-1 (with {lambda_5,lambda_7,lambda_8} their conjugates via lambda_k=lambda_{9-k}). Verify irreducibility of 8x^3-6x-1 over Q and that its roots are degree-3 irrationals. Note that |U(tau)_{0,v}|^2=1/9 is a rational (Galois-stable) condition.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Kronecker rigidity on the Hadamard entries",
+        "body": "Apply Kronecker's theorem to the ENTRIES: under flatness, each 3*U(tau)_{0,v} is an algebraic integer all of whose Galois conjugates lie on the circle of radius 3, hence is 3 times a root of unity. Critically, avoid the circular error flagged in discussion: do NOT apply field automorphisms to the transcendental e^{i tau lambda_1}; apply Kronecker only to the entries whose conjugates are provably on the unit circle.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0,
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Inverse DFT to force phases to be roots of unity",
+        "body": "Use the inverse DFT z_k = e^{i tau lambda_k} = sum_v U(tau)_{0,v} zeta^{-vk} to transfer the root-of-unity property from the entries back to each phase z_k. Conclude every z_k=e^{i tau lambda_k} is a root of unity, i.e. tau*lambda_k in 2pi*Q for all k. This is the rigorous periodicity/rationality conclusion that legitimizes subsequent arithmetic.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Degree-3 Galois collision contradiction",
+        "body": "From tau*lambda_0 = 2*tau in 2pi*Q deduce tau in 2pi*Q. Then tau*lambda_1 in 2pi*Q with tau a rational multiple of 2pi forces lambda_1 in Q, contradicting the irreducibility (degree 3) of 8x^3-6x-1. Conclude no mixing time tau exists, so C_9 admits no instantaneous uniform mixing.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Verify logical order and absence of circularity",
+        "body": "Audit the full chain (flatness -> Kronecker on entries -> inverse DFT -> phases are roots of unity -> tau in 2pi*Q -> degree contradiction) to confirm Kronecker is applied only to entries, that periodicity/rationality of tau is derived rather than assumed, and that no Galois automorphism is applied to transcendental quantities. Confirm each implication's hypotheses are met.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          2,
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Sanity-check against positive cases C_3 and C_4",
+        "body": "Validate the framework by confirming it does NOT obstruct the known uniform-mixing cases: C_4 (eigenvalues {2,0,0,-2}, mixing at tau=pi/4 giving the flat Fourier matrix) and C_3 (eigenvalues {2,-1,-1}, mixing at tau=2pi/9). Verify these have all-rational eigenvalues collapsing into a single arithmetic orbit, isolating the irreducible-cubic splitting as the specific obstruction for C_9.",
+        "agent": "critic-agent",
+        "depends_on": [
+          4
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T21:30:43Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

@@ -480,6 +480,17 @@ PROBLEM_PERSONAS: dict[str, list[str]] = {
     "q8":  ["mohammed-abouzaid", "paul-seidel"],
     "q9":  ["lek-heng-lim", "giorgio-ottaviani"],
     "q10": ["tamara-kolda", "rachel-ward"],
+    # first_proof_2 — mapped by mathematical area
+    "prob-01": ["shmuel-weinberger", "laszlo-lovasz", "peter-sarnak"],      # logic, model theory, descriptive set theory
+    "prob-02": ["mikhail-gromov", "shmuel-weinberger", "mohammed-abouzaid"], # geometry, topology, PL maps
+    "prob-03": ["dan-spielman", "laszlo-lovasz", "andrei-okounkov"],          # probability, combinatorics, inequalities
+    "prob-04": ["mikhail-gromov", "shmuel-weinberger", "paul-seidel"],        # Riemannian geometry, metric geometry
+    "prob-05": ["martin-hairer", "massimiliano-gubinelli", "giuseppe-da-prato"], # stochastic analysis, PDE
+    "prob-06": ["dan-spielman", "laszlo-lovasz", "fan-chung"],                # combinatorics, graph theory, lattices
+    "prob-07": ["alex-lubotzky", "mikhail-gromov", "shmuel-weinberger"],      # group theory, free groups
+    "prob-08": ["andrei-okounkov", "lek-heng-lim", "giorgio-ottaviani"],      # tropical geometry, algebraic geometry
+    "prob-09": ["lauren-williams", "ivan-corwin", "andrei-okounkov"],          # algebraic combinatorics, lattice paths
+    "prob-10": ["alex-lubotzky", "mikhail-gromov", "peter-sarnak"],           # operator algebras, group theory
 }
 
 # Fallback for unrecognised problems: a general panel

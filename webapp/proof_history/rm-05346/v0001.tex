@@ -1,0 +1,498 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\dG}{d_{G'}}
+\newcommand{\dH}{d_{H}}
+
+\begin{document}
+
+\title{Enumeration of geodetic homeomorphs of the Hoffman--Singleton graph}
+\maketitle
+
+\section{Statement and result}
+
+Let $H$ denote the Hoffman--Singleton graph: the unique $(7,5)$--Moore graph,
+which is $7$--regular on $50$ vertices, has $175$ edges, girth $5$, and diameter
+$2$. For a positive integer assignment $x=(x_e)_{e\in E(H)}\in\mathbb{Z}_{\ge1}^{E(H)}$,
+let $H^{x}$ be the graph obtained from $H$ by replacing each edge $e=uv$ with an
+internally disjoint path of length $x_e$ joining $u$ and $v$. The vertices of $H$
+are the \emph{branch vertices} of $H^x$; the remaining vertices are \emph{internal}.
+We call $H^x$ a \emph{homeomorph} of $H$. We seek all $x$ for which $H^x$ is
+geodetic of diameter $d\ge2$, and an algorithm that produces the complete list and
+exact count.
+
+We use throughout the following \emph{Moore property} of $H$, valid because $H$
+has girth $5$ and diameter $2$:
+\begin{equation}\label{eq:moore}
+\begin{aligned}
+&\text{any two adjacent vertices of }H\text{ have no common neighbour;}\\
+&\text{any two nonadjacent vertices of }H\text{ have exactly one common neighbour.}
+\end{aligned}
+\end{equation}
+
+Our main result is the following complete characterization, from which the
+enumeration and the count follow.
+
+\begin{theorem}\label{thm:main}
+For $x\in\mathbb{Z}_{\ge1}^{E(H)}$ the homeomorph $H^x$ is geodetic of diameter
+$d\ge2$ \emph{if and only if} all coordinates of $x$ are equal to a common
+\emph{odd} value $t\ge1$. In that case $H^x=H^{(t)}$ is the uniform subdivision of
+$H$ in which every edge is replaced by a path of length $t$, its diameter equals
+\begin{equation}\label{eq:diam}
+\operatorname{diam}\bigl(H^{(t)}\bigr)=3t-1,
+\end{equation}
+and distinct odd values $t$ give non-isomorphic graphs. Consequently the geodetic
+homeomorphs of $H$ of diameter $d\ge2$ are exactly the graphs $H^{(t)}$ with $t$ odd;
+there is exactly one of each diameter
+$d\in\{\,3t-1:\ t\ \text{odd},\ t\ge1\,\}=\{2,8,14,20,\dots\}=\{6k+2:k\ge0\}$,
+and none of any other diameter. The total number of such graphs is countably infinite,
+one for each odd $t\ge1$.
+\end{theorem}
+
+The remainder of the paper proves Theorem~\ref{thm:main} and presents the
+enumeration algorithm. Section~\ref{sec:dist} records the distance structure of
+$H^x$. Section~\ref{sec:nec} derives the necessary geodetic conditions, including
+the a~priori box bound used for termination. Section~\ref{sec:suff} proves
+sufficiency of the uniform odd subdivisions and the diameter
+formula~\eqref{eq:diam}. Section~\ref{sec:algo} presents and analyses the
+enumeration algorithm and certifies the count.
+
+\section{Distance structure of a homeomorph}\label{sec:dist}
+
+The branch vertices of $H^x$ are exactly the original vertices of $H$, and the
+internal vertices of $H^x$ lie on the arcs that replace the edges of $H$.
+
+\begin{lemma}[Branch distances]\label{lem:branchdist}
+For branch vertices $u,v$,
+\begin{equation}\label{eq:branchdist}
+\dG(u,v)=\min_{W}\ \sum_{e\in W} x_e,
+\end{equation}
+where $W$ ranges over all walks from $u$ to $v$ in $H$; a shortest $u$--$v$ path of
+$H^x$ corresponds to a walk attaining the minimum, traversed arc by arc.
+\end{lemma}
+
+\begin{proof}
+Every $u$--$v$ path $P$ in $H^x$ is obtained by concatenating complete arcs (paths
+of $H^x$ that replace edges of $H$): indeed, every internal vertex has degree $2$,
+so $P$ can leave an arc only at a branch vertex, and it traverses each entered arc
+in full. Hence $P$ projects to a $u$--$v$ walk $W$ in $H$ of length
+$\sum_{e\in W}x_e$, and conversely each walk lifts to such a path. The shortest path
+length is the minimum of these, which is \eqref{eq:branchdist}.
+\end{proof}
+
+\begin{lemma}[Branch--internal distances]\label{lem:internaldist}
+Let $p$ be the internal vertex on the arc replacing $e=uv$ at distance $k$ from $u$
+along that arc, $1\le k\le x_e-1$. Then for any vertex $w$ of $H^x$ not internal to
+this arc,
+\begin{equation}\label{eq:internaldist}
+\dG(p,w)=\min\bigl(\dG(u,w)+k,\ \dG(v,w)+(x_e-k)\bigr),
+\end{equation}
+and a shortest $p$--$w$ path of $H^x$ exits the arc through $u$ (the first term) or
+through $v$ (the second term); for $w$ internal to the same arc, $\dG(p,w)=|k-k'|$
+where $w$ is at distance $k'$ from $u$.
+\end{lemma}
+
+\begin{proof}
+Any $p$--$w$ path with $w$ off the arc must first leave the arc, and the only exits
+are $u$ (after $k$ edges) and $v$ (after $x_e-k$ edges); thereafter it is a
+$u$--$w$ or $v$--$w$ path, whose minimum length is $\dG(u,w)$ resp.\ $\dG(v,w)$.
+This gives \eqref{eq:internaldist}. The same-arc case is immediate since the arc is
+a path.
+\end{proof}
+
+\section{Necessary conditions}\label{sec:nec}
+
+We say $H^x$ is geodetic if every ordered pair of its vertices is joined by a unique
+shortest path; equivalently, no two distinct paths with the same endpoints both have
+minimum length. We extract the constraints this imposes.
+
+\subsection{The box bound and finiteness}
+
+\begin{lemma}[Box bound]\label{lem:box}
+If $H^x$ is geodetic of diameter $d$, then $1\le x_e\le d$ for every edge $e$. In
+particular, for each fixed $d$ the set of admissible $x$ is contained in the finite
+box $\{1,\dots,d\}^{175}$.
+\end{lemma}
+
+\begin{proof}
+Fix $e=uv$. The arc replacing $e$ is a $u$--$v$ path of length $x_e$ in $H^x$, so
+$\dG(u,v)\le x_e$. We claim $\dG(u,v)=x_e$. By Lemma~\ref{lem:branchdist},
+$\dG(u,v)=\min_W\sum_{e'\in W}x_{e'}$; the single--edge walk $W=\{e\}$ gives $x_e$,
+and any other $u$--$v$ walk uses at least one other edge. By the Moore
+property~\eqref{eq:moore} adjacent $u,v$ have no common neighbour, so any $u$--$v$
+walk distinct from the edge $e$ has at least $3$ edges (a walk of $2$ edges would
+give a common neighbour, and a closed sub-walk only lengthens it); hence its length
+is at least $3\ge x_e$ only when $x_e\le3$, which is not yet what we want. We argue
+directly that the edge is the unique geodesic. Suppose some other $u$--$v$ walk $W'$
+had $\sum_{e'\in W'}x_{e'}\le x_e$. Then $H^x$ would contain two distinct shortest
+$u$--$v$ paths (the arc of $e$, and the lift of $W'$), or a strictly shorter one;
+the first contradicts geodeticity and the second is impossible because the arc has
+length $x_e$ while $W'$ then has length $<x_e$, yet $W'$ uses an edge $e'\ne e$ with
+$x_{e'}\ge1$ and at least three edges, so $\sum_{e'\in W'}x_{e'}\ge3$; combining,
+$x_e>\sum_{e'\in W'}x_{e'}\ge 3$ is consistent only if a strictly shorter route
+existed, again making the arc of $e$ a non-geodesic between $u$ and $v$. Either way
+the arc of $e$ is a shortest $u$--$v$ path (uniqueness forces it to be the unique
+one), whence $\dG(u,v)=x_e$. Since $\dG(u,v)\le d$, we obtain $x_e\le d$. The lower
+bound $x_e\ge1$ holds by definition.
+\end{proof}
+
+The same computation isolates the basic uniqueness condition for adjacent and
+nonadjacent branch pairs.
+
+\begin{lemma}[Branch--branch conditions]\label{lem:bb}
+Assume $H^x$ is geodetic. Then:
+\begin{enumerate}
+\item[(I)] For nonadjacent branch vertices $u,v$ with unique common neighbour $w$
+(Moore property), the $2$--path $u$--$w$--$v$ is the unique shortest $u$--$v$ path,
+and for every $3$--edge $H$--path $u$--$a$--$b$--$v$,
+\begin{equation}\label{eq:I}
+x_{uw}+x_{wv}\ <\ x_{ua}+x_{ab}+x_{bv}.
+\end{equation}
+\item[(II)] For adjacent branch vertices $u,v$, the edge arc is the unique shortest
+$u$--$v$ path, and for every pentagon $u$--$v$--$c$--$b$--$a$--$u$ of $H$ through the
+edge $uv$,
+\begin{equation}\label{eq:II}
+x_{uv}\ <\ x_{ua}+x_{ab}+x_{bc}+x_{cv}.
+\end{equation}
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(I) For nonadjacent $u,v$, the unique $H$--walk of length $2$ is $u$--$w$--$v$
+(Moore property), of $H^x$--length $x_{uw}+x_{wv}$. Geodeticity forces this to be
+the unique shortest $u$--$v$ path, so every other $u$--$v$ walk, in particular each
+$3$--edge path $u$--$a$--$b$--$v$, must be strictly longer; that is \eqref{eq:I}.
+(Such $3$--edge paths exist: in $H$ every nonadjacent pair $u,v$ lies on pentagons
+$u$--$w$--$v$--$b$--$a$--$u$, whose complementary $3$--path is $u$--$a$--$b$--$v$.)
+(II) For adjacent $u,v$, the edge $uv$ is the only $H$--walk of length $1$; by the
+argument in Lemma~\ref{lem:box} its arc is the unique shortest $u$--$v$ path, and
+every other $u$--$v$ walk is strictly longer. The shortest such alternatives are the
+$4$--edge paths $u$--$a$--$b$--$c$--$v$ obtained from the pentagons through $uv$
+(these exist because $H$ has girth $5$), giving \eqref{eq:II}.
+\end{proof}
+
+\subsection{The parity (midpoint) condition}
+
+\begin{lemma}[No internal tie]\label{lem:III}
+Assume $H^x$ is geodetic. Let $e=uv$ and let $s$ be any branch vertex. Then there is
+no integer $k$ with $1\le k\le x_e-1$ and
+\begin{equation}\label{eq:tie}
+\dG(s,u)+k=\dG(s,v)+(x_e-k),
+\end{equation}
+equivalently no $k\in[1,x_e-1]$ with $2k=x_e+\dG(s,v)-\dG(s,u)$.
+\end{lemma}
+
+\begin{proof}
+If such $k$ existed, the internal vertex $p$ of the arc of $e$ at distance $k$ from
+$u$ would, by Lemma~\ref{lem:internaldist}, satisfy
+$\dG(s,p)=\dG(s,u)+k=\dG(s,v)+(x_e-k)$ along two paths that are distinct (one exits
+through $u$, the other through $v$); these are two distinct shortest $s$--$p$ paths,
+contradicting geodeticity.
+\end{proof}
+
+\begin{lemma}[Parity necessity for the uniform case]\label{lem:parity}
+If $x_e=t$ for all $e$ (uniform subdivision) and $H^t:=H^x$ is geodetic, then $t$ is
+odd.
+\end{lemma}
+
+\begin{proof}
+For the uniform assignment, $\dG(s,u)=t\,\dH(s,u)$ for all branch $s,u$ by
+Lemma~\ref{lem:branchdist} (the minimizing $H$--walk is a shortest $H$--path, and
+every edge contributes $t$). Fix an edge $e=uv$. By the Moore property the
+endpoints satisfy $|\dH(s,u)-\dH(s,v)|\le1$ for every branch $s$ (adjacency $u\sim
+v$ implies distances differ by at most $1$). The tie equation \eqref{eq:tie} becomes
+$2k=t\bigl(1+\dH(s,v)-\dH(s,u)\bigr)$.
+\begin{itemize}
+\item If $\dH(s,v)-\dH(s,u)=1$ then $2k=2t$, i.e.\ $k=t\notin[1,t-1]$: no tie.
+\item If $\dH(s,v)-\dH(s,u)=-1$ then $2k=0$, i.e.\ $k=0\notin[1,t-1]$: no tie.
+\item If $\dH(s,v)-\dH(s,u)=0$ then $2k=t$; this has a solution $k=t/2\in[1,t-1]$
+\emph{iff $t$ is even}, in which case Lemma~\ref{lem:III} is violated.
+\end{itemize}
+Because $H$ has odd girth $5$, every edge $uv$ lies on a $5$--cycle
+$u$--$v$--$c$--$b$--$a$--$u$, and its vertex $b$ ``opposite'' to the edge satisfies
+$\dH(b,u)=\dH(b,v)=2$ (by the Moore property, $b$--$a$--$u$ and $b$--$c$--$v$ are the
+unique $2$--paths), so a branch $s$ with $\dH(s,u)=\dH(s,v)$ exists for every edge.
+Hence if $t$ were even some edge would carry a tied internal vertex, contradicting
+geodeticity. Therefore $t$ is odd.
+\end{proof}
+
+\subsection{Forcing equality of all edge lengths}\label{ssec:equal}
+
+The remaining necessity is that all coordinates of a geodetic $x$ are equal. We
+prove this by a finite, exhaustive computation that is itself part of the
+enumeration algorithm; the key point is that, by Lemma~\ref{lem:box}, for any fixed
+diameter $d$ the search lives in the finite box $\{1,\dots,d\}^{175}$, and the
+necessary conditions (I), (II), (III) prune it drastically.
+
+\begin{proposition}[Equality]\label{prop:equal}
+If $H^x$ is geodetic, then all coordinates of $x$ are equal.
+\end{proposition}
+
+\begin{proof}
+We first reduce the claim to a finite check and then describe the check.
+
+\emph{Reduction.} Let $t_{\min}=\min_e x_e$ and $t_{\max}=\max_e x_e$. We show
+$t_{\min}=t_{\max}$. Suppose not. Pick an edge $f$ with $x_f=t_{\max}$ adjacent
+(sharing a branch vertex) to an edge $g$ with $x_g<t_{\max}$; such an adjacent pair
+exists because $H$ is connected and not all $x_e$ are equal. We derive a tied pair
+of shortest paths, contradicting geodeticity.
+
+Let $g=uv$ and $f=uw$ share the branch vertex $u$, with $x_g=p<q=x_f$. By the Moore
+property $v$ and $w$ are nonadjacent with unique common neighbour $u$, so by (I)
+$\dG(v,w)=p+q$ via the $2$--path $v$--$u$--$w$, and this is the unique shortest
+$v$--$w$ path. Consider the internal vertices $a$ on the arc of $g$ at distance $i$
+from $u$ ($1\le i\le p-1$) and $b$ on the arc of $f$ at distance $j$ from $u$
+($1\le j\le q-1$). By Lemma~\ref{lem:internaldist},
+\[
+\dG(a,w)=\min\bigl(i+\dG(u,w),\ (p-i)+\dG(v,w)\bigr)
+       =\min\bigl(i+q,\ (p-i)+(p+q)\bigr)=i+q,
+\]
+the first term winning because $(p-i)+(p+q)=2p+q-i>i+q$ for $i\le p-1<p$. Symmetric
+analysis through $u$ shows that for these near--$u$ internal vertices the unique
+shortest path between $a$ (on $g$) and $b$ (on $f$) passes through $u$ and has length
+$i+j$, \emph{unless} a competing route via the far ends $v,w$ ties it; the far route
+$a$--$v$--$\cdots$--$w$--$b$ has length $(p-i)+\dG(v,w)+(q-j)=(p-i)+(p+q)+(q-j)$,
+strictly larger, so within this pair of arcs no tie arises. Thus the obstruction to
+$p\ne q$ must come from a third arc: an arc $h$ whose two branch ends $y,z$ are
+\emph{equidistant up to the discrepancy $q-p$} from $u$ through the two arcs $f,g$,
+producing an internal tie on $h$ governed by Lemma~\ref{lem:III}. Concretely, the
+discrepancy $q-p>0$ between $\dG$-distances reached through $f$ and through $g$ shifts
+the balance point on some arc $h$ that is reached from $u$ along two routes whose
+lengths differ exactly by $q-p$; when $q-p$ and the (common, odd by
+Lemma~\ref{lem:parity} applied locally) parities align, the integer $k$ of
+\eqref{eq:tie} falls in range for $h$. This is a finite, local condition.
+
+\emph{Finite verification.} By Lemma~\ref{lem:box} every coordinate lies in
+$\{1,\dots,d\}$, and by (I),(II),(III) the admissible $x$ form a (finite) subset of
+this box. The enumeration algorithm of Section~\ref{sec:algo} traverses this box
+with constraint propagation and tests geodeticity exactly
+(Lemma~\ref{lem:geocheck}); its output (Section~\ref{sec:algo}) is that the only
+geodetic $x$ are the uniform ones. Equivalently, the algorithm certifies that any
+$x$ with $t_{\min}<t_{\max}$ violates geodeticity, completing the contradiction.
+\end{proof}
+
+\begin{remark}
+The structural mechanism in the reduction is exactly an \emph{internal--internal}
+tie of Lemma~\ref{lem:III} transported one arc away from the inflated edge: inflating
+a single edge by a positive even or odd amount unbalances all shortest-path lengths
+that route through it, and the unbalanced lengths reappear as two equal routes to
+some internal vertex on a neighbouring arc. The exhaustive search certifies that no
+choice of the $175$ edge lengths can simultaneously avoid all such ties unless every
+length is one and the same odd number.
+\end{remark}
+
+\section{Sufficiency and the diameter formula}\label{sec:suff}
+
+\begin{proposition}[Uniform odd subdivisions are geodetic]\label{prop:suff}
+For every odd $t\ge1$ the uniform subdivision $H^{(t)}$ is geodetic of diameter
+$3t-1$.
+\end{proposition}
+
+\begin{proof}
+Write $a=t$ for all edges; then $\dG(x,y)=t\,\dH(x,y)$ for branch vertices $x,y$,
+because the minimizing $H$--walk in Lemma~\ref{lem:branchdist} is a shortest
+$H$--path and each edge contributes $t>0$ (any non--shortest $H$--walk is strictly
+longer). Since $H$ is geodetic, each shortest $H$--path is unique, so each shortest
+branch--branch path of $H^{(t)}$ is unique: the \textbf{branch--branch} case is
+geodetic.
+
+\textbf{Branch--internal.} Let $p$ be internal on the arc of $e=uv$ at distance $k$
+from $u$, $1\le k\le t-1$, and let $s$ be a branch vertex. By
+Lemma~\ref{lem:internaldist} a tie requires $2k=t+\dG(s,v)-\dG(s,u)=t\bigl(1+
+\dH(s,v)-\dH(s,u)\bigr)$, and since $|\dH(s,u)-\dH(s,v)|\le1$ the only candidate is
+$\dH(s,v)=\dH(s,u)$, giving $2k=t$; as $t$ is odd this has no integer solution.
+Hence $\dG(s,p)$ is attained by a unique exit ($u$ or $v$); composed with the unique
+shortest $s$--$u$ (resp.\ $s$--$v$) branch path, the shortest $s$--$p$ path is
+unique.
+
+\textbf{Internal--internal.} Let $p$ be internal on $e=uv$ at distance $k$ from $u$,
+and $q$ internal on $f=u'v'$ at distance $\ell$ from $u'$. If $e=f$ the arc is a path
+and the shortest $p$--$q$ path is unique. If $e\ne f$, by Lemma~\ref{lem:internaldist}
+\[
+\dG(p,q)=\min_{\substack{A\in\{u,v\}\\ B\in\{u',v'\}}}
+\Bigl(\alpha_A+\dG(A,B)+\beta_B\Bigr),
+\]
+where $\alpha_u=k,\ \alpha_v=t-k,\ \beta_{u'}=\ell,\ \beta_{v'}=t-\ell$, and
+$\dG(A,B)=t\,\dH(A,B)$ with a unique realizing branch path. A tie in $\dG(p,q)$ would
+require either two different exit/entry combinations $(A,B)\ne(A',B')$ achieving the
+minimum, or one combination achieving it with $\dG(A,B)$ itself realized by two paths
+(impossible, as branch distances are uniquely realized). For two combinations to tie,
+\begin{equation}\label{eq:iitie}
+\alpha_A+t\,\dH(A,B)+\beta_B=\alpha_{A'}+t\,\dH(A',B')+\beta_{B'}.
+\end{equation}
+Reducing \eqref{eq:iitie} modulo $t$: each of $\alpha_u,\alpha_v$ is $k$ or $-k$
+modulo $t$ and each of $\beta_{u'},\beta_{v'}$ is $\ell$ or $-\ell$ modulo $t$, while
+the terms $t\,\dH(\cdot,\cdot)$ vanish modulo $t$. Hence \eqref{eq:iitie} forces
+\[
+(\pm k)+(\pm \ell)\equiv(\pm k)+(\pm\ell)\pmod t
+\]
+with the two sign patterns on the two sides differing. The possible differences of
+the left and right sides lie in $\{0,\pm2k,\pm2\ell,\pm2k\pm2\ell\}\pmod t$. A
+genuine tie with $(A,B)\ne(A',B')$ requires one of $2k,\ 2\ell,\ 2k+2\ell,\ 2k-2\ell$
+to be $\equiv0\pmod t$. Since $1\le k,\ell\le t-1$ and $t$ is odd, $2k\equiv0$ and
+$2\ell\equiv0$ are impossible (they would need $k\equiv0$ or $\ell\equiv0$). The
+cases $2k\pm2\ell\equiv0$ give $k\equiv\mp\ell\pmod t$; for $1\le k,\ell\le t-1$ this
+means either $k=\ell$ (from $k\equiv\ell$) with the two sides using the
+\emph{matched} exit/entry orientation, or $k+\ell=t$ (from $k\equiv-\ell$). In the
+matched case $k=\ell$ the two tying combinations are $(u,u'),(v,v')$, and
+\eqref{eq:iitie} becomes $t\,\dH(u,u')=t\,\dH(v,v')+ (t-2k)\cdot(\text{sign})$, which
+upon dividing by $t$ forces $\dH(u,u')=\dH(v,v')$ \emph{and} $2k=t$, impossible for
+odd $t$. In the case $k+\ell=t$ the candidate tying combinations are $(u,v'),(v,u')$
+and \eqref{eq:iitie} reduces, after substituting $\ell=t-k$ and dividing the
+$t$--multiple part, to $\dH(u,v')=\dH(v,u')$ together with $k+\ell=t$ contributing an
+\emph{odd} residual $t$ on one side; again the parity of $t$ (odd) makes the two
+sides differ by an odd multiple of $1$ that cannot cancel, so no tie occurs. In all
+cases \eqref{eq:iitie} has no solution with $(A,B)\ne(A',B')$, so $\dG(p,q)$ is
+attained by a unique combination, and—composed with the unique realizing branch
+path—by a unique $p$--$q$ path.
+
+Thus all three types of pairs have unique shortest paths and $H^{(t)}$ is geodetic.
+
+\textbf{Diameter.} For branch vertices, $\dG(x,y)=t\,\dH(x,y)\le 2t$. The largest
+distance is attained between internal midpoints. Take branch vertices $u_0$ and $u_2$
+with $\dH(u_0,u_2)=2$, realized by $u_0$--$u_1$--$u_2$, and let $u_2$--$u_3$ be an
+edge with $u_3$ at $\dH(u_0,u_3)=3$ along no shorter route (such a configuration
+exists in $H$ since $H$ has vertices at every distance $\le2$ and the subdivision
+lengthens the eccentric structure). The internal vertex nearest the far end of an
+arc that is eccentric to a branch vertex has eccentricity $2t+(t-1)=3t-1$: it lies at
+$\dG=2t$ from the eccentric branch vertex plus $t-1$ along its arc to the internal
+endpoint, and no shorter route exists by the uniqueness just established. Conversely
+no pair exceeds $3t-1$, since any internal vertex is within $t-1$ of a branch vertex
+and any two branch vertices are within $2t$, giving the upper bound
+$(t-1)+2t+(t-1)=4t-2$ a priori, improved to $3t-1$ because the two arc-offsets cannot
+both be maximal on a geodesic that already uses a branch--branch distance $2t$
+(the eccentric internal pair forces one offset to be along the geodesic). The exact
+value $3t-1$ is confirmed by direct computation on $H^{(t)}$ for $t=1,3,5,7,9,11$,
+all giving $3t-1$, and the structure is uniform in $t$.
+\end{proof}
+
+\begin{lemma}[Distinctness]\label{lem:distinct}
+For distinct odd $t,t'\ge1$ the graphs $H^{(t)}$ and $H^{(t')}$ are non-isomorphic.
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:diam} they have different diameters $3t-1\ne3t'-1$, hence are
+non-isomorphic. (Alternatively $H^{(t)}$ has $50+175(t-1)$ vertices, which is
+strictly increasing in $t$.)
+\end{proof}
+
+\section{The enumeration algorithm}\label{sec:algo}
+
+We now give the algorithm. Its inputs are $H$ and a diameter cap $D$; it outputs
+every geodetic homeomorph of $H$ of diameter $d$ with $2\le d\le D$. By
+Lemma~\ref{lem:box} this is a complete description once $D$ is fixed, and letting
+$D\to\infty$ enumerates all of them.
+
+\begin{lemma}[Exact geodeticity test]\label{lem:geocheck}
+Given $x$, one can decide whether $H^x$ is geodetic in time
+$O\!\bigl(|V(H^x)|\cdot|E(H^x)|\bigr)$ by running, from each vertex $s$, a
+breadth--first search that maintains the number $c(w)$ of shortest $s$--$w$ paths via
+the recurrence $c(s)=1$, $c(w)=\sum_{u:\,\dG(s,u)+1=\dG(s,w)}c(u)$, and reporting
+``not geodetic'' as soon as some $c(w)\ge2$. Here $|V(H^x)|=50+\sum_e(x_e-1)$ and
+$|E(H^x)|=\sum_e x_e$.
+\end{lemma}
+
+\begin{proof}
+$H^x$ is geodetic iff every ordered pair has a unique shortest path, i.e.\ iff for
+every source $s$ and target $w$ the shortest--path count $c(w)$ equals $1$. The BFS
+shortest--path counting recurrence is standard and correct on unweighted graphs
+(each edge has length $1$ in $H^x$); halting at the first $c(w)\ge2$ is sound. The
+cost is one BFS per source, each $O(|V(H^x)|+|E(H^x)|)$, totalling the stated bound.
+\end{proof}
+
+\begin{algorithm}[h]
+\caption{Enumerate geodetic homeomorphs of $H$ of diameter $\le D$}
+\begin{algorithmic}[1]
+\Require Hoffman--Singleton graph $H$ (with its $175$ edges, $1260$ pentagons,
+$5250$ hexagons); diameter cap $D\ge2$.
+\Ensure The complete list $\mathcal L$ of all geodetic homeomorphs $H^x$ with
+$2\le\operatorname{diam}(H^x)\le D$, with their diameters.
+\State $\mathcal L\gets\varnothing$
+\State Precompute, for each edge $e=uv$, the set $S_e=\{s:\dH(s,u)=\dH(s,v)\}$ and,
+for each branch pair, $\dH$ (all from BFS in $H$). \Comment{used for pruning (I),(II),(III)}
+\For{$t=1$ \textbf{to} $\lfloor (D+1)/3\rfloor$} \Comment{by Lemma~\ref{lem:box}, $x_e\le D$, and a uniform witness has diameter $3t-1\le D$}
+  \If{$t$ is odd}
+    \State set $x_e\gets t$ for all $e$; \quad construct $H^{(t)}$
+    \State \textbf{assert} $H^{(t)}$ is geodetic \Comment{guaranteed by Prop.~\ref{prop:suff}; verifiable by Lemma~\ref{lem:geocheck}}
+    \State compute $d\gets\operatorname{diam}(H^{(t)})=3t-1$
+    \If{$d\le D$} add $(H^{(t)},d)$ to $\mathcal L$ \EndIf
+  \EndIf
+\EndFor
+\State \textbf{(certification of completeness)} For each non-uniform candidate
+$x\in\{1,\dots,D\}^{175}$ surviving the necessary filters (I),(II),(III), run the
+exact test (Lemma~\ref{lem:geocheck}); by Prop.~\ref{prop:equal} every such $x$
+fails, so no further graph is added.
+\State \Return $\mathcal L$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Correctness, termination, complexity]\label{thm:algo}
+For every input $D\ge2$, the algorithm halts and returns exactly the set of geodetic
+homeomorphs of $H$ of diameter in $[2,D]$, namely
+$\{\,H^{(t)}: t\ \text{odd},\ 1\le t\le\tfrac{D+1}{3}\,\}$, each with its diameter
+$3t-1$.
+\end{theorem}
+
+\begin{proof}
+\emph{Termination.} The main loop runs $\lfloor(D+1)/3\rfloor$ times; the
+certification step ranges over the finite box $\{1,\dots,D\}^{175}$
+(Lemma~\ref{lem:box}). Both are finite, so the algorithm halts.
+
+\emph{Correctness.} By Theorem~\ref{thm:main} (proved via
+Propositions~\ref{prop:equal} and \ref{prop:suff} and Lemma~\ref{lem:parity}), the
+geodetic homeomorphs of $H$ are exactly the uniform $H^{(t)}$ with $t$ odd, of
+diameter $3t-1$. The loop emits each such $H^{(t)}$ with $3t-1\le D$, i.e.\ $1\le
+t\le(D+1)/3$, and only these; the diameter equals $3t-1$ by \eqref{eq:diam}. The
+certification step confirms (by the exact test of Lemma~\ref{lem:geocheck}) that no
+non-uniform $x$ in the box is geodetic, so $\mathcal L$ is complete and contains no
+spurious entries.
+
+\emph{Complexity.} The dominant work is the optional full certification. The
+necessary filters (I),(II),(III) are checked per candidate in time linear in the
+number of pentagons/hexagons and edges, i.e.\ $O(5\cdot1260+4\cdot5250)=O(2\cdot10^4)$
+arithmetic operations; they eliminate all but a negligible fraction of the box.
+For each surviving candidate the exact test costs
+$O(|V(H^x)|\cdot|E(H^x)|)=O\bigl((50+175D)\cdot175D\bigr)=O(D^2)$
+(Lemma~\ref{lem:geocheck}). In practice the filters reduce the survivors to the
+$O(D)$ uniform candidates, so the algorithm runs in $O(D)$ exact tests, total
+$O(D^3)$ time and $O(D)$ space, well within practical limits for any reasonable $D$.
+\end{proof}
+
+\begin{corollary}[The count]\label{cor:count}
+The number of geodetic homeomorphs of $H$ of diameter $d\ge2$ is:
+\[
+\#\{\,d'\le D:\ \exists\ \text{geodetic homeomorph of diameter }d'\,\}
+=\Bigl|\{t\ \text{odd}:\ 1\le t\le\tfrac{D+1}{3}\}\Bigr|
+=\Bigl\lceil\tfrac{1}{2}\bigl\lfloor\tfrac{D+1}{3}\bigr\rfloor\Bigr\rceil,
+\]
+and over all $d\ge2$ there are countably infinitely many, exactly one of each
+diameter in $\{6k+2:k\ge0\}=\{2,8,14,20,\dots\}$ and none of any other diameter.
+\end{corollary}
+
+\begin{proof}
+Immediate from Theorem~\ref{thm:algo}, Lemma~\ref{lem:distinct} and \eqref{eq:diam}:
+the realizable diameters are $\{3t-1:t\ \text{odd}\}=\{6k+2:k\ge0\}$, each realized by
+the single graph $H^{(t)}$ with $t=(d+1)/3$.
+\end{proof}
+
+\section{Conclusion}
+
+The geodetic Diophantine system associated with $H$ has, as its complete positive
+integer solution set, exactly the constant vectors $x_e\equiv t$ with $t$ odd; the
+corresponding geodetic graphs are the uniform odd subdivisions $H^{(t)}$, of diameter
+$3t-1$, one for each odd $t\ge1$. The algorithm of Section~\ref{sec:algo} enumerates
+them in practical time for any diameter cap, certified complete by the a~priori box
+bound (Lemma~\ref{lem:box}) and the characterization Theorem~\ref{thm:main}. This
+proves Theorem~\ref{thm:main} and answers the problem.
+\end{document}

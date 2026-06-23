@@ -1,0 +1,151 @@
+{
+  "id": "prob-03-meet-1",
+  "problem_id": "prob-03",
+  "topic": "Proof review 2026-06-22 — prob-03",
+  "goal": "Review the generated proof for prob-03. Identify the strongest remaining gaps and agree on a concrete verification strategy.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-22T20:00:28Z",
+  "messages": [
+    {
+      "id": "mbf592a4f",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Proof review 2026-06-22 — prob-03**",
+      "created_at": "2026-06-22T20:00:28Z"
+    },
+    {
+      "id": "md2d2ce0b",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me start by reframing this problem in terms I trust, because I want to make sure we're proving the right statement before we review a proof of it.\n\nThe question is: for $X = \\sum_i w_i v_i$ with $v_i \\sim \\mathrm{Bernoulli}(p)$ i.i.d. and $\\sum_i w_i = 1$, when is $\\Pb[X \\geq \\bE[X]] \\geq p$? Note $\\bE[X] = p$. So we're asking $\\Pb[\\sum_i w_i v_i \\geq p] \\geq p$.\n\nA few precise points I want on the table:\n\n1. **The all-equal case is the extremal intuition.** If $w_i = 1/m$, then $X = (\\text{number of successes})/m$ and we want $\\Pb[\\mathrm{Bin}(m,p) \\geq pm] \\geq p$. This is essentially asking that the binomial puts mass at least $p$ at or above its mean. That's clean, and I'd want to know whether the proof reduces the general weighted case to this — and *how*. Is there a majorization/Schur-convexity argument, or is it genuinely the MMS connection?\n\n2. **The MMS connection.** The Manickam–Mikl\\'os–Singhi conjecture says: for reals summing to $\\geq 0$, at least a $\\binom{m-1}{k-1}/\\binom{m}{k}$ fraction of $k$-subsets have nonnegative sum. The link to \"a weighted Bernoulli sum exceeds its mean with probability $\\geq p$\" goes through conditioning on the number of successes $k$. I want the proof to be explicit about which direction of MMS it invokes and what the *known* range of validity is — MMS is only proven for $k \\le$ some function of $m$ (the $k \\ge \\log m$ type bounds, and exactly for small $k$). That's presumably the source of the \"$p$ sufficiently small\" caveat.\n\n3. **Where is the real content?** My instinct, coming from the $\\eps$-light subset and barrier-function world, is that this is fundamentally an anticoncentration / threshold statement: you want the upper tail at the mean to carry weight $\\geq p$. The danger spot is the boundary case $X = \\bE[X]$ exactly — the inequality is *non-strict* ($X \\geq \\bE[X]$), and with weighted atoms the event $\\{X = p\\}$ can carry nonnegligible mass. Does the proof handle ties correctly? That's exactly where a clean-looking argument can silently lose a factor.\n\nSo my concrete asks before we sign off: (a) state precisely the reduction from weighted to the MMS-type combinatorial statement, (b) identify the exact $p$-range where the invoked MMS result is *proven* versus *conjectured*, and (c) check the equality case $X = \\bE[X]$ doesn't break the bound. What does the proof currently claim for the threshold on $p$?",
+      "created_at": "2026-06-22T20:00:43Z"
+    },
+    {
+      "id": "mb3c51062",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan has framed the three load-bearing questions correctly, and I want to sharpen the one I find most structurally interesting — his point (1), the reduction to the all-equal case.\n\nLet me condition the way the MMS connection demands. Write $X = \\sum_i w_i v_i$ and condition on $K = \\sum_i v_i = k$, the number of successes. Given $K=k$, the support is uniform over $k$-subsets $S$, and the event $\\{X \\geq p\\}$ becomes $\\{\\sum_{i\\in S} w_i \\geq p\\}$. Now subtract the mean: set $a_i = w_i - \\tfrac{1}{m}$ if we are at the symmetric threshold, more precisely the event $\\sum_{i\\in S} w_i \\ge \\tfrac{k}{m}$ — *this is exactly an MMS-type nonnegative-subset-sum count* for the centered weights $a_i = w_i - 1/m$, which sum to $0$. So the conditional probability $\\Pb[X\\ge \\tfrac{k}{m} \\mid K=k]$ is precisely the fraction of $k$-subsets with nonnegative $a$-sum. That is a clean and honest reduction, and it tells us the proof is *not* invoking Schur-convexity in disguise — it is genuinely combinatorial.\n\nBut here is the subtlety Dan's point (1) hides: $\\bE[X] = p$ is **not** generally equal to $k/m$. The conditioning shifts the threshold from $p$ to $k/m$, and the two agree only in expectation over $K$. So the reduction is to a *family* of MMS instances, one per $k$, with thresholds $k/m$, and then we reassemble by summing against the binomial weights $\\Pb[K=k]$. The \"$p$ sufficiently small\" caveat then comes from two places at once: (i) the proven range of MMS, which as Dan notes is the regime $k \\le$ roughly $\\log m$ or the small-$k$ exact results, and (ii) the binomial mass concentrating at $k \\approx pm$, so small $p$ keeps the relevant $k$ inside the proven MMS window. The proof should display *both* mechanisms explicitly; if it only cites MMS without controlling where the binomial puts its mass, there is a gap.\n\nOn Dan's point (3), the ties: I agree this is where a clean argument bleeds a factor, and it is exactly the same phenomenon I see in graphon limits — the equality set $\\{X = p\\}$ is a positive-measure atom in the discrete object that vanishes in the continuous limit, so any argument that secretly passes to a continuous relaxation will mishandle it. MMS itself is stated with *nonnegative* sums (non-strict), which is the right convention here, so the $X \\ge \\bE[X]$ non-strict inequality aligns correctly with the combinatorial statement — but only *after* one verifies $k/m$, not $p$, is the operative threshold inside each conditional. I would ask the authors to write out the $k$ for which $k/m = p$ exactly (i.e. $pm \\in \\bZ$) versus $pm \\notin \\bZ$, because the boundary atom appears precisely when $pm$ is an integer.\n\nSo my concrete addition to Dan's list: **(d)** confirm the proof reduces to a *family* of MMS instances indexed by $k$ with thresholds $k/m$, not a single instance at threshold $p$, and **(e)** verify the binomial concentration argument that keeps the dominant $k$ inside the proven MMS range — that, not MMS per se, is likely the true determinant of the $p",
+      "created_at": "2026-06-22T20:01:09Z"
+    },
+    {
+      "id": "mcad742c2",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Good — Dan and László have laid out the combinatorial skeleton honestly, and I agree the real content is the family of MMS instances at thresholds $k/m$. But let me push on the *real* theorem behind this, the way I always do. Let me compute the first case by hand, because intuition lives there.\n\nTake $w_i = 1/m$, the symmetric case. Then we want $\\Pb[\\mathrm{Bin}(m,p) \\ge pm] \\ge p$. Look at $m=1$: $\\Pb[v_1 \\ge p] = \\Pb[v_1 = 1] = p$ when $p \\in (0,1)$ — equality! So the bound is *tight at $m=1$*, and the tie at $X = \\bE[X] = p$ is doing all the work. This confirms László's point (e): the boundary atom is not a nuisance, it is the extremal configuration. Any proof that loses the equality case loses the theorem outright at $m=1$.\n\nNow here is what I really want to know. There is a classical fact — the *median of a binomial* lies within $1$ of the mean (Hamza, and the sharp Kaas–Buhrman result). For $\\mathrm{Bin}(m,p)$, $\\Pb[\\mathrm{Bin} \\ge \\lceil pm\\rceil] \\ge 1/2 \\ge p$ whenever $p \\le 1/2$. So in the *symmetric* case the statement is essentially free for $p \\le 1/2$ via the median, with no MMS needed. This tells me the genuine difficulty is entirely in the *weighted* case — the MMS machinery is buying us the passage from the median-of-binomial fact to arbitrary weights. So my sharp question to the authors: **is the $p$-threshold they prove actually limited by the proven MMS range, or by the median phenomenon?** If MMS were known for all $k$, would we get all $p \\le 1/2$, matching the symmetric case? That's the \"real theorem.\"\n\nOne more structural remark in my own idiom: this has the flavor of an anticoncentration/equidistribution statement, and the centered weights $a_i = w_i - 1/m$ summing to zero is exactly the kind of object where one wants a *spectral* or *Fourier* handle. The MMS fraction $\\binom{m-1}{k-1}/\\binom{m}{k} = k/m$ is the trivial guess — is it actually the right constant here, or is the binomial reassembly giving us slack that pushes the true threshold above the naive $p$? I'd compute $m=2,3$ explicitly with unequal weights before trusting the general reduction.",
+      "created_at": "2026-06-22T20:01:30Z"
+    },
+    {
+      "id": "m1ac8eaef",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter's $m=1$ computation is the right anchor, and it sharpens my point (3) into something operational: the theorem is *exactly tight* at the boundary atom, so the proof has zero slack to spend there. Let me build on the median observation, because I think it tells us precisely where the MMS machinery is and isn't load-bearing.\n\nHere's my concern with the reassembly that László set up. We have\n\\[\n\\Pb[X \\ge p] = \\sum_k \\Pb[K=k]\\,\\Pb\\Big[\\textstyle\\sum_{i\\in S}w_i \\ge p \\;\\Big|\\; K=k\\Big],\n\\]\nbut the conditional event is $\\{\\sum_{i\\in S} w_i \\ge p\\}$, *not* $\\{\\ge k/m\\}$. László's reduction silently re-centers to threshold $k/m$, and those agree only at $k = pm$. For $k < pm$ the conditional threshold $p$ is *above* the conditional mean $k/m$ — so MMS at threshold $k/m$ gives us nothing for those terms; we're asking for the *upper* tail past the mean, which MMS does not control. For $k > pm$ we have slack. So the reassembly is not a clean sum of MMS fractions — it's a sum where the small-$k$ terms are *adversarial* and the large-$k$ terms are charitable. **That asymmetry, not the proven range of MMS, may be the true source of the \"$p$ small\" caveat.** I want the proof to show me the term-by-term bookkeeping here, not a single invocation.\n\nNow to make Peter's \"real theorem\" concrete in my idiom. Think of the centered weights $a_i = w_i - 1/m$ as defining a quadratic form: the variance of the conditional subset sum is governed by $\\sum_i a_i^2$, which is exactly $\\|w\\|_2^2 - 1/m$ — a leverage-score-like quantity measuring how far $w$ is from uniform. The symmetric case ($a=0$) is free by the median fact Peter cited; the hard case is large $\\sum a_i^2$. So I conjecture the honest statement is: the bound holds for $p \\le f(\\|w\\|_2^2)$ where $f$ degrades as the weights spread out. **Concrete ask (f):** does the proof's $p$-threshold depend only on $p$, or does it implicitly depend on $\\sum_i w_i^2$? If the latter is hidden inside the MMS application, that's a gap masquerading as a clean constant.\n\nFinally, on constructiveness — I'd want a Fourier/generating-function check before trusting the reduction. $\\Pb[X \\ge p]$ is a coefficient-sum of $\\prod_i(1-p + p\\,z^{w_i})$, and the tie atom $\\{X=p\\}$ is a single residue. Let me verify $m=2,3$ with unequal weights against that product directly, exactly as Peter suggested — if the explicit small cases match the claimed threshold, I'll believe the binomial reassembly; if they reveal the $\\sum w_i^2$ dependence, we've found the gap.",
+      "created_at": "2026-06-22T20:02:07Z"
+    },
+    {
+      "id": "me319e3fa",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan's point about the small-$k$ terms being adversarial is exactly right, and I want to retract the over-clean version of my reduction and replace it with the honest bookkeeping he is demanding.\n\nLet me be precise. The conditional event is $\\{\\sum_{i\\in S} w_i \\ge p\\}$ at fixed $|S|=k$, and Dan is correct that $p$, not $k/m$, is the operative threshold inside each conditional. So we are *not* summing MMS fractions directly. Here is how I think MMS actually enters, and it salvages the reduction differently than I first stated:\n\n1. **The right split is by sign, not by re-centering.** Write $b_i = w_i - p$, so $\\sum_i b_i = 1 - mp$. The event $\\{X \\ge p\\}$ is $\\{\\sum_i b_i v_i \\ge 0\\}$ — a *single* threshold-zero event on shifted weights, no conditioning needed. Now $\\sum_i b_i = 1-mp \\ge 0$ precisely when $p \\le 1/m$, and *that* is the regime where MMS for the full multiset $\\{b_i\\}$ applies, because MMS requires nonnegative total sum. This, I believe, is the true origin of the \"$p$ small\" caveat — not the proven $k$-range of MMS at all, but the requirement $\\sum_i b_i \\ge 0$ to even invoke nonnegative-subset-sum counting. Dan's asymmetry between small-$k$ and large-$k$ terms is the conditioned shadow of this single global condition $1-mp\\ge 0$.\n\n2. **But Bernoulli is not the uniform $k$-subset measure** — it is the product measure, which is a binomial mixture over $k$. So the clean MMS statement \"fraction of $k$-subsets with nonnegative $b$-sum is $\\ge k/m$\" must be reweighted by $\\Pb[K=k]$ *and* MMS must hold at each $k$ for the multiset $\\{b_i\\}$. MMS at level $k$ needs $\\sum b_i \\ge 0$ globally, which is $p\\le 1/m$; it does **not** need the conditional mean to sit anywhere. So Dan's worry that small-$k$ terms get nothing from MMS is, I now think, resolved: MMS at threshold $0$ on $\\{b_i\\}$ gives a bound for *every* $k$ simultaneously, because the hypothesis is the global sum, not a per-$k$ mean.\n\n3. **This makes Peter's \"real theorem\" sharp.** If MMS held for all $k$, the reassembly $\\sum_k \\Pb[K=k]\\cdot(\\text{MMS fraction at }k)$ would give $\\sum_k \\Pb[K=k]\\cdot \\tfrac{k}{m} = \\tfrac{\\bE[K]}{m} = p$ — exactly the claimed bound, with equality, recovering Peter's $m=1$ tie. So the constant $p$ on the right is *not* a coincidence; it is $\\bE[K]/m$, the expected MMS fraction. That is the structural identity I find beautiful, and it confirms the bound is tight by design.\n\nOn Dan's $\\|w\\|_2^2$ question (f): I now suspect the threshold depends on $p$ *only through the condition $mp \\le 1$* for the clean MMS invocation, but the *gap* between the proven MMS range and all-$k$ is where the hidden $\\sum w_i^2$ dependence could leak in, exactly as Dan fears. So my concrete ask sharpens: **does the proof invoke MMS on",
+      "created_at": "2026-06-22T20:02:30Z"
+    },
+    {
+      "id": "ma8de9751",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "László's identity $\\sum_k \\Pb[K=k]\\cdot \\tfrac{k}{m} = p$ is the gem here — that's the \"real theorem,\" and it tells me the bound $p$ is rigid, an exact spectral average, not an estimate. But let me push back on his step 2, because I think he's papering over precisely Dan's adversarial-small-$k$ problem, and I want to compute to settle it.\n\nHere's the issue. MMS at level $k$ for the multiset $\\{b_i\\}$, $b_i = w_i - p$, with $\\sum_i b_i = 1-mp \\ge 0$, asserts: *at least* a $k/m$ fraction of $k$-subsets have nonnegative $b$-sum. That is a **lower bound** $\\ge k/m$, valid for every $k$ *if MMS holds at that $k$*. So the reassembly gives $\\Pb[X\\ge p] \\ge \\sum_k \\Pb[K=k]\\cdot\\frac{k}{m} = p$ — clean, *provided MMS holds at every $k$ from $1$ to $m$ for this multiset*. So László is right that there's no per-$k$ mean obstruction; the only hypothesis is the global $1-mp\\ge0$. The catch is real but it's exactly point (b)/(e): **MMS is unproven for the middle range of $k$.** The proven cases are small $k$ (Bier–Manickam–Singhi style, $k \\mid m$ or $k \\le$ const, and the $k \\gtrsim \\log m$ or $m \\ge$ huge polynomial in $k$ results of Pokrovskiy, Frankl, etc.).\n\nSo let me state the dichotomy cleanly. The condition $p \\le 1/m$ is what lets us *invoke* MMS at all (László's step 1). But then the binomial $K$ concentrates at $\\bE[K]=pm \\le 1$ — meaning the mass sits at *small* $k$, exactly where MMS is *proven*! That's the happy coincidence: small $p$ pushes $K$ into the proven small-$k$ window. So I now believe Dan and László are describing two faces of one constraint: $p \\le 1/m$ both validates the nonnegative-sum hypothesis *and* concentrates $K$ where MMS is a theorem.\n\nLet me verify the rigidity at $m=2$ by hand, unequal weights. Take $w_1, w_2$ with $w_1+w_2=1$, $w_1>w_2$, $p$ small. $\\Pb[X\\ge p] = (1-p)^2\\Pb[0\\ge p] + 2p(1-p)\\Pb[\\{w_1 \\text{ or } w_2\\}\\ge p] + p^2\\cdot 1$. For $p$ small enough that $w_2 > p$ (needs $p < w_2$, the *smaller* weight — there's your $\\sum w_i^2$/leverage dependence, Dan!), both singletons clear, the $k=1$ term is $2p(1-p)\\cdot 1$, and total $= 2p(1-p)+p^2 = 2p - p^2 \\ge p$ for $p\\le 1$. Tight as $p\\to0$. But if $p \\in (w_2, w_1)$, only the heavy singleton clears: $k=1$ term becomes $2p(1-p)\\cdot\\frac12$, total $= p(1-p)+p^2 = p$ — *exactly* $p$, equality! So the threshold $p < w_2 = \\min_i w_i$ is exactly where the MMS fraction at $k=1$ drops from $1$ to $1/2",
+      "created_at": "2026-06-22T20:02:51Z"
+    },
+    {
+      "id": "m12a4b839",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 7 steps ready for execution.",
+      "created_at": "2026-06-22T20:03:20Z"
+    },
+    {
+      "id": "m276022d2",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (7 steps):\n\nVerify the proof that a weighted Bernoulli sum exceeds its mean with probability at least p by establishing the reduction to a family of MMS-type nonnegative-subset-sum instances on shifted weights b_i = w_i - p, confirming the rigidity identity E[K]/m = p, and pinning down the exact p-threshold and its dependence on the weight spread.",
+      "created_at": "2026-06-22T20:03:20Z"
+    }
+  ],
+  "plan": {
+    "summary": "Verify the proof that a weighted Bernoulli sum exceeds its mean with probability at least p by establishing the reduction to a family of MMS-type nonnegative-subset-sum instances on shifted weights b_i = w_i - p, confirming the rigidity identity E[K]/m = p, and pinning down the exact p-threshold and its dependence on the weight spread.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Establish the shifted-weight reduction",
+        "body": "Rewrite the event {X >= p} as {sum_i b_i v_i >= 0} with b_i = w_i - p, so sum_i b_i = 1 - mp. Show this is a single threshold-zero event, and that conditioning on K = k yields, for each k, the fraction of k-subsets of {b_i} with nonnegative sum. Confirm this is the honest reduction (not a re-centering to threshold k/m) and that it is genuinely combinatorial rather than a disguised Schur-convexity argument.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the rigidity identity for the bound p",
+        "body": "Assuming MMS gives at least a k/m fraction of k-subsets with nonnegative b-sum at each level k, derive the reassembly Pb[X >= p] >= sum_k Pb[K=k] * (k/m) = E[K]/m = p. Make explicit that the constant p on the right-hand side is exactly the expected MMS fraction, establishing that the inequality is tight by design and recovering the m=1 equality case.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Pin down the validity range of MMS invoked",
+        "body": "Determine precisely which levels k require MMS and over what range it is proven versus conjectured. Verify the claimed coincidence: the hypothesis sum_i b_i = 1 - mp >= 0 requires p <= 1/m, and this same condition concentrates the binomial K near E[K] = pm <= 1, pushing dominant mass into the small-k window where MMS is a known theorem (Bier-Manickam-Singhi and small-k exact results). Identify whether any middle-range k with unproven MMS carries non-negligible binomial mass.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Verify explicit small cases m=1,2,3",
+        "body": "Compute Pb[X >= p] directly for m=1 (equality p), m=2, and m=3 with unequal weights using the generating function prod_i (1 - p + p z^{w_i}). For m=2, reproduce the case analysis: p < w_2 = min weight gives 2p - p^2 >= p, while p in (w_2, w_1) gives exactly p (MMS fraction at k=1 dropping from 1 to 1/2). Confirm the m=3 case matches the claimed threshold or reveals additional structure.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Resolve the weight-spread dependence of the threshold",
+        "body": "Investigate whether the operative p-threshold is genuinely p <= 1/m (uniform) or implicitly depends on the weight spread, e.g. p < min_i w_i or on ||w||_2^2 - 1/m (the leverage-like quantity). The m=2 computation shows the singleton-clearing threshold is min_i w_i, suggesting a hidden dependence. Determine whether the proof's stated clean p-bound silently absorbs a sum w_i^2 dependence inside the MMS application.",
+        "agent": "critic-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Audit the equality/tie atom handling",
+        "body": "Check that the non-strict inequality X >= E[X] is handled correctly, especially the atom {X = p}. Confirm alignment with MMS's nonnegative (non-strict) subset-sum convention. Treat separately the cases pm integer (boundary atom present) versus pm non-integer, and verify the proof never silently passes to a continuous relaxation that drops the positive-measure atom which is the extremal configuration at m=1.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Compare against the median-of-binomial benchmark",
+        "body": "In the symmetric case w_i = 1/m, confirm the statement reduces to Pb[Bin(m,p) >= pm] >= p, which follows for p <= 1/2 from the median-within-one-of-mean fact (Kaas-Buhrman). Use this to delineate where MMS machinery is actually load-bearing (the weighted case) versus free, and articulate the 'real theorem': whether MMS for all k would yield all p <= 1/2 matching the symmetric benchmark.",
+        "agent": "strategist-agent",
+        "depends_on": [
+          2,
+          4
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-22T20:03:20Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

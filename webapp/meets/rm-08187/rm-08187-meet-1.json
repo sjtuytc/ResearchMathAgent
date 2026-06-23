@@ -1,0 +1,162 @@
+{
+  "id": "rm-08187-meet-1",
+  "problem_id": "rm-08187",
+  "topic": "Init rm-08187 — proof review",
+  "goal": "Review the proof and issues for rm-08187; agree on the key remaining gaps and an action plan.",
+  "participants": [
+    "coordinator",
+    "dan-spielman",
+    "laszlo-lovasz",
+    "peter-sarnak"
+  ],
+  "status": "planned",
+  "created_at": "2026-06-23T13:55:40Z",
+  "messages": [
+    {
+      "id": "mb91f8626",
+      "author": "coordinator",
+      "role": "event",
+      "body": "Meeting opened: **Init rm-08187 — proof review**",
+      "created_at": "2026-06-23T13:55:40Z"
+    },
+    {
+      "id": "m863be03d",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Let me cut to the operator-theoretic heart of this. Both proofs are secretly bounding the same thing: the Lipschitz contraction of $P$ in a *Wasserstein* sense, and the right common object is a **weighted Lipschitz seminorm** on $\\mathcal{F}$.\n\nHere is my proposed canonical construction. Fix positive vertex weights $w_v > 0$ (these are the free parameter that reconciles the two methods), and define a path metric on $\\Omega$:\n$$d_w(\\sigma,\\tau) = \\min_{\\text{paths }\\sigma=\\eta_0,\\dots,\\eta_k=\\tau} \\sum_{i} w_{v_i},$$\nwhere consecutive configurations differ at a single vertex $v_i$. Then define the seminorm on functions modulo constants as the dual Lipschitz seminorm:\n$$\\|f\\|_* = \\mathrm{Lip}_{d_w}(f) = \\max_{\\sigma\\neq\\tau} \\frac{|f(\\sigma)-f(\\tau)|}{d_w(\\sigma,\\tau)}.$$\nThis kills constants automatically, so it lives on $\\mathcal{F}$.\n\nNow the claim. By Kantorovich–Rubinstein duality, $\\|P\\|_*$ in this Lipschitz seminorm equals the **Wasserstein contraction coefficient** of $P$ with respect to $d_w$:\n$$\\|P\\|_* = \\sup_{\\sigma\\neq\\tau}\\frac{\\mathcal{W}_{d_w}(P(\\sigma,\\cdot),P(\\tau,\\cdot))}{d_w(\\sigma,\\tau)}.$$\n\nThat is the unification:\n- **(a) Coupling**: a path-coupling contraction $\\mathbb{E}[d_w(X_1,Y_1)]\\le \\beta\\, d_w(X_0,Y_0)$ on adjacent pairs is *exactly* a bound on this Wasserstein coefficient — that's the Bubley–Dyson path-coupling lemma, no slack.\n- **(b) Dobrushin**: the influence matrix $R$ with $\\|R\\|_\\infty\\le\\beta$ is the linearization of this same contraction at single-site disagreements. Choosing $w$ to be the Perron eigenvector of $R$ (or its transpose for the $\\ell^1$ case) converts the row-sum/column-sum bound into a $w$-weighted contraction with the *same* $\\beta$. This is the standard trick that makes Dobrushin's condition an actual contraction in a weighted Hamming metric.\n\nSo the common norm is the **$w$-weighted Lipschitz seminorm**, with the catch that $w$ is chosen as the dominant eigenvector of the influence matrix. That eigenvector choice is what makes (i) and (ii) yield *literally* the same $\\beta$.\n\nTwo things I want nailed down before we call it done:\n1. **What's the spectral object here?** $R$ is generally not symmetric, so \"the same norm\" requires fixing left vs. right Perron vectors. For the hard-core model $R_{u,v}\\le \\frac{\\lambda}{1+\\lambda}\\mathbf{1}[\\{u,v\\}\\in E]$, so $R$ is essentially $\\frac{\\lambda}{1+\\lambda}A$. The contraction is governed by $\\frac{\\lambda}{1+\\lambda}\\cdot\\rho(A)$ — and the weighting $w$ should be the Perron eigenvector of the adjacency matrix $A$. Can we state the threshold cleanly",
+      "created_at": "2026-06-23T13:55:56Z"
+    },
+    {
+      "id": "m803daf73",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, your weighted Lipschitz seminorm is exactly right, and the Kantorovich–Rubinstein duality is the correct hinge. Let me add the structural layer that I think makes this *canonical* rather than merely *convenient*.\n\nThe key insight is that the weighting $w$ should not be regarded as a free parameter, but as the object that diagonalizes the contraction — and for the hard-core model this is forced by the geometry of $G$. As you say, $R \\le \\frac{\\lambda}{1+\\lambda}A$, so the contraction coefficient is governed by $\\frac{\\lambda}{1+\\lambda}\\rho(A)$, and $w$ is the Perron eigenvector of $A$. This is precisely the spectral regime where I would invoke graph limits: the threshold $\\lambda < \\lambda_c$ with $\\frac{\\lambda}{1+\\lambda}\\rho(A) < 1$ depends only on $\\rho(A)$, which is a *graphon invariant* — it converges along any convergent sequence $G_n \\to W$ to the operator norm of the integral kernel $W$. So the \"same norm in both cases\" is not an accident; it is the statement that both proofs are reading off the same spectral data of the underlying graphon.\n\nThree precise points to nail your remaining questions:\n\n1. **Left vs. right Perron vectors.** Since $R$ is not symmetric, the $\\ell^\\infty$ (row-sum) Dobrushin bound and the $\\ell^1$ (column-sum) bound are genuinely distinct: the former uses the *right* Perron vector of $R$ as $w$, the latter the *left*. They coincide iff $R$ is symmetrizable, i.e. iff the influence is reversible — which here it essentially is, because $R \\approx \\frac{\\lambda}{1+\\lambda}A$ and $A$ is symmetric. So for the hard-core gas the dichotomy collapses, and there *is* a single canonical $w$, the Perron eigenvector of $A$.\n\n2. **Why the seminorm, not a norm.** The quotient by constants is essential and not cosmetic. The Perron eigenvector is defined up to scale; the *seminorm* $\\mathrm{Lip}_{d_w}$ is scale-equivariant in $w$, so the quotient structure is what makes \"the same $\\beta$\" well-defined independent of normalization. This is analogous to how $\\theta(G)$ lives naturally on the projective cone of PSD matrices — the invariant is the ratio, not the raw value.\n\n3. **The duality is exact, no slack — but only for the metric $d_w$ induced by the path structure.** The Bubley–Dyer path-coupling lemma you cite is precisely the statement that the Wasserstein contraction over *all* pairs is determined by adjacent pairs, *provided* $d_w$ is a path metric realizing those adjacencies as geodesics. That is the condition that the seminorm $\\mathrm{Lip}_{d_w}$ is the operator $\\|P\\|_*$ with no loss. So the answer to the problem's existence question is **yes, canonically**: $\\|\\cdot\\|_* = \\mathrm{Lip}_{d_w}$ with $w$ the Perron eigenvector of the influence matrix.\n\nI would only push back on one framing: I would not call this \"secretly the same thing\" by coincidence. The deeper reason both methods bound $\\frac{\\lambda}{1+\\lambda}\\rho(A)$ is that *both are first-order linearizations of the coupling contraction at single-site disagreements* — Dobrushin's matrix is the Jacob",
+      "created_at": "2026-06-23T13:56:44Z"
+    },
+    {
+      "id": "mfaa18982",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Dan, Laszlo — beautiful, and I agree the weighted Lipschitz seminorm with $w$ the Perron vector of $A$ is the canonical object. But let me push for the *real* theorem behind this, because I think there's a spectral statement you're both circling that we should state sharply.\n\nYou've reduced everything to $\\frac{\\lambda}{1+\\lambda}\\rho(A)$. Now: $\\mathrm{Lip}_{d_w}$ is a seminorm on $\\mathcal{F}$, and $\\|P\\|_*$ in this seminorm is a contraction coefficient. But the *true* asymptotic mixing rate is the spectral gap of $P$ — the second eigenvalue $\\lambda_2(P)$ of the actual (reversible!) Glauber generator. Here is my question, which is exactly the Ramanujan question in disguise: **does the Lipschitz contraction coefficient equal the spectral gap, or only dominate it?** Generically you get $\\lambda_2(P) \\le \\|P\\|_* \\le \\beta$, with strict inequality. The coupling/Dobrushin norm is the $\\ell^\\infty$-flavored bound; the spectral gap is the $\\ell^2$ object. These coincide only in the \"extremal\" regime — and that's precisely when the underlying graph is Ramanujan-like.\n\nLet me be concrete, the way I always do. Take $G = K_2$, a single edge, $\\lambda$ small. Three independent sets: $\\emptyset, \\{1\\}, \\{2\\}$. $\\rho(A) = 1$, so the predicted threshold is $\\lambda < \\infty$ — fine, the chain always contracts. Compute $P$ by hand on $\\mathcal{F}$ (dimension 2): you get explicit eigenvalues, and you find the Lipschitz seminorm bound $\\beta = \\frac{\\lambda}{1+\\lambda}\\cdot\\frac{1}{|V|}\\cdot(\\text{stuff})$ is *not* tight against $\\lambda_2(P)$ — there's a gap of exactly the size you'd expect from the non-normality of $R$. That gap is the slack between coupling and the true relaxation time.\n\nSo three points:\n1. **The canonical norm is right, but it is the wrong invariant for sharp mixing.** It's an upper bound on $\\frac{1}{\\text{spectral gap}}$, off by the non-normality of $R$. Laszlo's symmetrizability remark is the key: when $R$ is symmetrizable (as here, $R\\approx cA$), the gap *closes* and $\\mathrm{Lip}_{d_w}$ becomes asymptotically tight. That's the real content of \"the same norm\" — it's the reversibility of the influence.\n2. **The graphon limit $\\rho(A) \\to \\|W\\|$** is exactly the Montgomery–Odlyzko philosophy: a global spectral invariant controlling a local dynamical quantity. For sequences of *Ramanujan* graphs, $\\rho(A) = 2\\sqrt{d-1}$ is extremal, and the threshold $\\lambda_c$ is sharp — this is where the bound becomes a theorem rather than an estimate.\n3. I'd ask: is the eigenvalue $3/16$-type phenomenon lurking? The slack between Selberg's $3/16$ and Ramanujan's $1/4$ is *exactly* the analogue of the slack between your $\\ell^\\infty$ Dobrushin bound and the true $\\ell^2$ gap. Same mathematics, different clothing.\n\nSo: yes, the common norm exists",
+      "created_at": "2026-06-23T13:57:31Z"
+    },
+    {
+      "id": "m4b00d6b1",
+      "author": "dan-spielman",
+      "role": "agent",
+      "body": "Peter, this is exactly the right tension to surface, and it's the $\\ell^\\infty$-versus-$\\ell^2$ gap I lived with for years in the Laplacian-solver work. Let me sharpen the comparison spectrally, because I think we can quantify the slack precisely rather than wave at \"non-normality.\"\n\nHere's the clean statement. Let $L = I - P$ be the (reversible!) Glauber generator with stationary measure $\\pi$. The true mixing is governed by $\\lambda_2(P) = 1 - \\mathrm{gap}(L)$, an $\\ell^2(\\pi)$ object. Our seminorm $\\mathrm{Lip}_{d_w}$ is an $\\ell^\\infty$-flavored Lipschitz norm. The comparison is *exactly* a Poincaré-versus-transport inequality, and the conversion factor is what I'd call the **condition number of the metric embedding** $\\Omega \\hookrightarrow \\ell^2(\\pi)$ induced by $d_w$:\n$$\\mathrm{gap}(L) \\;\\ge\\; 1 - \\|P\\|_* \\;\\ge\\; \\mathrm{gap}(L) \\cdot \\kappa^{-1},$$\nwhere $\\kappa$ measures how far $d_w$ is from being realized by an $\\ell^2$ harmonic embedding. When $R$ is symmetrizable — which here it is, since $R \\approx \\frac{\\lambda}{1+\\lambda}A$ — the Perron weighting $w$ *is* the $\\ell^2$ harmonic weighting, $\\kappa \\to 1$, and the bounds collapse. That's Laszlo's symmetrizability remark in quantitative form.\n\nNow let me push for the constructive payoff, because I don't want this to stay an existence theorem. **The weights $w$ are computable by a Laplacian solve.** Finding the Perron vector of $A$ — or more precisely the harmonic embedding realizing $d_w$ as geodesics — is a generalized eigenvalue problem $Aw = \\rho w$, and for the contraction we don't even need the exact eigenvector: a constant-factor approximation to $w$ gives a $(1+\\epsilon)$-approximate seminorm, by the same robustness that lets spectral sparsifiers work with approximate effective resistances. So the canonical norm isn't just canonical — it's *algorithmically accessible* in nearly-linear time in the size of $A$.\n\nOn your $K_2$ example: that's the right test, but it's degenerate precisely because $G$ has no spectral gap to speak of — $A$ is $2\\times 2$. The slack you measure there is finite-size non-normality of $R$, and it vanishes as we approach the graphon limit *because* $\\rho(A)$ stabilizes. The Ramanujan question you raise — does $\\mathrm{Lip}_{d_w}$ go tight — is then the question of whether the harmonic embedding is *isometric*, and your $3/16$-versus-$1/4$ analogy is apt: it's the gap between the trivial spectral bound and the extremal one.\n\nTwo things I want nailed before we close:\n1. **State $\\kappa$ explicitly for the hard-core model** as a function of $\\lambda$ and $\\rho(A)$, so we can certify exactly when coupling is asymptotically lossless.\n2. Confirm that the Perron weighting is computable by a single eigenvector / Laplacian-type solve — I'm fairly sure it is, and that turns \"canonical construction\" into \"canonical *algorithm*,\" which is the form I actually want the answer in.",
+      "created_at": "2026-06-23T13:59:51Z"
+    },
+    {
+      "id": "m3dafa679",
+      "author": "laszlo-lovasz",
+      "role": "agent",
+      "body": "Dan, Peter — let me close the loop on $\\kappa$ with the structural object I think we're all reaching for, and then state the threshold cleanly as the problem demands.\n\nThe condition number $\\kappa$ in Dan's sandwich is not a black box; for the hard-core model it has a *closed form* governed by the non-normality defect of $R$. Write $R = \\frac{\\lambda}{1+\\lambda} A + E$, where $E$ collects the boundary-condition corrections (these are the entries where excluding a third vertex modifies the single-site influence). Since $A$ is symmetric, the defect $\\kappa - 1$ is, to first order, $\\|E\\|/\\mathrm{gap}$ — i.e. the slack is exactly the deviation of the true influence matrix from its symmetric part. Peter's $3/16$-versus-$1/4$ is precisely this: $E$ is the analogue of the exceptional spectrum, and it vanishes in the regime where conditioning at a vertex acts independently of higher-order correlations — the decay-of-correlations regime.\n\nLet me give the canonical threshold the problem asks for. Define $w$ as the Perron eigenvector of $A$, $Aw = \\rho(A) w$, $w > 0$. Then:\n\n1. **The common seminorm is** $\\|f\\|_* = \\mathrm{Lip}_{d_w}(f)$ with $d_w$ the $w$-weighted path metric, *exactly* as Dan wrote. Both proofs yield $\\|P\\|_* \\le \\beta + \\varepsilon$ with\n$$\\beta = 1 - \\frac{1}{|V|}\\Big(1 - \\tfrac{\\lambda}{1+\\lambda}\\rho(A)\\Big),$$\nthe $\\frac{1}{|V|}$ being the single-site selection probability. Contraction holds iff $\\frac{\\lambda}{1+\\lambda}\\rho(A) < 1$, i.e. $\\lambda < \\lambda_c = \\frac{1}{\\rho(A)-1}$ when $\\rho(A) > 1$.\n\n2. **On computability** — Dan, you're right, and it's even cleaner than a generalized eigenvalue solve. We do *not* need the exact Perron vector. By my $\\theta$-function experience: the seminorm is projectively stable, so a $(1+\\varepsilon)$-approximate $w$ gives a $(1+O(\\varepsilon))$ seminorm. Power iteration on $A$ — equivalently a few rounds of the heat semigroup — suffices, in nearly-linear time. The robustness is the same projective-cone stability that makes $\\theta(G)$ insensitive to the normalization $\\mathrm{Tr}(B)=1$.\n\n3. **On the graphon transfer** — this is what makes \"canonical\" mean *invariant*. Along $G_n \\to W$, the seminorm $\\mathrm{Lip}_{d_{w_n}}$ converges to the Lipschitz seminorm against the integral operator $T_W$, and $\\rho(A_n)/|V_n| \\to \\|T_W\\|_{op}$ in the appropriate normalization. So the threshold $\\lambda_c$ is a *graphon invariant*: the same number both proofs compute, because both read off $\\|T_W\\|$. That is the precise functional-analytic statement the problem wants — the existence of the common norm is the statement that coupling and Dobrushin are two coordinatizations of the spectral data of the limit kernel $W$, and $\\kappa = 1$ exactly when $W$ is symmetric, which it is here.\n\nSo my verdict on",
+      "created_at": "2026-06-23T14:00:39Z"
+    },
+    {
+      "id": "m643c4867",
+      "author": "peter-sarnak",
+      "role": "agent",
+      "body": "Laszlo, Dan — that closed form for $\\beta$ is clean and I'm happy with the threshold $\\lambda_c = 1/(\\rho(A)-1)$. But let me register one objection that I think matters for the *real* theorem, because we're being slightly cavalier about the relation between the Lipschitz contraction and the actual mixing time.\n\nLook at the $K_2$ computation again — I insist on it, because the small cases never lie. Your $\\beta = 1 - \\frac{1}{|V|}(1 - \\frac{\\lambda}{1+\\lambda}\\rho(A))$ with $|V|=2$, $\\rho(A)=1$ gives $\\beta = 1 - \\frac{1}{2}\\cdot\\frac{1}{1+\\lambda}$. Now compute $\\lambda_2(P)$ on $\\mathcal{F}$ honestly: the reversible generator on $\\{\\emptyset,\\{1\\},\\{2\\}\\}$ has a $2$-dimensional quotient, and the second eigenvalue is *not* equal to $\\beta$ — it's strictly smaller. So even in the symmetrizable case $\\kappa \\to 1$ is an *asymptotic* statement, not an equality at finite $|V|$. The slack is $O(1/|V|)$, which is exactly the boundary term $E$ in your decomposition $R = \\frac{\\lambda}{1+\\lambda}A + E$. Fine — but then we should *say* that the common norm certifies the contraction coefficient, which controls mixing time up to the $\\ell^\\infty \\to \\ell^2$ conversion, and is sharp only in the graphon limit. Don't oversell tightness.\n\nTwo further points where I want sharpness:\n\n1. **The threshold is wrong for the model we actually care about.** $\\frac{\\lambda}{1+\\lambda}\\rho(A) < 1$ is the *Dobrushin/coupling* threshold. The true uniqueness threshold for the hard-core gas on the $d$-regular tree is the Kelly bound $\\lambda_c = \\frac{(d-1)^{d-1}}{(d-2)^d}$, which is asymptotically $e/d$, whereas $\\rho(A)=d$ gives the coupling threshold $\\lambda < 1/(d-1) \\sim 1/d$. These agree only up to the constant $e$! That constant gap is precisely my $3/16$-versus-$1/4$ analogy made quantitative — Weitz's correlation-decay tree-recursion machinery (and the later spectral-independence work of Anari–Liu–Oveis Gharan and Chen–Liu–Vigoda) closes it. So the common norm $\\mathrm{Lip}_{d_w}$ is *honest* but *not optimal*; it sits at the linearized threshold, off by $e$ from the true critical fugacity.\n\n2. **For Ramanujan graphs this is sharp in the right sense.** Take $G$ a $(d)$-regular Ramanujan graph, $\\rho(A) = d$ (the trivial eigenvalue), but the *nontrivial* spectrum sits at $2\\sqrt{d-1}$. The coupling threshold reads $\\rho(A)=d$, but the spectral gap of $P$ is governed by the *second* adjacency eigenvalue. This is the gap between $\\mathrm{Lip}_{d_w}$ (which sees $\\rho(A)=d$) and the true relaxation (which sees $2\\sqrt{d-1}$) — and the ratio $d / (2\\sqrt{d-1}) \\to \\sqrt{d}/2$ is",
+      "created_at": "2026-06-23T14:01:26Z"
+    },
+    {
+      "id": "m90a5b80f",
+      "author": "coordinator",
+      "role": "event",
+      "event_type": "plan_ready",
+      "body": "📋 **Plan synthesized** — 8 steps ready for execution.",
+      "created_at": "2026-06-23T14:03:51Z"
+    },
+    {
+      "id": "m0b90a850",
+      "author": "coordinator",
+      "role": "agent",
+      "body": "**Action plan synthesized** (8 steps):\n\nEstablish that the coupling and Dobrushin proofs for rm-08187 are two coordinatizations of a single canonical weighted Lipschitz seminorm on functions modulo constants, with weights given by the Perron eigenvector of the influence/adjacency matrix, and clearly delimit where this common norm is sharp versus merely an honest upper bound.",
+      "created_at": "2026-06-23T14:03:51Z"
+    }
+  ],
+  "plan": {
+    "summary": "Establish that the coupling and Dobrushin proofs for rm-08187 are two coordinatizations of a single canonical weighted Lipschitz seminorm on functions modulo constants, with weights given by the Perron eigenvector of the influence/adjacency matrix, and clearly delimit where this common norm is sharp versus merely an honest upper bound.",
+    "steps": [
+      {
+        "idx": 0,
+        "title": "Define the canonical weighted Lipschitz seminorm",
+        "body": "Formally construct the seminorm on F (functions modulo constants) as ||f||_* = Lip_{d_w}(f), where d_w is the w-weighted single-vertex path metric on the configuration space Omega and w>0 is a fixed vertex weighting. Verify that the seminorm kills constants and is scale-equivariant in w, so it lives well-defined on the projective quotient.",
+        "agent": "solver-agent",
+        "depends_on": []
+      },
+      {
+        "idx": 1,
+        "title": "Prove the Kantorovich-Rubinstein identification",
+        "body": "Show via Kantorovich-Rubinstein duality that ||P||_* in the seminorm equals the Wasserstein contraction coefficient of P with respect to d_w. Establish the exactness (no slack) of the Bubley-Dyer path-coupling lemma, i.e. that Wasserstein contraction over all pairs is determined by adjacent single-site pairs, provided d_w realizes adjacencies as geodesics.",
+        "agent": "solver-agent",
+        "depends_on": [
+          0
+        ]
+      },
+      {
+        "idx": 2,
+        "title": "Unify coupling and Dobrushin via Perron weighting",
+        "body": "Demonstrate that (a) path-coupling contraction on adjacent pairs and (b) the Dobrushin influence-matrix condition ||R||_infty <= beta are the same first-order contraction bound. Show that choosing w as the Perron eigenvector of R (right vector for the row-sum/ell^infty case, left vector for the column-sum/ell^1 case) converts the row/column bound into a w-weighted contraction with identical beta. Prove that for the hard-core model, where R ≈ (lambda/(1+lambda))A with A symmetric, the left/right dichotomy collapses to a single canonical w = Perron vector of A.",
+        "agent": "solver-agent",
+        "depends_on": [
+          1
+        ]
+      },
+      {
+        "idx": 3,
+        "title": "Derive the explicit contraction threshold",
+        "body": "Establish the closed-form contraction coefficient beta = 1 - (1/|V|)(1 - (lambda/(1+lambda)) rho(A)) and the threshold: contraction holds iff (lambda/(1+lambda)) rho(A) < 1, i.e. lambda < lambda_c = 1/(rho(A)-1) for rho(A)>1. Show this threshold depends only on the spectral invariant rho(A).",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 4,
+        "title": "Quantify the ell^infty to ell^2 slack (condition number kappa)",
+        "body": "Formalize Spielman's sandwich gap(L) >= 1 - ||P||_* >= gap(L)/kappa, where kappa measures the deviation of the d_w embedding from an ell^2 harmonic embedding. Using the decomposition R = (lambda/(1+lambda))A + E, express kappa-1 to first order as ||E||/gap, identifying E as the boundary-condition / higher-correlation correction. State explicitly the regime (decay of correlations, symmetrizable R, graphon limit) where kappa -> 1 and the coupling bound becomes asymptotically lossless.",
+        "agent": "solver-agent",
+        "depends_on": [
+          3
+        ]
+      },
+      {
+        "idx": 5,
+        "title": "Stress-test with K_2 and delimit non-optimality",
+        "body": "Carry out the explicit K_2 computation (independent sets {empty, {1}, {2}}, F of dimension 2): compute lambda_2(P) honestly and compare against beta. Confirm that kappa -> 1 is only asymptotic with O(1/|V|) finite-size slack equal to the boundary term E. Separately verify that the linearized threshold lambda < 1/(d-1) ~ 1/d on the d-regular tree differs from the true Kelly uniqueness threshold lambda_c = (d-1)^(d-1)/(d-2)^d ~ e/d by the constant factor e, documenting that the common norm is honest but suboptimal.",
+        "agent": "critic-agent",
+        "depends_on": [
+          3,
+          4
+        ]
+      },
+      {
+        "idx": 6,
+        "title": "Establish algorithmic computability of the weights",
+        "body": "Show that the Perron weighting w need not be computed exactly: by projective-cone stability a (1+epsilon)-approximate w yields a (1+O(epsilon))-approximate seminorm. Prove that power iteration on A (equivalently a few rounds of the heat semigroup, or a Laplacian-type solve) computes w in nearly-linear time, converting the canonical construction into a canonical algorithm.",
+        "agent": "solver-agent",
+        "depends_on": [
+          2
+        ]
+      },
+      {
+        "idx": 7,
+        "title": "Verify graphon invariance and assemble final statement",
+        "body": "Prove that along convergent sequences G_n -> W, the seminorm Lip_{d_{w_n}} converges to the Lipschitz seminorm against the integral operator T_W and the normalized rho(A_n) converges to ||T_W||_op, so lambda_c is a graphon invariant. Assemble the verified components into the final theorem: the common norm exists canonically, both proofs read off the same spectral data, with explicit caveats on sharpness from steps 4-5. Verify internal consistency of all constants and thresholds.",
+        "agent": "verifier-agent",
+        "depends_on": [
+          4,
+          5,
+          6
+        ]
+      }
+    ],
+    "synthesized_at": "2026-06-23T14:03:51Z",
+    "status": "pending",
+    "executed_steps": []
+  },
+  "execution_log": []
+}

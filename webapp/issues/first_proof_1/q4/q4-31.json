@@ -3,7 +3,7 @@
   "problem_id": "q4",
   "dataset": "first_proof_1",
   "title": "Minor: Differentiability of root map Psi assumed without justification",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-gap"
   ],
@@ -24,6 +24,21 @@
       "role": "agent",
       "body": "## Gap Description\n\nThe proof of Observation obs:scores differentiates gamma((a+b)t) = Psi(alpha(at), beta(bt))\nwith respect to t and invokes the chain rule to obtain:\n  (a+b) * gamma'(0) = Jac(a * alpha'(0), b * beta'(0))\n\nThe proof of Lemma lem:hess computes partial_t gamma_i(t) and partial_t^2 gamma_i(t)\nalong the path (alpha+tu, beta+tv), using the Jacobian Jac and Hessians H^{(i)} of\nthe root map Psi_{boxplus_n}.\n\n## What Is Unverified\n\nThe root map Psi: R^n x R^n -> R^n, (alpha, beta) |-> ordered roots of p boxplus_n q,\nis used as a C^2 map. The solution never establishes this differentiability.\n\n## Why It Is True\n\nAt a point (alpha, beta) where p boxplus_n q has simple roots:\n1. The polynomial coefficients c_k(alpha, beta) are smooth (polynomial) functions of (alpha, beta).\n2. Each root gamma_i of the degree-n polynomial with smooth coefficients c_k is a simple root.\n3. By the Implicit Function Theorem: if P(z, c) = sum_k c_k z^{n-k} and P(gamma_i, c(alpha,beta)) = 0\n   with partial_z P(gamma_i, c) != 0 (simple root), then z_i = gamma_i is a smooth function of c,\n   hence of (alpha, beta).\n4. The ordering of roots is consistent locally (no crossing for simple roots), so the ordered\n   root map is also smooth.\n\n## How To Fill The Gap\n\nAdd a sentence after \"Thus alpha, beta, gamma = Psi(alpha,beta) have distinct entries and are\nsmooth functions of the coefficients of the corresponding polynomials\":\n\"Smoothness of gamma_i as a function of (alpha, beta) follows from the Implicit Function Theorem\napplied to the equation P(gamma_i, c(alpha, beta)) = 0, since the partial derivative partial_z P\n= prod_{j != i}(gamma_i - gamma_j) != 0 at simple roots.\"",
       "created_at": "2026-06-17T15:24:18Z"
+    },
+    {
+      "id": "c67621a1a",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Resolution\n\nThe current `solution.tex` already contains a complete and rigorous fix for this gap, exactly along the lines suggested.\n\n**Lemma `lem:smooth`** (\"smoothness of $\\Psi_{\\boxplus_n}$ on the simple-root locus\") establishes that the ordered root map is $C^\\infty$ on the simple-root locus. Its proof carries out precisely the IFT argument requested:\n\n1. The coefficients $c_0=1,c_1,\\dots,c_n$ of $p\\boxplus_n q$ are polynomial (hence $C^\\infty$) in $(\\alpha,\\beta)$, via the explicit coefficient formula / Walsh representation.\n2. It defines $F(x;\\alpha,\\beta):=(p\\boxplus_n q)(x)=\\sum_k c_k(\\alpha,\\beta)x^{n-k}$, $C^\\infty$ jointly.\n3. At each simple root $x_0=\\gamma_i$, $\\partial_x F(x_0;\\alpha_0,\\beta_0)=(p\\boxplus_n q)'(x_0)=\\prod_{l\\ne i}(x_0-\\gamma_l)\\neq 0$, so the Implicit Function Theorem yields a unique local $C^\\infty$ root function $\\gamma_i$.\n4. Local consistency of the ordering (no crossing of simple roots) is handled by continuity, so the *ordered* root map equals $(\\gamma_1,\\dots,\\gamma_n)$ and is $C^\\infty$ on the simple-root locus.\n\nThe paragraph immediately following the lemma states: \"Henceforth, on the simple-root locus, $\\Psi_{\\boxplus_n}$ is $C^\\infty$ by Lemma~\\ref{lem:smooth}; let $\\mathsf{D}_{\\boxplus_n}$ denote the Jacobian ... and write $H^{(i)}:=\\operatorname{Hess}(\\Psi_{\\boxplus_n})_i$ ... Both exist classically and are used freely below.\"\n\nThis is exactly what licenses (a) the chain-rule step in Observation `obs:scores` giving $(a+b)\\gamma'(0)=\\mathsf{D}_{\\boxplus_n}(a\\alpha'(0),b\\beta'(0))$, and (b) the first- and second-order Taylor expansions of $\\gamma_i(t)$ in Lemma `lem:hess`.\n\nThe IFT identity flagged in the issue ($\\partial_z P=\\prod_{j\\ne i}(\\gamma_i-\\gamma_j)\\ne 0$ at simple roots) appears verbatim. No further edit to the proof is required; the differentiability of $\\Psi_{\\boxplus_n}$ is fully justified. (Note: no LaTeX toolchain is available in the workspace to recompile, but the file was not modified.)\n\nResolving as fixed.",
+      "created_at": "2026-06-21T21:33:52Z"
+    },
+    {
+      "id": "ev9794718f",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-21T21:33:56Z"
     }
   ]
 }

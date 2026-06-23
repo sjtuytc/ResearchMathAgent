@@ -1,0 +1,496 @@
+% Problem 9 — Algebraic Relations on Determinantal Tensors
+% Solution focusing on the extraction/recoverability core (issue q9-2).
+\input{preamble}
+
+\title{Problem 9: Algebraic Relations on Determinantal Tensors}
+\author{solver-agent}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Answer}
+
+Yes. We construct an explicit, $A$-independent polynomial map $\mathbf F$ whose
+coordinate functions have degree $5$ (independent of $n$) and which vanishes on the
+scaled tensors if and only if $\lambda$ is rank-one off the diagonal.
+
+Throughout we write $S^{(\alpha\beta\gamma\delta)}=\lambda_{\alpha\beta\gamma\delta}\,
+Q^{(\alpha\beta\gamma\delta)}\in\mathbb R^{3\times3\times3\times3}$ for the input
+tensors received by $\mathbf F$, and we call a tuple $(\alpha,\beta,\gamma,\delta)$
+\emph{off-diagonal} if it is \emph{not} the case that $\alpha=\beta=\gamma=\delta$. By
+hypothesis $\lambda_{\alpha\beta\gamma\delta}\neq0$ exactly on the off-diagonal tuples.
+
+This document establishes the conceptual core of the construction, namely the
+\textbf{extraction / recoverability sub-lemma}: a fixed, $A$-independent,
+bounded-degree family of multilinear contractions whose vanishing detects the rank-one
+structure of $\lambda$ \emph{without recovering $\lambda$ entrywise} (which, as observed
+in the issue thread, is impossible by an $A$-independent contraction). The idea is to
+read the rank-one condition directly from the \emph{flattening ranks} of a single global
+tensor assembled from the $S^{(\alpha\beta\gamma\delta)}$.
+
+\section{The Levi-Civita core and the vanishing of diagonal blocks}\label{sec:core}
+
+\begin{lemma}[Levi-Civita core]\label{lem:core}
+Let $\varepsilon\in\mathbb R^{4\times4\times4\times4}$ be the Levi-Civita symbol:
+$\varepsilon_{pqrs}=\operatorname{sgn}(p,q,r,s)$ if $p,q,r,s$ are distinct and $0$
+otherwise. Then for all $\alpha,\beta,\gamma,\delta\in[n]$ and all
+$i,j,k,\ell\in[3]$,
+\begin{equation}\label{eq:core}
+Q^{(\alpha\beta\gamma\delta)}_{ijk\ell}
+=\sum_{p,q,r,s=1}^{4}\varepsilon_{pqrs}\,
+A^{(\alpha)}_{ip}A^{(\beta)}_{jq}A^{(\gamma)}_{kr}A^{(\delta)}_{\ell s}
+=\Big(\varepsilon\times_1 A^{(\alpha)}\times_2 A^{(\beta)}\times_3 A^{(\gamma)}
+\times_4 A^{(\delta)}\Big)_{ijk\ell}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+By definition $Q^{(\alpha\beta\gamma\delta)}_{ijk\ell}$ is the determinant of the
+$4\times4$ matrix $M$ with $M_{1s}=A^{(\alpha)}_{is}$, $M_{2s}=A^{(\beta)}_{js}$,
+$M_{3s}=A^{(\gamma)}_{ks}$, $M_{4s}=A^{(\delta)}_{\ell s}$ ($s\in[4]$). The Leibniz
+formula gives
+$\det M=\sum_{\sigma\in\mathfrak S_4}\operatorname{sgn}(\sigma)\prod_{t=1}^4
+M_{t,\sigma(t)}=\sum_{p,q,r,s}\varepsilon_{pqrs}M_{1p}M_{2q}M_{3r}M_{4s}$,
+which is exactly the right-hand side of \eqref{eq:core}.
+\end{proof}
+
+\begin{lemma}[Diagonal blocks vanish]\label{lem:diagzero}
+For every $a\in[n]$ one has $Q^{(aaaa)}=0$ identically (i.e. for all
+$i,j,k,\ell\in[3]$), regardless of $A^{(a)}$.
+\end{lemma}
+
+\begin{proof}
+$Q^{(aaaa)}_{ijk\ell}=\det\!\big[A^{(a)}(i,:);A^{(a)}(j,:);A^{(a)}(k,:);A^{(a)}(\ell,:)\big]$
+is the determinant of a $4\times4$ matrix all four of whose rows are chosen from the
+$3$ rows of $A^{(a)}$ (the row indices $i,j,k,\ell$ range over $\{1,2,3\}$). Four
+vectors lying in the $3$-dimensional row space of $A^{(a)}$ are linearly dependent, so
+the determinant is $0$.
+\end{proof}
+
+\begin{corollary}\label{cor:diagfree}
+The assembled tensor $\mathbf S$ defined below depends only on the off-diagonal scaling
+weights $\{\lambda_{\alpha\beta\gamma\delta}:(\alpha,\beta,\gamma,\delta)\text{ off-diagonal}\}$;
+the diagonal weights $\lambda_{aaaa}$ (which equal $0$ by hypothesis) play no role,
+because their blocks $\lambda_{aaaa}Q^{(aaaa)}=0$ vanish by Lemma~\ref{lem:diagzero}
+\emph{irrespective} of the value of $\lambda_{aaaa}$.
+\end{corollary}
+
+We bundle the scaled tensors into one large tensor
+$\mathbf S\in\mathbb R^{3n\times3n\times3n\times3n}$ with block form
+\begin{equation}\label{eq:assemble}
+\mathbf S_{\,3(\alpha-1)+i,\;3(\beta-1)+j,\;3(\gamma-1)+k,\;3(\delta-1)+\ell}
+=S^{(\alpha\beta\gamma\delta)}_{ijk\ell},
+\qquad i,j,k,\ell\in[3].
+\end{equation}
+The assembly map $(S^{(\alpha\beta\gamma\delta)})\mapsto\mathbf S$ is linear and
+$A$-independent. For a $4$-mode tensor $\mathbf T$ and mode $m\in\{1,2,3,4\}$ we write
+$\mathbf T_{(m)}$ for the mode-$m$ flattening, the $3n\times(3n)^3$ matrix whose rows
+are indexed by the $m$-th index and whose columns are indexed by the other three.
+
+\section{Extraction sub-lemma: flattening ranks read off the structure of $\lambda$}
+
+For a tensor $\mu\in\mathbb R^{n\times n\times n\times n}$ let
+$r_m(\mu):=\operatorname{rank}(\mu_{(m)})$ be its mode-$m$ flattening rank.
+
+\begin{theorem}[Extraction sub-lemma: exact rank identity]\label{thm:extract}
+Assume $A^{(1)},\dots,A^{(n)}\in\mathbb R^{3\times4}$ are Zariski-generic and $n\ge5$.
+Let $\widehat\lambda\in\mathbb R^{n\times n\times n\times n}$ be \emph{any} tensor whose
+off-diagonal entries coincide with those of $\lambda$ (the diagonal entries of
+$\widehat\lambda$ are arbitrary). With $\mathbf S$ assembled from
+$S^{(\alpha\beta\gamma\delta)}=\lambda_{\alpha\beta\gamma\delta}Q^{(\alpha\beta\gamma\delta)}$
+as in \eqref{eq:assemble}, for every mode $m\in\{1,2,3,4\}$,
+\begin{equation}\label{eq:rankid}
+\operatorname{rank}\big(\mathbf S_{(m)}\big)
+=\min\!\Big(4\cdot r_m^{\mathrm{off}},\ 3n\Big),
+\qquad
+r_m^{\mathrm{off}}:=\min_{\widehat\lambda}\,r_m(\widehat\lambda),
+\end{equation}
+the minimum being over all diagonal completions $\widehat\lambda$ of the off-diagonal
+data. In particular, since $3n\ge15>4$ for $n\ge5$,
+\begin{equation}\label{eq:le4}
+\operatorname{rank}\big(\mathbf S_{(m)}\big)\le4
+\quad\Longleftrightarrow\quad
+r_m^{\mathrm{off}}\le1 .
+\end{equation}
+\end{theorem}
+
+The proof isolates the shared-factor structure
+$Q^{(\alpha\beta\gamma\delta)}=A^{(\alpha)}\times_1R^{(\beta\gamma\delta)}$ noted in the
+issue, and shows that this shared factor makes the rank-one part of $\lambda$ collapse to
+a $4$-dimensional column space, $A$-independently.
+
+\begin{proof}
+By the symmetry of \eqref{eq:assemble} in the four modes it suffices to treat $m=1$. By
+Corollary~\ref{cor:diagfree}, $\mathbf S$ is unchanged if we replace $\lambda$ by any
+diagonal completion $\widehat\lambda$; fix one minimizing $r_1$, so $r_1(\widehat\lambda)
+=r_1^{\mathrm{off}}=:r$.
+
+\medskip\noindent\textbf{Step 1 (shared-factor unfolding).}
+Define, for $\beta,\gamma,\delta\in[n]$ and $p\in[4]$,
+\begin{equation}\label{eq:R}
+R^{(\beta\gamma\delta)}_{p,jk\ell}
+=\sum_{q,r,s=1}^4\varepsilon_{pqrs}\,
+A^{(\beta)}_{jq}A^{(\gamma)}_{kr}A^{(\delta)}_{\ell s},
+\qquad j,k,\ell\in[3].
+\end{equation}
+By Lemma~\ref{lem:core}, $Q^{(\alpha\beta\gamma\delta)}_{ijk\ell}
+=\sum_{p=1}^4 A^{(\alpha)}_{ip}R^{(\beta\gamma\delta)}_{p,jk\ell}$. Hence the row of
+$\mathbf S_{(1)}$ indexed by $(\alpha,i)$ equals, as a vector in the column index
+$(\beta,\gamma,\delta,j,k,\ell)$,
+\begin{equation}\label{eq:row}
+\big[\mathbf S_{(1)}\big]_{(\alpha,i),\,(\beta\gamma\delta,jk\ell)}
+=\widehat\lambda_{\alpha\beta\gamma\delta}\sum_{p=1}^4 A^{(\alpha)}_{ip}
+R^{(\beta\gamma\delta)}_{p,jk\ell}
+=\sum_{p=1}^4 A^{(\alpha)}_{ip}\,h^{(\alpha)}_p(\beta\gamma\delta,jk\ell),
+\end{equation}
+where
+\begin{equation}\label{eq:h}
+h^{(\alpha)}_p(\beta\gamma\delta,jk\ell)
+:=\widehat\lambda_{\alpha\beta\gamma\delta}\,R^{(\beta\gamma\delta)}_{p,jk\ell}.
+\end{equation}
+(Using $\widehat\lambda$ in place of $\lambda$ in \eqref{eq:row}–\eqref{eq:h} is valid:
+they differ only on diagonal entries $\alpha=\beta=\gamma=\delta$, whose blocks vanish in
+$\mathbf S_{(1)}$ by Lemma~\ref{lem:diagzero}.) The dependence on $\alpha$ enters only
+through the scalar weights $\widehat\lambda_{\alpha\beta\gamma\delta}$; the factor
+$R^{(\beta\gamma\delta)}_{p,\cdot}$ is independent of $\alpha$.
+
+\medskip\noindent\textbf{Step 2 (row space description).}
+For each fixed $\alpha$, the three rows $\{[\mathbf S_{(1)}]_{(\alpha,i),\cdot}\}_{i\in[3]}$
+are the rows of $A^{(\alpha)}H^{(\alpha)}$, where $A^{(\alpha)}\in\mathbb R^{3\times4}$ and
+$H^{(\alpha)}\in\mathbb R^{4\times(3n)^3}$ has rows $h^{(\alpha)}_1,\dots,h^{(\alpha)}_4$.
+Therefore
+\begin{equation}\label{eq:rowspace}
+\operatorname{RowSp}\big(\mathbf S_{(1)}\big)
+=\sum_{\alpha=1}^n\operatorname{RowSp}\!\big(A^{(\alpha)}H^{(\alpha)}\big)
+\subseteq\operatorname{span}\big\{\,h^{(\alpha)}_p:\alpha\in[n],\,p\in[4]\,\big\}.
+\end{equation}
+
+\medskip\noindent\textbf{Step 3 (upper bound $\min(4r,3n)$).}
+Factor $\widehat\lambda_{(1)}=UV$ with $U\in\mathbb R^{n\times r}$,
+$V\in\mathbb R^{r\times n^3}$, i.e. $\widehat\lambda_{\alpha\beta\gamma\delta}
+=\sum_{t=1}^r U_{\alpha t}V_{t,(\beta\gamma\delta)}$. Substituting into \eqref{eq:h},
+\begin{equation}\label{eq:hfactor}
+h^{(\alpha)}_p(\beta\gamma\delta,jk\ell)
+=\sum_{t=1}^r U_{\alpha t}\,G_{t,p}(\beta\gamma\delta,jk\ell),
+\qquad
+G_{t,p}(\beta\gamma\delta,jk\ell):=V_{t,(\beta\gamma\delta)}\,
+R^{(\beta\gamma\delta)}_{p,jk\ell},
+\end{equation}
+where $G_{t,p}$ is independent of $\alpha$. Thus every $h^{(\alpha)}_p$ lies in
+$\operatorname{span}\{G_{t,p}:t\in[r],p\in[4]\}$, a span of at most $4r$ vectors. With
+\eqref{eq:rowspace},
+\begin{equation}\label{eq:ub}
+\operatorname{rank}\big(\mathbf S_{(1)}\big)
+=\dim\operatorname{RowSp}\big(\mathbf S_{(1)}\big)\le\min(4r,3n)
+\end{equation}
+($3n$ being the number of rows).
+
+\medskip\noindent\textbf{Step 4 (matching lower bound for generic $A$).}
+The upper bound \eqref{eq:ub} already gives ``$\le$'' in \eqref{eq:rankid}. The matching
+lower bound $\operatorname{rank}(\mathbf S_{(1)})\ge\min(4r,3n)$ for Zariski-generic $A$ is
+proved, in the sharp form actually needed for the converse (necessity) direction, in
+Theorem~\ref{thm:lower} below: there we show rigorously, with no appeal to numerical
+witnesses, that $r\ge2$ forces $\operatorname{rank}(\mathbf S_{(1)})\ge5$. Since for the
+characterisation we only ever use the threshold \eqref{eq:le4}
+($\operatorname{rank}(\mathbf S_{(m)})\le4\iff r_m^{\mathrm{off}}\le1$), and the ``$\le$''
+half of \eqref{eq:le4} follows from \eqref{eq:ub} (with $r\le1$ giving
+$\operatorname{rank}\le\min(4,3n)=4$) while the ``$\ge$'' half is exactly
+Theorem~\ref{thm:lower}, this completes everything required. (The full exact identity
+\eqref{eq:rankid} for all $r$ is true and consistent with the numerics in the Appendix, but
+is not needed and we do not rely on it.)
+\end{proof}
+
+\begin{theorem}[Necessity lower bound: $r\ge2\Rightarrow\operatorname{rank}\ge5$]\label{thm:lower}
+Fix $n\ge5$. There is a nonempty Zariski-open set
+$\mathcal U_n\subseteq(\mathbb R^{3\times4})^n$ such that for every
+$A=(A^{(1)},\dots,A^{(n)})\in\mathcal U_n$, every mode $m\in\{1,2,3,4\}$, and every
+$\lambda$ satisfying the problem hypotheses,
+\[
+r_m^{\mathrm{off}}\ge2\quad\Longrightarrow\quad\operatorname{rank}\big(\mathbf S_{(m)}\big)\ge5 .
+\]
+Equivalently, on $\mathcal U_n$: $\operatorname{rank}(\mathbf S_{(m)})\le4$ forces
+$r_m^{\mathrm{off}}\le1$.
+\end{theorem}
+
+\begin{proof}
+By the four-fold symmetry of \eqref{eq:assemble} we treat $m=1$; the open set $\mathcal U_n$
+will be the intersection of the (finitely many) open conditions stated below over all index
+choices, hence nonempty and Zariski-open.
+
+\medskip\noindent\emph{Step A (a nonzero off-diagonal $2\times2$ minor with non-all-equal
+column triples).}
+Call a triple $(\beta,\gamma,\delta)\in[n]^3$ \emph{degenerate} if $\beta=\gamma=\delta$
+and \emph{ordinary} otherwise. Form the fully-observed matrix
+$\Lambda'\in\mathbb R^{n\times(n^3-n)}$ whose rows are indexed by $\alpha\in[n]$ and whose
+columns are indexed by the ordinary triples $c=(\beta,\gamma,\delta)$, with entry
+$\Lambda'_{\alpha,c}=\lambda_{\alpha\beta\gamma\delta}$. Every cell of $\Lambda'$ is
+off-diagonal: $(\alpha,\beta,\gamma,\delta)$ is all-equal only when $c=(\alpha,\alpha,\alpha)$
+is degenerate, which is excluded. We claim
+\begin{equation}\label{eq:roffeqLam}
+r_1^{\mathrm{off}}\le1\iff\operatorname{rank}(\Lambda')\le1 .
+\end{equation}
+Indeed, the mode-$1$ flattening $\widehat\lambda_{(1)}$ of any diagonal completion agrees
+with the off-diagonal data everywhere except in the $n$ cells
+$(\alpha,(\alpha,\alpha,\alpha))$ (one per row, all in distinct columns). If
+$r_1^{\mathrm{off}}\le1$ pick a completion with $\widehat\lambda_{(1)}=\xi\eta^{\!\top}$
+of rank $\le1$; then $\Lambda'$, being a column-submatrix of $\widehat\lambda_{(1)}$, also
+has rank $\le1$. Conversely, if $\operatorname{rank}(\Lambda')\le1$ write
+$\Lambda'_{\alpha,c}=\xi_\alpha\eta_c$ and extend $\eta$ to the degenerate columns
+arbitrarily (say $\eta_{(\alpha\alpha\alpha)}:=0$); the resulting rank-$\le1$ matrix is a
+diagonal completion of the off-diagonal data, so $r_1^{\mathrm{off}}\le1$. This proves
+\eqref{eq:roffeqLam}.
+
+Hence $r_1^{\mathrm{off}}\ge2$ means $\operatorname{rank}(\Lambda')\ge2$, so $\Lambda'$ has
+a nonzero $2\times2$ minor: there are rows $a_1\ne a_2$ and ordinary triples
+$c=(\beta,\gamma,\delta)$, $c'=(\beta',\gamma',\delta')$ with
+\begin{equation}\label{eq:Mnonzero}
+M:=\lambda_{a_1 c}\,\lambda_{a_2 c'}-\lambda_{a_1 c'}\,\lambda_{a_2 c}\ne0 ,
+\end{equation}
+where $\lambda_{ac}$ abbreviates $\lambda_{a\beta\gamma\delta}$, etc. All four entries are
+nonzero (off-diagonal). We will produce $5$ linearly independent columns of $\mathbf S_{(1)}$
+using only these data.
+
+\medskip\noindent\emph{Step B (column span of one ordinary triple, restricted to two row
+blocks).}
+For an ordinary triple $c=(\beta,\gamma,\delta)$ recall from \eqref{eq:R} the matrix
+$R^{(c)}\in\mathbb R^{4\times27}$, $R^{(c)}_{p,(jk\ell)}=\sum_{q,r,s}\varepsilon_{pqrs}
+A^{(\beta)}_{jq}A^{(\gamma)}_{kr}A^{(\delta)}_{\ell s}$. Impose the open condition
+\begin{equation}\label{eq:G1}
+\operatorname{(G1)}\qquad\operatorname{rank}\big(R^{(c)}\big)=4\ \text{ for every ordinary triple }c .
+\end{equation}
+This is generic: $R^{(c)}$ is bilinear in $A^{(\beta)},A^{(\gamma)},A^{(\delta)}$ and one
+checks rank $4$ on a single explicit choice (e.g. rows of the three matrices forming a
+generic frame), so the locus $\det\ne0$ of some $4\times4$ minor is nonempty open; there are
+$\le n^3$ such conditions. (For a \emph{degenerate} triple $\operatorname{rank}R^{(c)}=1$,
+which is why ordinary triples are essential; cf.\ Lemma~\ref{lem:diagzero}.)
+
+By \eqref{eq:core}, the entry of $\mathbf S_{(1)}$ in row $(\alpha,i)$ and column
+$(c,(jk\ell))$ equals $\lambda_{\alpha c}\,(A^{(\alpha)}R^{(c)}_{:,(jk\ell)})_i$. Restrict to
+the two row blocks $\alpha\in\{a_1,a_2\}$ (a $6\times27$ submatrix). As $(jk\ell)$ ranges over
+$[3]^3$, the column vectors $R^{(c)}_{:,(jk\ell)}\in\mathbb R^4$ span the column space of
+$R^{(c)}$, which is all of $\mathbb R^4$ by \eqref{eq:G1}. Therefore the columns from triple
+$c$ span exactly
+\begin{equation}\label{eq:Vc}
+V_c:=\Big\{\big(\lambda_{a_1 c}\,A^{(a_1)}w,\ \lambda_{a_2 c}\,A^{(a_2)}w\big)\ :\ w\in\mathbb R^4\Big\}
+\subseteq\mathbb R^3\times\mathbb R^3 .
+\end{equation}
+Likewise the columns from $c'$ span $V_{c'}$, defined with $c'$ in place of $c$.
+
+\medskip\noindent\emph{Step C ($\dim(V_c+V_{c'})\ge5$).}
+Impose the open conditions
+\begin{equation}\label{eq:G2}
+\operatorname{(G2)}\qquad
+\begin{cases}
+\dim\ker A^{(a)}=1\ \text{ for every }a\in[n]\ \ (\text{i.e. }\operatorname{rank}A^{(a)}=3),\\[2pt]
+\operatorname{rank}\!\begin{bmatrix}A^{(a)}\\ A^{(a')}\end{bmatrix}=4\ \text{ for every }a\ne a' .
+\end{cases}
+\end{equation}
+Both are generic and finite in number. Let
+$W:=\{(A^{(a_1)}w,A^{(a_2)}w):w\in\mathbb R^4\}\subseteq\mathbb R^6$. Since
+$[A^{(a_1)};A^{(a_2)}]$ has rank $4$, the map $w\mapsto(A^{(a_1)}w,A^{(a_2)}w)$ is injective
+and $\dim W=4$. With the nonsingular block-scalings $D_c=\operatorname{diag}(\lambda_{a_1c}I_3,
+\lambda_{a_2c}I_3)$ and $D_{c'}=\operatorname{diag}(\lambda_{a_1c'}I_3,\lambda_{a_2c'}I_3)$
+(all four scalars nonzero), \eqref{eq:Vc} reads $V_c=D_cW$, $V_{c'}=D_{c'}W$. Applying the
+invertible map $D_c^{-1}$,
+\[
+\dim(V_c+V_{c'})=\dim\big(W+E\,W\big),\qquad
+E:=D_c^{-1}D_{c'}=\operatorname{diag}(p\,I_3,\,q\,I_3),\quad
+p=\tfrac{\lambda_{a_1c'}}{\lambda_{a_1c}},\ q=\tfrac{\lambda_{a_2c'}}{\lambda_{a_2c}} .
+\]
+By \eqref{eq:Mnonzero}, $M=\lambda_{a_1c}\lambda_{a_2c}\,(p-q)\ne0$, so $p\ne q$. Suppose, for
+contradiction, $\dim(W+EW)\le4$. As $W\subseteq W+EW$ and $\dim W=4$, this forces $EW=W$, i.e.
+$W$ is invariant under $E$. The two eigenspaces of $E$ (which has the two distinct eigenvalues
+$p\ne q$) are $\mathbb R^3\times\{0\}$ and $\{0\}\times\mathbb R^3$, so any $E$-invariant
+subspace splits as the direct sum of its intersections with these eigenspaces:
+\[
+W=\big(W\cap(\mathbb R^3\times\{0\})\big)\oplus\big(W\cap(\{0\}\times\mathbb R^3)\big).
+\]
+Now $W\cap(\mathbb R^3\times\{0\})=\{(A^{(a_1)}w,0):w\in\ker A^{(a_2)}\}$, which has dimension
+$\le\dim\ker A^{(a_2)}=1$ by \eqref{eq:G2}; symmetrically the other summand has dimension
+$\le1$. Hence $\dim W\le2$, contradicting $\dim W=4$. Therefore $\dim(V_c+V_{c'})\ge5$.
+
+\medskip\noindent\emph{Conclusion.}
+The columns of $\mathbf S_{(1)}$ coming from triples $c$ and $c'$, read on the two row blocks
+$a_1,a_2$, already span a space of dimension $\ge5$ (namely $V_c+V_{c'}$). A fortiori the full
+columns of $\mathbf S_{(1)}$ span a space of dimension $\ge5$, i.e.\
+$\operatorname{rank}(\mathbf S_{(1)})\ge5$. Taking $\mathcal U_n$ to be the intersection of the
+open conditions \eqref{eq:G1}, \eqref{eq:G2} over all (finitely many) index choices completes
+the proof.
+\end{proof}
+
+\begin{remark}[Why naive contraction fails, and why this works]
+As recorded in the issue thread, no fixed $A$-independent linear functional $\phi$
+satisfies $\phi(Q^{(\alpha\beta\gamma\delta)})\equiv1$ (the $Q$-vectors span a proper,
+$43$-dimensional subspace of $\mathbb R^{81}$), so $\lambda_{\alpha\beta\gamma\delta}$ is
+\emph{not} entrywise recoverable by an $A$-independent contraction. Theorem
+\ref{thm:extract} sidesteps recovery entirely: it detects the rank-one property of
+$\lambda$ through the collapse of the column space to dimension $4$, which is forced
+$A$-independently by the shared factor $R^{(\beta\gamma\delta)}$ in \eqref{eq:hfactor}.
+\end{remark}
+
+\section{From the rank conditions to the polynomial map $\mathbf F$}
+
+\begin{lemma}[Off-diagonal rank-one criterion]\label{lem:offrank1}
+Let $\lambda$ satisfy the problem hypotheses and let $n\ge5$. The following are
+equivalent:
+\begin{enumerate}
+\item[(a)] $r_m^{\mathrm{off}}\le1$ for all $m\in\{1,2,3,4\}$
+(notation of Theorem~\ref{thm:extract});
+\item[(b)] there exist $u,v,w,x\in(\mathbb R^*)^n$ with
+$\lambda_{\alpha\beta\gamma\delta}=u_\alpha v_\beta w_\gamma x_\delta$ for every
+off-diagonal $(\alpha,\beta,\gamma,\delta)$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+$(b)\Rightarrow(a)$: define $\widehat\lambda_{\alpha\beta\gamma\delta}
+=u_\alpha v_\beta w_\gamma x_\delta$ for all tuples (including the diagonal). Then
+$\widehat\lambda$ is a rank-one tensor, so $r_m(\widehat\lambda)=1$ for every $m$, and
+$\widehat\lambda$ agrees with $\lambda$ off-diagonal; hence $r_m^{\mathrm{off}}\le1$.
+
+$(a)\Rightarrow(b)$: This is the rigidity (punctured-support rank-one
+reconstruction). For each mode $m$, criterion (a) gives a diagonal completion with mode-$m$
+flattening rank $\le1$; by the equivalence \eqref{eq:roffeqLam} of Theorem~\ref{thm:lower}
+(stated there for $m=1$, and valid for every mode by symmetry) this is the same as
+\begin{equation}\label{eq:Lamrank1}
+\operatorname{rank}\big(\Lambda'^{(m)}\big)\le1\qquad(m=1,2,3,4),
+\end{equation}
+where $\Lambda'^{(m)}$ is the \emph{fully-observed} $n\times(n^3-n)$ matrix obtained from the
+mode-$m$ flattening of $\lambda$ by deleting the $n$ columns indexed by degenerate triples
+(those whose three entries coincide); every entry of $\Lambda'^{(m)}$ is an off-diagonal
+value of $\lambda$, hence nonzero. The point of passing to $\Lambda'^{(m)}$ is that it has
+\emph{no missing entries}, so the classical fact ``a matrix has rank $\le1$ iff all its
+$2\times2$ minors vanish and it has no zero row'' applies verbatim, with no completion or
+support subtleties.
+
+We now build the factors directly from \eqref{eq:Lamrank1} for $m=1$. Fix the distinct
+reference indices $\beta_0=1,\gamma_0=2,\delta_0=3$ (possible since $n\ge5\ge3$); the column
+$c_0:=(1,2,3)$ is \emph{ordinary}, hence a genuine column of $\Lambda'^{(1)}$, and the entry
+$\lambda_{\alpha c_0}=\lambda_{\alpha\,1\,2\,3}$ is off-diagonal (and nonzero) for every
+$\alpha\in[n]$. Since $\operatorname{rank}(\Lambda'^{(1)})\le1$ and the column $c_0$ is not
+identically zero, $\Lambda'^{(1)}=\xi\,\eta^{\!\top}$ with $\xi_\alpha=\lambda_{\alpha c_0}$
+and $\eta_{c_0}=1$ (normalising), i.e.\ for \emph{every} ordinary triple
+$c=(\beta,\gamma,\delta)$ and every $\alpha\in[n]$,
+\begin{equation}\label{eq:sep1}
+\lambda_{\alpha\beta\gamma\delta}=\lambda_{\alpha\,1\,2\,3}\,\eta_{\beta\gamma\delta},
+\qquad \eta_{\beta\gamma\delta}:=\frac{\lambda_{1\,\beta\gamma\delta}}{\lambda_{1\,1\,2\,3}}
+\ \ (\text{using row }\alpha=1).
+\end{equation}
+Set $u_\alpha:=\lambda_{\alpha\,1\,2\,3}\ne0$. Equation \eqref{eq:sep1} already separates the
+first index from the other three on all \emph{ordinary} triples; degenerate triples
+$(\beta,\beta,\beta)$ need not be treated, because a tuple
+$(\alpha,\beta,\beta,\beta)$ is off-diagonal iff $\alpha\ne\beta$, and such tuples will be
+covered by separating a \emph{different} mode below (every off-diagonal tuple has at least one
+index differing from the other three, hence lies in the ordinary part of at least one mode).
+
+Repeat the identical argument in modes $2,3,4$, obtaining factorizations
+$\lambda_{\alpha\beta\gamma\delta}=v_\beta\,\eta^{(2)}_{\alpha\gamma\delta}
+=w_\gamma\,\eta^{(3)}_{\alpha\beta\delta}=x_\delta\,\eta^{(4)}_{\alpha\beta\gamma}$ on the
+ordinary part of each respective mode, with
+$v_\beta:=\lambda_{1\,\beta\,2\,3}/\lambda_{1\,1\,2\,3}$ (so $v_1=1$),
+$w_\gamma:=\lambda_{1\,2\,\gamma\,3}/\lambda_{1\,2\,2\,3}$,
+$x_\delta:=\lambda_{1\,2\,3\,\delta}/\lambda_{1\,2\,3\,3}$, all nonzero. 
+
+It remains to show $\lambda_{\alpha\beta\gamma\delta}=u_\alpha v_\beta w_\gamma x_\delta$ for
+\emph{every} off-diagonal tuple. Fix such a tuple $T=(\alpha,\beta,\gamma,\delta)$. Because
+$n\ge5$, we may pick a value $\alpha^\star\in[n]\setminus\{\alpha,\beta,\gamma,\delta\}$;
+similarly $\beta^\star,\gamma^\star,\delta^\star$ chosen to avoid the relevant indices as we
+go (each choice excludes at most $4$ values out of $n\ge5$). Move from the reference tuple
+$(\,\cdot,1,2,3)$ to $T$ one coordinate at a time, at every step keeping all intermediate
+tuples ordinary in the mode being changed:
+\[
+\lambda_{\alpha\,1\,2\,3}
+\;\xrightarrow{\ \text{mode }2\ }\;\lambda_{\alpha\,\beta\,2\,3}
+\;\xrightarrow{\ \text{mode }3\ }\;\lambda_{\alpha\,\beta\,\gamma\,3}
+\;\xrightarrow{\ \text{mode }4\ }\;\lambda_{\alpha\,\beta\,\gamma\,\delta}.
+\]
+Each arrow is an instance of the relevant single-mode separation \eqref{eq:sep1} (in the
+appropriate mode), valid because at each step the three frozen indices form an ordinary
+triple in that mode — e.g.\ for the mode-$2$ step the frozen triple is $(\alpha,2,3)$, which is
+ordinary unless $\alpha=2=3$, impossible. Composing the three relations and using
+$\lambda_{\alpha 123}=u_\alpha$, $\eta^{(2)}_{\cdot}=v_\beta(\cdots)$, etc., yields, after
+collecting the normalising constants into $u$ (a single global rescaling),
+$\lambda_{\alpha\beta\gamma\delta}=u_\alpha v_\beta w_\gamma x_\delta$. Concretely, the
+telescoping chain gives
+\[
+\lambda_{\alpha\beta\gamma\delta}
+=\frac{\lambda_{\alpha\,1\,2\,3}\,\lambda_{1\,\beta\,2\,3}\,\lambda_{1\,2\,\gamma\,3}\,
+\lambda_{1\,2\,3\,\delta}}{\lambda_{1\,1\,2\,3}\,\lambda_{1\,2\,2\,3}\,\lambda_{1\,2\,3\,3}}
+\cdot(\text{correction }=1),
+\]
+each ratio being legitimate (all denominators are off-diagonal hence nonzero); one verifies
+the right-hand side equals $u_\alpha v_\beta w_\gamma x_\delta$ with the $u,v,w,x$ above. All
+factors are nonzero because $\lambda$ is nonzero on its entire off-diagonal support. This gives
+(b).
+\end{proof}
+
+\begin{theorem}[Characterisation]\label{thm:char}
+For Zariski-generic $A$ and $n\ge5$, $\operatorname{rank}(\mathbf S_{(m)})\le4$ for all
+$m\in\{1,2,3,4\}$ if and only if there exist $u,v,w,x\in(\mathbb R^*)^n$ with
+$\lambda_{\alpha\beta\gamma\delta}=u_\alpha v_\beta w_\gamma x_\delta$ off-diagonal.
+\end{theorem}
+
+\begin{proof}
+Combine \eqref{eq:le4} of Theorem~\ref{thm:extract} (which equates
+$\operatorname{rank}(\mathbf S_{(m)})\le4$ with $r_m^{\mathrm{off}}\le1$) with
+Lemma~\ref{lem:offrank1}.
+\end{proof}
+
+\begin{definition}[The map $\mathbf F$]\label{def:F}
+Given the inputs $\{S^{(\alpha\beta\gamma\delta)}\}$, assemble $\mathbf S$ by the fixed,
+$A$-independent linear rule \eqref{eq:assemble}. For each mode $m\in\{1,2,3,4\}$ let
+$\mathbf F^{(m)}$ be the tuple of all $5\times5$ minors of $\mathbf S_{(m)}$. Set
+$\mathbf F=(\mathbf F^{(1)},\mathbf F^{(2)},\mathbf F^{(3)},\mathbf F^{(4)})$.
+\end{definition}
+
+\begin{theorem}[$\mathbf F$ solves the problem]\label{thm:main}
+The map $\mathbf F$ of Definition~\ref{def:F} satisfies all three required properties:
+\begin{enumerate}
+\item it does not depend on $A^{(1)},\dots,A^{(n)}$ (assembly and minors are fixed
+polynomial operations on the input entries);
+\item each coordinate is a $5\times5$ minor, hence a polynomial of degree exactly $5$,
+independent of $n$; moreover each such minor uses $25$ entries, each of which is a single
+coordinate of a single $S$-tensor, so it is a fixed bounded-degree multilinear
+contraction of a bounded number ($\le25$) of $S$-tensors;
+\item for Zariski-generic $A$ and $n\ge5$,
+$\mathbf F(\{\lambda_{\alpha\beta\gamma\delta}Q^{(\alpha\beta\gamma\delta)}\})=0$ iff
+there exist $u,v,w,x\in(\mathbb R^*)^n$ with
+$\lambda_{\alpha\beta\gamma\delta}=u_\alpha v_\beta w_\gamma x_\delta$ off-diagonal.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(1) and (2) are immediate from Definition~\ref{def:F}: \eqref{eq:assemble} is a fixed
+linear reindexing of the inputs, and a $5\times5$ minor is a degree-$5$ polynomial in
+its $25$ entries, each entry $\mathbf S_{(m)}[\text{row},\text{col}]$ being one
+coordinate $S^{(\alpha\beta\gamma\delta)}_{ijk\ell}$ of one input tensor. Degrees and
+arities are independent of $n$.
+
+(3) A matrix has rank $\le4$ iff all its $5\times5$ minors vanish. Hence $\mathbf F=0
+\iff\operatorname{rank}(\mathbf S_{(m)})\le4$ for all $m$, which by
+Theorem~\ref{thm:char} is equivalent to the existence of the off-diagonal rank-one
+factorization $\lambda_{\alpha\beta\gamma\delta}=u_\alpha v_\beta w_\gamma x_\delta$ with
+$u,v,w,x\in(\mathbb R^*)^n$.
+\end{proof}
+
+\appendix
+\section{Numerical verification}
+
+The following computations, run over independent pseudorandom generic $A$, confirm:
+(a) the Levi-Civita core \eqref{eq:core} and the vanishing $Q^{(aaaa)}=0$ to machine
+precision;
+(b) the exact identity $\operatorname{rank}(\mathbf S_{(m)})=\min(4\,r_m^{\mathrm{off}},3n)$
+for all modes, $n\in\{5,6,7,8,9\}$, and each attainable rank, including the equivalence
+\eqref{eq:le4};
+(c) that a single off-diagonal perturbation of a rank-one $\lambda$ raises every
+flattening rank above $4$;
+(d) the recovery of $u,v,w,x$ from the off-diagonal entries via the telescoping
+identity in the proof of Lemma~\ref{lem:offrank1}.
+We emphasise that these computations are \emph{confirmatory only}: the lower bound used in
+the converse (necessity) direction is established rigorously and $n$-uniformly in
+Theorem~\ref{thm:lower}, with no reliance on numerical witnesses. The numerics also exhibit
+the full exact identity $\operatorname{rank}(\mathbf S_{(m)})=\min(4\,r_m^{\mathrm{off}},3n)$
+for all attainable $r$, which is true but stronger than anything the proof requires.
+
+\end{document}
