@@ -853,9 +853,9 @@ MathJax = {
       </div>
     </section>
 
-    <section class="pane" id="pane-documents" style="display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 98px);gap:0">
+    <section class="pane" id="pane-documents" style="display:grid;grid-template-columns:1fr;height:calc(100vh - 98px);gap:0">
       <!-- Left: document browser -->
-      <div id="doc-sidebar" style="border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;background:var(--panel2)">
+      <div id="doc-sidebar" style="display:none;border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;background:var(--panel2)">
         <div style="padding:4px 12px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Context Reports</div>
         <div id="doc-report-list" style="padding:0 6px"></div>
         <div style="padding:10px 12px 4px;border-top:1px solid var(--border);margin-top:8px">
@@ -1651,22 +1651,25 @@ async function init(){
       if(!problems.length){ problems=STATIC_PROBLEMS; renderProblemList(problems); }
     });
     // Provider options from server capabilities (non-blocking)
+    let claudeCodeAvailable=false;
     try{
       const r=await fetchWithTimeout("/api/capabilities",5000);
       if(r.ok){
         const d=await r.json();
         vertexCfg=d.vertex||vertexCfg;
+        claudeCodeAvailable=!!d.claude_code;
       }
     }catch(_){}
     const prov=$("provider"); prov.innerHTML="";
-    if(vertexCfg.available){
-      prov.appendChild(new Option("Google Cloud (Vertex AI)","vertex"));
-      prov.value="vertex";
-    } else {
-      prov.appendChild(new Option("Google Cloud (Vertex AI — not configured)","vertex"));
-      prov.value="vertex";
+    // Default to the Claude AI subscription (Claude Code); Vertex is opt-in only.
+    if(claudeCodeAvailable){
+      prov.appendChild(new Option("Claude AI subscription (Claude Code)","claude-code"));
     }
-    prov.appendChild(new Option("Anthropic API (fallback)","api"));
+    prov.appendChild(new Option(
+      vertexCfg.available ? "Google Cloud (Vertex AI)" : "Google Cloud (Vertex AI — not configured)",
+      "vertex"));
+    prov.appendChild(new Option("Anthropic API (per-token)","api"));
+    prov.value = claudeCodeAvailable ? "claude-code" : "vertex";
     if(vertexCfg.project) $("gcp-project").value=vertexCfg.project;
     prov.onchange=onProviderChange; onProviderChange();
     await refreshVertexUsage();
@@ -1682,13 +1685,17 @@ function onProviderChange(){
   const isVertex = p==="vertex";
   $("gcp-project-wrap").style.display = isVertex ? "" : "none";
   const autoProject = vertexCfg.project && $("gcp-project").value.trim()===vertexCfg.project;
-  $("prov-note").innerHTML = isVertex
-    ? (vertexCfg.available
+  if(p==="claude-code"){
+    $("prov-note").innerHTML = "Default provider: <strong>your Claude AI subscription</strong> (Claude Code CLI, billed to your Pro/Max plan — no Vertex / API credits used). Select Vertex above only if you explicitly want Google Cloud.";
+  } else if(isVertex){
+    $("prov-note").innerHTML = vertexCfg.available
       ? (autoProject
-        ? `Default provider: Claude on Google Cloud Vertex AI (project <code>${esc(vertexCfg.project)}</code>, region <code>${esc(vertexCfg.region||"global")}</code>). Model: <code>${esc(vertexCfg.model||"claude-opus-4-8")}</code>.`
+        ? `Google Cloud Vertex AI (project <code>${esc(vertexCfg.project)}</code>, region <code>${esc(vertexCfg.region||"global")}</code>). Model: <code>${esc(vertexCfg.model||"claude-opus-4-8")}</code>. <strong>Bills Google Cloud credits.</strong>`
         : "Claude on Google Cloud Vertex AI via ADC. Enter your GCP Project ID above, or set <code>GOOGLE_CLOUD_PROJECT</code> on the server.")
-      : `Vertex AI not configured: ${esc(vertexCfg.error||"check ADC credentials")}`)
-    : "Fallback: Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
+      : `Vertex AI not configured: ${esc(vertexCfg.error||"check ADC credentials")}`;
+  } else {
+    $("prov-note").innerHTML = "Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
+  }
   renderVertexBillingBar();
 }
 
@@ -4056,9 +4063,31 @@ async function loadDocReport(scope, force){
 
 // ── Entry points ────────────────────────────────────────────────────────────
 // General Documents view: show the System Overview + all problems.
-async function loadDocuments(){ await loadDocReportIndex(true); if(!_docScope) await loadDocReport("system"); }
+async function loadMasterDoc(force){
+  const ds=selectedDataset||"first_proof_1";
+  $("doc-md-view").style.display="none";
+  const wrap=$("d-pdf-wrap"); wrap.style.display="flex";
+  const tg=$("doc-view-toggle"); if(tg) tg.style.display="none";
+  const crumb=$("doc-breadcrumb"); if(crumb) crumb.textContent=`Master document — ${ds}`;
+  const st=$("d-status"); if(st) st.textContent="loading…";
+  const dl=$("d-bundle-dl"); if(dl) dl.style.display="none";
+  wrap.innerHTML=`<div style="color:#aaa;padding:40px;font-size:13px">Loading master document…</div>`;
+  try{
+    const d=await fetchJsonSafe(`/api/master-pdf?dataset=${encodeURIComponent(ds)}${force?"&force=true":""}`);
+    if(st) st.textContent="";
+    if(d===null){ wrap.innerHTML=`<div style="color:#cbd5e1;padding:40px;font-size:13px">Service busy (dev server reloading). Try again in a moment.</div>`; return; }
+    if(d.ok && d.pdf_url){
+      wrap.innerHTML=`<iframe src="${d.pdf_url}?t=${Date.now()}" style="flex:1;width:100%;border:0;background:#fff"></iframe>`;
+      if(dl){ dl.href=d.pdf_url; dl.download=`master_${ds}.pdf`; dl.style.display=""; }
+    } else {
+      wrap.innerHTML=`<div style="color:#cbd5e1;padding:40px;font-size:13px;line-height:1.7;text-align:center;max-width:640px;margin:0 auto">No master document for <b>${esc(ds)}</b> yet.<br>Build it with <code>rma push --dataset ${esc(ds)}</code>, or<br><br><button class="btn-sec" onclick="loadMasterDoc(true)" style="font-size:12px;padding:6px 16px">↻ Build now</button><br><br><span style="color:#888;font-size:11px;white-space:pre-wrap">${esc((d.log||"").slice(0,200))}</span></div>`;
+    }
+  }catch(e){ wrap.innerHTML=`<div style="color:#f88;padding:40px">Error: ${esc(String(e))}</div>`; }
+}
+
+async function loadDocuments(){ await loadMasterDoc(); }
 // Per-question view: hide the system review, show just this problem.
-async function loadQuestionDocs(qid){ await loadDocReportIndex(false); await loadDocReport(qid); }
+async function loadQuestionDocs(qid){ await loadMasterDoc(); }
 async function openQuestionDoc(qid){ setTab("documents"); await loadQuestionDocs(qid); }
 // legacy aliases (Documents tab is PDF-only now)
 async function loadDocReportPdf(){ await loadDocReport(_docScope||"system"); }

@@ -1,0 +1,326 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{remark}{Remark}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\begin{document}
+
+\title{The Legendre--Fenchel conjugate of a product of two quadratic forms}
+\maketitle
+
+\section{Statement and result}
+
+Let $A,B\in\mathbb{R}^{n\times n}$ be symmetric positive definite (SPD), and set
+\[
+q_A(x)=\tfrac12\langle Ax,x\rangle,\qquad q_B(x)=\tfrac12\langle Bx,x\rangle,
+\qquad
+f(x)=q_A(x)\,q_B(x)=\tfrac14\langle Ax,x\rangle\langle Bx,x\rangle .
+\]
+We compute
+\[
+f^*(s)=\sup_{x\in\mathbb{R}^n}\bigl\{\langle s,x\rangle-f(x)\bigr\}.
+\]
+Throughout, $\langle\cdot,\cdot\rangle$ is the standard inner product, $|x|^2=\langle x,x\rangle$, and for $t\ge 0$ the matrix $tA+B$ is SPD (hence invertible), being a positive combination of SPD matrices.
+
+Our main result reduces the $n$-dimensional supremum to a one-dimensional root-finding problem and gives a closed form when $A,B$ are proportional.
+
+\begin{theorem}\label{thm:main}
+For every $s\in\mathbb{R}^n$ the supremum defining $f^*(s)$ is finite and attained, and the following hold.
+
+\medskip
+\noindent\textbf{(i) (Proportional case --- closed form.)}
+If $B=\lambda A$ for some $\lambda>0$, then
+\begin{equation}\label{eq:prop}
+f^*(s)=\frac{3}{4}\,\lambda^{-1/3}\,\bigl(\langle s,A^{-1}s\rangle\bigr)^{2/3}.
+\end{equation}
+
+\medskip
+\noindent\textbf{(ii) (General case --- one--dimensional reduction.)}
+For $s\ne 0$ define, for $t\ge 0$, the scalars
+\begin{align}
+M(t)&=\bigl\langle s,(tA+B)^{-1}A\,(tA+B)^{-1}s\bigr\rangle,\label{eq:Mdef}\\
+G(t)&=\bigl\langle s,(tA+B)^{-1}(tA-B)\,(tA+B)^{-1}s\bigr\rangle.\label{eq:Gdef}
+\end{align}
+Then $G$ has at least one root in $(0,\infty)$, the set
+\[
+\mathcal{R}=\{t>0: G(t)=0\}
+\]
+is finite and nonempty, and
+\begin{equation}\label{eq:general}
+f^*(s)=\max_{t\in\mathcal R}\ \frac{3}{4}\,4^{2/3}\,t\,M(t)^{2/3}.
+\end{equation}
+Moreover $G(t)=0$ is, after clearing denominators, a polynomial equation in $t$ of degree at most $2n-1$; hence $\mathcal R$ and $f^*(s)$ are computable from the roots of a single univariate polynomial. For $s=0$ we have $f^*(0)=0$.
+\end{theorem}
+
+The proof occupies Sections~\ref{sec:reduction}--\ref{sec:general}. Section~\ref{sec:algorithm} states the resulting algorithm.
+
+\section{Simultaneous diagonalization and reduction}\label{sec:reduction}
+
+\subsection{Existence and attainment of the supremum}
+
+\begin{lemma}\label{lem:attain}
+For every $s$ the supremum $f^*(s)$ is finite and attained at some $x^\star\in\mathbb{R}^n$.
+\end{lemma}
+
+\begin{proof}
+Let $\alpha>0$ be the smallest eigenvalue of $A$ and $\beta>0$ the smallest eigenvalue of $B$; both are positive since $A,B$ are SPD. Then $q_A(x)\ge\frac{\alpha}{2}|x|^2$ and $q_B(x)\ge\frac{\beta}{2}|x|^2$, so
+\[
+f(x)\ge\frac{\alpha\beta}{4}|x|^4 .
+\]
+Hence
+\[
+\langle s,x\rangle-f(x)\le |s|\,|x|-\frac{\alpha\beta}{4}|x|^4\xrightarrow[|x|\to\infty]{}-\infty .
+\]
+Therefore there is $R>0$ with $\langle s,x\rangle-f(x)\le \langle s,0\rangle-f(0)=0$ for all $|x|\ge R$; in particular $\sup\le \max_{|x|\le R}(\langle s,x\rangle-f(x))$, which is finite. The function $x\mapsto\langle s,x\rangle-f(x)$ is continuous, so on the compact ball $\{|x|\le R\}$ it attains a maximum at some $x^\star$, and by the displayed inequality this is the global maximum. Thus $f^*(s)=\langle s,x^\star\rangle-f(x^\star)$ is finite and attained.
+\end{proof}
+
+\subsection{Congruence to a diagonal pencil}
+
+Since $A$ is SPD it has an SPD square root $A^{1/2}$ with SPD inverse $A^{-1/2}$. The matrix $A^{-1/2}BA^{-1/2}$ is symmetric and SPD, so by the spectral theorem there is an orthogonal $V$ and a diagonal $D=\mathrm{diag}(d_1,\dots,d_n)$ with $d_i>0$ and
+\[
+V^\top\!\bigl(A^{-1/2}BA^{-1/2}\bigr)V=D .
+\]
+Set
+\begin{equation}\label{eq:T}
+T:=A^{-1/2}V .
+\end{equation}
+Then $T$ is invertible and
+\begin{equation}\label{eq:congruence}
+T^\top A\,T=V^\top A^{-1/2}A\,A^{-1/2}V=V^\top V=I,
+\qquad
+T^\top B\,T=V^\top A^{-1/2}B A^{-1/2}V=D .
+\end{equation}
+The numbers $d_1,\dots,d_n$ are exactly the eigenvalues of the pencil $(B,A)$, i.e.\ of $A^{-1}B$; they are positive because $A^{-1/2}BA^{-1/2}$ is SPD.
+
+\begin{lemma}\label{lem:reduce}
+Let $r:=T^\top s$ and write $r=(r_1,\dots,r_n)$. With the change of variables $x=Ty$,
+\begin{equation}\label{eq:phi}
+f^*(s)=\sup_{y\in\mathbb{R}^n}\Bigl\{\langle r,y\rangle-\tfrac14|y|^2\langle Dy,y\rangle\Bigr\}
+=\sup_{y\in\mathbb{R}^n}\Bigl\{\sum_{i=1}^n r_i y_i-\tfrac14\Bigl(\sum_i y_i^2\Bigr)\Bigl(\sum_i d_i y_i^2\Bigr)\Bigr\}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Since $T$ is invertible, the substitution $x=Ty$ is a bijection of $\mathbb{R}^n$, so the supremum over $x$ equals the supremum over $y$. By \eqref{eq:congruence},
+\[
+q_A(Ty)=\tfrac12\langle A Ty,Ty\rangle=\tfrac12\langle T^\top A T\,y,y\rangle=\tfrac12|y|^2,\qquad
+q_B(Ty)=\tfrac12\langle Dy,y\rangle,
+\]
+hence $f(Ty)=\tfrac14|y|^2\langle Dy,y\rangle$. Also $\langle s,Ty\rangle=\langle T^\top s,y\rangle=\langle r,y\rangle$. Substituting gives \eqref{eq:phi}.
+\end{proof}
+
+\subsection{Stationarity}
+
+Define $\Phi(y)=\langle r,y\rangle-\tfrac14|y|^2\langle Dy,y\rangle$, a smooth function whose global maximum exists by Lemma~\ref{lem:attain} (transported through the bijection $x=Ty$). Any global maximizer $y^\star$ is a critical point. We have, writing $p:=|y|^2$ and $q:=\langle Dy,y\rangle$,
+\[
+\nabla\!\Bigl(\tfrac14 p\,q\Bigr)=\tfrac14\bigl(q\,\nabla p+p\,\nabla q\bigr)
+=\tfrac14\bigl(2q\,y+2p\,Dy\bigr)=\tfrac12\bigl(q\,y+p\,Dy\bigr),
+\]
+so the stationarity condition $\nabla\Phi(y)=0$ reads, componentwise,
+\begin{equation}\label{eq:stat}
+r_i=\tfrac12\,y_i\,(q+p\,d_i),\qquad i=1,\dots,n.
+\end{equation}
+
+\begin{lemma}\label{lem:pq}
+Let $s\ne 0$, so $r=T^\top s\ne 0$. At any nonzero critical point $y$ of $\Phi$ we have $p=|y|^2>0$, $q=\langle Dy,y\rangle>0$, and writing $t:=q/p>0$,
+\begin{equation}\label{eq:yi}
+y_i=\frac{2r_i}{p\,(t+d_i)},\qquad i=1,\dots,n,
+\end{equation}
+where $p>0$ and $t>0$ satisfy
+\begin{align}
+p^3&=4\sum_{i=1}^n\frac{r_i^2}{(t+d_i)^2},\label{eq:peq}\\
+0&=\sum_{i=1}^n\frac{(t-d_i)\,r_i^2}{(t+d_i)^2}.\label{eq:teq}
+\end{align}
+Conversely, given any $t>0$ solving \eqref{eq:teq}, the number $p$ defined by \eqref{eq:peq} is positive and the point $y$ defined by \eqref{eq:yi} is a critical point of $\Phi$ with $|y|^2=p$ and $\langle Dy,y\rangle=tp$, at which
+\begin{equation}\label{eq:critval}
+\Phi(y)=\tfrac34\,t\,p^2 .
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+First note $y\ne 0$, $D$ SPD imply $q=\langle Dy,y\rangle>0$ and $p>0$, so $t=q/p>0$. From \eqref{eq:stat}, $\tfrac12(q+p\,d_i)=\tfrac12 p(t+d_i)>0$, hence
+\[
+y_i=\frac{2r_i}{q+p\,d_i}=\frac{2r_i}{p(t+d_i)},
+\]
+which is \eqref{eq:yi}. Substituting into $p=\sum_i y_i^2$ gives
+\[
+p=\sum_i\frac{4r_i^2}{p^2(t+d_i)^2}\ \Longrightarrow\ p^3=4\sum_i\frac{r_i^2}{(t+d_i)^2},
+\]
+which is \eqref{eq:peq}. Substituting \eqref{eq:yi} into $q=\sum_i d_i y_i^2$ gives
+\[
+q=\sum_i\frac{4d_i r_i^2}{p^2(t+d_i)^2}\ \Longrightarrow\ p^2 q=4\sum_i\frac{d_i r_i^2}{(t+d_i)^2}.
+\]
+Using $q=tp$ this is $p^3 t=4\sum_i d_i r_i^2/(t+d_i)^2$. Dividing this by \eqref{eq:peq} (the right side of \eqref{eq:peq} is positive because $r\ne0$) yields
+\[
+t=\frac{\sum_i d_i r_i^2/(t+d_i)^2}{\sum_i r_i^2/(t+d_i)^2},
+\]
+equivalently $t\sum_i r_i^2/(t+d_i)^2=\sum_i d_i r_i^2/(t+d_i)^2$, i.e.\ \eqref{eq:teq}.
+
+Conversely, suppose $t>0$ solves \eqref{eq:teq}. Since $r\ne 0$, the right side of \eqref{eq:peq} is a sum of nonnegative terms, at least one strictly positive, so it is positive and $p:=\bigl(4\sum_i r_i^2/(t+d_i)^2\bigr)^{1/3}>0$ is well defined. Define $y$ by \eqref{eq:yi}. Then
+\[
+|y|^2=\sum_i\frac{4r_i^2}{p^2(t+d_i)^2}=\frac{1}{p^2}\cdot p^3=p,
+\]
+using \eqref{eq:peq}; thus $|y|^2=p$. Next,
+\[
+\langle Dy,y\rangle=\sum_i d_i y_i^2=\sum_i\frac{4d_i r_i^2}{p^2(t+d_i)^2}
+=\frac{1}{p^2}\Bigl(4\sum_i\frac{d_i r_i^2}{(t+d_i)^2}\Bigr).
+\]
+By \eqref{eq:teq}, $\sum_i d_i r_i^2/(t+d_i)^2=t\sum_i r_i^2/(t+d_i)^2=t\cdot\tfrac{p^3}{4}$, so $\langle Dy,y\rangle=\frac{1}{p^2}\cdot 4\cdot t\tfrac{p^3}{4}=tp$. Therefore, with $q=\langle Dy,y\rangle=tp$,
+\[
+\tfrac12(q+p\,d_i)=\tfrac12 p(t+d_i),
+\]
+and the right side of \eqref{eq:stat} equals $\tfrac12 y_i p(t+d_i)=\tfrac12\cdot\frac{2r_i}{p(t+d_i)}\cdot p(t+d_i)=r_i$. Hence \eqref{eq:stat} holds and $y$ is a critical point. Finally, by Euler's identity for the homogeneous-degree-$4$ map $h(y):=\tfrac14 p(y)q(y)$ we have $\langle\nabla h(y),y\rangle=4h(y)$; using $\nabla h(y)=r$ at the critical point gives $\langle r,y\rangle=4h(y)=p\,q=t\,p^2$, hence
+\[
+\Phi(y)=\langle r,y\rangle-h(y)=t p^2-\tfrac14 p\,q=t p^2-\tfrac14 t p^2=\tfrac34 t p^2,
+\]
+which is \eqref{eq:critval}. (The Euler identity is verified directly: $h(\sigma y)=\sigma^4 h(y)$ for $\sigma>0$, differentiate at $\sigma=1$.)
+\end{proof}
+
+\section{The proportional case: proof of Theorem~\ref{thm:main}(i)}\label{sec:prop}
+
+Assume $B=\lambda A$ with $\lambda>0$. Then $A^{-1/2}BA^{-1/2}=\lambda I$, so in \eqref{eq:congruence} we may take $D=\lambda I$, i.e.\ $d_1=\dots=d_n=\lambda$. If $s=0$ then $f^*(0)=\sup_x(-f(x))=0$ (attained at $x=0$ since $f\ge0$), and the right side of \eqref{eq:prop} is $0$; so the formula holds. Assume $s\ne0$.
+
+With all $d_i=\lambda$, equation \eqref{eq:teq} becomes $\sum_i (t-\lambda)r_i^2/(t+\lambda)^2=0$, i.e.\ $(t-\lambda)\sum_i r_i^2=0$; since $r\ne0$ this forces the unique positive root $t=\lambda$. Then \eqref{eq:peq} gives
+\[
+p^3=4\sum_i\frac{r_i^2}{(\lambda+\lambda)^2}=\frac{|r|^2}{\lambda^2},\qquad p=\Bigl(\frac{|r|^2}{\lambda^2}\Bigr)^{1/3}.
+\]
+By Lemma~\ref{lem:pq} there is a unique nonzero critical point and, by \eqref{eq:critval}, $\Phi$ at it equals $\tfrac34 t p^2=\tfrac34\lambda\,p^2$. Since the global maximizer is a nonzero critical point (it is nonzero because $\Phi(0)=0<\sup\Phi$, as $\langle r,y\rangle-\tfrac14 p q$ is positive for small $y$ in the direction of $r$), and there is exactly one such point, the supremum equals this value:
+\[
+f^*(s)=\tfrac34\lambda\,p^2=\tfrac34\lambda\Bigl(\frac{|r|^2}{\lambda^2}\Bigr)^{2/3}
+=\tfrac34\,\lambda^{1-4/3}\,|r|^{4/3}=\tfrac34\,\lambda^{-1/3}\,\bigl(|r|^2\bigr)^{2/3}.
+\]
+Finally $|r|^2=\langle T^\top s,T^\top s\rangle=\langle s,TT^\top s\rangle$, and by \eqref{eq:T},
+\[
+TT^\top=A^{-1/2}VV^\top A^{-1/2}=A^{-1/2}A^{-1/2}=A^{-1},
+\]
+so $|r|^2=\langle s,A^{-1}s\rangle$. This proves \eqref{eq:prop}. \qed
+
+\begin{remark}
+Equivalently, with $B=\lambda A$ one may write $\langle s,A^{-1}s\rangle$ as $\lambda^{?}$-free data via $A=\lambda^{-1}B$, giving the symmetric form $f^*(s)=\tfrac34\bigl(\langle s,A^{-1}s\rangle\langle s,B^{-1}s\rangle\bigr)^{1/3}$, since $\langle s,B^{-1}s\rangle=\lambda^{-1}\langle s,A^{-1}s\rangle$ and indeed $\tfrac34(\langle s,A^{-1}s\rangle\cdot\lambda^{-1}\langle s,A^{-1}s\rangle)^{1/3}=\tfrac34\lambda^{-1/3}(\langle s,A^{-1}s\rangle)^{2/3}$.
+\end{remark}
+
+\section{The general case: proof of Theorem~\ref{thm:main}(ii)}\label{sec:general}
+
+Assume $s\ne0$ (the case $s=0$ giving $f^*(0)=0$ as in Section~\ref{sec:prop}). We work in the diagonalized variables; recall $r=T^\top s\ne0$ and $d_i>0$.
+
+\subsection{The diagonalized scalars equal \texorpdfstring{$M(t)$ and $G(t)$}{M and G}}
+
+\begin{lemma}\label{lem:identities}
+For all $t\ge0$,
+\[
+M(t)=\sum_{i=1}^n\frac{r_i^2}{(t+d_i)^2},\qquad
+G(t)=\sum_{i=1}^n\frac{(t-d_i)\,r_i^2}{(t+d_i)^2},
+\]
+with $M(t),G(t)$ as in \eqref{eq:Mdef}--\eqref{eq:Gdef}.
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:congruence}, $T^\top(tA+B)T=tI+D$, hence
+\[
+(tA+B)^{-1}=T\,(tI+D)^{-1}T^\top .
+\]
+Therefore, using $T^\top A T=I$,
+\begin{align*}
+\langle s,(tA+B)^{-1}A(tA+B)^{-1}s\rangle
+&=\langle s,\,T(tI+D)^{-1}T^\top A\,T(tI+D)^{-1}T^\top s\rangle\\
+&=\langle T^\top s,\,(tI+D)^{-1}(T^\top A T)(tI+D)^{-1}T^\top s\rangle\\
+&=\langle r,\,(tI+D)^{-2}r\rangle=\sum_i\frac{r_i^2}{(t+d_i)^2}=M(t),
+\end{align*}
+since $T^\top A T=I$ and $tI+D=\mathrm{diag}(t+d_i)$. Likewise, using $T^\top(tA-B)T=tI-D$,
+\[
+G(t)=\langle r,(tI+D)^{-1}(tI-D)(tI+D)^{-1}r\rangle=\sum_i\frac{(t-d_i)r_i^2}{(t+d_i)^2}.\qedhere
+\]
+\end{proof}
+
+Thus the master equation \eqref{eq:teq} is exactly $G(t)=0$, and \eqref{eq:peq} reads $p^3=4M(t)$, so the critical value \eqref{eq:critval} is
+\begin{equation}\label{eq:Vt}
+\tfrac34 t p^2=\tfrac34\,t\,(4M(t))^{2/3}=\tfrac34\,4^{2/3}\,t\,M(t)^{2/3},
+\end{equation}
+matching the summand in \eqref{eq:general}.
+
+\subsection{Existence and finiteness of positive roots}
+
+\begin{lemma}\label{lem:rootexist}
+The function $G$ has at least one root in $(0,\infty)$, and the set $\mathcal R=\{t>0:G(t)=0\}$ is finite.
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:identities}, $G(t)=tM(t)-K(t)$ where $K(t):=\sum_i d_i r_i^2/(t+d_i)^2>0$ for all $t\ge0$ (since $r\ne0$). As $t\to0^+$,
+\[
+G(0)=\sum_i\frac{-d_i r_i^2}{d_i^2}=-\sum_i\frac{r_i^2}{d_i}<0 .
+\]
+As $t\to+\infty$, each term $\frac{(t-d_i)r_i^2}{(t+d_i)^2}=\frac{r_i^2}{t}\cdot\frac{1-d_i/t}{(1+d_i/t)^2}\to0^+$ and in fact $tG(t)\to\sum_i r_i^2=|r|^2>0$, so $G(t)>0$ for all large $t$. By continuity of $G$ on $(0,\infty)$ (the denominators $t+d_i>0$ never vanish there) and the intermediate value theorem, $G$ has a root in $(0,\infty)$. Hence $\mathcal R\ne\varnothing$.
+
+For finiteness, clear denominators: multiplying $G(t)$ by $\prod_{j=1}^n(t+d_j)^2$ gives
+\begin{equation}\label{eq:poly}
+P(t):=\sum_{i=1}^n (t-d_i)\,r_i^2\prod_{j\ne i}(t+d_j)^2 ,
+\end{equation}
+a polynomial, and for $t>0$ one has $G(t)=0\iff P(t)=0$ because $\prod_j(t+d_j)^2>0$. The degree of each summand is $1+2(n-1)=2n-1$, so $\deg P\le 2n-1$. Moreover the coefficient of $t^{2n-1}$ in $P$ is $\sum_{i=1}^n r_i^2=|r|^2>0$: each summand $(t-d_i)r_i^2\prod_{j\ne i}(t+d_j)^2$ is monic of degree $2n-1$ up to the factor $r_i^2$, so its top coefficient is $r_i^2$, and these add. (This holds whether or not the $d_i$ are distinct.) Hence $\deg P=2n-1$ exactly and $P\not\equiv0$; in particular $P$ has at most $2n-1$ real roots, so $\mathcal R$ is finite.
+\end{proof}
+
+\subsection{Identifying the supremum with the maximal critical value}
+
+\begin{lemma}\label{lem:maxroot}
+For $s\ne0$,
+\[
+f^*(s)=\max_{t\in\mathcal R}\ \tfrac34\,4^{2/3}\,t\,M(t)^{2/3}.
+\]
+\end{lemma}
+
+\begin{proof}
+Let $y^\star$ be a global maximizer of $\Phi$ (it exists by Lemma~\ref{lem:attain} transported through $x=Ty$). Since $r\ne0$, the value $\Phi(y^\star)=f^*(s)$ is strictly positive: taking $y=\varepsilon r$ for small $\varepsilon>0$ gives $\Phi(\varepsilon r)=\varepsilon|r|^2-O(\varepsilon^4)>0$. Hence $y^\star\ne0$ (because $\Phi(0)=0$). Being a maximizer, $y^\star$ is a critical point, so by Lemma~\ref{lem:pq} it corresponds to some $t^\star\in\mathcal R$ with $\Phi(y^\star)=\tfrac34 t^\star (p^\star)^2=\tfrac34 4^{2/3}t^\star M(t^\star)^{2/3}$ (using \eqref{eq:Vt}). Therefore
+\[
+f^*(s)=\Phi(y^\star)\le \max_{t\in\mathcal R}\ \tfrac34 4^{2/3} t\,M(t)^{2/3}.
+\]
+Conversely, by the converse direction of Lemma~\ref{lem:pq}, every $t\in\mathcal R$ yields a genuine critical point $y(t)$ of $\Phi$ with $\Phi(y(t))=\tfrac34 4^{2/3} t M(t)^{2/3}$, and $\Phi(y(t))\le\sup\Phi=f^*(s)$. Taking the maximum over $t\in\mathcal R$ gives the reverse inequality. The two inequalities give equality.
+\end{proof}
+
+Lemmas~\ref{lem:identities}--\ref{lem:maxroot} together prove Theorem~\ref{thm:main}(ii). Since $M(t)$ and $G(t)$ in \eqref{eq:Mdef}--\eqref{eq:Gdef} are written purely in terms of $A,B,s$, the entire procedure is expressed in the original data, and by \eqref{eq:poly} the roots $\mathcal R$ are those of a univariate polynomial of degree $\le 2n-1$. This completes the proof of Theorem~\ref{thm:main}. \qed
+
+\section{The computational procedure}\label{sec:algorithm}
+
+We summarize the evaluation of $f^*(s)$ for arbitrary SPD $A,B$ and arbitrary $s$.
+
+\begin{algorithm}[h]
+\caption{Evaluation of $f^*(s)$ for $f(x)=q_A(x)q_B(x)$}
+\begin{algorithmic}[1]
+\Require SPD matrices $A,B\in\mathbb{R}^{n\times n}$, vector $s\in\mathbb{R}^n$.
+\Ensure The value $f^*(s)=\sup_x\{\langle s,x\rangle-f(x)\}$.
+\If{$s=0$}
+  \State \Return $0$.
+\EndIf
+\If{$B=\lambda A$ for some scalar $\lambda>0$}
+  \State \Return $\tfrac34\,\lambda^{-1/3}\,\langle s,A^{-1}s\rangle^{2/3}$.
+\EndIf
+\State Form the polynomial $P(t)=\sum_{i=1}^n (t-d_i)r_i^2\prod_{j\ne i}(t+d_j)^2$ of \eqref{eq:poly},
+       where $d_1,\dots,d_n>0$ are the eigenvalues of $A^{-1}B$ and $r=T^\top s$ with $T=A^{-1/2}V$
+       from \eqref{eq:T}. (Equivalently, $P$ is the numerator of $G(t)$ in \eqref{eq:Gdef} after clearing $\prod_j(t+d_j)^2$.)
+\State Compute the set $\mathcal R$ of all real roots $t>0$ of $P$.
+\For{each $t\in\mathcal R$}
+  \State $M(t)\gets \langle s,(tA+B)^{-1}A(tA+B)^{-1}s\rangle$.
+  \State $V(t)\gets \tfrac34\,4^{2/3}\,t\,M(t)^{2/3}$.
+\EndFor
+\State \Return $\max_{t\in\mathcal R}V(t)$.
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\emph{Correctness} is Theorem~\ref{thm:main}: the three branches cover $s=0$, the proportional case \eqref{eq:prop}, and the general case \eqref{eq:general}. \emph{Termination} is immediate: $\mathcal R$ is finite (Lemma~\ref{lem:rootexist}) and nonempty (Lemma~\ref{lem:rootexist}), and each loop body is a finite linear-algebra computation. \emph{Complexity}: forming $P$ and the eigendata costs $O(n^3)$ for the symmetric eigendecomposition plus $O(n^2)$ per polynomial coefficient; isolating the real roots of a degree-$(2n-1)$ polynomial is a standard univariate root-finding task; each evaluation of $M(t)$ costs one $n\times n$ solve, $O(n^3)$, and there are at most $2n-1$ roots, so the post-eigendecomposition cost is $O(n^4)$.
+
+\begin{remark}[Special closed-form sub-case $n=1$ and $n=2$]
+For $n=1$ the proportionality test always succeeds ($B=\lambda A$ scalars), giving \eqref{eq:prop}. For $n=2$ the equation $P(t)=0$ has degree at most $3$, so $\mathcal R$ is obtained in closed form by Cardano's formula; thus $f^*(s)$ is closed-form (through radicals) in dimension $2$. For $n\le 4$ the degree $2n-1\le 7$; the equation is generally not solvable in radicals for $n\ge3$, so the polynomial-root procedure above is the appropriate description of $f^*$ in general.
+\end{remark}
+
+\begin{remark}[Why a single formula generally fails]
+Theorem~\ref{thm:main}(i) gives a single closed formula precisely when $A,B$ are proportional, equivalently when the pencil $(B,A)$ has a single eigenvalue $\lambda$ of multiplicity $n$ (all $d_i$ equal). When the $d_i$ are not all equal, the stationarity ratio $t=q/p$ is pinned by the transcendental balance condition $G(t)=0$, which is the genuine source of nonlinearity: it can have several positive roots, and the conjugate is the maximum of the corresponding critical values. For instance, with $D=\mathrm{diag}(d_1,d_2)$, $d_1=0.0303,\ d_2=14.92$ and $r=(0.466,-1.536)$, the polynomial \eqref{eq:poly} has the three positive roots $t\approx0.0333,\,1.905,\,9.159$, and the largest critical value $\tfrac34 4^{2/3}t\,M(t)^{2/3}$ is attained at the \emph{smallest} root, not the largest; thus the $\max$ in \eqref{eq:general} is genuinely required. This is why no single algebraic formula in $s,A,B$ can represent $f^*$ in general, and the value is instead characterized by the roots of the univariate polynomial \eqref{eq:poly}.
+\end{remark}
+
+\end{document}

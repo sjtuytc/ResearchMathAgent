@@ -102,6 +102,28 @@
       "event_type": "status_changed",
       "body": "✅ Status changed: **open** → **resolved**",
       "created_at": "2026-06-23T13:07:03Z"
+    },
+    {
+      "id": "c92010d29",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "I reviewed the full proof in solution.tex (structure-exploiting interior-point algorithm for periodic LMIs) and verified its load-bearing claims numerically and analytically. The proof was already substantially complete and correct on its main contributions; I found and fixed several genuine but localized gaps/imprecisions, all now corrected in place.\n\n**Numerical verifications performed**\n- Corner-deletion indefiniteness: confirmed an explicit SPD block-cyclic-tridiagonal H (m=2,P=3) whose corner-deleted T0 has lambda_min<0, validating the need for the rho=||E_{P-1}||_2 regularisation (Lemma `lem:Trho`).\n- Full regularised Thomas + Sherman–Morrison–Woodbury pipeline (eqs `thomas`–`woodbury2`) reproduces H^{-1}g to relative residual ~1e-11..1e-13 across random SPD instances, m in 1..5, P in 3..10.\n- Matrix-determinant identity det H = det(T_rho) det(W) used in Lemma `lem:inner` holds even when the inner K' is singular (the Woodbury form chosen, W = I + K' U^T T_rho^{-1} U, requires only H,T_rho nonsingular).\n\n**Gaps fixed**\n1. **Small-period edge cases P in {1,2}.** The displayed Hessian (eq `HBT`) and Lemma 2 implicitly assume P>=3 (distinct super/sub-diagonal blocks E_k and a distinct corner block E_{P-1}). For P=2 the block (0,1) actually receives TWO contributions, E_0 + E_1^T, so the \"super-diagonal\" and \"corner\" slots coincide. I verified the reduction of §3 is nonetheless exact for P=2 (residual ~1e-13) and for P=1 (trivial), and added Remark `rem:smallP` recording the explicit Hessians and the convention that overlapping contributions add. This removes a real ambiguity in the structural lemma.\n\n2. **Strict vs. closed feasibility in Phase I.** The genuine PLMI set F uses strict `>0`, but the decision rule and the Summary/Theorem stated feasibility as `tau* <= 0` (which only governs the CLOSED relaxation `>=0`). I corrected this to the sharp equivalence: F ∩ {||x||<R} ≠ ∅  ⇔  tau* < 0. I gave a rigorous treatment of the boundary case tau*=0 (closed relaxation feasible, strict PLMI infeasible in the open box), with a clean contradiction argument (choose tau in [-mu,0) small enough that ||x||^2+tau^2<R^2), and made the Theorem statement, its proof, and the Summary consistent with the strict statement and the corresponding dual certificate (beta = -tau* <= 0, with beta<0 when tau*>0).\n\n3. **Over-claim on the inner-system conditioning (§6b).** The text claimed W \"inherits the conditioning of H,\" which is not implied by det W = det H/det T_rho <= 1. I replaced this with a correct, defensible statement: W is a fixed-size (2m or 2m+1) nonsingular matrix solved by a backward-stable pivoted factorisation, with a P-independent norm bound ||W|| <= 1 + 2||E_{P-1}||_2 / lambda_min(H); the correction therefore adds only a fixed-size, P-independent, backward-stable step.\n\nThese are clarifications/corrections of correctness-relevant statements, not changes to the algorithm, whose exactness I independently reproduced numerically. The convergence bound O(sqrt(nP) log(1/eps)), the O(P) structured solve, and the per-iteration complexity O(P(m^2 n^2 + m n^3 + n^3)) stand as stated. Document remains LaTeX-structurally balanced (environments, display math, $-parity all checked).\n\nResolving.",
+      "created_at": "2026-06-23T18:27:00Z"
+    },
+    {
+      "id": "cc2a6872a",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "test",
+      "created_at": "2026-06-23T19:49:05Z"
+    },
+    {
+      "id": "ev9c2a2f2a",
+      "author": "agent",
+      "role": "event",
+      "event_type": "doc_generated",
+      "body": "Document generated: **Critic Analysis**",
+      "created_at": "2026-06-23T19:49:05Z"
     }
   ],
   "documents": [
@@ -115,6 +137,12 @@
       "title": "Critic Analysis",
       "path": "questions/rm-07815/analysis.md",
       "created_at": "2026-06-23T09:21:33Z",
+      "created_by": "agent"
+    },
+    {
+      "title": "Critic Analysis",
+      "path": "questions/rm-07815/analysis.md",
+      "created_at": "2026-06-23T19:49:05Z",
       "created_by": "agent"
     }
   ]

@@ -97,9 +97,13 @@ def _parse_json(text: str | None) -> dict | None:
 def evaluate_proof(problem: str, proof: str, model: str = DEFAULT_MODEL) -> dict:
     """LLM evaluation of a proof: verdict + score + remaining issues."""
     prompt = _EVAL_PROMPT.format(problem=problem[:8000], proof=(proof or "")[:16000])
-    if _provider() == "vertex":
+    prov = _provider()
+    if prov == "vertex":
         from .vertex_llm import complete
         raw = complete(prompt, system=_EVAL_SYSTEM, model=model, max_tokens=4096)
+    elif prov == "claude-code":
+        from .claude_code import complete_via_cli
+        raw = complete_via_cli(prompt, system=_EVAL_SYSTEM, model=model)
     else:
         raw = _complete_anthropic(prompt, _EVAL_SYSTEM, model, max_tokens=4096)
     ev = _parse_json(raw) or {}
@@ -131,7 +135,13 @@ def _run_solver(repo_root: Path, problem: str, workspace: Path,
         prefix_context=feedback or "",
         max_wall_seconds=max_wall,
     )
-    runner = run_agent_vertex if provider == "vertex" else run_agent  # default: Anthropic API
+    if provider == "vertex":
+        runner = run_agent_vertex
+    elif provider == "claude-code":
+        from .claude_code import run_claude_code_agent
+        runner = run_claude_code_agent      # Claude Pro/Max subscription via the CLI
+    else:
+        runner = run_agent                  # Anthropic API key
     proof, text, err = "", [], None
     for ev in runner(cfg, None):
         if ev.type == "artifact":

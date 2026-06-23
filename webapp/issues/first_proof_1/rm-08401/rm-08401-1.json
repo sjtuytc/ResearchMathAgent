@@ -45,6 +45,28 @@
       "role": "agent",
       "body": "I reviewed the existing solution.tex in full and verified its correctness; it is a complete, rigorous answer to the issue.\n\n**Summary of the construction.** Algorithm P-NCG (Alg. 1) extends nonlinear CG to min{f(x): l<=x<=u} keeping O(n) storage by:\n- searching along the *projection arc* alpha -> P(x_k + alpha d_k) with an Armijo backtracking test (feasibility maintained automatically: P is the O(n) coordinatewise clip);\n- using ANY standard CG scalar beta (FR, PRP, HS, DY, HZ) in the recurrence d_{k+1} = -g_{k+1} + beta_{k+1} d_k;\n- a projected-gradient (PG) *reference* search that supplies the guaranteed decrease, plus a *capped* CG arc search accepted only when it returns success AND strictly improves on the PG point.\n\n**Global convergence (Thm 1).** Under (A1) bounded level set and (A2) Lipschitz gradient on an enlarged domain D, the method either stops at a stationary point (rho(x_k)=0) or produces an infinite feasible sequence with strict decrease and sum_k rho(x_k)^2 < infinity, hence rho(x_k) -> 0; since rho is continuous, every limit point x* is feasible and first-order stationary, <g(x*), y-x*> >= 0 for all y in Omega. The result is independent of the choice of beta (Corollary).\n\n**Verification performed (numerical sanity checks):**\n1. Lemma 1(iv) and the monotonicity of ||P(x-alpha g)-x||/alpha: confirmed over 10^4 random boxes/points.\n2. The Lemma-pg acceptance condition (every alpha <= 2(1-eta)/L is Armijo-accepted): confirmed over 2000 random PSD quadratics with exact L.\n3. The Remark \"why the CG search must be capped\" counterexample (arc Armijo fails for all alpha>0 with inner(g,d)=-1<0 on the boundary): confirmed.\n\n**Logical audit of the subtle points** — all hold:\n- bar_alpha_k >= alpha_min is preserved by the safeguarded BB update, so the PG search has a uniform step lower bound underline_alpha = min{alpha_min, 1, 2*gamma*(1-eta)/L} > 0.\n- The Armijo-implication chain in Lemma pg is valid because r-tilde(alpha) != 0 for alpha in (0,1] (else Lemma 1(iv) forces rho(x_k)=0, contradicting non-stationarity).\n- The capped CG search is harmless: terminates in <=M steps, only accepted when strictly improving, so it cannot break the guaranteed PG decrease.\n\n**Edit made.** The only imprecision was an unhandled boundary case in the proof of Lemma 1(iv): when the maximal feasible step alpha_i^dagger = 0 (e.g. x_i = l_i, g_i > 0) or = +infinity (unbounded box). I rewrote that paragraph to define alpha_i^dagger explicitly and to cover the degenerate alpha_i^dagger in {0, +infinity} cases; the conclusion (||phi(alpha)||/alpha nonincreasing, hence (iv)) is unchanged and now airtight.\n\nThe proof is complete and correct. Resolving.",
       "created_at": "2026-06-23T13:20:20Z"
+    },
+    {
+      "id": "cd575d030",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "x",
+      "created_at": "2026-06-23T18:39:16Z"
+    },
+    {
+      "id": "ev65b4be79",
+      "author": "agent",
+      "role": "event",
+      "event_type": "doc_generated",
+      "body": "Document generated: **Critic Analysis (substantive scope review)**",
+      "created_at": "2026-06-23T18:39:56Z"
+    },
+    {
+      "id": "c71fd2366",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "I reviewed the full solution and verified its mathematics. Summary of what is established and checked:\n\n**Construction.** A Projected Nonlinear CG (P-NCG) method that (a) searches along the projection arc alpha -> P(x_k + alpha d_k) with Armijo backtracking, (b) uses ANY standard CG scalar beta (FR/PRP/HS/DY/HZ), (c) guarantees decrease via a projected-gradient (PG) reference search, and (d) only accepts the (capped) CG step when it strictly improves. Storage is O(n) (Remark 2), matching CG.\n\n**Key results, all re-derived and numerically checked:**\n- Lemma proj(i)-(v): projection variational inequality; key descent ineq <g,P(x-a g)-x> <= -(1/a)||P(x-a g)-x||^2; rho(x)=0 <=> first-order KKT; the bound ||P(x-a g)-x|| >= a*rho(x) for 0<a<=1 via coordinatewise monotonicity of ||phi(alpha)||/alpha; continuity of rho. I numerically verified (ii), (iv), and the monotonicity claim over thousands of random boxes/points (all pass).\n- Lemma Dtrial / taylor: enlarged Lipschitz domain D so the descent estimate f(x+r)-f(x) <= <g,r> + (L/2)||r||^2 holds at every PG trial point (a genuine subtlety that the proof handles correctly).\n- Lemma pg: PG-arc Armijo search terminates with step >= underline_alpha = min{alpha_min, 1, 2*gamma(1-eta)/L} and yields f(x_k)-f(x^pg) >= eta*underline_alpha*rho(x_k)^2 > 0.\n- Remark (cap M): the projection arc can make a direction with <g,d><0 a NON-descent direction (boundary clipping leaves an ascent tangential part), so an uncapped CG backtracking loop need not terminate. The explicit 2D C^1 counterexample (x=(0,0), Omega=[0,inf)xR, g=(2,5), d=(-3,1), f=2y1+5y2+5y2^2) is correct: I confirmed the arc Armijo test fails for all alpha>0. Capping at M removes the hazard at no cost since global convergence rests on the PG search.\n- Theorem (global convergence): valid for every beta choice. Telescoping the per-step decrease gives sum rho(x_k)^2 < infinity, hence rho(x_k)->0, and by continuity of rho plus boundedness of L_0 every limit point is feasible and first-order stationary.\n\n**Numerical validation.** I implemented the full algorithm (FR beta, capped M=20) on a bound-constrained quadratic; it converges in 7 iterations to a KKT point (active upper bound has g_i<0, interior coords have g_i=0), rho ~ 1e-13.\n\nI found no gaps: termination, feasibility, the quantitative decrease, independence from beta, and stationarity of all limit points are all rigorously and correctly proven. The proof task is complete. Marking resolved.",
+      "created_at": "2026-06-23T18:41:18Z"
     }
   ],
   "documents": [
@@ -52,6 +74,12 @@
       "title": "Critic Analysis",
       "path": "questions/rm-08401/analysis.md",
       "created_at": "2026-06-23T13:18:23Z",
+      "created_by": "agent"
+    },
+    {
+      "title": "Critic Analysis (substantive scope review)",
+      "path": "questions/rm-08401/analysis.md",
+      "created_at": "2026-06-23T18:39:56Z",
       "created_by": "agent"
     }
   ]

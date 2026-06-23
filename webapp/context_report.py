@@ -740,3 +740,70 @@ def compile_report_pdf(repo_root: Path, scope: str, dataset: str = "first_proof_
     hash_file.write_text(cur_hash)
     pieces = ("report" if report_bytes else "") + ("+proof" if proof_bytes else "")
     return {"ok": True, "pdf_url": f"/api/pdf/{name}.pdf", "log": f"OK ({pieces})"}
+
+
+# ── dataset master report: ONE huge PDF of everything (all problems, all tabs) ──
+
+def compile_master_pdf(repo_root: Path, dataset: str = "first_proof_1", force: bool = False) -> dict:
+    """Compile ONE huge PDF for a whole dataset: the system overview followed by
+    every problem's full combined report (statement, concepts, insights, issues,
+    meetings, and the full proof). Reuses ``compile_report_pdf`` per scope and
+    merges the resulting PDFs in order.
+    """
+    import shutil
+    import subprocess
+
+    pdf_dir = repo_root / "documents" / "pdf"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+
+    def _report_path(scope: str) -> Path:
+        safe = re.sub(r"[^A-Za-z0-9_-]", "_", f"{scope}_{dataset}")
+        return pdf_dir / f"report_{safe}.pdf"
+
+    parts: list[Path] = []
+    logs: list[str] = []
+
+    # 1) system overview first
+    sysr = compile_report_pdf(repo_root, "system", dataset, force=force)
+    if sysr.get("ok") and _report_path("system").is_file():
+        parts.append(_report_path("system"))
+    logs.append(f"system={'ok' if sysr.get('ok') else 'fail'}")
+
+    # 2) every problem's full combined report
+    for pid in problem_ids(dataset):
+        r = compile_report_pdf(repo_root, pid, dataset, force=force)
+        fp = _report_path(pid)
+        if r.get("ok") and fp.is_file():
+            parts.append(fp)
+            logs.append(f"{pid}=ok")
+        else:
+            logs.append(f"{pid}=fail")
+
+    if not parts:
+        return {"ok": False, "pdf_url": None, "log": "no report parts; " + " ".join(logs)}
+
+    dest = pdf_dir / f"master_{dataset}.pdf"
+    ok = False
+    if len(parts) == 1:
+        shutil.copyfile(parts[0], dest); ok = dest.is_file()
+    else:
+        pu = shutil.which("pdfunite")
+        if pu:
+            try:
+                subprocess.run([pu, *[str(p) for p in parts], str(dest)],
+                               check=True, timeout=600, capture_output=True)
+                ok = dest.is_file()
+            except Exception:
+                ok = False
+        if not ok and shutil.which("gs"):
+            try:
+                subprocess.run(["gs", "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=pdfwrite",
+                                f"-sOutputFile={dest}", *[str(p) for p in parts]],
+                               check=True, timeout=600, capture_output=True)
+                ok = dest.is_file()
+            except Exception:
+                ok = False
+    if not ok:
+        return {"ok": False, "pdf_url": None, "log": "merge failed; " + " ".join(logs)}
+    return {"ok": True, "pdf_url": f"/api/pdf/master_{dataset}.pdf",
+            "parts": len(parts), "log": "OK; " + " ".join(logs)}

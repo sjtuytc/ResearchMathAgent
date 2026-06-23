@@ -74,17 +74,23 @@ _PROBLEM_RE = re.compile(r"^(?:q(?:10|[1-9])|prob-\d{2})$")
 
 
 def _default_provider() -> str:
-    if vertex_status()["available"]:
-        return "vertex"
+    # Default to the user's Claude AI subscription (Claude Code CLI), NOT Vertex.
+    # Vertex AI is used only when explicitly selected. See [[feedback]].
+    from .claude_code import claude_code_available
+    if claude_code_available():
+        return "claude-code"
     if os.environ.get("ANTHROPIC_API_KEY"):
         return "api"
-    return "vertex"
+    if vertex_status()["available"]:
+        return "vertex"
+    return "claude-code"
 
 
 def _capabilities_payload() -> dict:
+    from .claude_code import claude_code_available
     vtx = vertex_status()
     return {
-        "claude_code": False,
+        "claude_code": bool(claude_code_available()),
         "vertex": vtx,
         "latex": bool(latex_available()),
         "default_provider": _default_provider(),
@@ -519,6 +525,22 @@ def all_issues_pdf_ep(
     from .issue_pdf import compile_all_issues_pdf
     problem_id = None if scope in ("_dataset", "_all", "") else scope
     return JSONResponse(compile_all_issues_pdf(REPO_ROOT, ds, problem_id, force=force))
+
+
+@app.get("/api/master-pdf")
+def master_pdf_ep(dataset: str = Query(None), force: bool = Query(False)) -> JSONResponse:
+    """The Documents tab document: ONE huge combined PDF of all tabs for a dataset.
+    Serves the cached file instantly when present; (re)builds on force / first use."""
+    ds = _ds_from_query(dataset)
+    name = f"master_{ds}.pdf"
+    dest = pdf_dir(REPO_ROOT) / name
+    if not force and dest.is_file():
+        return JSONResponse({"ok": True, "pdf_url": f"/api/pdf/{name}", "log": "cached"})
+    if not force:
+        return JSONResponse({"ok": False, "pdf_url": None,
+                             "log": "No master PDF built yet — run `rma push` or click Build now."})
+    from .context_report import compile_master_pdf
+    return JSONResponse(compile_master_pdf(REPO_ROOT, ds, force=True))
 
 
 
@@ -1586,12 +1608,12 @@ def proof_eval_get(problem_id: str) -> JSONResponse:
 
 
 @app.get("/api/proof-eval/{problem_id}/run")
-def proof_eval_run_ep(problem_id: str, force: bool = Query(False)):
+def proof_eval_run_ep(problem_id: str, dataset: str = Query(None), force: bool = Query(False)):
     """SSE: run proof evaluation and stream back the result."""
     from .proof_eval import evaluate_proof
 
     def _stream():
-        result = evaluate_proof(REPO_ROOT, problem_id, force=force)
+        result = evaluate_proof(REPO_ROOT, problem_id, _ds_from_query(dataset), force=force)
         if "error" in result:
             yield f"data: {json.dumps({'type': 'error', 'message': result['error']})}\n\n"
         else:

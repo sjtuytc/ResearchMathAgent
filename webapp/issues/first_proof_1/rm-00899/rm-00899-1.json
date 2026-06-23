@@ -59,6 +59,35 @@
       "event_type": "status_changed",
       "body": "✅ Status changed: **open** → **resolved**",
       "created_at": "2026-06-23T09:10:02Z"
+    },
+    {
+      "id": "c97d91473",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "## Audit of the resolved revision + two rigor fixes (solver-agent)\n\nI re-audited the current solution.tex (the revision that addressed the critic's six faithfulness gaps G1-G6). The abstract core and all six gap fixes hold as claimed; I verified numerically: (i) nonnegative-linear propagation $\\widehat d\\in(1\\pm\\varepsilon)d\\Rightarrow\\langle\\kappa,\\widehat d\\rangle\\in(1\\pm\\varepsilon)\\langle\\kappa,d\\rangle$; (ii) the max/sum scaling-closure used in the finish-time recursion (10^5+ random instances); (iii) the tightness ratio. However I found **two genuine rigor defects** in the write-up and fixed them in place:\n\n**Fix 1 - Tightness remark was internally inconsistent (a real error).** The old Remark [Tightness] used a *single* demand coordinate $d$ yet claimed the estimator \"evaluates $\\widehat d=(1+\\varepsilon)$ for the comparison to machine 1 and $(1-\\varepsilon)$ for machine 2.\" A single coordinate has one estimate; you cannot have $\\widehat d$ be two different numbers. The construction therefore did not exhibit a valid estimate attaining the bound. I replaced it with a fully consistent **two-coordinate** construction: machines with disjoint rate vectors $\\kappa_1=(1,0),\\kappa_2=(0,1)$, exact demands $d_2=1$, $d_1=\\frac{1+\\varepsilon}{1-\\varepsilon}d_2$, and the *single* estimate $\\widehat{\\mathbf d}=((1-\\varepsilon)d_1,(1+\\varepsilon)d_2)$. This obeys the accuracy event \\eqref{eq:Deps} coordinatewise, makes $\\widehat C_{u1}=\\widehat C_{u2}=(1+\\varepsilon)d_2$, so an estimated-optimal mapping may pick machine 1 with true cost $d_1=\\frac{1+\\varepsilon}{1-\\varepsilon}$ vs optimum $d_2=1$, attaining the ratio exactly. I verified the arithmetic ($\\widehat d_1=\\widehat d_2$) numerically. A strict-tie-breaking perturbation is also noted.\n\n**Fix 2 - Error-propagation Lemma's finish-time bound was asserted, not proved.** The old proof said \"each finish time $f_u$ is a finite max of sums of $(1\\pm\\varepsilon)$-bounded nonnegative terms,\" but the left-shift recursion's outer max contains predecessor *finish times* $f_v$, not raw terms; the bound must be established by induction over the topological order. I rewrote the proof with an explicit induction on the DAG order using the recursion $f_u=\\max(f_{p(u)},\\max_{(v,u)\\in E}(f_v+\\theta_{vu}))+C_u$, an explicitly stated **scaling-closure lemma** for $\\max$ and $\\sum$ of nonnegative reals under a common $(1\\pm\\varepsilon)$ factor, base case = sources, inductive step combining the closure facts. Numerically verified the closure (max then +constant) over 3x10^5 random instances.\n\nBoth changes are local; environments and braces balance. No LaTeX toolchain is installed here so I could not compile, but the file remains self-contained amsart.\n\nNet effect: the tightness claim and the propagation-to-finish-times step - the two places where the prior write-up was hand-wavy or incorrect - are now rigorous. The headline result is unchanged: minimizing the estimated objective (exactly or $\\gamma$-approximately) yields a configuration within $\\gamma\\frac{1+\\varepsilon}{1-\\varepsilon}$ of the true optimum for every demand-scale-coherent objective, with $|\\Pi|$-independent sample complexity, and the constant is now genuinely shown tight.",
+      "created_at": "2026-06-23T18:10:23Z"
+    },
+    {
+      "id": "cca181a09",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "test",
+      "created_at": "2026-06-23T19:26:54Z"
+    },
+    {
+      "id": "c0faa76ed",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Mathematical Review (critic-agent)\n\nOpen-ended problem: define/compute descriptors (a), build completion-time estimators with controlled accuracy (b), and prove estimated-objective minimization is provably close to exact-objective optimum (c).\n\n**Verdict.** The transfer-theorem core is correct *given its hypotheses*, but several hypotheses are assumed rather than established, and there is one genuine internal inconsistency.\n\n### Genuine gaps\n\n**GAP A (central, genuine inconsistency) — schedule-induced vs. frozen measured descriptors.**\nDef. `struct` defines the realized completion time as C_u(pi)=g_{x_u}(d_u; L_{x_u}(pi), N(pi)) with descriptors that **depend on pi** (contention/queueing). But Lemma `propagate` sets Chat_u(pi)=g(dhat_u; barL, barN) using **fixed window-averaged measured** descriptors, and its proof writes C_u and Chat with the **same** rate vector kappa_{x_u}(barL_{x_u}) for both. This silently assumes kappa_i(L_i(pi))=kappa_i(barL_i) for every pi, contradicting the model's own premise. The pi-induced load L_i(pi) is never modeled/estimated. Hence the transfer theorem at best bounds quality w.r.t. a **frozen-load surrogate** objective, not the contention-aware realized objective the model defines — so part (c) is not delivered for that model. This is exactly the subtlety the Overview claims to fix.\n\n**GAP B — linear-throughput/homogeneity model posited, not justified.** g_i=<kappa_i(L_i),d_u> (degree-one homogeneous) is the load-bearing assumption for the whole chain (homog -> scale-coherence -> sandwich -> transfer). Memory hierarchies/queueing generically give nonlinear completion times; no residual bound or regime is provided.\n\n**GAP C — concentration for dependent probes invoked, not proved.** Prop. `samples` uses a Hoeffding exponent with r^eff=r/tau_ac, justified only parenthetically. The r->r/tau_ac substitution is a CLT/variance heuristic, not a valid Hoeffding-exponent replacement; (M4) \"summable autocorrelations\" is weaker than mixing. Needs an explicit m-dependent/phi-mixing inequality with the stated constant.\n\n**GAP D — heterogeneous-DAG gamma-oracle.** Thm. `main` uses exact argmin (NP-hard). Thm. `approxalg` is fine as an oracle-conditional statement, but the cited concrete gamma (Graham 2-1/n) is for identical machines w/o communication; for P/R | prec, c_ij | obj no constant-factor poly-time approx with a stated gamma is established. Cor. `e2e` inherits an undefined gamma.\n\n**GAP E — drift remark.** (M4) assumes stationarity while Remark `drift` allows Lipschitz drift (contradiction); folding additive eta*H into the multiplicative bias via beta'=beta+eta*H/a_min is asserted, not carried through Prop. `samples`, and uses a_min where the per-coordinate bound uses a_ell.\n\n### Non-gaps (checked, sound)\n- Transfer core (sandwich + Thm main/approxalg) correct given uniform (1±eps) accuracy + scale-coherence.\n- Finish-time induction in Lemma `propagate` correct for fixed ordering; numerically verified the (1±eps) bound on f_u holds **even with additive latencies** (common nonneg constants move ratios toward 1), so Remark `latency` is fine — no argmax-switching error.\n- Tightness example attains (1+eps)/(1-eps) correctly.\n\n### Priority\nGap A is research-level and essential (requires either honestly restricting to load-independent rates, or modeling+estimating L_i(pi) with uniform accuracy over Pi). Gaps C/E are closeable with standard care; Gap D is a scope/literature issue; Gap B is a modeling commitment needing a residual theory or scoped hypothesis.\n\nFull details in the linked **Critic Analysis** document.\n\n*Note: the issue tracker's create-issue and list (GET-with-query) endpoints reject this problem id (\"invalid problem id\"), so individual gap issues could not be filed; gaps are recorded here and in the analysis doc.*",
+      "created_at": "2026-06-23T19:27:46Z"
+    },
+    {
+      "id": "ev1e60daa5",
+      "author": "agent",
+      "role": "event",
+      "event_type": "doc_generated",
+      "body": "Document generated: **Critic Analysis**",
+      "created_at": "2026-06-23T19:27:50Z"
     }
   ],
   "documents": [
@@ -66,6 +95,12 @@
       "title": "Critic Analysis",
       "path": "questions/rm-00899/analysis.md",
       "created_at": "2026-06-23T05:18:15Z",
+      "created_by": "agent"
+    },
+    {
+      "title": "Critic Analysis",
+      "path": "questions/rm-00899/analysis.md",
+      "created_at": "2026-06-23T19:27:50Z",
       "created_by": "agent"
     }
   ]

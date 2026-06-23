@@ -51,8 +51,26 @@ _CC_SYSTEM = (
 
 
 def claude_code_available() -> str | None:
-    """Return the path to the ``claude`` binary, or None if not installed."""
-    return shutil.which("claude")
+    """Return the path to the ``claude`` binary, or None if not installed.
+
+    Honours the RMA_CLAUDE_BIN env override (binary path), then PATH, then a
+    couple of common install locations — so a server whose PATH lacks the
+    npm-global bin dir can still find it.
+    """
+    override = os.environ.get("RMA_CLAUDE_BIN", "").strip()
+    if override and os.path.isfile(override) and os.access(override, os.X_OK):
+        return override
+    found = shutil.which("claude")
+    if found:
+        return found
+    for cand in (
+        os.path.expanduser("~/software/npm-global/bin/claude"),
+        "/projects/bhov/zzhao18/software/npm-global/bin/claude",
+        os.path.expanduser("~/.npm-global/bin/claude"),
+    ):
+        if os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    return None
 
 
 def run_claude_code_agent(cfg: AgentConfig, handle: RunHandle | None = None) -> Iterator[AgentEvent]:
@@ -67,13 +85,16 @@ def run_claude_code_agent(cfg: AgentConfig, handle: RunHandle | None = None) -> 
         return
 
     repo_root = cfg.repo_root or Path(__file__).resolve().parents[1]
-    workspace = _seed_workspace(cfg, repo_root)
+    # General use: if a workspace is supplied (issue/meet agents) use it as-is;
+    # otherwise seed a fresh solve workspace from the problem.
+    workspace = cfg.workspace or _seed_workspace(cfg, repo_root)
     if workspace is None:
         yield AgentEvent("error", {"message": f"Problem '{cfg.problem_id}' not found."})
         yield AgentEvent("done", {"reason": "error"})
         return
+    Path(workspace).mkdir(parents=True, exist_ok=True)
 
-    prompt = (
+    prompt = (cfg.initial_message or "").strip() or (
         f"Solve the problem in problem.tex (benchmark id {cfg.problem_id}). "
         f"Write the final proof to solution.tex, then give a short summary of the "
         f"result and the key idea."
@@ -85,8 +106,8 @@ def run_claude_code_agent(cfg: AgentConfig, handle: RunHandle | None = None) -> 
         "--include-partial-messages",
         "--permission-mode", "acceptEdits",
         "--allowedTools", _ALLOWED_TOOLS,
-        "--max-turns", str(_MAX_TURNS),
-        "--append-system-prompt", _CC_SYSTEM,
+        "--max-turns", str(getattr(cfg, "max_iterations", None) or _MAX_TURNS),
+        "--append-system-prompt", (cfg.system_prompt or _CC_SYSTEM),
         "--no-session-persistence",
     ]
     if cfg.model:
@@ -289,3 +310,37 @@ def _result_text(content) -> str:
                 parts.append(block)
         return "\n".join(parts)
     return "" if content is None else str(content)
+
+
+
+def complete_via_cli(prompt: str, system: str = "", model: str | None = None,
+                     timeout: int = 900) -> str | None:
+    """One-shot completion on the Claude Pro/Max subscription via the `claude`
+    CLI (no tools, no Vertex/API). Returns text, or None on failure."""
+    binary = claude_code_available()
+    if not binary:
+        return None
+    cmd = [binary, "-p", prompt, "--output-format", "json", "--no-session-persistence"]
+    if system:
+        cmd += ["--append-system-prompt", system]
+    m = (model or "").lower()
+    alias = "opus" if "opus" in m else "sonnet" if "sonnet" in m else "haiku" if "haiku" in m else ""
+    if alias:
+        cmd += ["--model", alias]
+    env = dict(os.environ)
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.pop("ANTHROPIC_AUTH_TOKEN", None)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=env)
+    except Exception:
+        return None
+    out = (proc.stdout or "").strip()
+    if not out:
+        return None
+    try:
+        obj = json.loads(out)
+        if isinstance(obj, dict):
+            return (obj.get("result") or obj.get("text") or "").strip() or None
+    except Exception:
+        return out
+    return None

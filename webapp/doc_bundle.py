@@ -86,6 +86,23 @@ def _inline(s: str) -> str:
     s = re.sub(r"\\\(.*?\\\)", _save, s, flags=re.DOTALL)
     s = re.sub(r"\$[^$\n]+?\$", _save, s)
 
+    # 1b. Citations: no bibliography is compiled, so \cite{...} renders as "[?]".
+    #     Convert to a plain bracketed key; drop dangling refs/labels.
+    s = re.sub(r"\\cite[a-zA-Z]*\s*(?:\[[^\]]*\])?\{([^}]*)\}",
+               lambda m: "[" + m.group(1).replace("_", " ") + "]", s)
+    s = re.sub(r"\\(?:eqref|ref|autoref|cref|Cref)\{[^}]*\}", "", s)
+    s = re.sub(r"\\label\{[^}]*\}", "", s)
+
+    # 1c. Auto-wrap bare math tokens (q_1, q_m, c_{n}, x^2, H^{(i)}) so subscripts
+    #     and superscripts render instead of being escaped to a literal "q_1".
+    def _save_auto(mm):
+        math_store.append("$" + mm.group(0) + "$")
+        return f"\x00M{len(math_store)-1}\x00"
+    _SUB = r"_(?:\{[^{}]*\}|[A-Za-z0-9]+)"
+    _SUP = r"\^(?:\{[^{}]*\}|\([^)]*\)|[A-Za-z0-9]+)"
+    s = re.sub(r"(?<![\\\w$\x00/])([A-Za-z]\w*(?:" + _SUB + r")+)", _save_auto, s)
+    s = re.sub(r"(?<![\\\w$\x00/])([A-Za-z]\w*(?:" + _SUP + r")+)", _save_auto, s)
+
     # 2. Strip emojis
     s = _strip_emojis(s)
 

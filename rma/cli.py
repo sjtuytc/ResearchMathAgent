@@ -4,6 +4,7 @@ import argparse
 from collections.abc import Sequence
 
 from .doctor import run_doctor
+from .push import run_push
 from .solve import run_diff, run_parse, run_propose, run_refine, run_solve, run_verify
 
 
@@ -105,6 +106,25 @@ def build_parser() -> argparse.ArgumentParser:
     diff_b.add_argument("--output-b", default=None, help="Absolute path to second experiment folder.")
     diff.add_argument("--repo-root", default=None)
     diff.set_defaults(func=run_diff)
+
+    push = subparsers.add_parser(
+        "push",
+        help="Run the push-forward, update every tab, and build ONE huge combined PDF (all problems, all tabs).",
+    )
+    push.add_argument("--provider", default="claude-code", choices=["claude-code", "vertex", "api"],
+                      help="LLM backend (default: claude-code = Pro/Max subscription, no Vertex).")
+    push.add_argument("--dataset", default="first_proof_1", help="Dataset slug (default: first_proof_1).")
+    push.add_argument("--problems", nargs="*", default=None, help="Problem IDs to update (default: all in dataset).")
+    push.add_argument("--rounds", type=int, default=1, help="Meeting discussion rounds (default: 1).")
+    push.add_argument("--max-resolve", type=int, default=2, dest="max_resolve",
+                      help="Max issues to resolve per problem (default: 2).")
+    push.add_argument("--pdf-only", action="store_true", dest="pdf_only",
+                      help="Skip the update; just (re)build the master PDF from current content.")
+    push.add_argument("--no-meetings", action="store_true", dest="no_meetings",
+                      help="Skip the meeting/issue cycle; still refresh docs + concepts + insights.")
+    push.add_argument("--force", action="store_true", help="Force regenerate concepts/insights and recompile all reports.")
+    push.add_argument("--repo-root", default=None)
+    push.set_defaults(func=run_push)
 
     return parser
 

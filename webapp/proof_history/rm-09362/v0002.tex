@@ -1,0 +1,585 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{bm}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{model}{Model}
+\newtheorem{remark}{Remark}
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\newtheorem{lemma}{Lemma}
+
+\begin{document}
+
+\title{An Integrated Structural--Interpersonal Framework for Team Learning Behavior}
+\maketitle
+
+\begin{abstract}
+We formulate an integrated framework that jointly models team \emph{structural features}
+and \emph{shared interpersonal beliefs} (psychological safety) as determinants of team
+\emph{learning behavior} and downstream \emph{performance}. The framework is a recursive
+structural causal model (SCM) on a directed acyclic graph (DAG). We are careful to
+distinguish three logically separate layers and to prove a precise statement at each:
+(a) a \emph{representation/justification} layer, where we list qualitative desiderata read
+off the substantive prompt and prove that the proposed model is the (essentially unique)
+minimal linear recursive model satisfying them (Theorem~\ref{thm:rep}); (b) a
+\emph{statistical (regression) identification} layer, under a disturbance-orthogonality
+assumption, giving population least-squares recovery of all coefficients
+(Theorem~\ref{thm:ident}); and (c) a \emph{causal} layer, under an additional
+sequential-ignorability assumption, under which conditional means equal interventional
+means, so the coefficients carry causal meaning (Theorem~\ref{thm:causal}). We then prove an
+exact \emph{four-way effect decomposition} matching the canonical
+controlled-direct/reference-interaction/mediated-interaction/pure-indirect terms of
+VanderWeele (Theorem~\ref{thm:decomp}), an explicit non-degeneracy construction making the
+identification conditions consistent with the generative model (Proposition~\ref{prop:law}),
+a strict non-reducibility theorem (Theorem~\ref{thm:nonred}), and matched
+quantitative/qualitative test batteries with their precise logical status
+(Propositions~\ref{prop:quant}--\ref{prop:qual}). We are explicit throughout about which
+claims are algebraic identities, which are causal claims requiring stronger assumptions, and
+which are modeling hypotheses rather than theorems.
+\end{abstract}
+
+\section{Scope and what is and is not proved}
+
+The substantive question --- how structural features and shared interpersonal beliefs jointly
+produce team learning --- is a modeling task, not a theorem about the world. We therefore
+\emph{separate} the modeling hypothesis (the directions of the arrows and the dual mediator/
+moderator role of psychological safety) from the mathematical statements we can actually
+prove about \emph{any} model with that form. Concretely:
+\begin{itemize}
+\item The choice of DAG and of which terms appear in each equation is a substantive
+hypothesis. We do not (and cannot) prove it true of real teams; instead we
+\emph{justify} it by showing it is the minimal linear recursive model consistent with a short
+list of qualitative requirements extracted from the prompt (Theorem~\ref{thm:rep}), and we
+make every implication of the model \emph{falsifiable} (\S\ref{sec:test}).
+\item Statements labeled ``regression/projection'' are pure consequences of
+orthogonality (Assumption~\ref{ass:exog}); they require no causal assumptions but
+identify projections, \emph{not} causal effects.
+\item Statements labeled ``causal'' (interventional means, natural/controlled effects)
+require the additional Assumption~\ref{ass:ign} (sequential ignorability / back-door),
+which we state explicitly and whose role we flag wherever it is used.
+\end{itemize}
+
+\section{Formalization}
+
+\begin{definition}[Team variables]\label{def:vars}
+Fix a population of work teams on a probability space $(\Omega,\mathcal F,\mathbb P)$. For a
+team define team-level random quantities with finite second moments:
+\begin{itemize}
+\item $\bm X=(X_1,\dots,X_p)\in\mathbb R^p$: \emph{structural features} (team design, leader
+coaching, context support, composition);
+\item $S\in\mathbb R$: \emph{psychological safety}, the shared belief that the team is safe
+for interpersonal risk-taking, operationalized as a team-level latent obtained by aggregating
+member perceptions (Definition~\ref{def:shared});
+\item $L\in\mathbb R$: \emph{learning behavior} (feedback seeking, information sharing, help
+seeking, experimentation, error discussion), a team-level composite;
+\item $P\in\mathbb R$: downstream \emph{team performance}.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Sharedness / aggregation validity]\label{def:shared}
+Let $S_{ij}$ be member $j$'s perception in team $i$, $j=1,\dots,n_i$. The construct $S$ is
+\emph{shared} if within-team agreement is high and between-team variance dominates,
+formalized by an intraclass correlation
+$\mathrm{ICC}(1)=\sigma^2_{\text{between}}/(\sigma^2_{\text{between}}+\sigma^2_{\text{within}})$
+bounded away from $0$; then the team mean $S_i=\frac1{n_i}\sum_j S_{ij}$ is a consistent
+estimator of the team-level latent as $n_i\to\infty$, licensing treatment of $S$ as one
+team-level variable. This is a measurement-model precondition, assumed throughout.
+\end{definition}
+
+\section{The integrated structural model and its justification}
+
+\begin{model}[Integrated structural--interpersonal SCM]\label{mod:main}
+The framework asserts the recursive (acyclic) generative process
+\begin{align}
+S &= \alpha_0 + \bm\alpha^\top \bm X + \varepsilon_S, \label{eq:S}\\
+L &= \beta_0 + \bm\beta^\top \bm X + \gamma\, S
+      + (\bm\delta^\top \bm X)\, S + \varepsilon_L, \label{eq:L}\\
+P &= \eta_0 + \theta\, L + \bm\phi^\top \bm X + \varepsilon_P, \label{eq:P}
+\end{align}
+with topological order $\bm X \prec S \prec L \prec P$ on the DAG with edges
+$\bm X\to S$, $\bm X\to L$, $S\to L$, $L\to P$, $\bm X\to P$, and the moderating mechanism
+encoded by the product regressor $(\bm\delta^\top\bm X)S$. Here
+$\bm\alpha,\bm\beta,\bm\delta,\bm\phi\in\mathbb R^p$,
+$\alpha_0,\beta_0,\eta_0,\gamma,\theta\in\mathbb R$, and $(\varepsilon_S,\varepsilon_L,
+\varepsilon_P)$ are mean-zero disturbances. The slope of $L$ on $S$ is
+$\gamma+\bm\delta^\top\bm X$, i.e.\ structure conditions the safety--learning link.
+\end{model}
+
+The two substantive roles are read off the equations: in \eqref{eq:S} structure is an
+\emph{antecedent} of safety; in \eqref{eq:L} safety \emph{mediates} part of the structure
+effect and, through $(\bm\delta^\top\bm X)S$, also \emph{moderates} the safety--learning link
+($\partial^2 \mathbb E[L\mid\bm X,S]/\partial\bm X\,\partial S=\bm\delta$). The following
+theorem upgrades ``read off'' to a justification: the model is the canonical minimal one
+meeting explicit qualitative requirements.
+
+\begin{theorem}[Representation / minimality]\label{thm:rep}
+Consider the class $\mathcal M$ of recursive structural models for $(\bm X,S,L,P)$ that
+satisfy all of the following qualitative desiderata, taken directly from the prompt:
+\begin{enumerate}
+\item[(D1)] \emph{Topological order} $\bm X\prec S\prec L\prec P$ (structure is exogenous;
+safety is an interpersonal belief formed given structure; learning is behavior given the
+belief and structure; performance is downstream of learning);
+\item[(D2)] each structural equation's systematic part is an \emph{affine function of its
+parents plus at most pairwise products of parents} (linearity with interactions; the
+smallest polynomial class admitting moderation);
+\item[(D3)] \emph{antecedence}: $S$ may depend on $\bm X$ (an $S$ equation with an
+$\bm X$ term is permitted);
+\item[(D4)] \emph{mediation}: $\bm X$ may affect $L$ both directly and through $S$ (both an
+$\bm X$ term and an $S$ term in the $L$ equation);
+\item[(D5)] \emph{moderation of the safety--learning link by structure}: the partial
+derivative $\partial \mathbb E[L\mid\bm X,S]/\partial S$ is permitted to depend on $\bm X$;
+\item[(D6)] \emph{no moderation that the prompt does not name}: the only product term
+retained is the one required by (D5); in particular the $S$ equation has no $\bm X$--$\bm X$
+products beyond linearity, and $P$ depends on $\{\bm X,L\}$ affinely.
+\end{enumerate}
+Then the systematic (mean) part of every model in $\mathcal M$ has exactly the functional
+form of \eqref{eq:S}--\eqref{eq:P}, and \eqref{eq:L} is the unique form in $\mathcal M$ whose
+$S$-slope depends on $\bm X$; dropping the term $(\bm\delta^\top\bm X)S$ violates (D5),
+while adding any further pairwise product permitted by (D2) violates (D6). Hence
+Model~\ref{mod:main} is the minimal element of $\mathcal M$ realizing all of (D1)--(D5).
+\end{theorem}
+
+\begin{proof}
+By (D1) the equations are recursive in the order $\bm X\prec S\prec L\prec P$, so the
+systematic part of $S$ is a function of $\bm X$ only, that of $L$ of $(\bm X,S)$ only, and
+that of $P$ of $(\bm X,L)$ only. By (D2) each is affine in its parents plus pairwise
+products of parents.
+
+\emph{$S$ equation.} Parents are $\bm X$; the affine-plus-pairwise class is
+$\alpha_0+\bm\alpha^\top\bm X+\bm X^\top A\bm X$ for some symmetric $A$. (D6) forbids
+$\bm X$--$\bm X$ products in the $S$ equation (the prompt names no such interaction), so
+$A=0$ and we recover \eqref{eq:S}.
+
+\emph{$L$ equation.} Parents are $(\bm X,S)$. The affine-plus-pairwise class is
+$\beta_0+\bm\beta^\top\bm X+\gamma S+\bm X^\top B\bm X+(\bm\delta^\top\bm X)S+ cS^2$. The
+$S$-slope is $\gamma+\bm\delta^\top\bm X+2cS+\dots$; (D5) requires this slope to depend on
+$\bm X$, which forces $\bm\delta\neq0$ to be \emph{permitted}, i.e.\ the term
+$(\bm\delta^\top\bm X)S$ must be retained. (D6) retains \emph{only} the product needed for
+(D5): the $\bm X$--$S$ product. Hence $B=0$, $c=0$, and we recover \eqref{eq:L}. If
+$(\bm\delta^\top\bm X)S$ is dropped ($\bm\delta\equiv0$ identically as a constraint) the
+$S$-slope is the constant $\gamma$ and (D5) fails; if $\bm X^\top B\bm X$ or $cS^2$ is added,
+(D6) fails. Thus \eqref{eq:L} is the unique minimal form.
+
+\emph{$P$ equation.} Parents are $(\bm X,L)$; (D6) restricts $P$ to be affine in them,
+giving \eqref{eq:P}.
+
+Existence and acyclicity of the disturbances follow by appending mean-zero residuals
+$\varepsilon_S,\varepsilon_L,\varepsilon_P$, which is always possible. Minimality is now the
+conjunction of the three paragraphs.
+\end{proof}
+
+\begin{remark}
+Theorem~\ref{thm:rep} is a justification \emph{relative to the desiderata} (D1)--(D6); those
+desiderata are the substantive content imported from the team-learning prompt and are not
+themselves theorems. The contribution is to make the modeling choice canonical and explicit
+rather than ad hoc: any other functional form either drops a named mechanism or adds an
+unnamed one.
+\end{remark}
+
+\section{Assumptions: regression vs.\ causal}
+
+\begin{assumption}[Recursive exogeneity / disturbance orthogonality]\label{ass:exog}
+Conditional on the regressors appearing in each equation, the disturbances are mean
+independent and mutually orthogonal across equations:
+\[
+\mathbb E[\varepsilon_S\mid \bm X]=0,\quad
+\mathbb E[\varepsilon_L\mid \bm X,S]=0,\quad
+\mathbb E[\varepsilon_P\mid \bm X,L]=0,
+\]
+and $\mathbb E[\varepsilon_S\varepsilon_L]=\mathbb E[\varepsilon_S\varepsilon_P]
+=\mathbb E[\varepsilon_L\varepsilon_P]=0$. Since $(\bm\delta^\top\bm X)S$ is a measurable
+function of $(\bm X,S)$, the middle display also gives
+$\mathbb E[\varepsilon_L\mid \bm X,S,(\bm\delta^\top\bm X)S]=0$.
+\end{assumption}
+
+Assumption~\ref{ass:exog} is purely about the joint law of the disturbances and regressors;
+it suffices for projection identification (Theorem~\ref{thm:ident}) but \emph{not} for any
+causal reading. For causal claims we add:
+
+\begin{assumption}[Sequential ignorability / back-door]\label{ass:ign}
+Using potential-outcome notation, let $S(\bm x)$ be the potential value of safety under an
+intervention setting $\bm X=\bm x$, and $L(\bm x,s)$ the potential learning behavior under
+$\bm X=\bm x$, $S=s$. We assume:
+\begin{enumerate}
+\item[(I1)] \emph{Exposure ignorability}: $\bm X$ is (conditionally) randomized, e.g.\ by
+design (randomized coaching/support) or by an observed sufficient adjustment set; here we take
+$\bm X$ exogenous, $\{S(\bm x),L(\bm x,s)\}\perp \bm X$.
+\item[(I2)] \emph{Mediator ignorability (no mediator--outcome confounding)}:
+$L(\bm x,s)\perp S\mid \bm X$, i.e.\ given structure there is no unobserved cause of both
+safety and learning. This is the Imai--Keele--Yamamoto sequential-ignorability condition for
+a single mediator.
+\item[(I3)] \emph{Consistency/SUTVA} and positivity (overlap) of $\bm X,S$.
+\end{enumerate}
+\end{assumption}
+
+We flag explicitly: (I2) is a strong, non-testable identifying assumption; it is exactly
+what licenses interpreting the mediation/moderation algebra causally, and we never use it
+where it is not needed.
+
+\section{Causal layer: interventional means equal conditional means}
+
+\begin{theorem}[do-means$=$conditional means]\label{thm:causal}
+Under Model~\ref{mod:main}, Assumption~\ref{ass:exog} and Assumption~\ref{ass:ign},
+\begin{align}
+\mathbb E\big[L(\bm x,s)\big]&=\mathbb E[L\mid \bm X=\bm x,S=s]
+   =\beta_0+\bm\beta^\top\bm x+(\gamma+\bm\delta^\top\bm x)s,\label{eq:doLxs}\\
+\mathbb E\big[S(\bm x)\big]&=\mathbb E[S\mid \bm X=\bm x]=\alpha_0+\bm\alpha^\top\bm x,
+\label{eq:doSx}\\
+\mathbb E\big[L(\bm x,S(\bm x'))\big]
+  &=\beta_0+\bm\beta^\top\bm x+(\gamma+\bm\delta^\top\bm x)(\alpha_0+\bm\alpha^\top\bm x').
+\label{eq:nested}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+By (I1) and consistency, $\mathbb E[S(\bm x)]=\mathbb E[S(\bm x)\mid\bm X=\bm x]
+=\mathbb E[S\mid\bm X=\bm x]$, and \eqref{eq:S} with Assumption~\ref{ass:exog} gives
+$\mathbb E[S\mid\bm X=\bm x]=\alpha_0+\bm\alpha^\top\bm x$, proving \eqref{eq:doSx}.
+By (I1)--(I2) and consistency, $\mathbb E[L(\bm x,s)]=\mathbb E[L(\bm x,s)\mid\bm X=\bm x,
+S=s]=\mathbb E[L\mid\bm X=\bm x,S=s]$; the last equals
+$\beta_0+\bm\beta^\top\bm x+(\gamma+\bm\delta^\top\bm x)s$ by \eqref{eq:L} and
+$\mathbb E[\varepsilon_L\mid\bm X,S]=0$, proving \eqref{eq:doLxs}. For the nested
+counterfactual, by (I2) ($L(\bm x,\cdot)\perp S\mid\bm X$) and (I1),
+\[
+\mathbb E[L(\bm x,S(\bm x'))]
+=\mathbb E_{s\sim S(\bm x')}\mathbb E[L(\bm x,s)]
+=\mathbb E[L(\bm x,s)]\big|_{s=\mathbb E[S(\bm x')]},
+\]
+the inner mean being affine in $s$; substituting \eqref{eq:doLxs} and \eqref{eq:doSx}
+yields \eqref{eq:nested}.
+\end{proof}
+
+\section{Exact four-way effect decomposition}
+
+We now give the \emph{canonical} causal decomposition (VanderWeele's four-way
+decomposition) of the total effect of moving structure from $\bm x'$ to $\bm x$ on learning,
+with each term carrying its standard meaning. Fix a reference safety level $s^\ast$ (commonly
+$s^\ast=0$ after centering). Define, under Assumption~\ref{ass:ign}, the total effect
+$\mathrm{TE}=\mathbb E[L(\bm x,S(\bm x))]-\mathbb E[L(\bm x',S(\bm x'))]$, and write
+$m(\bm x):=\alpha_0+\bm\alpha^\top\bm x=\mathbb E[S(\bm x)]$.
+
+\begin{theorem}[Four-way decomposition]\label{thm:decomp}
+Under Model~\ref{mod:main}, Assumption~\ref{ass:exog} and Assumption~\ref{ass:ign}, for any
+$\bm x,\bm x'\in\mathbb R^p$ and reference $s^\ast\in\mathbb R$,
+\begin{equation}\label{eq:4way}
+\mathrm{TE}
+=\underbrace{(\bm\beta+\bm\delta\,s^\ast)^\top(\bm x-\bm x')}_{\mathrm{CDE}(s^\ast)}
++\underbrace{\bm\delta^\top(\bm x-\bm x')\,(m(\bm x')-s^\ast)}_{\mathrm{INT_{ref}}}
++\underbrace{\bm\delta^\top(\bm x-\bm x')\,(m(\bm x)-m(\bm x'))}_{\mathrm{INT_{med}}}
++\underbrace{(\gamma+\bm\delta^\top\bm x')\,(m(\bm x)-m(\bm x'))}_{\mathrm{PIE}},
+\end{equation}
+where $\mathrm{CDE}(s^\ast)$ is the controlled direct effect at $S=s^\ast$,
+$\mathrm{INT_{ref}}$ the reference (pure) interaction, $\mathrm{INT_{med}}$ the mediated
+interaction, and $\mathrm{PIE}$ the pure indirect effect; these are exactly the four terms of
+VanderWeele's decomposition for an exposure with a single mediator and exposure--mediator
+interaction. Consequently the \emph{natural direct} and \emph{natural indirect} effects are
+\begin{align}
+\mathrm{NDE}&=\mathbb E[L(\bm x,S(\bm x'))]-\mathbb E[L(\bm x',S(\bm x'))]
+   =\mathrm{CDE}(s^\ast)+\mathrm{INT_{ref}}
+   =(\bm\beta+\bm\delta\, m(\bm x'))^\top(\bm x-\bm x'),\\
+\mathrm{NIE}&=\mathbb E[L(\bm x,S(\bm x))]-\mathbb E[L(\bm x,S(\bm x'))]
+   =\mathrm{INT_{med}}+\mathrm{PIE}
+   =(\gamma+\bm\delta^\top\bm x)\,(m(\bm x)-m(\bm x')),
+\end{align}
+and $\mathrm{TE}=\mathrm{NDE}+\mathrm{NIE}$. When $\bm\delta=\bm0$ (no moderation), all
+interaction terms vanish and $\mathrm{TE}=\bm\beta^\top(\bm x-\bm x')+\gamma\,
+\bm\alpha^\top(\bm x-\bm x')=(\bm\beta+\gamma\bm\alpha)^\top(\bm x-\bm x')$, the classical
+linear mediation identity \emph{total $=$ direct $+$ indirect}.
+\end{theorem}
+
+\begin{proof}
+By \eqref{eq:nested}, $\mathbb E[L(\bm x,S(\bm x))]
+=\beta_0+\bm\beta^\top\bm x+(\gamma+\bm\delta^\top\bm x)m(\bm x)$ and likewise at
+$\bm x'$, so
+\[
+\mathrm{TE}=\bm\beta^\top(\bm x-\bm x')
++(\gamma+\bm\delta^\top\bm x)m(\bm x)-(\gamma+\bm\delta^\top\bm x')m(\bm x').
+\]
+We verify \eqref{eq:4way} by expanding its four terms and summing:
+\begin{align*}
+\mathrm{CDE}+\mathrm{INT_{ref}}
+&=(\bm\beta+\bm\delta s^\ast)^\top(\bm x-\bm x')
+  +\bm\delta^\top(\bm x-\bm x')(m(\bm x')-s^\ast)\\
+&=\bm\beta^\top(\bm x-\bm x')+\bm\delta^\top(\bm x-\bm x')\,m(\bm x')
+  =\mathrm{NDE},
+\end{align*}
+(the $s^\ast$ terms cancel, so the decomposition is independent of $s^\ast$ up to the split
+between CDE and INT$_{\mathrm{ref}}$). Next,
+\begin{align*}
+\mathrm{INT_{med}}+\mathrm{PIE}
+&=\bm\delta^\top(\bm x-\bm x')(m(\bm x)-m(\bm x'))
+  +(\gamma+\bm\delta^\top\bm x')(m(\bm x)-m(\bm x'))\\
+&=(m(\bm x)-m(\bm x'))\big[\bm\delta^\top\bm x-\bm\delta^\top\bm x'+\gamma+\bm\delta^\top\bm
+x'\big]
+=(\gamma+\bm\delta^\top\bm x)(m(\bm x)-m(\bm x'))=\mathrm{NIE}.
+\end{align*}
+Adding,
+\begin{align*}
+\mathrm{NDE}+\mathrm{NIE}
+&=\bm\beta^\top(\bm x-\bm x')+\bm\delta^\top(\bm x-\bm x')m(\bm x')
+  +(\gamma+\bm\delta^\top\bm x)(m(\bm x)-m(\bm x'))\\
+&=\bm\beta^\top(\bm x-\bm x')+(\gamma+\bm\delta^\top\bm x)m(\bm x)
+  -(\gamma+\bm\delta^\top\bm x')m(\bm x')\\
+&\qquad+\big[\bm\delta^\top(\bm x-\bm x')m(\bm x')-(\gamma+\bm\delta^\top\bm x)m(\bm x')
+  +(\gamma+\bm\delta^\top\bm x')m(\bm x')\big].
+\end{align*}
+The bracket equals $m(\bm x')[\bm\delta^\top\bm x-\bm\delta^\top\bm x'-\gamma-\bm\delta^\top
+\bm x+\gamma+\bm\delta^\top\bm x']=0$, leaving exactly $\mathrm{TE}$. The $\bm\delta=\bm0$
+specialization is immediate since then $m(\bm x)-m(\bm x')=\bm\alpha^\top(\bm x-\bm x')$.
+\end{proof}
+
+\begin{remark}[On the previous, non-canonical labels]
+A naive regrouping of the bilinear terms of $(\gamma+\bm\delta^\top\bm x)m(\bm x)$ into
+``direct $=\bm\beta^\top(\bm x-\bm x')$,'' ``mediated,'' and ``moderated baseline''
+\emph{also} sums to $\mathrm{TE}$, but those labels do \emph{not} coincide with the
+canonical natural/controlled effects except when $\bm x'=\bm0$: e.g.\ at $\bm
+x'=(-0.3,0.2),\ \bm x=(1,0.5)$ with $\alpha_0=.5,\bm\alpha=(.3,-.2),\bm\beta=(.4,.1),
+\gamma=.7,\bm\delta=(.5,-.3)$ one has $\mathrm{NDE}=0.757\neq\bm\beta^\top(\bm x-\bm x')=
+0.55$. We therefore use only the VanderWeele terms above, whose causal meaning is standard
+and reference-consistent.
+\end{remark}
+
+\begin{corollary}[Performance pathway]\label{cor:perf}
+Under Model~\ref{mod:main} and Assumptions~\ref{ass:exog},~\ref{ass:ign} (with the analogous
+ignorability for the $L\to P$ link, $P(\ell)\perp L\mid\bm X$),
+\[
+\mathbb E[P(\bm x)]=\eta_0+\bm\phi^\top\bm x+\theta\,\mathbb E[L(\bm x,S(\bm x))],
+\]
+so the total causal effect of structure on performance equals the direct structural part
+$\bm\phi^\top(\bm x-\bm x')$ plus $\theta\cdot\mathrm{TE}$ with $\mathrm{TE}$ from
+Theorem~\ref{thm:decomp}.
+\end{corollary}
+\begin{proof}
+By the $L\to P$ ignorability and consistency, $\mathbb E[P\mid\bm X=\bm x,L=\ell]
+=\eta_0+\bm\phi^\top\bm x+\theta\ell$ (using \eqref{eq:P} and
+$\mathbb E[\varepsilon_P\mid\bm X,L]=0$) equals $\mathbb E[P(\ell)\mid\bm X=\bm x]$; averaging
+over $L(\bm x,S(\bm x))$ and using affineness in $\ell$ gives the display. Subtracting at
+$\bm x'$ and applying Theorem~\ref{thm:decomp} gives the effect statement.
+\end{proof}
+
+\section{Statistical identification (regression layer)}
+
+The decomposition's ingredients $(\bm\alpha,\bm\beta,\gamma,\bm\delta,\theta,\bm\phi)$ are
+recoverable from the joint law under Assumption~\ref{ass:exog} \emph{alone} (no causal
+assumption needed to identify the coefficients; causal meaning is then attached via
+Theorem~\ref{thm:causal}).
+
+\begin{theorem}[Parameter identification]\label{thm:ident}
+Suppose, in addition to Assumption~\ref{ass:exog}:
+\begin{enumerate}
+\item[(R1)] $\Sigma_Z:=\mathbb E[\bm Z\bm Z^\top]\succ0$ for
+$\bm Z:=(1,\bm X^\top,S,(\bm X S)^\top)^\top\in\mathbb R^{2p+2}$ (the regressors of
+\eqref{eq:L});
+\item[(R2)] the second-moment matrix of $(1,\bm X^\top)$ is nonsingular;
+\item[(R3)] the second-moment matrix of $(1,\bm X^\top,L)$ is nonsingular.
+\end{enumerate}
+Then $(\alpha_0,\bm\alpha)$, $(\beta_0,\bm\beta,\gamma,\bm\delta)$, and
+$(\eta_0,\bm\phi,\theta)$ are uniquely determined by the joint distribution of
+$(\bm X,S,L,P)$, each as a population least-squares projection; consequently every term in
+\eqref{eq:4way} and Corollary~\ref{cor:perf} is identified.
+\end{theorem}
+
+\begin{proof}
+\emph{Eq.\ \eqref{eq:S}.} $\mathbb E[\varepsilon_S\mid\bm X]=0$ gives
+$\mathbb E[(1,\bm X^\top)^\top\varepsilon_S]=\bm0$, so $(\alpha_0,\bm\alpha)$ solve the normal
+equations $\mathbb E[(1,\bm X^\top)^\top(1,\bm X^\top)](\alpha_0,\bm\alpha^\top)^\top
+=\mathbb E[(1,\bm X^\top)^\top S]$; by (R2) the matrix is invertible, so the solution is the
+unique projection of $S$ on $(1,\bm X)$.
+
+\emph{Eq.\ \eqref{eq:L}.} Each component of $\bm Z$ is $(\bm X,S)$-measurable and
+$\mathbb E[\varepsilon_L\mid\bm X,S]=0$, so $\mathbb E[\bm Z\,\varepsilon_L]=\bm0$ and the
+coefficient vector $\bm b:=(\beta_0,\bm\beta^\top,\gamma,\bm\delta^\top)^\top$ solves
+$\Sigma_Z\bm b=\mathbb E[\bm Z\,L]$; by (R1), $\bm b=\Sigma_Z^{-1}\mathbb E[\bm Z\,L]$ is
+unique. In particular $\bm\delta$ is identified \emph{whenever (R1) holds}.
+
+\emph{Eq.\ \eqref{eq:P}.} $\mathbb E[\varepsilon_P\mid\bm X,L]=0$ gives
+$\mathbb E[(1,\bm X^\top,L)^\top\varepsilon_P]=\bm0$; by (R3) the second-moment matrix is
+invertible and $(\eta_0,\bm\phi,\theta)$ is the unique projection.
+
+Every parameter is a fixed matrix functional of population moments; \eqref{eq:4way} and
+Corollary~\ref{cor:perf} are continuous in those parameters and in $\bm x,\bm x'$, hence
+identified.
+\end{proof}
+
+The next proposition resolves a subtlety the critic raised: (R1) must be \emph{compatible}
+with the generative model, since under \eqref{eq:S} the regressors $S$ and $\bm X S$ are
+functions of $\bm X$. We exhibit an explicit admissible law making $\Sigma_Z\succ0$, and we
+flag the degenerate case where identification of $\bm\delta$ fails.
+
+\begin{proposition}[Admissible law; degenerate exception]\label{prop:law}
+Let $\bm X\sim N(\bm0,\Sigma_X)$ with $\Sigma_X\succ0$ and let
+$\varepsilon_S\sim N(0,\sigma_S^2)$ be independent of $\bm X$ with $\sigma_S^2>0$, and set
+$S=\alpha_0+\bm\alpha^\top\bm X+\varepsilon_S$. Then $\Sigma_Z\succ0$, so (R1) holds and all
+coefficients (including $\bm\delta$) are identified. Conversely, if $\sigma_S^2=0$ (perfect
+mediation, $\varepsilon_S\equiv0$), then $S$ and $\bm X S$ are polynomials in $\bm X$, the
+vector $\bm Z$ lies in a proper subspace of $\mathbb R^{2p+2}$, $\Sigma_Z$ is singular, and
+$\bm\delta$ is \emph{not} identified by \eqref{eq:L} alone; thus the claim that moderation is
+``empirically decidable'' holds precisely when $\sigma_S^2>0$ (and more generally when (R1)
+holds).
+\end{proposition}
+
+\begin{proof}
+\emph{Nonsingularity.} Suppose $\bm c^\top\bm Z=0$ a.s.\ for some
+$\bm c=(c_0,\bm c_1^\top,c_2,\bm c_3^\top)^\top$; we show $\bm c=\bm0$. Write
+$\bm c^\top\bm Z=c_0+\bm c_1^\top\bm X+c_2 S+(\bm c_3^\top\bm X)S=0$ a.s. Substituting
+$S=\alpha_0+\bm\alpha^\top\bm X+\varepsilon_S$ and grouping by powers of $\varepsilon_S$:
+the coefficient of $\varepsilon_S$ is $c_2+\bm c_3^\top\bm X$, which must vanish a.s.\ as a
+function of $\bm X$ (since, conditional on $\bm X$, $\varepsilon_S$ has positive variance);
+as $\Sigma_X\succ0$, the affine function $c_2+\bm c_3^\top\bm X\equiv0$ forces $c_2=0$ and
+$\bm c_3=\bm0$. The remaining $\varepsilon_S^0$ part is
+$c_0+\alpha_0 c_2+(\bm c_1+c_2\bm\alpha)^\top\bm X=c_0+\bm c_1^\top\bm X\equiv0$, which by
+$\Sigma_X\succ0$ forces $c_0=0,\bm c_1=\bm0$. Hence $\bm c=\bm0$ and $\Sigma_Z\succ0$.
+
+\emph{Degeneracy.} If $\sigma_S^2=0$ then $S=\alpha_0+\bm\alpha^\top\bm X$ and
+$\bm X S=\alpha_0\bm X+\bm X(\bm\alpha^\top\bm X)$, each a (degree $\le2$) polynomial in
+$\bm X$. Take $\bm c$ with $c_2=1,\ c_0=-\alpha_0,\ \bm c_1=-\bm\alpha,\ \bm c_3=\bm0$: then
+$\bm c^\top\bm Z=-\alpha_0-\bm\alpha^\top\bm X+S=\varepsilon_S=0$ a.s., a nontrivial linear
+dependence, so $\Sigma_Z$ is singular. Then the normal equations $\Sigma_Z\bm b
+=\mathbb E[\bm Z L]$ have a nontrivial null space, so $\bm b$ (in particular $\bm\delta$) is
+not uniquely determined by \eqref{eq:L} alone.
+\end{proof}
+
+\begin{remark}[Estimation and inference]
+Theorem~\ref{thm:ident} is constructive: each parameter is a population least-squares
+projection. Replacing population by sample moments yields the OLS/SEM estimators, consistent
+and asymptotically normal under (R1)--(R3) and finite fourth moments; all effects in
+\eqref{eq:4way} then admit delta-method or bootstrap confidence intervals. In the
+no-moderation case $\gamma\bm\alpha$ is the classical product-of-coefficients mediation
+estimand.
+\end{remark}
+
+\section{Non-reducibility to independent predictors}
+
+\begin{theorem}[Strict superiority of the joint model]\label{thm:nonred}
+Let the data be generated by Model~\ref{mod:main} with $\bm\delta\neq\bm0$ and with the
+interaction regressor not collinear with the additive ones (the $L^2$-residual of
+$(\bm\delta^\top\bm X)S$ after projecting on $\overline{\mathrm{span}}\{1,\bm X,S\}$ is
+nonzero; this holds under (R1)). Let
+$g_{\mathrm{add}}(\bm X,S)=\mu_0+\bm\mu^\top\bm X+\nu S$ range over all affine
+(no-interaction) predictors and
+$g_{\mathrm{int}}(\bm X,S)=\beta_0+\bm\beta^\top\bm X+\gamma S+(\bm\delta^\top\bm X)S$ be the
+conditional mean of $L$ under \eqref{eq:L}. Then
+\[
+\min_{\mu_0,\bm\mu,\nu}\mathbb E[(L-g_{\mathrm{add}})^2]
+>\mathbb E[(L-g_{\mathrm{int}})^2],
+\]
+the gap equal to $\sigma_R^2:=\mathbb E[R^2]>0$, the variance of the $L^2$-projection
+residual $R$ of $(\bm\delta^\top\bm X)S$.
+\end{theorem}
+
+\begin{proof}
+Let $W:=(\bm\delta^\top\bm X)S$, $\mathcal A:=\overline{\mathrm{span}}\{1,X_1,\dots,X_p,S\}$,
+$\hat W:=\mathrm{proj}_{\mathcal A}W$, $R:=W-\hat W\perp\mathcal A$ with
+$\mathbb E[R^2]=\sigma_R^2>0$. By \eqref{eq:L},
+$L=g_{\mathrm{int}}(\bm X,S)+\varepsilon_L$ with $\varepsilon_L\perp\mathcal A$ and
+$\varepsilon_L\perp W$ (as $W$ is $(\bm X,S)$-measurable), hence $\varepsilon_L\perp R$.
+Write $L=(\beta_0+\bm\beta^\top\bm X+\gamma S+\hat W)+R+\varepsilon_L$ with the first bracket
+in $\mathcal A$ and $R,\varepsilon_L\perp\mathcal A$. So the projection of $L$ onto
+$\mathcal A$ is the bracket, and
+$\min_{\mathcal A}\mathbb E[(L-g_{\mathrm{add}})^2]=\mathbb E[(R+\varepsilon_L)^2]
+=\sigma_R^2+\mathbb E[\varepsilon_L^2]$ (by $R\perp\varepsilon_L$). Since
+$\mathbb E[(L-g_{\mathrm{int}})^2]=\mathbb E[\varepsilon_L^2]$, the difference is
+$\sigma_R^2>0$.
+\end{proof}
+
+\begin{corollary}[Bias of the ``independent predictors'' slope]\label{cor:bias}
+Under the hypotheses of Theorem~\ref{thm:nonred}, the additive least-squares slope on $S$,
+$\nu^\ast$, generally differs from $\gamma$ and from $\gamma+\bm\delta^\top\bm x$ at any
+$\bm x$. Hence treating safety and structure as independent additive predictors both loses
+fit (Theorem~\ref{thm:nonred}) and yields a configuration-blind, biased estimate of the
+safety--learning relationship.
+\end{corollary}
+\begin{proof}
+$\nu^\ast$ is the $S$-coefficient of $\mathrm{proj}_{\mathcal A}L$, which loads on $S$
+through $\hat W$ whenever $(\bm\delta^\top\bm X)S$ has nonzero partial covariance with $S$
+given $(1,\bm X)$, so $\nu^\ast\neq\gamma$ in general. The true marginal effect of $S$ at
+$\bm X=\bm x$ is $\partial\mathbb E[L\mid\bm X=\bm x,S=s]/\partial s=\gamma+\bm\delta^\top
+\bm x$, varying with $\bm x$, hence not equal to the single constant $\nu^\ast$ unless
+$\bm\delta=\bm0$.
+\end{proof}
+
+\section{Dual quantitative--qualitative testability}\label{sec:test}
+
+\begin{proposition}[Quantitative test]\label{prop:quant}
+Under Assumption~\ref{ass:exog} and (R1)--(R3), each of the following is point-identified and
+estimable by least squares/SEM, with a falsifiable null:
+\begin{enumerate}
+\item \emph{Antecedent} $\bm\alpha\neq\bm0$: test $H_0:\bm\alpha=\bm0$ in \eqref{eq:S}.
+\item \emph{Mediation} $\gamma\bm\alpha\neq\bm0$: product-of-coefficients/bootstrap test of
+$H_0:\gamma\bm\alpha=\bm0$ (causal meaning under Assumption~\ref{ass:ign}).
+\item \emph{Moderation} $\bm\delta\neq\bm0$: test the interaction block in \eqref{eq:L}; by
+Theorem~\ref{thm:nonred} (and Proposition~\ref{prop:law} for identifiability) $\bm\delta\neq
+\bm0$ iff the integrated model strictly improves population fit over the additive one.
+\item \emph{Performance channel} $\theta\neq0$ and the mediated $L$-effect on $P$
+(Corollary~\ref{cor:perf}).
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+Each parameter is identified (Theorem~\ref{thm:ident}, Proposition~\ref{prop:law}) and
+consistently estimable as a least-squares projection (Remark after Theorem~\ref{thm:ident});
+a parameter restriction is a smooth hypothesis, falsifiable by Wald/LR/bootstrap. Item~3's
+equivalence is Theorem~\ref{thm:nonred}.
+\end{proof}
+
+\begin{proposition}[Qualitative / mechanism test]\label{prop:qual}
+The model makes the following \emph{exactly} stated, case-checkable predictions.
+\begin{enumerate}
+\item \emph{Interventional mediation (not a temporal claim about a static model).} Under
+Assumption~\ref{ass:ign}, an exogenous structural change $\bm x'\!\to\!\bm x$ produces an
+expected safety change $m(\bm x)-m(\bm x')=\bm\alpha^\top(\bm x-\bm x')$ and an expected
+indirect learning change $\mathrm{NIE}=(\gamma+\bm\delta^\top\bm x)(m(\bm x)-m(\bm x'))$
+(Theorem~\ref{thm:decomp}); a case study that intervenes on structure should see safety move
+by the predicted amount and learning move accordingly through that channel. (If a
+\emph{temporal} ordering ``$\bm X$-change precedes $S$-change precedes $L$-change'' is to be
+asserted, the static SCM must be replaced by a longitudinal SCM with time-indexed variables
+$S_t,L_t$; the cross-sectional model entails the interventional, not the temporal, claim.)
+\item \emph{Moderation contrast (exact).} For two teams at structures $\bm x_1,\bm x_2$ with
+equal $S=s$, the model gives $\mathbb E[L\mid\bm X=\bm x_1,S=s]-\mathbb E[L\mid\bm X=\bm
+x_2,S=s]=\bm\beta^\top(\bm x_1-\bm x_2)+s\,\bm\delta^\top(\bm x_1-\bm x_2)$, so the
+\emph{same} safety yields a structure-dependent amount of learning, with slope difference
+$\bm\delta^\top(\bm x_1-\bm x_2)$ --- a contrast observable in comparative case study.
+\item \emph{Exact conditional independence (iff).} In a recursive linear SCM the global
+Markov property holds, so $d$-separation gives: $P\perp\bm X\mid L$ \emph{if and only if}
+$\bm\phi=\bm0$ (and the disturbances satisfy Assumption~\ref{ass:exog}); and conditional on
+its parents and their product $(\bm X,S,\bm X S)$, $L$ depends on $\bm X$ only through those
+regressors, i.e.\ $\mathbb E[L\mid\bm X,S]$ is the stated function with no residual
+$\bm X$-dependence. Observed violations falsify the corresponding edge restriction.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+Item~1: the displayed quantities are Theorem~\ref{thm:decomp}/\eqref{eq:doSx}; the
+parenthetical is the standard fact that a static SCM fixes only a logical ordering, so the
+temporal claim requires time-indexed variables. Item~2: subtract \eqref{eq:doLxs} at
+$(\bm x_1,s)$ and $(\bm x_2,s)$. Item~3: by the global Markov property of the recursive
+linear SCM, $P$ and $\bm X$ are $d$-separated by $L$ exactly when the direct edge
+$\bm X\to P$ is absent, i.e.\ $\bm\phi=\bm0$; the ``only if'' direction is because a nonzero
+$\bm\phi$ creates an active path $\bm X\to P$ not blocked by conditioning on $L$, yielding
+$\mathrm{Cov}(P,\bm X\mid L)\neq0$ generically. The residual-independence statement for $L$
+is immediate from \eqref{eq:L} since, given $(\bm X,S,\bm X S)$, $L=\,$(stated mean)$+
+\varepsilon_L$ with $\mathbb E[\varepsilon_L\mid\bm X,S]=0$.
+\end{proof}
+
+\section{Conclusion}
+
+Model~\ref{mod:main} is the requested integrated framework, and we have separated and proved
+its three layers. Theorem~\ref{thm:rep} \emph{justifies} the functional form as the minimal
+linear recursive model meeting explicit qualitative desiderata extracted from the prompt.
+Under disturbance orthogonality (Assumption~\ref{ass:exog}) all coefficients are identified
+as projections (Theorem~\ref{thm:ident}), with an explicit admissible law and a flagged
+degenerate exception (Proposition~\ref{prop:law}). Under the additional, explicitly stated
+sequential-ignorability assumption (Assumption~\ref{ass:ign}) the conditional means are
+interventional means (Theorem~\ref{thm:causal}), so psychological safety enters \emph{both}
+as a mediator and as a moderator, and the total effect decomposes \emph{exactly} into the
+canonical four VanderWeele terms (Theorem~\ref{thm:decomp}), with performance driven through
+learning (Corollary~\ref{cor:perf}). Theorem~\ref{thm:nonred} and Corollary~\ref{cor:bias}
+prove the joint model strictly dominates any additive ``independent predictors'' treatment
+whenever moderation is present, and Propositions~\ref{prop:quant}--\ref{prop:qual} provide
+matched, precisely-scoped quantitative and qualitative test batteries. We have been explicit
+about which statements are algebraic identities, which are causal claims contingent on
+ignorability, and which are modeling hypotheses rather than theorems.
+\end{document}

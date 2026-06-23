@@ -7,6 +7,7 @@ Replaces the local ``claude`` CLI for simple prompt/response calls
 from __future__ import annotations
 
 import logging
+import os
 import time
 
 from .vertex import DEFAULT_MODEL, vertex_adc_project, vertex_region
@@ -34,6 +35,10 @@ def complete(
     Retries automatically on quota errors (HTTP 429) with exponential backoff.
     Set thinking_budget > 0 to enable extended thinking (budget in tokens).
     """
+    if os.environ.get("RMA_PROVIDER") == "claude-code":
+        # Subscription path — no Vertex, no API key. One-shot via the claude CLI.
+        from .claude_code import complete_via_cli
+        return complete_via_cli(prompt, system=system, model=model or DEFAULT_MODEL)
     try:
         from anthropic import AnthropicVertex
     except ImportError:

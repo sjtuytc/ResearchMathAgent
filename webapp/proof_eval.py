@@ -82,23 +82,32 @@ def _save_proof_eval(repo_root: Path, problem_id: str, result: dict) -> None:
     p.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def evaluate_proof(repo_root: Path, problem_id: str, force: bool = False) -> dict:
+def evaluate_proof(repo_root: Path, problem_id: str, dataset: str = "first_proof_1",
+                   force: bool = False) -> dict:
     """Run LLM evaluation of the best proof. Returns the result dict (and caches it)."""
     if not force:
         cached = load_proof_eval(repo_root, problem_id)
         if cached:
             return cached
 
-    # Load the problem statement
+    # Load the problem statement (legacy first_proof_1 .tex, else the dataset store).
     prob_path = repo_root / "problems" / f"{problem_id}.tex"
-    if not prob_path.is_file():
-        return {"error": f"Problem file not found: {problem_id}"}
-    problem_text = prob_path.read_text(encoding="utf-8", errors="replace")[:6000]
+    if prob_path.is_file():
+        problem_text = prob_path.read_text(encoding="utf-8", errors="replace")[:6000]
+    else:
+        try:
+            from .dataset_store import get_problem
+            p = get_problem(dataset, problem_id) or {}
+            problem_text = (p.get("tex") or p.get("statement") or "")[:6000]
+        except Exception:
+            problem_text = ""
+    if not problem_text:
+        return {"error": f"Problem statement not found: {dataset}/{problem_id}"}
 
     # Load the best proof
     try:
         from .proofs import get_best_proof
-        best = get_best_proof(problem_id)
+        best = get_best_proof(problem_id, dataset)
         if not best or not best.get("solution_tex"):
             return {"error": "No best proof available — run the agent and consolidate first"}
         proof_tex = best["solution_tex"][:15000]

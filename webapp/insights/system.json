@@ -1,92 +1,65 @@
 {
-  "summary": "External verification (Jun 21) confirmed 100% answer accuracy across all 10 benchmark problems. 2 proofs are fully correct (P4 Finite Free Stam, P10 CG/RKHS), 4 have proof gaps, and 4 have critical errors (theorems invoked outside valid hypotheses; variable confusion; equivariant vs rational class conflation). The best proof (P4) was further improved: BGLS Step 2 corrected from incorrect exterior-power claim to the correct variational sup-representation argument (Ky Fan generalization).",
+  "summary": "The RMAC system has a coherent end-to-end pipeline (discover → resolve → discuss → eval) and reliable infrastructure (Vertex backend, tectonic compilation, structured proof storage), but it is bottlenecked by a single-model monoculture and a complete absence of formal verification — 0/10 proofs are verified despite 10 having 'best' proofs. The most urgent strategic gap is that solvability is measured by a self-referential LLM scorer rather than ground truth, creating a high risk of the cluster optimizing for self-agreement rather than correctness. Resource usage is near-idle (10 total runs, $3.78 cumulative), so the system is under-utilized and has ample headroom to add diversity, verification, and adversarial checks.",
   "problems": [
-    "Single-model dependency: all agents (critic, solver, meeting personas, evaluator) use claude-opus-4-8 exclusively — one quota exhaustion event halts the entire pipeline",
-    "No fallback or graceful degradation when Vertex AI quota is exhausted; agents silently return empty results rather than queuing or alerting",
-    "Meeting discussion rounds run synchronously in a daemon thread; if the push-forward job is interrupted mid-run, partial state is lost and there is no resume mechanism",
-    "The solvability evaluator and the critic agent share the same prompt architecture — both are susceptible to the same systematic blind spots in how they interpret proof gaps",
-    "Agent logs are only retained in memory during the server session; there is no persistent per-agent run log for post-mortem debugging of failed issue cycles",
-    "The issue discovery step has no deduplication guard — the critic can open semantically identical issues across multiple push-forward runs, inflating open-issue counts without real new gaps"
+    "Zero verified proofs (0/10): the pipeline produces 'best proofs' and 0-100% solvability scores with no formal/external ground-truth check, so high scores cannot be trusted.",
+    "Single-model monoculture: every proof, critic, solver, and evaluator runs on one model family. Shared blind spots mean the critic and solver fail to catch the same errors, and the evaluator rubber-stamps them.",
+    "Self-referential evaluation loop: the solvability-evaluator is an LLM scoring proofs written by sibling LLMs with no independent reference, inviting score inflation and reward-hacking.",
+    "Meeting/discussion subsystem is completely unused (0 rooms, 0 messages) despite being a defined pipeline stage — either dead weight or a missing automation trigger.",
+    "Low overall issue resolution rate (26%) with 391 open and only 17 in-progress suggests the solver-agent stalls or issues are opened faster than they can be closed; no triage/prioritization is evident.",
+    "Under-utilization of compute: 0 runs today and only 10 total runs means the daily push-forward is barely exercising the system, leaving little signal to debug agent behavior.",
+    "Observability gap: no per-agent success metrics, no record of why an issue stays open, and no diff between proof versions surfaced — engineers cannot tell when an agent silently degrades."
   ],
   "highlights": [
-    "The push-forward automation successfully ran across all 10 benchmark problems, creating meeting rooms and running AI discussions without manual intervention",
-    "The issue lifecycle (open → in_progress → resolved) is well-structured and consistently applied, giving a reliable signal of pipeline throughput",
-    "Mathematician persona routing (per-field expert selection) is domain-aware and produces more relevant discussion than a generic assistant would",
-    "The meeting system persists all messages to disk, making discussion history inspectable after the fact",
-    "The SSE streaming frontend gives real-time visibility into agent output, reducing the black-box feeling of long-running AI tasks"
+    "Clean, well-separated agent architecture with distinct responsibilities (critic, solver, meeting personas, evaluator, meta-analyst) and a logical pipeline ordering.",
+    "Robust reproducible infrastructure: local tectonic LaTeX compilation, structured best-proof JSON plus versioned .tex storage, and ADC-based Vertex access.",
+    "Daily push-forward automation already chains all pipeline steps across all problems, giving a foundation to layer verification and diversity onto.",
+    "Issue-based decomposition (274 problems → 551 granular issues) is a sound strategy for making large proofs tractable and measurable.",
+    "Cost discipline is excellent — cumulative spend is trivial ($3.78), leaving budget to invest in multi-model ensembling and adversarial verification."
   ],
   "suggested_todos": [
     {
-      "title": "Require one sentence per cited theorem explaining why hypotheses are satisfied",
+      "title": "Add a formal verification / external ground-truth stage (e.g. proof-assistant or independent referee model) so 'verified' is a real gate, not just a score",
+      "priority": "high"
+    },
+    {
+      "title": "Introduce model diversity: run solver and evaluator on different model families than the proof generator to break shared blind spots",
+      "priority": "high"
+    },
+    {
+      "title": "Make the solvability-evaluator adversarial and reference-anchored — require it to cite the specific gap it could NOT close rather than emit a single aggregate score",
+      "priority": "high"
+    },
+    {
+      "title": "Instrument per-agent observability: success rate, issue open→resolved latency, score-vs-verification correlation, and proof-version diffs",
+      "priority": "high"
+    },
+    {
+      "title": "Add issue triage/prioritization so the solver attacks high-impact open issues first instead of letting 391 accumulate",
       "priority": "medium"
     },
     {
-      "title": "Re-solve P1,P2,P7 focusing on correct theorem applicability",
-      "priority": "high"
-    },
-    {
-      "title": "Add variable-tracking pass to catch renaming errors across multi-step computations",
-      "priority": "high"
-    },
-    {
-      "title": "Flag sketch/idea steps as open issues requiring explicit proof",
-      "priority": "high"
-    },
-    {
-      "title": "Add theorem-hypothesis audit: check cited theorems apply to exact objects in proof",
-      "priority": "high"
-    },
-    {
-      "title": "Add a secondary model fallback (e.g. claude-sonnet or haiku) for insight and solvability eval when Opus quota is exhausted",
-      "priority": "high"
-    },
-    {
-      "title": "Implement issue deduplication in the critic agent: compare new issue titles/content against existing open issues before creating",
-      "priority": "high"
-    },
-    {
-      "title": "Add a persistent push-forward run log (append-only JSONL) so engineers can inspect what each agent did, even after a server restart",
-      "priority": "high"
-    },
-    {
-      "title": "Add quota monitoring: alert (log warning + badge in UI) when Vertex token usage approaches the daily limit, before it hits 429",
+      "title": "Either activate the meeting subsystem via the push-forward trigger or remove it until it produces measurable proof improvements",
       "priority": "medium"
     },
     {
-      "title": "Make push-forward resumable: checkpoint which problems have completed so a crash mid-run can continue from where it left off",
+      "title": "Add a regression guard that blocks a new 'best proof' from replacing the prior one unless its score improvement is independently confirmed",
       "priority": "medium"
     },
     {
-      "title": "Evaluate whether one round of meeting discussion per push-forward is producing actionable output — consider measuring discussion quality by checking if meeting messages reference specific proof gaps",
-      "priority": "medium"
-    },
-    {
-      "title": "Add a critic diversity mode: occasionally prompt the critic to challenge assumptions it normally accepts (e.g. problem statement interpretation, chosen proof strategy class)",
+      "title": "Run multiple independent solve attempts per issue and ensemble/vote rather than relying on a single chain",
       "priority": "low"
     }
   ],
   "mistakes": [
-    "Over-centralizing on a single Vertex AI model creates a single point of failure — quota exhaustion on claude-opus-4-8 silently breaks every pipeline step simultaneously",
-    "Running the push-forward on the dev server (with --reload) previously killed the daemon thread mid-run; long-running jobs must be triggered on the production server",
-    "Insight generation was prompting for per-problem analysis instead of system-level meta-improvement, producing misleading strategic recommendations",
-    "The daily automation writes state to push_forward_state.json but does not write a per-run transcript, making it impossible to audit what the agent actually did on a given day",
-    "Meeting rooms are created unconditionally every push-forward run even if the previous round's discussion was not read or acted upon — accumulating rooms without feedback loop"
+    "Treating an LLM-generated solvability score as a proxy for correctness without any external verification — the system can score itself well while being wrong.",
+    "Using the same model for generation, critique, and evaluation, which collapses the intended checks-and-balances into a single correlated point of failure.",
+    "Defining pipeline stages (meetings) that never actually run, so reported architecture overstates real capability.",
+    "Opening issues far faster than they are resolved, letting the open backlog balloon while in-progress work stays near zero — discovery without throughput.",
+    "Equating 'has a best proof' with progress: 10/10 problems have a best proof but 0/10 are verified, conflating output volume with output quality.",
+    "Leaving the cluster idle (0 runs today) means failures and regressions go undetected because the system isn't generating enough signal to monitor."
   ],
-  "generated_by": "verifier-agent (external verification report jun-21)",
-  "generated_at": "2026-06-21T18:18:38.020405+00:00",
+  "generated_by": "document-manager",
+  "generated_at": "2026-06-23T18:32:03.552417+00:00",
   "level": "system",
-  "id": "system",
-  "verification_report": {
-    "date": "2026-06-21",
-    "verdict_summary": "2 correct, 4 gaps, 4 errors; 10/10 answers correct",
-    "best_proof": "Problem 4 — The Finite Free Stam Inequality (0 critical, 0 gaps, 5 minor)",
-    "fix_applied": "BGLS Step 2: exterior-power claim replaced with variational sup-representation",
-    "critical_patterns": [
-      "Theorem misapplication (scope errors)",
-      "Variable and indexing confusion",
-      "Proof given at 'Idea' level — load-bearing step unproved",
-      "Incorrect attribution to proof method",
-      "Missing normalizations destroying algebraic properties"
-    ]
-  }
+  "id": "system"
 }

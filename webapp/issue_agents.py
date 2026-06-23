@@ -24,6 +24,7 @@ copied back here so subsequent agents see the improvement.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import tempfile
@@ -650,10 +651,10 @@ def _run_agent(
         initial_message=prompt,
         system_prompt=system_extra,
         status_label=label,
-        model=DEFAULT_MODEL,
+        model=("" if os.environ.get("RMA_PROVIDER") == "claude-code" else DEFAULT_MODEL),
         workspace=workspace,
         repo_root=repo_root,
-        provider="vertex",
+        provider=("claude-code" if os.environ.get("RMA_PROVIDER") == "claude-code" else "vertex"),
         thinking=False,
         max_wall_seconds=_WALL_SECONDS,
         max_iterations=max_turns or _MAX_TURNS,
@@ -661,8 +662,11 @@ def _run_agent(
 
     saw_done = False
     reason = "error"
+    _runner = run_agent_vertex
+    if os.environ.get("RMA_PROVIDER") == "claude-code":
+        from .claude_code import run_claude_code_agent as _runner
     try:
-        for ev in run_agent_vertex(cfg, handle):
+        for ev in _runner(cfg, handle):
             if ev.type == "done":
                 saw_done = True
                 reason = ev.data.get("reason", "end_turn")
