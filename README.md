@@ -41,7 +41,8 @@ Solve a research-level math problem on **your own Claude subscription** in three
 ```bash
 git clone https://github.com/sjtuytc/ResearchMathAgent
 cd ResearchMathAgent
-./scripts/quick_install.sh     # installs the `rma` CLI + the Claude Code backend
+./scripts/quick_install.sh     # sets up an isolated env + the `rma` CLI + Claude Code
+source .venv/bin/activate      # activate it (the installer prints this line)
 claude login                   # log in with YOUR Claude Pro/Max subscription
 rma solve q6                   # solve a problem — billed to your subscription
 ```
@@ -96,7 +97,8 @@ RMA works with any of the following benchmark collections out of the box. Switch
 **Fastest path — your Claude subscription, no API key** (see [⚡ Quickstart](#-quickstart) above):
 
 ```bash
-./scripts/quick_install.sh     # install the `rma` CLI + Claude Code backend
+./scripts/quick_install.sh     # isolated env + `rma` CLI + Claude Code backend
+source .venv/bin/activate      # activate it (the installer prints this)
 claude login                   # your Claude Pro/Max subscription
 rma solve q6                   # solve on your subscription (default backend)
 ```

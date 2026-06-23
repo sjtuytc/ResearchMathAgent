@@ -39,7 +39,8 @@
 ```bash
 git clone https://github.com/sjtuytc/ResearchMathAgent
 cd ResearchMathAgent
-./scripts/quick_install.sh     # 安装 `rma` 命令行 + Claude Code 后端
+./scripts/quick_install.sh     # 建立隔离环境 + `rma` 命令行 + Claude Code 后端
+source .venv/bin/activate      # 激活环境（安装脚本会打印此行）
 claude login                   # 用你自己的 Claude Pro/Max 订阅登录
 rma solve q6                   # 求解一道问题——计费走你的订阅
 ```
@@ -94,7 +95,8 @@ RMA 开箱即用地支持以下基准数据集。通过修改 `config/default.ya
 **最快路径——用你的 Claude 订阅，无需 API 密钥**（参见上方 [⚡ 快速上手](#-快速上手)）：
 
 ```bash
-./scripts/quick_install.sh     # 安装 `rma` 命令行 + Claude Code 后端
+./scripts/quick_install.sh     # 隔离环境 + `rma` 命令行 + Claude Code 后端
+source .venv/bin/activate      # 激活环境（安装脚本会打印此行）
 claude login                   # 你自己的 Claude Pro/Max 订阅
 rma solve q6                   # 用订阅求解（默认后端）
 ```
