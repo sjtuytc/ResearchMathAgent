@@ -92,7 +92,10 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SLUG",
         help="Dataset slug (e.g. aim_problem_lists, erdos_problems) when solving non-first_proof_1 problems.",
     )
-    solve.set_defaults(func=run_solve)
+    # `rma solve <q>` works out of the box on the user's Claude subscription
+    # (claude-code = local `claude` CLI, billed to their Pro/Max plan — no Vertex,
+    # no API key). Override with --model-name rma-skeleton for offline runs.
+    solve.set_defaults(func=run_solve, model_name="claude-code")
 
     diff = subparsers.add_parser(
         "diff",

@@ -180,6 +180,11 @@ def call_claude_code(
 
     # Inherit env; ensure CLAUDE_CODE_MAX_OUTPUT_TOKENS passes through (avoids silent 16K cutoff)
     env = os.environ.copy()
+    # Force the user's OWN Claude subscription (the `claude login` OAuth credential).
+    # Strip any API key/token in the environment so a run is billed to the
+    # subscription, never to a developer's pay-per-token Anthropic API account.
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.pop("ANTHROPIC_AUTH_TOKEN", None)
     if "CLAUDE_CODE_MAX_OUTPUT_TOKENS" not in env:
         env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = "100000"
 

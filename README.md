@@ -34,6 +34,22 @@
 
 ---
 
+## ⚡ Quickstart
+
+Solve a research-level math problem on **your own Claude subscription** in three steps — no API key, no Google Cloud / Vertex, no per-token billing:
+
+```bash
+git clone https://github.com/sjtuytc/ResearchMathAgent
+cd ResearchMathAgent
+./scripts/quick_install.sh     # installs the `rma` CLI + the Claude Code backend
+claude login                   # log in with YOUR Claude Pro/Max subscription
+rma solve q6                   # solve a problem — billed to your subscription
+```
+
+`rma solve <q>` uses the **Claude Code** backend by default, so every run is billed to your `claude login` subscription and **never** to a developer's API account or Vertex AI. Pick any First Proof problem `q1`–`q10` (or a dataset problem with `--dataset <slug>`). Want a no-LLM dry run? `rma solve q6 --model-name rma-skeleton`.
+
+---
+
 ## Abstract
 
 <details>
@@ -77,18 +93,24 @@ RMA works with any of the following benchmark collections out of the box. Switch
 
 ## Quick Start
 
+**Fastest path — your Claude subscription, no API key** (see [⚡ Quickstart](#-quickstart) above):
+
 ```bash
-# 1. Install
+./scripts/quick_install.sh     # install the `rma` CLI + Claude Code backend
+claude login                   # your Claude Pro/Max subscription
+rma solve q6                   # solve on your subscription (default backend)
+```
+
+**Other options:**
+
+```bash
+# Web UI — streaming solver, live PDF preview, per-question issue tracker
 pip install -e ".[webapp]"
+python -m webapp               # → http://127.0.0.1:8000
 
-# 2. Set API key (or use Claude Code subscription — see Claude Backends below)
+# Pay-per-token Anthropic API instead of the subscription
 export ANTHROPIC_API_KEY="<your key>"
-
-# 3. Solve a problem
 rma solve q6 --model-name claude-opus-4-8
-
-# 4. Launch the web UI
-python -m webapp          # → http://127.0.0.1:8000
 ```
 
 ---

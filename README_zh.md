@@ -32,6 +32,22 @@
 
 ---
 
+## ⚡ 快速上手
+
+三步即可用**你自己的 Claude 订阅**求解一道研究级数学问题——无需 API 密钥，不走 Google Cloud / Vertex，也没有按 token 计费：
+
+```bash
+git clone https://github.com/sjtuytc/ResearchMathAgent
+cd ResearchMathAgent
+./scripts/quick_install.sh     # 安装 `rma` 命令行 + Claude Code 后端
+claude login                   # 用你自己的 Claude Pro/Max 订阅登录
+rma solve q6                   # 求解一道问题——计费走你的订阅
+```
+
+`rma solve <q>` 默认使用 **Claude Code** 后端，因此每次运行都计费到你 `claude login` 的订阅账户，**绝不**会用到开发者的 API 账户或 Vertex AI。可选择任意 First Proof 问题 `q1`–`q10`（或用 `--dataset <slug>` 求解数据集问题）。想做不调用大模型的空跑？`rma solve q6 --model-name rma-skeleton`。
+
+---
+
 ## 摘要
 
 <details>
@@ -75,18 +91,24 @@ RMA 开箱即用地支持以下基准数据集。通过修改 `config/default.ya
 
 ## 快速开始
 
+**最快路径——用你的 Claude 订阅，无需 API 密钥**（参见上方 [⚡ 快速上手](#-快速上手)）：
+
 ```bash
-# 1. 安装
+./scripts/quick_install.sh     # 安装 `rma` 命令行 + Claude Code 后端
+claude login                   # 你自己的 Claude Pro/Max 订阅
+rma solve q6                   # 用订阅求解（默认后端）
+```
+
+**其他方式：**
+
+```bash
+# Web 界面——流式求解、实时 PDF 预览、按题目的 issue 追踪
 pip install -e ".[webapp]"
+python -m webapp               # → http://127.0.0.1:8000
 
-# 2. 设置 API 密钥（或使用 Claude Code 订阅——详见下方"Claude 后端"）
+# 改用按 token 计费的 Anthropic API（而非订阅）
 export ANTHROPIC_API_KEY="<你的密钥>"
-
-# 3. 求解一道问题
 rma solve q6 --model-name claude-opus-4-8
-
-# 4. 启动 Web 界面
-python -m webapp          # → http://127.0.0.1:8000
 ```
 
 ---
