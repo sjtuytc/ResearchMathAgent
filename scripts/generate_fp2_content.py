@@ -27,7 +27,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 DATASET = "first_proof_2"
 PROBLEMS = [f"prob-{i:02d}" for i in range(1, 11)]
-SOLUTION_DIR = REPO_ROOT / "output_solutions" / "fp2_vertex_opus_simple"
+SOLUTION_DIR = REPO_ROOT / "outputs" / "output_solutions" / "fp2_vertex_opus_simple"
 
 CRITIC_SYSTEM = (
     "You are a rigorous mathematical critic reviewing a proof attempt. "

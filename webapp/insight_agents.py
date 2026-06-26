@@ -279,6 +279,24 @@ def _gather_question_context(repo_root: Path, qid: str, dataset: str) -> str:
     except Exception:
         pass
 
+    # Proof evaluation rubric — loaded from proof_eval.json (refreshed on every rma push)
+    try:
+        from .proof_eval import load_proof_eval
+        pe = load_proof_eval(repo_root, qid)
+        if pe and "error" not in pe:
+            aa = "Correct (1/1)" if pe.get("answer_accuracy") else "Incorrect (0/1)"
+            lc = pe.get("logical_correctness")
+            pc = pe.get("proof_completeness")
+            cl = pe.get("proof_clarity")
+            scores = f"Answer={aa}, Logic={lc}/5, Completeness={pc}/5, Clarity={cl}/5"
+            lines.append(f"\n## Proof Evaluation Rubric\nScores: {scores}")
+            if pe.get("verdict"):
+                lines.append(f"Verdict: {pe['verdict'][:300]}")
+            if pe.get("notes"):
+                lines.append(f"Detailed analysis: {pe['notes'][:500]}")
+    except Exception:
+        pass
+
     # Solvability eval
     try:
         from .solvability_eval import load_eval

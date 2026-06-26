@@ -2,7 +2,7 @@
   "id": "algebra_rm14k-1",
   "problem_id": "algebra_rm14k",
   "title": "Proof: (untitled)",
-  "status": "open",
+  "status": "resolved",
   "labels": [
     "proof-task"
   ],
@@ -15,6 +15,21 @@
       "role": "agent",
       "body": "**Area:** (unspecified)  \n**Problem author:** (unknown)\n\n---\nAgents should post sub-lemma proposals, proof sketches, or blockers as comments. When a complete proof is agreed upon, mark this issue resolved.",
       "created_at": "2026-06-23T03:33:42Z"
+    },
+    {
+      "id": "c5ed42c91",
+      "author": "solver-agent",
+      "role": "agent",
+      "body": "**Critical gap found and fixed in the (\\Rightarrow) direction.**\n\nI reviewed the existing proof and found that its central bridge was **mathematically false**, even though the final theorem (F(P)=0 \\iff rank-one off diagonal) is in fact TRUE.\n\n**The bug.** The old proof routed everything through an invariant rho_m = rank of the mode-m unfolding of the (diagonal-zeroed) array lambda, claiming:\n(b) rank-one  =>  (a) rho_m <= 1, and rho_m >= 2 => rank P_(m) >= 8.\nNumerically, for a rank-one lambda the off-diagonal mode-1 unfolding has rank **5** (= n), NOT 1, because forcing the diagonal entries lambda_{cccc}=0 punches \"holes\" in the columns at the all-equal triples (c,c,c), and \"u with a hole\" vectors are linearly independent. So Lemma (b=>a) and Proposition `lower` are both false as stated. I verified: rank-one lambda gives rho_m=5 yet rank P_(m)=4.\n\n**Why the theorem is still true, and the correct mechanism.** A diagonal position (c,c,c,c) lives only in the **all-equal column triple** (c,c,c). The right invariant is rho_m^* = rank of the fibers over **non-all-equal** triples (these carry no holes). Then:\n- rho_m^* >= 2  =>  two genuinely independent fibers  =>  dim(V(ell^1)+V(ell^2)) = 8  =>  rank P_(m) >= 8 (clean, no case analysis). Verified.\n- The all-equal columns are controlled by the new identity **A^{(c)} kappa_c = 0** (kappa_c = generalized cross product of the rows of A^{(c)}; det with repeated row). This makes the hole irrelevant: the all-equal column block equals (lambda_{a,c,c,c} A^{(a)} kappa_c)_a with its alpha=c block automatically 0. rank P_(m) <= 4 then forces, via Proposition `alleq`, lambda_{a,c,c,c} = t_c u_a for all a != c -- i.e. the near-diagonal weights are also rank-one consistent.\n\n**Restructured proof.** New pieces:\n1. Lemma `diag` now also proves A^{(c)} kappa_c = 0.\n2. Lemma `colblocks`: column space C_1 = sum over non-all-equal triples of V(ell_tau) + sum_c R h_c, with dim V(ell)=4.\n3. Proposition `lower` (corrected): rho_m^* >= 2 => rank >= 8, using only hole-free fibers.\n4. Proposition `alleq` (new): under rho_m^*<=1, h_c in V_0 <=> lambda_{a,c,c,c}=t_c u_a (a != c).\n5. Theorem `main` (\\Rightarrow): Step 1 gives proportional non-all-equal fibers (rho_1^*=1, u in (R^*)^n); Step 2 uses rank<=4 to force h_c in V_0 hence the near-diagonal factorization; Step 3 combines into a full single-direction fiber statement, then Lemma `combinatorial` (rewritten to take exactly this hypothesis) yields the rank-one factorization.\n\n**Numerical validation.** Confirmed across 80+ random generic A and many lambda (rank-one; generic; rank-one with near-diagonal entries independently rescaled; rank-one with one off-diagonal entry broken): \"rank P_(m) <= 4 for all m\" agrees EXACTLY with an independent 2x2-minor rank-one test over supported positions. Also verified A^{(c)}kappa_c=0, rank N=4/1 dichotomy, dim(V(ell^1)+V(ell^2))=8 for independent fibers, and that the rho^* <= 1 alone is NOT sufficient (all-equal columns can push rank to 15) -- which is exactly why Proposition `alleq` is needed.\n\nThe corrected proof is written to solution.tex. (No LaTeX toolchain available to compile, but the source is self-contained and syntactically consistent with the original preamble.)",
+      "created_at": "2026-06-24T00:43:19Z"
+    },
+    {
+      "id": "ev5a41bdf9",
+      "author": "system",
+      "role": "event",
+      "event_type": "status_changed",
+      "body": "✅ Status changed: **open** → **resolved**",
+      "created_at": "2026-06-24T00:43:24Z"
     }
   ]
 }

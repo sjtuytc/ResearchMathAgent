@@ -142,6 +142,82 @@ ResearchMathAgent/
 
 ---
 
+## 代码库架构
+
+项目中每个 Python 模块的单句说明。
+
+### `rma/` — CLI 入口
+
+| 文件 | 功能 |
+|------|------|
+| `cli.py` | 顶层 `rma` 参数解析器；分发至 `solve`、`push`、`memory`、`doctor` 子命令。 |
+| `push.py` | `rma push` — 运行推进流程（issues + 会议 + 文档），刷新概念/洞察/证明评估，然后构建主上下文报告 PDF。 |
+| `solve.py` | `rma solve` — 对一道题运行完整求解智能体：解析 → 提出 → 验证 → 精化 → 整合。 |
+| `models.py` | CLI 标志和 API 调用中使用的模型名称常量与别名。 |
+| `memory.py` | `rma memory` — 打印或清除推进状态文件。 |
+| `doctor.py` | `rma doctor` — 环境健康检查：Python 版本、tectonic、API 密钥、Vertex 凭据。 |
+| `__main__.py` | `python -m rma` 入口点；委托给 `cli.py`。 |
+
+### `webapp/` — FastAPI 服务器
+
+| 文件 | 功能 |
+|------|------|
+| `server.py` | 研究 Web 应用的所有 API 端点（证明 CRUD、PDF 编译、issues、会议、洞察、上下文报告、文献）。 |
+| `agent.py` | 所有智能体类型（评论、求解、会议、文档）共享的基础智能体类与提示执行循环。 |
+| `claude_code.py` | Claude Code CLI 驱动 — 通过 `claude` 二进制文件进行基于订阅（Pro/Max）的 LLM 调用。 |
+| `vertex.py` | Vertex AI 客户端配置：ADC 认证、项目/区域配置及底层 `complete()` 调用。 |
+| `vertex_llm.py` | `vertex.py` 的轻量封装，处理自适应思考模式、重试和错误规范化。 |
+| `context_report.py` | 为每道题构建书籍风格的 LaTeX 上下文报告（问题 → 评估 → 最佳证明 → 会议 → Issues → 洞察），并通过 tectonic 编译为 PDF；同时为 `rma push` 构建合并主 PDF。 |
+| `proof_eval.py` | 对最佳证明进行 LLM 评分：答案准确性、逻辑正确性、证明完整性、证明清晰度——存储于 `documents/questions/<pid>/proof_eval.json`。 |
+| `insight_agents.py` | 从当前项目状态生成系统级、数据集级和逐题洞察摘要的 LLM 智能体。 |
+| `insight_loop.py` | 定期重新生成洞察摘要的后台轮询循环。 |
+| `insights.py` | 从 `webapp/insights/<level>/` 加载/保存洞察 JSON 文件。 |
+| `issue_agents.py` | 评论智能体（发现证明漏洞 → 开 issue）和求解智能体（通过 LLM 证明写作解决开放 issue）。 |
+| `issue_loop.py` | 服务器运行时自动对开放 issue 运行 issue 求解器的后台循环。 |
+| `issue_pdf.py` | 将单个 issue 线程或一道题的所有 issues 编译为 PDF。 |
+| `issues.py` | `webapp/issues/<dataset>/<pid>/` 下 issue JSON 文件的 CRUD 操作。 |
+| `meet_agents.py` | 运行多轮研究会议并生成行动计划的数学家角色讨论智能体。 |
+| `meet.py` | `documents/questions/<pid>/meets/` 下会议室的 CRUD 操作。 |
+| `meet_pdf.py` | 将会议室笔记（计划 + 讨论记录）编译为 PDF。 |
+| `push_forward.py` | 编排器：对每道题依次运行 issue 发现 → 求解 → 会议 → 文档更新；由 `rma push` 和夜间定时任务调用。 |
+| `push_forward_cli.py` | CLI 封装，使 `push_forward` 可在 uvicorn 自动重载进程之外运行。 |
+| `concepts.py` | 从题目 LaTeX 加载/保存/生成逐题概念列表（核心 + 背景）。 |
+| `concepts_pdf.py` | 将一道题的概念列表编译为独立 PDF。 |
+| `proofs.py` | 加载/存储最佳证明记录；`get_best_proof`、`consolidate_best`、`compile_best_pdf`。 |
+| `proof_history.py` | 加载并汇总一道题证明尝试的版本历史。 |
+| `problem_pdf.py` | 将原始题目 `.tex` 文件（含共享前言）编译为独立 PDF。 |
+| `problem_export.py` | 以多种格式导出题目陈述（JSON、纯文本、LaTeX）。 |
+| `latex.py` | tectonic/pdflatex 封装：`compile_tex`、`compile_problem_pdf`、`safe_pdf_name`、PDF 目录辅助函数。 |
+| `dataset_store.py` | 从 `data/datasets/<slug>/` 读取/查询题目元数据（标题、陈述、解题状态）。 |
+| `documents.py` | 列出并读取 `documents/questions/<pid>/` 下的文档文件（概述、策略、时间线等）。 |
+| `rich_documents.py` | 每次推进后用 AI 撰写的内容重新生成问题概述/进度文档。 |
+| `doc_bundle.py` | 为某道题或数据集构建合并 "bundle.pdf"。 |
+| `literature.py` | 搜索、下载并为问题所在领域的全局论文库播种。 |
+| `hero.py` | 生成一道题的概述/策略文档（Documents 标签页中显示的"核心"文档）。 |
+| `runs.py` | 追踪实验运行元数据：开始时间、模型名称、实验名称、完成状态。 |
+| `smoke_pipeline.py` | 外部评估流水线：`POST /api/solve` → 异步证明生成 + LLM 评分。 |
+| `solvability_eval.py` | 加载/保存过滤器应用生成的逐题可解性分数。 |
+| `solve_finalize.py` | 求解后清理：整合证明文件、更新最佳证明记录、写入摘要。 |
+| `todos.py` | 逐题 TODO 列表的 CRUD 操作（存储于 `documents/questions/<pid>/todos.json`）。 |
+| `token_log.py` | 按提供商归因追踪和显示每次会话的 LLM token 用量与成本。 |
+| `tools.py` | claude_code 智能体求解时可用的工具定义（文件读/写/搜索/运行）。 |
+| `github_issues.py` | 用于智能体协调的真实 GitHub 仓库 issue 追踪的 GitHub Issues REST API 封装。 |
+| `devlog.py` | 向 `documents/devlog.jsonl` 追加带时间戳的条目，记录会话和事件历史。 |
+| `daily.py` | 计划性每日任务——当前将推进流程作为定时任务目标进行封装。 |
+| `seed_fp2.py` | 一次性导入器：从 GitHub `1stproof/batch-2` 仓库播种 `first_proof_2` 数据集。 |
+| `prefix.py` | 生成绝对 API URL 的模块共享的 `API_PREFIX` 常量（`/rmac/solve`）。 |
+| `__main__.py` | `python -m webapp` 入口点：以 `HOST`/`PORT` 环境变量启动 uvicorn。 |
+
+### 根目录脚本
+
+| 文件 | 功能 |
+|------|------|
+| `proxy_server.py` | 轻量反向代理：将 `/rmac/solve/*` 路由至 :8011 的求解应用，将 `/rmac/filter/*` 路由至 :8012 的过滤应用。 |
+| `run_fp2_init.py` | 一次性脚本，播种 `first_proof_2` 数据集并初始化逐题 issue/洞察目录。 |
+| `run_pf_standalone.py` | 在 uvicorn 进程外运行推进流程的别名/封装（日志与服务器分离）。 |
+
+---
+
 ## 命令行工具（CLI）
 
 安装后即可使用 `rma` 命令：

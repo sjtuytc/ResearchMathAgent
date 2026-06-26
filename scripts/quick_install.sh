@@ -13,7 +13,7 @@
 # Usage:
 #       git clone https://github.com/sjtuytc/ResearchMathAgent
 #       cd ResearchMathAgent
-#       ./scripts/quick_install.sh
+#       ./scripts/quick_install.sh    # re-running later pulls the latest code first
 #       source .venv/bin/activate     # (only if the installer created a venv)
 #       claude login                  # log in with your subscription
 #       rma solve q6
@@ -29,6 +29,29 @@ warn(){ printf '  \033[33m!\033[0m %s\n' "$*"; }
 err(){  printf '  \033[31m✗\033[0m %s\n' "$*"; }
 
 bold "==> RMA quickstart install"
+
+# 0) Pull the latest code from the remote ─────────────────────────────────────
+# So a re-run always installs the newest version, not a stale local checkout.
+# Conservative: fast-forward only, and skip cleanly (no clobber, no auto-merge)
+# when there is no remote, a detached HEAD, or uncommitted local changes.
+bold "==> Updating to the latest code from the remote"
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  REMOTE="$(git remote | head -n1 || true)"
+  BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)"
+  if [ -z "$REMOTE" ]; then
+    warn "no git remote configured — skipping pull"
+  elif [ "$BRANCH" = "HEAD" ]; then
+    warn "detached HEAD — skipping pull"
+  elif ! git diff --quiet || ! git diff --cached --quiet; then
+    warn "uncommitted local changes — skipping pull (commit or stash, then re-run to update)"
+  elif git pull --ff-only "$REMOTE" "$BRANCH" >/tmp/rma_git.log 2>&1; then
+    ok "updated from $REMOTE/$BRANCH  ($(git rev-parse --short HEAD))"
+  else
+    warn "could not fast-forward from $REMOTE/$BRANCH — continuing with current checkout (see /tmp/rma_git.log)"
+  fi
+else
+  warn "not a git checkout — skipping pull (install proceeds with current files)"
+fi
 
 # 1) Python 3.10+ ─────────────────────────────────────────────────────────────
 # Prefer a versioned interpreter — the default `python3` is often too old.

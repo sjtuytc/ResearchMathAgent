@@ -2,7 +2,7 @@
 """Batch solver for first_proof_2 (prob-01 to prob-10).
 
 Runs the full agent loop on each problem and saves results to
-  output_solutions/fp2_vertex_opus/<problem_id>/solution.tex
+  outputs/output_solutions/fp2_vertex_opus/<problem_id>/solution.tex
 
 Usage:
     python3 scripts/solve_fp2_batch.py [--problems prob-01 ...] [--resume]
@@ -28,7 +28,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 EXP_NAME = "fp2_vertex_opus"
-OUTPUT_DIR = REPO_ROOT / "output_solutions" / EXP_NAME
+OUTPUT_DIR = REPO_ROOT / "outputs" / "output_solutions" / EXP_NAME
 ALL_PROBLEMS = [f"prob-{i:02d}" for i in range(1, 11)]
 
 # Retry delays (seconds) when quota is exhausted — shared NAIRR cluster.

@@ -179,6 +179,104 @@ def _highlights(room: dict, n: int = 3) -> list[str]:
     return out
 
 
+# ── LaTeX helpers (used by the PDF book builder) ─────────────────────────────
+
+_TEX_CHARS: dict[int, str] = {
+    ord("\\"): r"\textbackslash{}",
+    ord("&"):  r"\&",
+    ord("%"):  r"\%",
+    ord("$"):  r"\$",
+    ord("#"):  r"\#",
+    ord("_"):  r"\_",
+    ord("{"):  r"\{",
+    ord("}"):  r"\}",
+    ord("~"):  r"\textasciitilde{}",
+    ord("^"):  r"\^{}",
+}
+
+
+def _tex_escape(s: str) -> str:
+    """Escape plain text for verbatim inclusion in LaTeX.
+    str.translate is single-pass so replacements cannot re-escape each other.
+    """
+    return s.translate(_TEX_CHARS)
+
+
+def _strip_md(s: str) -> str:
+    """Strip markdown bold / italic / code markers before passing to _tex_escape."""
+    s = re.sub(r"\*\*([^*]+)\*\*", r"\1", s)
+    s = re.sub(r"\*([^*]+)\*",     r"\1", s)
+    s = re.sub(r"`([^`]+)`",       r"\1", s)
+    return s
+
+
+# Book-style LaTeX preamble — no \title/\author/\date/\begin{document}.
+# Those are injected dynamically in _build_problem_latex_body().
+
+_BOOK_PREAMBLE = r"""\documentclass[12pt,oneside]{report}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=1.15in,top=1.3in,bottom=1.3in]{geometry}
+\usepackage{amsmath,amsthm,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[hidelinks,pdfusetitle]{hyperref}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+
+%% score-bar glyphs for the evaluation chapter
+\newcommand{\scorefull}{\textcolor{black}{\rule{7pt}{7pt}}}
+\newcommand{\scoreempty}{\framebox[9pt]{\rule{0pt}{7pt}\hspace{2pt}}}
+
+%% theorem environments — proof bodies use these
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{claim}[theorem]{Claim}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem*{theorem*}{Theorem}
+\newtheorem*{lemma*}{Lemma}
+\newtheorem*{corollary*}{Corollary}
+\newtheorem*{remark*}{Remark}
+
+%% common math abbreviations
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\eps}{\varepsilon}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+%% running headers
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\small\nouppercase{\leftmark}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+%% Citation fallback: show [key] in gray when no .bib file is loaded.
+%% \mbox prevents the key from being hyphenated across a line break.
+%% \AtBeginDocument wins over any package that might redefine \cite.
+\AtBeginDocument{%
+  \renewcommand{\cite}[2][]{[\textcolor{gray}{\mbox{#2}}]}%
+  \providecommand{\citep}[2][]{[\textcolor{gray}{\mbox{#2}}]}%
+  \providecommand{\citet}[2][]{[\textcolor{gray}{\textit{\mbox{#2}}}]}%
+  \providecommand{\citealt}[2][]{[\textcolor{gray}{\mbox{#2}}]}%
+  \providecommand{\citealp}[2][]{[\textcolor{gray}{\mbox{#2}}]}%
+  \providecommand{\citenum}[1]{\textcolor{gray}{\mbox{#1}}}%
+}
+"""
+
 # ── per-problem report ────────────────────────────────────────────────────────
 
 _PROOF_MARKER = "RMAFULLPROOFBODYMARKER"  # replaced with the raw proof LaTeX in the PDF
@@ -239,6 +337,399 @@ def _full_proof_latex(repo_root: Path, pid: str, dataset: str) -> str:
     return body.strip() or r"\textit{(empty proof)}"
 
 
+def _build_problem_latex_body(repo_root: Path, pid: str,
+                               dataset: str = "first_proof_1") -> tuple[str, str]:
+    """Build a book-style LaTeX report for one problem.
+
+    Returns:
+        preamble — everything before \\begin{document} (ready for stub injection)
+        body     — everything between \\begin{document} and \\end{document}
+
+    Chapter map:
+        1  Problem Statement   (raw LaTeX from problem file — inserted verbatim)
+        2  Evaluation          (score bars + verdict + analysis)
+        3  Best Proof          (raw LaTeX proof body — inserted verbatim)
+        4  Key Concepts        (omitted when none)
+        5  Meetings            (omitted when none)
+        6  Open Issues         (omitted when none)
+        7  Resolved Issues     (omitted when none)
+        8  Insights
+    """
+    prof       = _profile(pid)
+    issues     = _issues(repo_root, pid, dataset)
+    best       = _best_proof(pid, dataset)
+    meetings   = _meetings(repo_root, pid)
+    qinsight   = _question_insight(repo_root, pid, dataset)
+    proof_eval = _proof_eval(repo_root, pid)
+    concepts   = _concepts(repo_root, pid)
+
+    open_issues     = [i for i in issues if i.get("status") in ("open", "in_progress")]
+    resolved_issues = [i for i in issues if i.get("status") == "resolved"]
+
+    # title
+    title = prof.get("title") or ""
+    if not title:
+        try:
+            from .dataset_store import get_problem as _ds_get
+            title = (_ds_get(dataset, pid) or {}).get("title") or ""
+        except Exception:
+            pass
+    title = title or pid.upper()
+
+    # proof quality label — use proof_eval, not the flaky automated verifier
+    has_proof = bool(best and best.get("has_solution"))
+    sol_tex   = ((best or {}).get("solution_tex") or "").strip()
+    pe        = proof_eval if (proof_eval and "error" not in proof_eval) else {}
+    pe_aa     = pe.get("answer_accuracy")
+    if pe_aa is True or pe_aa == 1:
+        quality_tex = r"\textcolor{OliveGreen}{\textbf{Answer correct}}"
+    elif pe_aa is False or pe_aa == 0:
+        quality_tex = r"\textcolor{BrickRed}{\textbf{Answer incorrect}}"
+    elif has_proof:
+        quality_tex = r"\textcolor{Goldenrod}{\textbf{Awaiting evaluation}}"
+    else:
+        quality_tex = r"\textbf{---}"
+
+    # preamble (static macros + dynamic \title / \author / \date)
+    area_tex   = _tex_escape(prof.get("area",   "") or "")
+    author_tex = _tex_escape(prof.get("author", "") or "")
+    meta_line  = r"  $\cdot$  ".join(filter(None, [area_tex, author_tex]))
+
+    preamble_lines = [_BOOK_PREAMBLE]
+    preamble_lines.append(
+        rf"\title{{\Large\bfseries {_tex_escape(title)}\\"
+        rf"\large RMA Context Report}}"
+    )
+    if meta_line:
+        preamble_lines.append(rf"\author{{{meta_line}}}")
+    preamble_lines.append(
+        rf"\date{{Generated "
+        rf"{_tex_escape(datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC'))}}}"
+    )
+    preamble = "\n".join(preamble_lines)
+
+    # body
+    B: list[str] = []
+
+    B.append(r"\maketitle")
+    B.append("")
+
+    # ── Executive Summary (unnumbered, before ToC) ────────────────────────────
+    B.append(r"\chapter*{Executive Summary}")
+    B.append(r"\addcontentsline{toc}{chapter}{Executive Summary}")
+    B.append("")
+
+    # Opening: proof_eval scores table first (always fresh after rma push), then
+    # verdict + notes as structured paragraphs.  qinsight.summary is an LLM
+    # snapshot that may lag between rma push runs — omit it here to avoid stale
+    # text; the Insights chapter (Chapter 7) still shows it in full.
+
+    # Evaluation scores table
+    if pe:
+        aa = pe.get("answer_accuracy")
+        lc = pe.get("logical_correctness")
+        pc = pe.get("proof_completeness")
+        cl = pe.get("proof_clarity")
+
+        def _bar_row(val: int | None, mx: int) -> str:
+            if val is None:
+                return r"\textcolor{gray}{---}"
+            v = int(val)
+            return r"\scorefull{}" * v + r"\scoreempty{}" * (mx - v)
+
+        B.append(r"\section*{Proof Evaluation}")
+        B.append(r"\begin{center}")
+        B.append(r"\begin{tabular}{lccl}")
+        B.append(r"\toprule")
+        B.append(r"Criterion & Score & Max & Rating \\")
+        B.append(r"\midrule")
+
+        if aa is not None:
+            aa_cell = (r"\textcolor{OliveGreen}{\textbf{Correct}}" if aa
+                       else r"\textcolor{BrickRed}{\textbf{Incorrect}}")
+            B.append(rf"Answer Accuracy & {1 if aa else 0} & 1 & {aa_cell} \\")
+        for val, label, mx in (
+            (lc, "Logical Correctness", 5),
+            (pc, "Proof Completeness",  5),
+            (cl, "Proof Clarity",       5),
+        ):
+            if val is not None:
+                B.append(rf"{label} & {int(val)} & {mx} & {_bar_row(val, mx)} \\")
+
+        score_vals = [1 if aa else 0 if aa is not None else None,
+                      int(lc) if lc is not None else None,
+                      int(pc) if pc is not None else None,
+                      int(cl) if cl is not None else None]
+        max_vals   = [1 if aa is not None else None,
+                      5 if lc is not None else None,
+                      5 if pc is not None else None,
+                      5 if cl is not None else None]
+        s_total = sum(x for x in score_vals if x is not None)
+        m_total = sum(x for x in max_vals   if x is not None)
+        if m_total:
+            B.append(r"\midrule")
+            B.append(
+                rf"\textbf{{Total}} & \textbf{{{s_total}}} & \textbf{{{m_total}}} & \\"
+            )
+        B.append(r"\bottomrule")
+        B.append(r"\end{tabular}")
+        B.append(r"\end{center}")
+        B.append("")
+
+        if pe.get("verdict"):
+            B.append(r"\paragraph{Verdict.}\ " + _tex_escape(_strip_md(pe["verdict"])))
+            B.append("")
+        if pe.get("notes"):
+            B.append(r"\paragraph{Analysis.}\ " + _tex_escape(_strip_md(pe["notes"])))
+            B.append("")
+    else:
+        B.append(
+            rf"This report documents the research and proof effort for "
+            rf"\emph{{{_tex_escape(title)}}}."
+        )
+        B.append("")
+
+    # Research status
+    B.append(r"\section*{Research Status}")
+    B.append(r"\begin{description}[leftmargin=5cm,labelwidth=4.8cm,noitemsep]")
+    B.append(rf"\item[Proof quality] {quality_tex}")
+    B.append(
+        rf"\item[Open issues] \textbf{{{len(open_issues)}}}"
+        + (r" \textcolor{gray}{--- none}" if not open_issues else "")
+    )
+    if resolved_issues:
+        B.append(rf"\item[Resolved issues] {len(resolved_issues)}")
+    B.append(rf"\item[Research meetings] {len(meetings)}")
+    B.append(r"\end{description}")
+    B.append("")
+
+    if open_issues:
+        B.append(r"\paragraph{Open issues:}")
+        B.append(r"\begin{itemize}[noitemsep]")
+        for oi in open_issues:
+            sev_color = {"open": "BrickRed", "in_progress": "Goldenrod"}.get(
+                oi.get("status", ""), "Gray")
+            oi_title = _tex_escape(oi.get("title", oi["id"]))
+            oi_id    = _tex_escape(oi["id"])
+            B.append(
+                rf"\item \textcolor{{{sev_color}}}{{{oi_title}}}"
+                rf"\ \textcolor{{gray}}{{\texttt{{{oi_id}}}}}"
+            )
+        B.append(r"\end{itemize}")
+        B.append("")
+
+    B.append(r"\tableofcontents")
+    B.append(r"\clearpage")
+    B.append("")
+
+    # ── Chapter 1: Problem Statement ──────────────────────────────────────────
+    B.append(r"\chapter{Problem Statement}")
+    stmt = _problem_statement(repo_root, pid, dataset)
+    if stmt:
+        B.append(stmt)           # already LaTeX — insert verbatim
+    else:
+        B.append(r"\textit{Problem statement not found.}")
+    B.append("")
+
+    # ── Chapter 2: Evaluation ─────────────────────────────────────────────────
+    B.append(r"\chapter{Evaluation}")
+    if pe:
+        aa = pe.get("answer_accuracy")
+        lc = pe.get("logical_correctness")
+        pc = pe.get("proof_completeness")
+        cl = pe.get("proof_clarity")
+
+        def _bar(val: int | None, mx: int) -> str:
+            if val is None:
+                return ""
+            v = int(val)
+            return r"\scorefull{}" * v + r"\scoreempty{}" * (mx - v) + rf"\ \ {v}/{mx}"
+
+        B.append(r"\begin{description}[leftmargin=5.5cm,labelwidth=5.3cm,labelsep=0.4em]")
+        if aa is not None:
+            aa_tex = (r"\textcolor{OliveGreen}{Correct\ (1/1)}" if aa
+                      else r"\textcolor{BrickRed}{Incorrect\ (0/1)}")
+            B.append(rf"\item[Answer Accuracy] {aa_tex}")
+        for val, label, mx in (
+            (lc, "Logical Correctness", 5),
+            (pc, "Proof Completeness",  5),
+            (cl, "Proof Clarity",       5),
+        ):
+            if val is not None:
+                B.append(rf"\item[{label}] {_bar(val, mx)}")
+        B.append(r"\end{description}")
+        B.append("")
+        if pe.get("verdict"):
+            B.append(r"\paragraph{Verdict.}\ " + _tex_escape(_strip_md(pe["verdict"])))
+            B.append("")
+        if pe.get("notes"):
+            B.append(r"\paragraph{Analysis.}\ " + _tex_escape(_strip_md(pe["notes"])))
+            B.append("")
+    else:
+        B.append(r"\textit{No proof evaluation recorded yet.}")
+        B.append("")
+
+    # ── Chapter 3: Best Proof ─────────────────────────────────────────────────
+    B.append(r"\chapter{Best Proof}")
+    if has_proof and sol_tex:
+        when = (best.get("updated_at") or best.get("created_at") or "")[:10]
+        if when:
+            B.append(rf"\textit{{Last updated: {_tex_escape(when)}}}")
+            B.append(r"\medskip")
+            B.append("")
+        # Strip the proof's own \documentclass preamble and insert the body verbatim.
+        proof_body = _full_proof_latex(repo_root, pid, dataset)
+        B.append(proof_body)
+    elif has_proof:
+        B.append(r"\textit{Proof file exists but source is unavailable.}")
+    else:
+        B.append(
+            r"\textit{No consolidated proof yet. "
+            r"Run solve\,+\,Consolidate in the Proofs tab.}"
+        )
+    B.append("")
+
+    # ── Chapter 4: Key Concepts ───────────────────────────────────────────────
+    if concepts:
+        core = [c for c in concepts if c.get("category") == "core"]
+        bg   = [c for c in concepts if c.get("category") != "core"]
+        B.append(r"\chapter{Key Concepts}")
+        B.append(
+            rf"\textit{{{len(concepts)} concepts"
+            r" --- full definitions in the Concept PDF.}}"
+        )
+        B.append("")
+        if core:
+            B.append(r"\section*{Core Concepts}")
+            B.append(r"\begin{description}[noitemsep]")
+            for c in core[:10]:
+                name = _tex_escape(c.get("name", ""))
+                nota = c.get("notation", "")
+                nota_str = rf" (${nota}$)" if nota else ""
+                defn = _tex_escape(_strip_md(c.get("definition", "") or ""))[:400]
+                B.append(rf"\item[\textbf{{{name}}}]{nota_str} {defn}")
+            B.append(r"\end{description}")
+            B.append("")
+        if bg:
+            B.append(r"\section*{Background Concepts}")
+            B.append(r"\begin{itemize}[noitemsep]")
+            for c in bg[:8]:
+                name = _tex_escape(c.get("name", ""))
+                nota = c.get("notation", "")
+                nota_str = rf" (${nota}$)" if nota else ""
+                B.append(rf"\item {name}{nota_str}")
+            B.append(r"\end{itemize}")
+            B.append("")
+
+    # ── Chapter 5: Meetings ───────────────────────────────────────────────────
+    if meetings:
+        B.append(r"\chapter{Meetings}")
+        for room in meetings:
+            topic = _tex_escape(room.get("topic") or room.get("id") or "—")
+            when  = _tex_escape((room.get("created_at") or "")[:10])
+            parts = _tex_escape(", ".join(room.get("participants", [])))
+            B.append(rf"\section{{{topic}}}")
+            meta_items = [x for x in [when, parts] if x]
+            if meta_items:
+                B.append(rf"\textit{{{r'  $\cdot$  '.join(meta_items)}}}")
+                B.append(r"\medskip")
+                B.append("")
+            plan = room.get("plan") or {}
+            if plan.get("summary"):
+                B.append(
+                    r"\paragraph{Action plan.}\ "
+                    + _tex_escape(_strip_md(plan["summary"]))
+                )
+                B.append("")
+            steps = plan.get("steps", [])
+            if steps:
+                B.append(r"\begin{enumerate}[noitemsep]")
+                for s in steps:
+                    agent  = _tex_escape(s.get("agent", ""))
+                    stitle = _tex_escape(s.get("title", "Step"))
+                    sbody  = _tex_escape(_strip_md((s.get("body") or "")[:300]))
+                    atag   = rf"\ \emph{{({agent})}}" if agent else ""
+                    B.append(rf"\item \textbf{{{stitle}}}{atag}: {sbody}")
+                B.append(r"\end{enumerate}")
+                B.append("")
+            hl = _highlights(room, n=5)
+            if hl:
+                B.append(r"\paragraph{Discussion highlights.}")
+                B.append(r"\begin{itemize}[noitemsep]")
+                for h in hl:
+                    B.append(rf"\item {_tex_escape(_strip_md(h))}")
+                B.append(r"\end{itemize}")
+                B.append("")
+
+    # ── Chapter 6: Open Issues ────────────────────────────────────────────────
+    if open_issues:
+        B.append(r"\chapter{Open Issues}")
+        for i in open_issues:
+            sev_word  = {"open": "Open", "in_progress": "In Progress"}.get(
+                         i.get("status", ""), "Unknown")
+            sev_color = {"open": "BrickRed", "in_progress": "Goldenrod"}.get(
+                         i.get("status", ""), "Gray")
+            ititle  = _tex_escape(i.get("title", i["id"]))
+            iid     = _tex_escape(i["id"])
+            labels  = _tex_escape(", ".join(i.get("labels", [])))
+            B.append(rf"\section{{{ititle}}}")
+            meta_str = rf"\texttt{{{iid}}}"
+            if labels:
+                meta_str += rf"\ $\cdot$\ {labels}"
+            meta_str += (
+                rf"\ $\cdot$\ \textcolor{{{sev_color}}}{{\textbf{{{sev_word}}}}}"
+            )
+            B.append(meta_str)
+            B.append(r"\medskip")
+            body_txt = _tex_escape(_strip_md((i.get("body") or "").strip()))[:1000]
+            if body_txt:
+                B.append(body_txt)
+                B.append("")
+            analysis = _latest_analysis(i, limit=800)
+            if analysis:
+                B.append(
+                    r"\paragraph{Latest analysis.}\ "
+                    + _tex_escape(_strip_md(analysis))
+                )
+            B.append("")
+
+    # ── Chapter 7: Resolved Issues ────────────────────────────────────────────
+    if resolved_issues:
+        B.append(r"\chapter{Resolved Issues}")
+        B.append(r"\begin{itemize}[noitemsep]")
+        for i in resolved_issues:
+            ititle = _tex_escape(i.get("title", i["id"]))
+            iid    = _tex_escape(i["id"])
+            B.append(rf"\item \textbf{{{ititle}}}\ $\cdot$\ \texttt{{{iid}}}")
+        B.append(r"\end{itemize}")
+        B.append("")
+
+    # ── Chapter 8: Insights ───────────────────────────────────────────────────
+    B.append(r"\chapter{Insights}")
+    wrote = False
+    if qinsight:
+        if qinsight.get("summary"):
+            B.append(_tex_escape(_strip_md(qinsight["summary"])))
+            B.append(""); wrote = True
+        for key, head in (
+            ("highlights", "Highlights"),
+            ("mistakes",   "Mistakes and lessons"),
+        ):
+            vals = qinsight.get(key) or []
+            if vals:
+                B.append(rf"\paragraph{{{head}.}}")
+                B.append(r"\begin{itemize}[noitemsep]")
+                for v in vals[:6]:
+                    B.append(rf"\item {_tex_escape(_strip_md(v))}")
+                B.append(r"\end{itemize}")
+                B.append(""); wrote = True
+    if not wrote:
+        B.append(r"\textit{No problem-specific insight generated yet.}")
+        B.append("")
+
+    return preamble, "\n".join(B)
+
+
 def build_problem_report(repo_root: Path, pid: str, dataset: str = "first_proof_1", full: bool = False) -> dict:
     prof = _profile(pid)
     issues = _issues(repo_root, pid, dataset)
@@ -253,7 +744,30 @@ def build_problem_report(repo_root: Path, pid: str, dataset: str = "first_proof_
     resolved_issues = [i for i in issues if i.get("status") == "resolved"]
     emoji, status = _status_label(pid, issues, best)
 
-    title = prof.get("title", pid.upper())
+    title = prof.get("title") or ""
+    if not title:
+        try:
+            from .dataset_store import get_problem as _ds_get
+            _p = _ds_get(dataset, pid) or {}
+            title = _p.get("title") or ""
+        except Exception:
+            pass
+    if not title:
+        title = pid.upper()
+
+    # Derive a clean verification label from proof_eval (not the automated verifier flag,
+    # which is often "not yet verified" even when the proof is correct).
+    has_proof = bool(best and best.get("has_solution"))
+    pe_aa = (proof_eval or {}).get("answer_accuracy") if proof_eval and "error" not in (proof_eval or {}) else None
+    if pe_aa is True or pe_aa == 1:
+        proof_quality = "✅ Answer correct"
+    elif pe_aa is False or pe_aa == 0:
+        proof_quality = "❌ Answer incorrect"
+    elif has_proof:
+        proof_quality = "⚠️ Awaiting evaluation"
+    else:
+        proof_quality = "—"
+
     L: list[str] = []
     L.append(f"# {title}")
     meta = []
@@ -264,13 +778,88 @@ def build_problem_report(repo_root: Path, pid: str, dataset: str = "first_proof_
     if meta:
         L.append("  ·  ".join(meta))
     L.append("")
-    L.append(f"**Status:** {emoji} {status}  ·  "
-             f"**Issues:** {len(open_issues)} open / {len(resolved_issues)} resolved  ·  "
-             f"**Meetings:** {len(meetings)}  ·  **Attempts:** {len(attempts)}")
+    L.append(f"**Proof quality:** {proof_quality}  ·  "
+             f"**Open issues:** {len(open_issues)}  ·  "
+             f"**Meetings:** {len(meetings)}")
     L.append("")
     L.append("---")
 
-    # 1. Candidate answer + approach
+    # ── 1. PROBLEM STATEMENT ────────────────────────────────────────────────
+    stmt = _problem_statement(repo_root, pid, dataset)
+    if stmt:
+        L.append("## Problem Statement")
+        L.append(stmt[:4000])
+        L.append("")
+
+    # ── 2. EVALUATION ───────────────────────────────────────────────────────
+    L.append("## Evaluation")
+    if proof_eval and "error" not in proof_eval:
+        aa  = proof_eval.get("answer_accuracy", None)
+        lc  = proof_eval.get("logical_correctness", None)
+        pc  = proof_eval.get("proof_completeness", None)
+        cl  = proof_eval.get("proof_clarity", None)
+        verdict = proof_eval.get("verdict", "")
+        notes   = proof_eval.get("notes", "")
+        score_rows = []
+        if aa is not None:
+            score_rows.append(f"**Answer Accuracy:** {'✅ Correct (1/1)' if aa else '❌ Incorrect (0/1)'}")
+        for val, label, mx in ((lc, "Logical Correctness", 5), (pc, "Proof Completeness", 5), (cl, "Proof Clarity", 5)):
+            if val is not None:
+                bar = "█" * val + "░" * (mx - val)
+                score_rows.append(f"**{label}:** {bar}  {val}/{mx}")
+        if score_rows:
+            L.extend(score_rows)
+            L.append("")
+        if verdict:
+            L.append(f"**Verdict:** {verdict}")
+            L.append("")
+        if notes:
+            L.append(f"**Analysis:** {notes}")
+            L.append("")
+    else:
+        L.append("_No proof evaluation recorded yet._")
+        L.append("")
+
+    # ── 3. BEST PROOF ───────────────────────────────────────────────────────
+    L.append("## Best Proof")
+    if best and best.get("has_solution"):
+        when = (best.get("updated_at") or best.get("created_at") or "")[:10]
+        if when:
+            L.append(f"_{when}_")
+            L.append("")
+        sol = (best.get("solution_tex") or "").strip()
+        if sol:
+            # Always show the proof excerpt — the PDF pages are appended separately.
+            excerpt = _proof_excerpt(sol, max_chars=2400)
+            if excerpt:
+                L.append(excerpt)
+        else:
+            L.append("_Proof source not available._")
+    else:
+        L.append("_No consolidated proof yet. Run a solve + Consolidate in the Proofs tab._")
+    L.append("")
+
+    # ── 4. KEY CONCEPTS ─────────────────────────────────────────────────────
+    if concepts:
+        core = [c for c in concepts if c.get("category") == "core"]
+        bg   = [c for c in concepts if c.get("category") != "core"]
+        L.append("## Key Concepts")
+        L.append(f"_{len(concepts)} concepts — full definitions in the Concept PDF._")
+        L.append("")
+        for c in core[:8]:
+            name = c.get("name", "")
+            nota = c.get("notation", "")
+            nota_str = f" — ${nota}$" if nota else ""
+            L.append(f"- **{name}**{nota_str}")
+        if bg:
+            for c in bg[:5]:
+                name = c.get("name", "")
+                nota = c.get("notation", "")
+                nota_str = f" — ${nota}$" if nota else ""
+                L.append(f"- {name}{nota_str}")
+        L.append("")
+
+    # ── 5. MEETING RESULTS ──────────────────────────────────────────────────
     if prof.get("candidate"):
         L.append("## Candidate Answer")
         L.append(prof["candidate"])
@@ -280,71 +869,6 @@ def build_problem_report(repo_root: Path, pid: str, dataset: str = "first_proof_
         L.append(prof["strategy"])
         L.append("")
 
-    # 2. Problem statement
-    stmt = _problem_statement(repo_root, pid, dataset)
-    if stmt:
-        L.append("## Problem Statement")
-        L.append(stmt[:4000])
-        L.append("")
-
-    # 3. Best proof
-    L.append("## Best Proof")
-    if best and best.get("has_solution"):
-        v = "✅ verified" if best.get("verification_passed") else "⚠️ not yet verified"
-        ic = best.get("issue_count", 100)
-        ic_txt = "" if (isinstance(ic, int) and ic >= 100) else f"  ·  {ic} verifier issue(s)"
-        model = best.get("model", "—")
-        when = (best.get("updated_at") or best.get("created_at") or "")[:10]
-        L.append(f"{v}{ic_txt}  ·  model: `{model}`  ·  {when}")
-        L.append("")
-        sol = (best.get("solution_tex") or "").strip()
-        L.append("")
-        if full and sol:
-            L.append("### Full Proof")
-            L.append("")
-            L.append("_The complete proof is included on the following pages._")
-        elif sol:
-            excerpt = _proof_excerpt(sol, max_chars=1600)
-            if excerpt:
-                L.append("**Proof (opening excerpt):**")
-                L.append("")
-                L.append(excerpt)
-    else:
-        L.append("_No consolidated proof yet. Run a solve + Consolidate in the Proofs tab._")
-    L.append("")
-
-    # 4. Remaining (open) issues
-    L.append(f"## Remaining Issues ({len(open_issues)})")
-    if open_issues:
-        for i in open_issues:
-            if full:
-                L.append(_issue_thread_md(i))
-            else:
-                sev = {"open": "🔴", "in_progress": "🟡"}.get(i.get("status", ""), "⚪")
-                labels = ", ".join(i.get("labels", []))
-                L.append(f"### {sev} {i.get('title', i['id'])}")
-                L.append(f"`{i['id']}`" + (f"  ·  {labels}" if labels else ""))
-                analysis = _latest_analysis(i)
-                if analysis:
-                    L.append("")
-                    L.append(f"> {analysis}")
-                L.append("")
-    else:
-        L.append("_None — all issues resolved._")
-        L.append("")
-
-    # 5. Resolved issues (compact)
-    if resolved_issues:
-        L.append(f"## Resolved Issues ({len(resolved_issues)})")
-        if full:
-            for i in resolved_issues:
-                L.append(_issue_thread_md(i))
-        else:
-            for i in resolved_issues:
-                L.append(f"- ✅ {i.get('title', i['id'])}  ·  `{i['id']}`")
-        L.append("")
-
-    # 6. Meeting results
     L.append(f"## Meeting Results ({len(meetings)})")
     if meetings and full:
         for room in meetings:
@@ -377,7 +901,38 @@ def build_problem_report(repo_root: Path, pid: str, dataset: str = "first_proof_
         L.append("_No substantive meetings recorded yet._")
         L.append("")
 
-    # 7. Insights
+    # ── 6. OPEN ISSUES ──────────────────────────────────────────────────────
+    L.append(f"## Open Issues ({len(open_issues)})")
+    if open_issues:
+        for i in open_issues:
+            if full:
+                L.append(_issue_thread_md(i))
+            else:
+                sev = {"open": "🔴", "in_progress": "🟡"}.get(i.get("status", ""), "⚪")
+                labels = ", ".join(i.get("labels", []))
+                L.append(f"### {sev} {i.get('title', i['id'])}")
+                L.append(f"`{i['id']}`" + (f"  ·  {labels}" if labels else ""))
+                analysis = _latest_analysis(i)
+                if analysis:
+                    L.append("")
+                    L.append(f"> {analysis}")
+                L.append("")
+    else:
+        L.append("_None._")
+        L.append("")
+
+    # ── 7. RESOLVED ISSUES ──────────────────────────────────────────────────
+    if resolved_issues:
+        L.append(f"## Resolved Issues ({len(resolved_issues)})")
+        if full:
+            for i in resolved_issues:
+                L.append(_issue_thread_md(i))
+        else:
+            for i in resolved_issues:
+                L.append(f"- ✅ {i.get('title', i['id'])}  ·  `{i['id']}`")
+        L.append("")
+
+    # ── 8. INSIGHTS & LESSONS ───────────────────────────────────────────────
     L.append("## Insights & Lessons")
     wrote_insight = False
     if qinsight:
@@ -395,71 +950,19 @@ def build_problem_report(repo_root: Path, pid: str, dataset: str = "first_proof_
         L.append("_No problem-specific insight generated yet._")
         L.append("")
 
-    # 8. Strategy / attempt history (compact)
+    # ── 9. STRATEGY ─────────────────────────────────────────────────────────
     if prof.get("difficulty") or attempts:
         L.append("## Strategy & Difficulty")
         if prof.get("difficulty"):
             L.append(prof["difficulty"])
             L.append("")
         if attempts:
-            outcomes = {}
+            outcomes: dict[str, int] = {}
             for a in attempts:
                 outcomes[a.get("outcome", "?")] = outcomes.get(a.get("outcome", "?"), 0) + 1
             summary = ", ".join(f"{k}: {v}" for k, v in sorted(outcomes.items()))
             L.append(f"**Attempt history:** {len(attempts)} recorded ({summary}).")
             L.append("")
-
-    # 9. Proof evaluation (4-dimension rubric)
-    L.append("## Proof Evaluation")
-    if proof_eval and "error" not in proof_eval:
-        aa  = proof_eval.get("answer_accuracy", None)
-        lc  = proof_eval.get("logical_correctness", None)
-        pc  = proof_eval.get("proof_completeness", None)
-        cl  = proof_eval.get("proof_clarity", None)
-        verdict = proof_eval.get("verdict", "")
-        notes   = proof_eval.get("notes", "")
-        score_rows = []
-        if aa is not None:
-            score_rows.append(f"**Answer Accuracy:** {'✅ Correct (1/1)' if aa else '❌ Incorrect (0/1)'}")
-        for val, label, mx in ((lc, "Logical Correctness", 5), (pc, "Proof Completeness", 5), (cl, "Proof Clarity", 5)):
-            if val is not None:
-                bar = "█" * val + "░" * (mx - val)
-                score_rows.append(f"**{label}:** {bar}  {val}/{mx}")
-        if score_rows:
-            L.extend(score_rows)
-            L.append("")
-        if verdict:
-            L.append(f"**Verdict:** {verdict}")
-            L.append("")
-        if notes:
-            L.append(f"**Analysis:** {notes}")
-            L.append("")
-    else:
-        L.append("_No proof evaluation recorded yet. Run evaluation in the Evaluation tab._")
-        L.append("")
-
-    # 10. Key concepts (names + notation only — full definitions live in the Concept PDF)
-    if concepts:
-        core = [c for c in concepts if c.get("category") == "core"]
-        bg   = [c for c in concepts if c.get("category") != "core"]
-        L.append("## Key Concepts")
-        L.append(f"_{len(concepts)} concepts extracted — see the Concept PDF (Documents tab) for full definitions._")
-        L.append("")
-        L.append("**Core concepts:**")
-        for c in core[:8]:
-            name = c.get("name", "")
-            nota = c.get("notation", "")
-            nota_str = f" — ${nota}$" if nota else ""
-            L.append(f"- **{name}**{nota_str}")
-        if bg:
-            L.append("")
-            L.append("**Background / supporting concepts:**")
-            for c in bg[:6]:
-                name = c.get("name", "")
-                nota = c.get("notation", "")
-                nota_str = f" — ${nota}$" if nota else ""
-                L.append(f"- {name}{nota_str}")
-        L.append("")
 
     L.append("---")
     L.append(f"*Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} "
@@ -616,130 +1119,146 @@ def compile_report_pdf(repo_root: Path, scope: str, dataset: str = "first_proof_
     import subprocess
     import tempfile
     from .issue_pdf import _PREAMBLE, _TECTONIC
-    # Robust markdown->LaTeX converter (math-protected, emoji-safe, balanced
-    # bold/italic) — the older issue_pdf.md_to_latex emits unbalanced \emph{...}.
-    from .doc_bundle import _md_to_tex
-
-    report = build_report(repo_root, scope, dataset, full=True)
-    md = report["markdown"]
-    proof_doc = ""
-    if scope != "system":
-        best = _best_proof(scope, dataset)
-        proof_doc = ((best or {}).get("solution_tex") or "").strip()
-
-    safe_scope = re.sub(r"[^A-Za-z0-9_-]", "_", f"{scope}_{dataset}")
-    name = f"report_{safe_scope}"
-    pdf_dir = repo_root / "documents" / "pdf"
-    pdf_dir.mkdir(parents=True, exist_ok=True)
-    dest = pdf_dir / f"{name}.pdf"
-    hash_file = pdf_dir / f"{name}.hash"
-    cur_hash = hashlib.md5((md + proof_doc).encode("utf-8")).hexdigest()[:12]
-
-    if not force and dest.is_file() and hash_file.is_file() and hash_file.read_text().strip() == cur_hash:
-        return {"ok": True, "pdf_url": f"/api/pdf/{name}.pdf", "log": "cached"}
-
-    tectonic = _TECTONIC if (os.path.isfile(_TECTONIC) and os.access(_TECTONIC, os.X_OK)) \
-        else shutil.which("tectonic") or shutil.which("pdflatex")
-    if not tectonic:
-        return {"ok": False, "pdf_url": None, "log": "No LaTeX toolchain available"}
-    is_tec = "tectonic" in tectonic
     from .proofs import _missing_from_log, _safety_block
 
-    def _compile(cmd, cwd):
+    safe_scope = re.sub(r"[^A-Za-z0-9_-]", "_", f"{scope}_{dataset}")
+    name     = f"report_{safe_scope}"
+    pdf_dir  = repo_root / "documents" / "pdf"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+    dest      = pdf_dir / f"{name}.pdf"
+    hash_file = pdf_dir / f"{name}.hash"
+
+    tectonic = (
+        _TECTONIC if (os.path.isfile(_TECTONIC) and os.access(_TECTONIC, os.X_OK))
+        else shutil.which("tectonic") or shutil.which("pdflatex")
+    )
+    if not tectonic:
+        return {"ok": False, "pdf_url": None, "log": "No LaTeX toolchain"}
+    is_tec = "tectonic" in tectonic
+
+    def _run(cmd, cwd):
         try:
             p = subprocess.run(cmd, cwd=cwd, capture_output=True, timeout=180)
             return p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace")
         except subprocess.TimeoutExpired:
             return 1, "timed out"
 
-    def _compile_report_body(markdown: str, title: str) -> bytes | None:
-        """Resilient compile of a markdown report (own preamble + macro stubbing)."""
-        safe_title = title.replace("\\", "").replace("_", r"\_").replace("&", r"\&").replace("#", r"\#").replace("%", r"\%")
-        body = "\n".join([
-            rf"\begin{{center}}{{\Large\bfseries {safe_title}}}\end{{center}}",
+    # ── system report: keep the existing markdown→LaTeX path ──────────────────
+    if scope == "system":
+        from .doc_bundle import _md_to_tex
+        report = build_report(repo_root, scope, dataset, full=True)
+        md = report["markdown"]
+        _md_for_hash = re.sub(
+            r"\*Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC[^*]*\*", "", md
+        )
+        cur_hash = hashlib.md5(_md_for_hash.encode()).hexdigest()[:12]
+        if not force and dest.is_file() and hash_file.is_file() \
+                and hash_file.read_text().strip() == cur_hash:
+            return {"ok": True, "pdf_url": f"/api/pdf/{name}.pdf", "log": "cached"}
+
+        safe_t = (report.get("title") or scope).replace("_", r"\_").replace("&", r"\&")
+        sys_body = "\n".join([
+            rf"\begin{{center}}{{\Large\bfseries {safe_t}}}\end{{center}}",
             r"\medskip\hrule\bigskip",
-            _md_to_tex(markdown),
+            _md_to_tex(md),
         ])
-        with tempfile.TemporaryDirectory(prefix="rma_rep_") as tmp:
+        cs_s: set = set(); env_s: set = set()
+
+        def _sys_doc():
+            return "\n".join([
+                _PREAMBLE, _safety_block(cs_s, env_s),
+                r"\begin{document}", sys_body, r"\end{document}",
+            ])
+
+        with tempfile.TemporaryDirectory(prefix="rma_sys_") as tmp:
             b = Path(tmp)
-            cmd = [tectonic, "--keep-logs", "main.tex"] if is_tec else ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
-            cs_stubs: set = set(); env_stubs: set = set()
-            def _doc():
-                return "\n".join([_PREAMBLE, _safety_block(cs_stubs, env_stubs), r"\begin{document}", body, r"\end{document}"])
-            def _flog(stdio):
-                lf = b / "main.log"
-                return (lf.read_text(encoding="utf-8", errors="replace") if lf.is_file() else "") + "\n" + stdio
+            cmd = ([tectonic, "--keep-logs", "main.tex"] if is_tec
+                   else ["pdflatex", "-interaction=nonstopmode", "main.tex"])
             for _ in range(24):
-                (b / "main.tex").write_text(_doc(), encoding="utf-8")
-                rc, log = _compile(cmd, b)
+                (b / "main.tex").write_text(_sys_doc(), encoding="utf-8")
+                rc, stdio = _run(cmd, b)
                 if rc == 0 and (b / "main.pdf").is_file():
-                    return (b / "main.pdf").read_bytes()
-                found = _missing_from_log(_flog(log))
+                    break
+                lf = b / "main.log"
+                log = (lf.read_text(encoding="utf-8", errors="replace")
+                       if lf.is_file() else "") + "\n" + stdio
+                found = _missing_from_log(log)
                 if not found:
                     break
                 kind, nm = found
-                tgt = cs_stubs if kind == "cs" else env_stubs
-                if nm in tgt:
-                    break
-                tgt.add(nm)
-            # forgiving fallback
+                (cs_s if kind == "cs" else env_s).add(nm)
+            if not (b / "main.pdf").is_file():
+                (b / "main.tex").write_text(_sys_doc(), encoding="utf-8")
+                _run(([tectonic, "--keep-logs", "-Z", "continue-on-errors", "main.tex"]
+                      if is_tec else ["pdflatex", "-interaction=nonstopmode", "main.tex"]), b)
+            if (b / "main.pdf").is_file():
+                dest.write_bytes((b / "main.pdf").read_bytes())
+                hash_file.write_text(cur_hash)
+                return {"ok": True, "pdf_url": f"/api/pdf/{name}.pdf", "log": "OK (system)"}
+        return {"ok": False, "pdf_url": None, "log": "system report compile failed"}
+
+    # ── problem report: native LaTeX book ─────────────────────────────────────
+    # _build_problem_latex_body() assembles a \documentclass{report} document
+    # with \chapter sections and the proof body inserted inline in Chapter 3.
+    preamble, body = _build_problem_latex_body(repo_root, scope, dataset)
+
+    # Stable hash — strip the timestamp so the cache survives across requests.
+    _body_for_hash = re.sub(
+        r"Generated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", "TS", body
+    )
+    cur_hash = hashlib.md5((_body_for_hash + preamble).encode()).hexdigest()[:12]
+    if not force and dest.is_file() and hash_file.is_file() \
+            and hash_file.read_text().strip() == cur_hash:
+        return {"ok": True, "pdf_url": f"/api/pdf/{name}.pdf", "log": "cached"}
+
+    cs_stubs: set = set()
+    env_stubs: set = set()
+
+    def _doc() -> str:
+        # _safety_block stubs any \cmd or {env} the proof uses that our preamble omits.
+        return "\n".join([
+            preamble,
+            _safety_block(cs_stubs, env_stubs),
+            r"\begin{document}",
+            body,
+            r"\end{document}",
+        ])
+
+    def _flog(stdio: str, b: Path) -> str:
+        lf = b / "main.log"
+        return (lf.read_text(encoding="utf-8", errors="replace") if lf.is_file() else "") \
+               + "\n" + stdio
+
+    with tempfile.TemporaryDirectory(prefix="rma_rep_") as tmp:
+        b = Path(tmp)
+        cmd = ([tectonic, "--keep-logs", "main.tex"] if is_tec
+               else ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "main.tex"])
+
+        for _ in range(24):
             (b / "main.tex").write_text(_doc(), encoding="utf-8")
-            if is_tec:
-                _compile([tectonic, "--keep-logs", "-Z", "continue-on-errors", "main.tex"], b)
-            else:
-                _compile(["pdflatex", "-interaction=nonstopmode", "main.tex"], b)
-            return (b / "main.pdf").read_bytes() if (b / "main.pdf").is_file() else None
+            rc, stdio = _run(cmd, b)
+            if rc == 0 and (b / "main.pdf").is_file():
+                break
+            found = _missing_from_log(_flog(stdio, b))
+            if not found:
+                break
+            kind, nm = found
+            if nm in (cs_stubs if kind == "cs" else env_stubs):
+                break
+            (cs_stubs if kind == "cs" else env_stubs).add(nm)
 
-    def _compile_proof_doc(tex: str) -> bytes | None:
-        """Compile the proof's own complete document (its own preamble = reliable)."""
-        with tempfile.TemporaryDirectory(prefix="rma_proof_") as tmp:
-            b = Path(tmp)
-            (b / "main.tex").write_text(tex, encoding="utf-8")
-            if is_tec:
-                rc, _ = _compile([tectonic, "main.tex"], b)
-                if not (b / "main.pdf").is_file():
-                    _compile([tectonic, "-Z", "continue-on-errors", "main.tex"], b)
-            else:
-                _compile(["pdflatex", "-interaction=nonstopmode", "main.tex"], b)
-            return (b / "main.pdf").read_bytes() if (b / "main.pdf").is_file() else None
+        # forgiving fallback — continue-on-errors so partial PDFs are still useful
+        if not (b / "main.pdf").is_file():
+            (b / "main.tex").write_text(_doc(), encoding="utf-8")
+            _run(([tectonic, "--keep-logs", "-Z", "continue-on-errors", "main.tex"]
+                  if is_tec else ["pdflatex", "-interaction=nonstopmode", "main.tex"]), b)
 
-    def _merge(parts: list[bytes]) -> bytes | None:
-        if len(parts) == 1:
-            return parts[0]
-        with tempfile.TemporaryDirectory(prefix="rma_merge_") as tmp:
-            b = Path(tmp)
-            files = []
-            for k, pb in enumerate(parts):
-                fp = b / f"p{k}.pdf"; fp.write_bytes(pb); files.append(str(fp))
-            out = b / "merged.pdf"
-            pu = shutil.which("pdfunite")
-            if pu:
-                _compile([pu, *files, str(out)], b)
-            if not out.is_file():
-                gs = shutil.which("gs")
-                if gs:
-                    _compile([gs, "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=pdfwrite", f"-sOutputFile={out}", *files], b)
-            return out.read_bytes() if out.is_file() else parts[0]
+        if (b / "main.pdf").is_file():
+            dest.write_bytes((b / "main.pdf").read_bytes())
+            hash_file.write_text(cur_hash)
+            return {"ok": True, "pdf_url": f"/api/pdf/{name}.pdf", "log": "OK"}
 
-    # 1. report body — try full; fall back to the summary if the big agent text breaks LaTeX
-    report_bytes = _compile_report_body(md, report.get("title", scope))
-    if report_bytes is None:
-        summary_md = build_report(repo_root, scope, dataset, full=False)["markdown"]
-        report_bytes = _compile_report_body(summary_md, report.get("title", scope))
-
-    # 2. full proof as its own pages
-    proof_bytes = _compile_proof_doc(proof_doc) if proof_doc else None
-
-    parts = [p for p in (report_bytes, proof_bytes) if p]
-    if not parts:
-        return {"ok": False, "pdf_url": None, "log": "Report and proof both failed to compile"}
-    final = _merge(parts)
-    if not final:
-        return {"ok": False, "pdf_url": None, "log": "PDF merge failed"}
-    dest.write_bytes(final)
-    hash_file.write_text(cur_hash)
-    pieces = ("report" if report_bytes else "") + ("+proof" if proof_bytes else "")
-    return {"ok": True, "pdf_url": f"/api/pdf/{name}.pdf", "log": f"OK ({pieces})"}
+    return {"ok": False, "pdf_url": None, "log": "compile failed"}
 
 
 # ── dataset master report: ONE huge PDF of everything (all problems, all tabs) ──
@@ -763,13 +1282,8 @@ def compile_master_pdf(repo_root: Path, dataset: str = "first_proof_1", force: b
     parts: list[Path] = []
     logs: list[str] = []
 
-    # 1) system overview first
-    sysr = compile_report_pdf(repo_root, "system", dataset, force=force)
-    if sysr.get("ok") and _report_path("system").is_file():
-        parts.append(_report_path("system"))
-    logs.append(f"system={'ok' if sysr.get('ok') else 'fail'}")
-
-    # 2) every problem's full combined report
+    # 1) every problem's full combined report first (problem → evaluation →
+    #    best proof → others within each), so the document leads with problems.
     for pid in problem_ids(dataset):
         r = compile_report_pdf(repo_root, pid, dataset, force=force)
         fp = _report_path(pid)
@@ -778,6 +1292,12 @@ def compile_master_pdf(repo_root: Path, dataset: str = "first_proof_1", force: b
             logs.append(f"{pid}=ok")
         else:
             logs.append(f"{pid}=fail")
+
+    # 2) system overview (cross-problem dashboard) last
+    sysr = compile_report_pdf(repo_root, "system", dataset, force=force)
+    if sysr.get("ok") and _report_path("system").is_file():
+        parts.append(_report_path("system"))
+    logs.append(f"system={'ok' if sysr.get('ok') else 'fail'}")
 
     if not parts:
         return {"ok": False, "pdf_url": None, "log": "no report parts; " + " ".join(logs)}

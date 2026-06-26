@@ -5,7 +5,7 @@ Uses vertex_llm.complete() directly — one API call per problem with built-in
 60→120→300→600→600→... second retry on quota exhaustion.  Much more quota-friendly
 than the full agent loop (which makes many calls and has only short built-in retries).
 
-Outputs to: output_solutions/fp2_vertex_opus_simple/<problem_id>/solution.tex
+Outputs to: outputs/output_solutions/fp2_vertex_opus_simple/<problem_id>/solution.tex
 
 Usage:
     python3 scripts/solve_fp2_simple.py [--problems prob-01 ...] [--resume]
@@ -29,7 +29,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 EXP_NAME = "fp2_vertex_opus_simple"
-OUTPUT_DIR = REPO_ROOT / "output_solutions" / EXP_NAME
+OUTPUT_DIR = REPO_ROOT / "outputs" / "output_solutions" / EXP_NAME
 ALL_PROBLEMS = [f"prob-{i:02d}" for i in range(1, 11)]
 
 _SYSTEM = """\

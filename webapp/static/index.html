@@ -7,6 +7,19 @@
 <link rel="icon" type="image/x-icon" href="/favicon.ico?v=3" />
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script>
+/* API base-path shim: this SPA is served either at root or behind a proxy prefix
+   (e.g. /rmac/solve/ via the dev proxy). Every API URL is written absolute
+   ("/api/..."), which 404s through the proxy, so detect the prefix once and apply
+   it to all fetch / EventSource / PDF URLs. No-op when served at root. */
+const API_PREFIX = (location.pathname.match(/^(.*\/rmac\/solve)(?:\/|$)/) || ["",""])[1];
+function apiU(u){ return (typeof u==="string" && u.startsWith("/api/")) ? API_PREFIX+u : u; }
+(function(){
+  if(!API_PREFIX) return;            // served at root — nothing to rewrite
+  const of = window.fetch.bind(window);
+  window.fetch = (u,o)=> of(apiU(u), o);
+  const ES = window.EventSource;
+  if(ES){ function PES(u,c){ return new ES(apiU(u), c); } PES.prototype = ES.prototype; window.EventSource = PES; }
+})();
 MathJax = {
   tex: {
     inlineMath: [['$','$'],['\\(','\\)']],
@@ -854,13 +867,10 @@ MathJax = {
     </section>
 
     <section class="pane" id="pane-documents" style="display:grid;grid-template-columns:1fr;height:calc(100vh - 98px);gap:0">
-      <!-- Left: document browser -->
-      <div id="doc-sidebar" style="display:none;border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;background:var(--panel2)">
-        <div style="padding:4px 12px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Context Reports</div>
-        <div id="doc-report-list" style="padding:0 6px"></div>
-        <div style="padding:10px 12px 4px;border-top:1px solid var(--border);margin-top:8px">
-          <button class="btn-sec" id="doc-refresh-btn" style="font-size:10px;padding:3px 8px;width:100%" title="Rebuild reports from latest run data">↻ Refresh</button>
-        </div>
+      <!-- Sidebar removed; report loads automatically for the selected problem -->
+      <div id="doc-sidebar" style="display:none">
+        <div id="doc-report-list"></div>
+        <button class="btn-sec" id="doc-refresh-btn">↻ Refresh</button>
       </div>
       <!-- Right: viewer -->
       <div style="display:flex;flex-direction:column;overflow:hidden">
@@ -871,7 +881,10 @@ MathJax = {
           <span id="doc-breadcrumb" style="font-size:12px;font-weight:600;color:var(--fg)">Loading reports…</span>
           <span class="muted" id="d-status" style="font-size:11px"></span>
           <button class="btn-sec" id="doc-view-toggle" style="font-size:11px;padding:3px 8px;display:none;margin-left:auto">View PDF</button>
-          <a id="d-bundle-dl" href="#" download="context_report.pdf" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;color:var(--accent);text-decoration:none;background:var(--panel2);display:none">⬇ PDF</a>
+          <span id="d-pdf-link-wrap" style="display:none;align-items:center;gap:6px;margin-left:auto">
+            <input id="d-pdf-url-input" readonly style="font-size:11px;padding:2px 7px;border:1px solid var(--border);border-radius:5px;background:var(--panel2);color:var(--accent);width:340px;cursor:pointer" title="Click to copy PDF URL" onclick="this.select();document.execCommand('copy');this.setAttribute('data-copied','1');this.title='Copied!';setTimeout(()=>{this.title='Click to copy PDF URL';},1500)" value="">
+            <a id="d-bundle-dl" href="#" download="context_report.pdf" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;color:var(--accent);text-decoration:none;background:var(--panel2);white-space:nowrap">⬇ Download</a>
+          </span>
         </div>
         <!-- Markdown viewer -->
         <div id="doc-md-view" style="flex:1;overflow-y:auto;padding:20px 28px;line-height:1.65;font-size:13px">
@@ -1366,7 +1379,7 @@ if(typeof pdfjsLib!=="undefined"){
   pdfjsLib.GlobalWorkerOptions.workerSrc=
     "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 }
-let problems=[], selected=null, selectedDataset="first_proof_1", vertexCfg={available:false,project:"",region:"global",model:"claude-opus-4-8"}, vertexUsage=null, es=null, runId=null;
+let problems=[], selected=null, selectedDataset="first_proof_2", vertexCfg={available:false,project:"",region:"global",model:"claude-opus-4-8"}, vertexUsage=null, es=null, runId=null;
 let cur={text:null,think:null}; const toolCards={}; let lastArtifact=null;
 let tokenHistory=[], curTurnSep=null, curAssistantCard=null;
 let allDatasets=[];
@@ -1453,7 +1466,7 @@ async function loadDatasets(){
         opt.disabled=true; sel.appendChild(opt);
       }
     }
-    sel.value="first_proof_1"; selectedDataset="first_proof_1";
+    sel.value="first_proof_2"; selectedDataset="first_proof_2";
     sel.onchange=()=>{
       if(!SUPPORTED_DATASETS.has(sel.value)&&sel.value){ sel.value=selectedDataset; return; }
       selectedDataset=sel.value;
@@ -1562,24 +1575,37 @@ async function loadProblems(){
   const status=$("f-status").value; if(status) params.set("status",status);
 
   const list=$("qlist");
-  // Show static problems immediately so sidebar is never empty
+  // Show static problems immediately so the sidebar is never empty. STATIC_PROBLEMS
+  // only covers first_proof_1, so for any other dataset show a "Loading…" placeholder
+  // (NOT "No problems match", which wrongly implies a filter excluded everything)
+  // until the live fetch returns.
   const staticFiltered = !selectedDataset || selectedDataset==="first_proof_1"
     ? STATIC_PROBLEMS
     : STATIC_PROBLEMS.filter(p=>p.dataset===selectedDataset);
-  if(!problems.length) renderProblemList(staticFiltered);
-  // Then fetch live data in background
-  try{
-    const r=await fetchWithTimeout("/api/ds/problems?"+params,5000);
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d=await r.json();
-    problems=d.problems||[];
-    renderProblemList(problems);
-  }catch(e){
-    // Static data already shown — only show server-error if no real data yet
-    if(!problems.length){
-      problems=staticFiltered;
+  if(!problems.length){
+    if(staticFiltered.length) renderProblemList(staticFiltered);
+    else list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">Loading problems…</div>';
+  }
+  // Then fetch live data, retrying through transient dev-server reloads.
+  let loaded=false;
+  for(let attempt=0; attempt<3 && !loaded; attempt++){
+    try{
+      const r=await fetchWithTimeout("/api/ds/problems?"+params,5000);
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d=await r.json();
+      problems=d.problems||[];
       renderProblemList(problems);
-      setStatus("offline — showing cached data","warn");
+      loaded=true;
+    }catch(e){
+      if(attempt<2){ await new Promise(res=>setTimeout(res,1200)); continue; }
+      if(!problems.length){
+        if(staticFiltered.length){
+          problems=staticFiltered; renderProblemList(problems);
+          setStatus("offline — showing cached data","warn");
+        } else {
+          list.innerHTML='<div class="muted" style="padding:8px 10px;font-size:12px">Couldn\'t load problems (server busy). <a href="#" onclick="loadProblems();return false" style="color:var(--accent)">Retry</a></div>';
+        }
+      }
     }
   }
 }
@@ -1647,7 +1673,11 @@ async function init(){
   try{
     // Load datasets and problems — fire-and-forget so page is never stuck loading
     startOvRefresh();
-    loadDatasets().then(()=>loadProblems()).catch(()=>{
+    loadDatasets().then(()=>loadProblems().then(()=>{
+      // Auto-select the active focus problem on fresh page load
+      const _autoNode=[...$("qlist").querySelectorAll(".qitem")].find(n=>n.dataset.pid==="prob-09");
+      selectQuestion("prob-09",_autoNode||null,"first_proof_2");
+    })).catch(()=>{
       if(!problems.length){ problems=STATIC_PROBLEMS; renderProblemList(problems); }
     });
     // Provider options from server capabilities (non-blocking)
@@ -1757,7 +1787,7 @@ async function loadAgentStatus(pid){
             body:JSON.stringify({content:d.tex,name:proofName})})).json();
           if(res.ok){
             await pdfLoad(res.pdf_url,pdfWrap,()=>{},1.1);
-            const dlLink=document.createElement("a"); dlLink.href=res.pdf_url; dlLink.target="_blank";
+            const dlLink=document.createElement("a"); dlLink.href=apiU(res.pdf_url); dlLink.target="_blank";
             dlLink.textContent="Open PDF ↗"; dlLink.style.cssText="font-size:11px;color:var(--accent);margin-top:4px";
             preview.appendChild(dlLink);
           }else{
@@ -2782,6 +2812,44 @@ async function fetchJsonSafe(url){
   }catch(_){ return null; }
 }
 
+async function fetchJsonRetry(url, tries=5, delayMs=1500){
+  // Retry through transient empty responses (dev server mid-reload) so views self-heal.
+  for(let k=0;k<tries;k++){
+    const d=await fetchJsonSafe(url);
+    if(d!==null) return d;
+    if(k<tries-1) await new Promise(r=>setTimeout(r, delayMs));
+  }
+  return null;
+}
+
+const MAX_INLINE_PDF = 8*1024*1024; // >8 MB: browsers choke on inline PDFs — offer download instead
+function fmtBytes(n){ if(!n) return ""; const mb=n/1048576; return mb>=1 ? mb.toFixed(1)+" MB" : Math.max(1,Math.round(n/1024))+" KB"; }
+async function pdfByteSize(url){
+  try{ const r=await fetch(url,{method:"HEAD"}); if(!r.ok) return 0; const n=parseInt(r.headers.get("content-length")||"0",10); return isNaN(n)?0:n; }
+  catch(_){ return 0; }
+}
+// Render a PDF inline when it is small enough; otherwise give up online rendering
+// and show a direct download link in that tab.
+async function renderPdfOrDownload(wrap, url, dlName, dlEl, label){
+  url = apiU(url);
+  if(dlEl){
+    dlEl.href=url; dlEl.download=dlName;
+    const inp=$("d-pdf-url-input"); if(inp) inp.value=location.origin+url;
+    const lw=$("d-pdf-link-wrap"); if(lw) lw.style.display="flex";
+  }
+  const sz=await pdfByteSize(url);
+  if(sz && sz>MAX_INLINE_PDF){
+    wrap.innerHTML=`<div style="color:#cbd5e1;padding:48px 24px;font-size:13px;line-height:1.8;text-align:center;max-width:520px;margin:0 auto">`
+      +`<div style="font-size:34px;margin-bottom:6px">📄</div>`
+      +`<b>${esc(label||dlName)}</b> is <b>${fmtBytes(sz)}</b> — too large to render in the browser, so online preview is skipped.<br>`
+      +`<a href="${url}" download="${esc(dlName)}" class="btn-sec" style="display:inline-block;margin-top:16px;font-size:13px;padding:9px 22px;text-decoration:none">⬇ Download PDF (${fmtBytes(sz)})</a>`
+      +`<div style="color:#888;font-size:11px;margin-top:12px">or <a href="${url}" target="_blank" rel="noopener" style="color:#9cf">open in a new tab</a></div>`
+      +`</div>`;
+  } else {
+    wrap.innerHTML=`<iframe src="${url}?t=${Date.now()}" style="flex:1;width:100%;border:0;background:#fff"></iframe>`;
+  }
+}
+
 async function pdfLoad(url, wrap, onDoc, scale){
   wrap.innerHTML=`<div style="color:#aaa;padding:32px;font-size:13px">Loading PDF…</div>`;
   try{
@@ -2939,7 +3007,7 @@ async function selectQuestion(qid, node, dataset){
         area.innerHTML=metaHtml; // clear the "loading" message; pdfLoad fills the rest
         await pdfLoad(pdfRes.pdf_url, area, d=>{qDoc=d;}, qScale);
         $("q-view-mode").textContent="PDF";
-        const _dl=$("q-pdf-dl"); if(_dl){ _dl.href=pdfRes.pdf_url; _dl.style.display="inline"; }
+        const _dl=$("q-pdf-dl"); if(_dl){ _dl.href=apiU(pdfRes.pdf_url); _dl.style.display="inline"; }
       } else {
         area.innerHTML=`${metaHtml}<div style="color:#cbd5e1;padding:30px 20px;font-size:13px;max-width:620px;text-align:center;line-height:1.55">Could not compile this problem to PDF.<br><span style="color:#888">${esc((pdfRes.log||"").slice(0,200))}</span></div>`;
         $("q-view-mode").textContent="PDF unavailable";
@@ -2975,8 +3043,8 @@ async function selectQuestion(qid, node, dataset){
   // Show existing agent status if agent tab is active
   if(document.querySelector(".tab.active[data-tab='agent']")) loadAgentStatus(qid);
   else { const sp=$("a-status-panel"); if(sp) sp.style.display="none"; }
-  // If documents tab is active, load this question's docs
-  if(document.querySelector(".tab.active[data-tab='documents']")) loadQuestionDocs(qid);
+  // If documents tab is active, load this question's docs + refresh sidebar
+  if(document.querySelector(".tab.active[data-tab='documents']")){ loadQuestionDocs(qid); }
   // If proofs tab is active, load this question's proof
   if(document.querySelector(".tab.active[data-tab='proofs']")) loadProofForQuestion(qid);
   // If overview tab is active, re-render filtered to this question
@@ -3008,7 +3076,7 @@ $("q-pdf-btn").onclick=async function(){
     } else if(res.ok && res.pdf_url){
       this.disabled=false; this.textContent="⟳ Recompile";
       $("q-view-mode").textContent="PDF";
-      const _dl=$("q-pdf-dl"); if(_dl){ _dl.href=res.pdf_url; _dl.style.display="inline"; }
+      const _dl=$("q-pdf-dl"); if(_dl){ _dl.href=apiU(res.pdf_url); _dl.style.display="inline"; }
       await pdfLoad(res.pdf_url, area, d=>{qDoc=d;}, qScale);
     } else {
       this.disabled=false; this.textContent="⟳ Recompile";
@@ -3233,7 +3301,7 @@ async function loadCombinedIssuesPdf(level, ds, qid){
     const d=await fetchJsonSafe(`/api/all-issues-pdf/${scope}?dataset=${encodeURIComponent(ds)}`);
     if(d===null){ view.innerHTML=`<div style="color:#cbd5e1;padding:32px;font-size:13px">Service busy (dev server reloading). Reopen the Issue tab in a moment.</div>`; return; }
     if(d.ok && d.pdf_url){
-      view.innerHTML=`<iframe src="${d.pdf_url}?t=${Date.now()}" style="width:100%;height:100%;border:0;background:#fff"></iframe>`;
+      view.innerHTML=`<iframe src="${apiU(d.pdf_url)}?t=${Date.now()}" style="width:100%;height:100%;border:0;background:#fff"></iframe>`;
       $("iss-title").textContent += ` (${d.count||0} issues)`;
     } else {
       view.innerHTML=`<div style="color:#f88;padding:32px;font-size:12px;white-space:pre-wrap">Could not compile issues PDF.\n${esc((d.log||"").slice(0,300))}</div>`;
@@ -3884,7 +3952,7 @@ async function compilePdf(content,name,card,btn){
   card.querySelectorAll(".pdf-viewer,.compile-log").forEach(n=>n.remove());
   if(res.ok){
     const a=el("div","tool-io"); a.appendChild(el("div","lbl","PDF compiled — "));
-    const link=el("a",null,"open in new tab"); link.href=res.pdf_url; link.target="_blank"; link.style.color="var(--accent)";
+    const link=el("a",null,"open in new tab"); link.href=apiU(res.pdf_url); link.target="_blank"; link.style.color="var(--accent)";
     a.firstChild.appendChild(link); card.appendChild(a);
     const wrap=document.createElement("div"); wrap.className="pdf-viewer";
     wrap.style.cssText="background:#404040;border-radius:6px;padding:12px;margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:8px;max-height:60vh;overflow-y:auto";
@@ -4000,7 +4068,7 @@ async function loadDocConceptPdf(pid){
     const nat = page.getViewport({scale:1});
     const scale = Math.max(0.8, Math.min(2.2, (wrap.clientWidth-40)/nat.width));
     await pdfRenderAll(doc, scale, wrap);
-    if(dl){ dl.href=data.pdf_url; dl.style.display=""; }
+    if(dl){ dl.href=apiU(data.pdf_url); dl.style.display=""; }
   }catch(e){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`; }
 }
 
@@ -4030,7 +4098,7 @@ async function loadDocReport(scope, force){
   $("doc-md-view").style.display="none";
   const wrap=$("d-pdf-wrap"); wrap.style.display="flex";
   const toggle=$("doc-view-toggle"); if(toggle) toggle.style.display="none";
-  const dl=$("d-bundle-dl"); if(dl) dl.style.display="none";
+  const dl=$("d-bundle-dl"); const dlw=$("d-pdf-link-wrap"); if(dlw) dlw.style.display="none";
   _docCrumb(scope);
   wrap.innerHTML='<div style="color:#aaa;padding:40px;font-size:13px">Compiling PDF…</div>';
   const ds = selectedDataset || "first_proof_1";
@@ -4057,7 +4125,12 @@ async function loadDocReport(scope, force){
     const nat=page.getViewport({scale:1});
     const scale=Math.max(0.8, Math.min(2.2, (wrap.clientWidth-40)/nat.width));
     await pdfRenderAll(doc, scale, wrap);
-    if(dl){ dl.href=meta.pdf_url; dl.style.display=""; }
+    if(dl){
+      const fullUrl=location.origin+apiU(meta.pdf_url);
+      dl.href=apiU(meta.pdf_url);
+      const inp=$("d-pdf-url-input"); if(inp) inp.value=fullUrl;
+      const wrap=$("d-pdf-link-wrap"); if(wrap) wrap.style.display="flex";
+    }
   }catch(e){ wrap.innerHTML=`<div style="color:#f88;padding:32px">Error: ${esc(String(e))}</div>`; }
 }
 
@@ -4070,15 +4143,14 @@ async function loadMasterDoc(force){
   const tg=$("doc-view-toggle"); if(tg) tg.style.display="none";
   const crumb=$("doc-breadcrumb"); if(crumb) crumb.textContent=`Master document — ${ds}`;
   const st=$("d-status"); if(st) st.textContent="loading…";
-  const dl=$("d-bundle-dl"); if(dl) dl.style.display="none";
+  const dl=$("d-bundle-dl"); const dlw=$("d-pdf-link-wrap"); if(dlw) dlw.style.display="none";
   wrap.innerHTML=`<div style="color:#aaa;padding:40px;font-size:13px">Loading master document…</div>`;
   try{
-    const d=await fetchJsonSafe(`/api/master-pdf?dataset=${encodeURIComponent(ds)}${force?"&force=true":""}`);
+    const d=await fetchJsonRetry(`/api/master-pdf?dataset=${encodeURIComponent(ds)}${force?"&force=true":""}`);
     if(st) st.textContent="";
     if(d===null){ wrap.innerHTML=`<div style="color:#cbd5e1;padding:40px;font-size:13px">Service busy (dev server reloading). Try again in a moment.</div>`; return; }
     if(d.ok && d.pdf_url){
-      wrap.innerHTML=`<iframe src="${d.pdf_url}?t=${Date.now()}" style="flex:1;width:100%;border:0;background:#fff"></iframe>`;
-      if(dl){ dl.href=d.pdf_url; dl.download=`master_${ds}.pdf`; dl.style.display=""; }
+      await renderPdfOrDownload(wrap, d.pdf_url, `master_${ds}.pdf`, dl, `Master document (${ds})`);
     } else {
       wrap.innerHTML=`<div style="color:#cbd5e1;padding:40px;font-size:13px;line-height:1.7;text-align:center;max-width:640px;margin:0 auto">No master document for <b>${esc(ds)}</b> yet.<br>Build it with <code>rma push --dataset ${esc(ds)}</code>, or<br><br><button class="btn-sec" onclick="loadMasterDoc(true)" style="font-size:12px;padding:6px 16px">↻ Build now</button><br><br><span style="color:#888;font-size:11px;white-space:pre-wrap">${esc((d.log||"").slice(0,200))}</span></div>`;
     }
@@ -4086,8 +4158,28 @@ async function loadMasterDoc(force){
 }
 
 async function loadDocuments(){ await loadMasterDoc(); }
-// Per-question view: hide the system review, show just this problem.
-async function loadQuestionDocs(qid){ await loadMasterDoc(); }
+// Per-question view: render THIS problem's report (not the dataset master).
+async function loadQuestionDoc(qid, force){
+  const ds=selectedDataset||"first_proof_1";
+  $("doc-md-view").style.display="none";
+  const wrap=$("d-pdf-wrap"); wrap.style.display="flex";
+  const tg=$("doc-view-toggle"); if(tg) tg.style.display="none";
+  const crumb=$("doc-breadcrumb"); if(crumb) crumb.textContent=`${qid} — report (${ds})`;
+  const st=$("d-status"); if(st) st.textContent="loading…";
+  const dl=$("d-bundle-dl"); const dlw=$("d-pdf-link-wrap"); if(dlw) dlw.style.display="none";
+  wrap.innerHTML=`<div style="color:#aaa;padding:40px;font-size:13px">Loading ${esc(qid)} report…</div>`;
+  try{
+    const d=await fetchJsonRetry(`/api/context-report/${encodeURIComponent(qid)}/pdf?dataset=${encodeURIComponent(ds)}${force?"&force=true":""}`);
+    if(st) st.textContent="";
+    if(d===null){ wrap.innerHTML=`<div style="color:#cbd5e1;padding:40px;font-size:13px">Service busy (dev server reloading). Try again in a moment.</div>`; return; }
+    if(d.ok && d.pdf_url){
+      await renderPdfOrDownload(wrap, d.pdf_url, `report_${qid}_${ds}.pdf`, dl, `${qid} report (${ds})`);
+    } else {
+      wrap.innerHTML=`<div style="color:#cbd5e1;padding:40px;font-size:13px;line-height:1.7;text-align:center;max-width:640px;margin:0 auto">No report for <b>${esc(qid)}</b> yet.<br><br><button class="btn-sec" onclick="loadQuestionDoc('${esc(qid)}',true)" style="font-size:12px;padding:6px 16px">↻ Build now</button><br><br><span style="color:#888;font-size:11px;white-space:pre-wrap">${esc((d.log||"").slice(0,200))}</span></div>`;
+    }
+  }catch(e){ wrap.innerHTML=`<div style="color:#f88;padding:40px">Error: ${esc(String(e))}</div>`; }
+}
+async function loadQuestionDocs(qid){ await loadQuestionDoc(qid); }
 async function openQuestionDoc(qid){ setTab("documents"); await loadQuestionDocs(qid); }
 // legacy aliases (Documents tab is PDF-only now)
 async function loadDocReportPdf(){ await loadDocReport(_docScope||"system"); }
@@ -4547,7 +4639,7 @@ async function loadProofDetail(pid){
     const wrap=$("pf-pdf-wrap");
     pfDoc=null;
     const pdfUrl=`/api/best-proof-pdf/${encodeURIComponent(pid)}?dataset=${encodeURIComponent(_pfDs)}`;
-    $("pf-dl").href=pdfUrl; $("pf-dl").style.display="";
+    $("pf-dl").href=apiU(pdfUrl); $("pf-dl").style.display="";
     $("pf-dl").download=`${pid}_best_proof.pdf`;
     await pdfLoad(pdfUrl, wrap, d=>{pfDoc=d;}, pfScale);
   }catch(e){$("pf-status").textContent="error: "+e.message;}
@@ -4864,7 +4956,7 @@ async function fpfLoadPdf(url, filename){
   $("fpf-toolbar").style.display="flex";
   const wrap=$("fpf-canvas-wrap");
   wrap.style.display="flex"; wrap.onscroll=null;
-  $("fpf-dl").href=url; $("fpf-dl").download=filename||"proof.pdf";
+  $("fpf-dl").href=apiU(url); $("fpf-dl").download=filename||"proof.pdf";
   fpfCurrentUrl=url; fpfViewerActive=true;
   await pdfLoad(url, wrap, d=>{
     fpfDoc=d;
@@ -5587,8 +5679,8 @@ async function meetRenderPdf(room, force){
     const url=`/api/meet-pdf/${encodeURIComponent(selected)}/${encodeURIComponent(room.id)}`+(force?"?force=true":"");
     const d=await (await fetch(url)).json();
     if(d.ok&&d.pdf_url){
-      pdfView.innerHTML=`<iframe src="${d.pdf_url}" style="width:100%;height:100%;border:0;background:#fff"></iframe>`;
-      if(dl){ dl.href=d.pdf_url; dl.style.display="inline"; }
+      pdfView.innerHTML=`<iframe src="${apiU(d.pdf_url)}" style="width:100%;height:100%;border:0;background:#fff"></iframe>`;
+      if(dl){ dl.href=apiU(d.pdf_url); dl.style.display="inline"; }
       $("meet-pdf-status").textContent="";
     }else{
       pdfView.innerHTML=`<div style="color:#cbd5e1;padding:40px 24px;font-size:13px;max-width:620px;text-align:center;line-height:1.6">${esc(d.log||"Could not render this meeting as a PDF.")}</div>`;
@@ -5842,7 +5934,7 @@ async function loadDesignPdf(mode){
   const url=isPri?`/api/design/priority-report?${Date.now()}`:`/api/design/pdf?${Date.now()}`;
   $("dz-title").textContent=isPri?"Priority Report":"System Supplementary";
   $("dz-subtitle").textContent=isPri?"Solvability × Value":"ACL format";
-  $("dz-dl").href=isPri?"/api/design/priority-report":"/api/design/pdf";
+  $("dz-dl").href=isPri?apiU("/api/design/priority-report"):apiU("/api/design/pdf");
   $("dz-dl").download=isPri?"rma_priority_report.pdf":"rma_supplementary.pdf";
   // Toggle button highlight
   $("dz-mode-priority").style.background=isPri?"var(--accent)":"";

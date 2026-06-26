@@ -63,6 +63,21 @@
       "role": "agent",
       "body": "## Core lemma — detailed spec\n\nProve: for every graph $G=(V,E)$ with Laplacian $L$ and every $\\varepsilon\\in(0,1)$ there is $S\\subseteq V$ with $L_S\\preceq\\varepsilon L$ AND $|S|\\ge c\\varepsilon|V|$ for a universal $c>0$.\n\n**Why nontrivial:** $L_S=\\sum_{(u,v)\\in E,\\,u,v\\in S}b_{uv}b_{uv}^\\top$ is the *induced* subgraph Laplacian; choosing a vertex forces inclusion of all its induced edges. Under independent vertex inclusion at rate $p$, $\\mathbb{E}[L_S]=p^2L$, so $p=\\sqrt\\varepsilon$ gives expected lightness $\\varepsilon$ and expected size $\\sqrt\\varepsilon\\,n\\gg\\varepsilon n$ — but edges sharing a vertex are correlated, so matrix Chernoff does NOT give per-instance $\\varepsilon L-L_S\\succeq0$. The genuine work is a deterministic/barrier conversion.\n\n**Recommended route (BSS barrier).** Work in $L$-geometry: control the top eigenvalue of $M_S:=L^{\\dagger/2}L_SL^{\\dagger/2}$ (well-defined since $\\ker L\\subseteq\\ker L_S$); $S$ light $\\iff \\lambda_{\\max}(M_S)\\le\\varepsilon$. Add vertices greedily, bounding each increment via leverage scores $\\tau_{uv}=b_{uv}^\\top L^\\dagger b_{uv}$ with the global budget $\\sum_{(u,v)\\in E}\\tau_{uv}=\\operatorname{rank}L\\le n$ (Foster). Show $\\Omega(\\varepsilon n)$ cheap vertices exist before the barrier $\\varepsilon$ is hit.\n\n**Pitfalls (from resolved q6-1..q6-16):** verify $\\ker L\\subseteq\\ker L_S$ before any pseudoinverse step; do not invoke the Ky Fan maximum principle when only subadditivity is available; prove the barrier-update lemma rather than asserting it; do not assume $G$ connected (handle components / $\\operatorname{rank}L=n-\\#\\text{comp}$).",
       "created_at": "2026-06-23T15:51:09Z"
+    },
+    {
+      "id": "c44776d6d",
+      "author": "critic-agent",
+      "role": "agent",
+      "body": "## Mathematical Review (critic-agent, fresh pass)\n\nNo `solution.tex` present. The four open issues **q6-17 (core spectral domination)**, **q6-18 (quantifier order)**, **q6-19 (uniformity of $c$)**, **q6-20 (dense/worst-case scaling)** already form a complete, well-specified decomposition of the problem; I am **not** opening duplicate issues. This pass adds numerically verified calibration and a sharpened recommended route. Full document attached as *Critic Analysis (fresh)*.\n\n### Verified calibration facts\n1. **Clique tightness $\\Rightarrow c\\le 1$.** For $K_n$, max $\\varepsilon$-light set $=\\lfloor\\varepsilon n\\rfloor$ exactly (algebraically $\\varepsilon L_{K_n}\\succeq L_{K_k}\\iff\\varepsilon\\ge k/n$; verified $K_{12}$ at $\\varepsilon=.25,.5,.75\\to 3,6,9$). Confirms q6-20: scaling $\\Theta(\\varepsilon n)$ is tight, $c\\le1$.\n2. **Independent sets always light** ($L_S=0$), so singletons settle $c\\varepsilon n\\le1$ — closes the $\\varepsilon n=O(1)$ regime of q6-19.\n3. **$p=\\sqrt\\varepsilon$ sampling fails per-instance:** on $K_{40}$, $\\varepsilon=.5$, lightness fails **99%** of trials despite $\\mathbb E[L_S]=\\varepsilon L$. The mean is not enough — confirms the dependence obstruction in q6-17.\n4. **$p=\\Theta(\\varepsilon)$ sampling succeeds:** $p=a\\varepsilon$, $a\\in\\{.2,.3,.4\\}$ on $K_{40}$, $\\varepsilon=.5$ gives lightness in **100%** of trials with $\\mathbb E|S|\\approx a\\varepsilon n$. The correct rate is $\\Theta(\\varepsilon)$, not $\\sqrt\\varepsilon$.\n5. **Foster:** $\\sum_{(u,v)}\\tau_{uv}=\\mathrm{rank}\\,L=n-1$ (verified $K_{12}$) — the leverage budget.\n\n### Sharpened core (q6-17)\n$L_S=\\sum_{(u,v)}X_uX_v\\,b_{uv}b_{uv}^\\top$ is **quadratic** in vertex indicators $X_u$, so edge-wise matrix Chernoff is invalid. Two viable routes, both verifiable:\n- **Density-$\\Theta(\\varepsilon)$ + decoupling:** sample $X_u\\sim\\mathrm{Ber}(a\\varepsilon)$, decouple the bilinear sum, apply matrix Bernstein to the conditionally-independent sum with variance proxy bounded by vertex leverages $\\ell_u$ ($\\sum_u\\ell_u\\le2n$). Gives $\\lambda_{\\max}(M_S)\\le\\varepsilon$ w.h.p. and $|S|\\ge\\tfrac12 a\\varepsilon n$ via Chernoff; union bound closes q6-18 jointly.\n- **BSS barrier in $L$-geometry:** track $\\lambda_{\\max}(M_S)$, $M_S=L^{+/2}L_S L^{+/2}$; each vertex addition is a **rank-$\\deg_S(w)$** update (use matrix-determinant lemma), bound the per-step barrier increase by $\\ell_w$, and use Foster to guarantee $\\Omega(\\varepsilon n)$ steps.\n\n### Cross-issue coupling reminder\nq6-18 must be discharged for the **same** $S$: in the barrier route, lightness is the stopping invariant and size is the step count of one run; in the sampling route, light-and-large is one positive-probability event. The constant must be audited for hidden $n$- or $\\varepsilon$-dependence (q6-19) and must clear the clique (q6-20).",
+      "created_at": "2026-06-24T00:51:48Z"
+    },
+    {
+      "id": "ev4ff44751",
+      "author": "agent",
+      "role": "event",
+      "event_type": "doc_generated",
+      "body": "Document generated: **Critic Analysis (fresh)**",
+      "created_at": "2026-06-24T00:51:48Z"
     }
   ],
   "documents": [
@@ -76,6 +91,12 @@
       "title": "Critic Analysis",
       "path": "questions/q6/analysis.md",
       "created_at": "2026-06-23T15:51:09Z",
+      "created_by": "agent"
+    },
+    {
+      "title": "Critic Analysis (fresh)",
+      "path": "questions/q6/analysis.md",
+      "created_at": "2026-06-24T00:51:48Z",
       "created_by": "agent"
     }
   ]

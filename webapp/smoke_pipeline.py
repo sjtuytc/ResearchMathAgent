@@ -27,11 +27,19 @@ from .agent import DEFAULT_MODEL, AgentConfig, run_agent, run_agent_vertex
 def _provider() -> str:
     """Which LLM backend the smoke endpoint bills to.
 
-    Default ``api`` = the Anthropic API (billed to our Anthropic account /
-    subscription via ANTHROPIC_API_KEY), NOT Vertex/GCP. Override with
-    RMA_SMOKE_PROVIDER=vertex to bill Google Cloud instead.
+    Default ``claude-code`` = the user's Claude Pro/Max subscription via the local
+    `claude` CLI (no API key, no Vertex/GCP). Override with RMA_SMOKE_PROVIDER=
+    api (Anthropic API key) or vertex (Google Cloud) only when explicitly intended.
     """
-    return (os.environ.get("RMA_SMOKE_PROVIDER") or "api").strip().lower()
+    prov = (os.environ.get("RMA_SMOKE_PROVIDER") or "").strip().lower()
+    if prov:
+        return prov
+    from .claude_code import claude_code_available
+    if claude_code_available():
+        return "claude-code"
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return "api"
+    return "claude-code"
 
 
 def _complete_anthropic(prompt: str, system: str, model: str, max_tokens: int = 4096) -> str | None:

@@ -1,0 +1,1000 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+\newtheorem{assumption}{Assumption}
+
+\newcommand{\Chat}{\widehat{C}}
+\newcommand{\Lhat}{\widehat{L}}
+\newcommand{\Nhat}{\widehat{N}}
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\Pr}{\mathbb{P}}
+
+\begin{document}
+
+\title{Measurement, estimation, and provable mapping quality in heterogeneous computing}
+\maketitle
+
+\section{Overview}\label{sec:overview}
+
+The problem asks us to (a) define computable runtime descriptors $L_i(\tau)$ and
+$N_{ij}(\tau)$, (b) produce completion-time estimators $\Chat$ with controlled
+accuracy, and (c) prove that minimizing the \emph{estimated} objective yields a
+mapping provably close to the optimum of the \emph{exact} objective.
+
+The mathematical heart of the matter is the following implication, which we
+prove in full generality:
+
+\begin{quote}
+\emph{If the estimator is accurate in a multiplicative (relative-error) sense
+uniformly over all candidate mapping/schedule pairs, then any
+mapping/schedule that exactly minimizes the estimated objective is, under the
+exact objective, within a factor $\tfrac{1+\varepsilon}{1-\varepsilon}$ of
+optimal, for a broad and explicitly characterized class of objectives (makespan
+under precedence and weighted average completion time among them).}
+\end{quote}
+
+We then close the loop with concrete measurement and estimation procedures.
+The crucial subtlety, which an earlier version of this manuscript elided, is
+that the descriptors and hence the completion times \emph{depend on the chosen
+mapping and schedule} through contention, queueing, and precedence. We
+therefore (i) make the completion time an explicit function of the schedule via
+a \emph{structural demand/load model}, (ii) estimate the schedule-independent
+\emph{demand} parameters of that model from runtime probes, and (iii) propagate
+the estimation error through the model to obtain uniform multiplicative accuracy
+\emph{simultaneously over all schedules}, with an explicit sample-complexity
+bound that carries an honest accounting of estimator bias, sample dependence,
+and temporal drift.
+
+\medskip
+\noindent\textbf{Roadmap.} Section~\ref{sec:model} fixes the schedule model and
+the structural completion-time model. Section~\ref{sec:objective} defines
+scale-coherent objectives and verifies the canonical ones, now for the
+schedule-induced finish times. Section~\ref{sec:measure} defines and computes
+the descriptors. Section~\ref{sec:estimate} estimates the structural demand
+parameters and propagates the error to a \emph{schedule-uniform} multiplicative
+accuracy guarantee, accounting for bias, dependence, and drift.
+Section~\ref{sec:transfer} proves the transfer theorem and its robust and
+end-to-end corollaries.
+
+\section{Model: schedules and structural completion times}\label{sec:model}
+
+\subsection{Schedulable units, mappings, and schedules}
+
+\begin{definition}[Units and precedence]\label{def:units}
+Let $U=T\cup S$ be the finite set of \emph{schedulable units}: tasks
+$T=\{t_1,\dots,t_k\}$ and the (finite) set $S$ of all subtasks obtained by
+decomposition. The data/precedence relations form a directed acyclic graph
+(DAG) $G=(U,E)$: an edge $(u,v)\in E$ means $v$ may not start before $u$
+finishes and (if $u,v$ are placed on different machines) before the data
+produced by $u$ has been transferred to $v$'s machine. Each unit $u$ carries an
+input/output \emph{data size} $d_{uv}\ge0$ for each edge $(u,v)\in E$.
+\end{definition}
+
+\begin{definition}[Mapping and schedule]\label{def:sched}
+Let $M=\{m_1,\dots,m_n\}$. A \emph{mapping} is a function $x\colon U\to M$;
+write $x_u=i$ if $u$ is assigned to $m_i$. A \emph{schedule} $\sigma$ for a
+mapping $x$ assigns to each unit $u$ a start time $\sigma(u)\ge0$ on machine
+$x_u$ and to each cross-machine edge a transfer interval, such that
+\begin{enumerate}
+\item[(S1)] the units mapped to the same machine are processed under a fixed
+\emph{ordering} (a total order $\prec_i$ on $\{u:x_u=i\}$); the machine's
+service discipline is one of the two standard regimes fixed in advance for the
+whole instance: \emph{exclusive} (a unit runs alone, so $\nu_i\equiv1$ and the
+processor throttle is $\phi_i\equiv1$), or \emph{processor-sharing of a fixed
+degree} (at most a hardware-fixed number $\kappa^{\mathrm{ps}}_i$ of units run
+concurrently and each receives an equal share, so the throttle of a unit run
+with $\nu$ co-runners is $\phi_i=1/\nu\in\{1,1/2,\dots,1/\kappa^{\mathrm{ps}}_i\}$).
+In either regime the concurrency count $\nu_i$ that a unit experiences is
+determined by the ordering $\prec_i$ alone (it is the position of the unit within
+its sharing batch), \emph{not} by demand magnitudes;
+\item[(S2)] every precedence/data constraint of $G$ is respected: $v$ starts no
+earlier than $u$'s finish plus the relevant transfer time for each $(u,v)\in E$,
+and each link's concurrent-transfer count $c_{ij}$ (hence $\psi_{ij}$) is the
+number of transfers the routing assigns to $(i,j)$ in the same batch, again a
+function of the configuration's \emph{combinatorial} routing/ordering, not of
+demand magnitudes.
+\end{enumerate}
+A \emph{configuration} is a pair $\pi=(x,\sigma)$ satisfying (S1)--(S2) together
+with the problem's hard placement constraints (co-location, exclusivity,
+availability). Let $\Pi$ be the (finite, nonempty) set of admissible
+configurations. We assume $\Pi\neq\emptyset$ (e.g.\ any greedy list schedule on
+a feasible mapping is admissible).
+\end{definition}
+
+The finiteness of $\Pi$ as a \emph{decision} set deserves a word: start times
+range over a continuum, but for any fixed mapping the relevant schedules are
+determined up to combinatorial choice (the relative order of units on each
+machine and the routing of transfers), and the optimal start times are then the
+earliest feasible ones given that order. Thus the optimization ranges over a
+finite set of \emph{orderings}, each inducing a unique left-shifted schedule;
+we identify $\Pi$ with this finite set. This is the standard reduction used for
+shop and DAG scheduling.
+
+\subsection{Structural completion-time model}
+
+The completion time of a unit is \emph{not} a primitive constant: it depends on
+the machine, on the unit's intrinsic resource \emph{demand}, and on the
+\emph{load} the configuration places on that machine and its links. We make
+this explicit.
+
+\begin{definition}[Demand parameters]\label{def:demand}
+Each unit $u$ has a \emph{demand vector} $d_u\in\mathbb{R}^{q}_{\ge0}$
+(e.g.\ floating-point operations, memory footprint, I/O volume) intrinsic to the
+unit and independent of placement. Each cross-machine edge $(u,v)$ carries a
+transferred data size $d_{uv}\ge0$. Collect all of these into the
+\emph{demand profile} $\mathbf d=(\,(d_u)_{u},(d_{uv})_{(u,v)\in E}\,)$, a fixed
+but a priori unknown vector in $\mathbb{R}^Q_{\ge0}$.
+\end{definition}
+
+\begin{definition}[Endogenous load model]\label{def:load}
+The descriptors that enter the completion functions split into two parts:
+\begin{enumerate}
+\item[(i)] \emph{Schedule-independent structural constants} $\theta_i$ for each
+machine and $(\beta_{ij},\lambda_{ij})$ for each link -- the \emph{nominal}
+per-resource processing rates, nominal link bandwidth, and link latency. These
+are intrinsic hardware/network parameters; they do not depend on the
+configuration.
+\item[(ii)] \emph{Configuration-induced contention state}: the part of $L_i,N$
+that reflects \emph{who is running where and when} -- queue occupancy,
+CPU/memory utilization, and the number of transfers concurrently sharing a
+link. We model this explicitly as a \emph{known, computable} function of the
+configuration:
+\[
+L_i(\pi)=\Lambda_i\big(\pi;\theta\big),\qquad
+N_{ij}(\pi)=\mathcal N_{ij}\big(\pi;\beta,\lambda\big),
+\]
+where $\Lambda_i,\mathcal N_{ij}$ are the deterministic load maps induced by
+the schedule. For instance, the realized rate on $m_i$ is the nominal rate
+divided by the number $\nu_i(\pi)$ of units the schedule runs concurrently on
+$m_i$ in the relevant interval (processor sharing), and a link's effective
+bandwidth is its nominal bandwidth divided by the number $c_{ij}(\pi)$ of
+transfers it carries concurrently (bandwidth sharing).
+\end{enumerate}
+The point of (ii) is that the contention state is \emph{determined by the
+configuration we are evaluating}, hence \emph{computable} once the
+schedule-independent constants $(\theta,\beta,\lambda)$ are known -- it need
+not, and cannot, be probed per configuration. (The combinatorial quantities
+$\nu_i(\pi),c_{ij}(\pi)$ depend on the \emph{schedule ordering}, not on the
+demand magnitudes.)
+\end{definition}
+
+\begin{assumption}[Homogeneous contention regime]\label{ass:regime}
+The realized per-unit completion time has the form
+\begin{equation}\label{eq:Cform}
+C_u(\pi)=g_{x_u}\big(d_u;L_{x_u}(\pi),N(\pi)\big)
+=\frac{\langle\kappa_{x_u}(\theta_{x_u}),\,d_u\rangle}{\phi_{x_u}(\pi)},
+\end{equation}
+where $\kappa_i(\theta_i)>0$ is the nominal (uncontended) rate vector
+determined by the \emph{schedule-independent} constant $\theta_i$, and
+$\phi_i(\pi)\in(0,1]$ is a \emph{contention-throttle factor} determined by the
+configuration's concurrency state (e.g.\ $\phi_i(\pi)=1/\nu_i(\pi)$ for
+processor sharing) and \emph{independent of the demand magnitudes} $\mathbf d$.
+Likewise each transfer's data-dependent part is
+$d_{uv}/\big(\beta_{x_vx_u}\,\psi_{x_vx_u}(\pi)\big)$ with a demand-independent
+sharing factor $\psi_{ij}(\pi)\in(0,1]$ determined by $c_{ij}(\pi)$.
+\end{assumption}
+
+\begin{remark}[Why this regime, and its scope]\label{rem:regime}
+Assumption~\ref{ass:regime} is the precise content of the standard
+linear-throughput-with-fair-sharing model used throughout scheduling theory:
+work is linear in demand, and contention rescales the \emph{rate} by a factor
+that depends on \emph{how many} competitors are present, not on \emph{how large}
+each competitor's demand is. It is exactly the property that makes the realized
+completion time degree-one homogeneous in $\mathbf d$ even though the load is
+configuration-dependent (Lemma~\ref{lem:homog}). It does \emph{not} assume the
+load is frozen or configuration-independent: the throttle $\phi_i(\pi)$ and the
+descriptor $L_i(\pi)$ genuinely vary with $\pi$, resolving the central modeling
+tension. Memory-hierarchy effects that make $g_i$ nonlinear in $d_u$ (e.g.\
+cache thresholds) violate exact degree-one homogeneity; for those we give in
+Lemma~\ref{lem:lipschitz} a Lipschitz residual bound that degrades the constant
+gracefully and recovers the homogeneous result as the nonlinearity vanishes.
+This is an explicit, scoped modeling commitment, not a hidden assumption.
+\end{remark}
+
+\begin{definition}[Structural completion-time / finish-time model]\label{def:struct}
+Under Assumption~\ref{ass:regime}, given a configuration $\pi=(x,\sigma)$ the
+\emph{realized completion time} of unit $u$ is $C_u(\pi)$ of \eqref{eq:Cform},
+with the contention throttle $\phi_{x_u}(\pi)$ computed from $\pi$, and the
+\emph{realized finish time} $f_u(\pi)$ is the schedule-induced completion time
+of the earliest feasible left-shifted schedule, i.e.\ the unique fixed point of
+the recursion
+\begin{equation}\label{eq:recurdef}
+f_u(\pi)=\max\Big(f_{p(u)}(\pi),\ \max_{(v,u)\in E}\big(f_v(\pi)+\theta_{vu}(\pi)\big)\Big)+C_u(\pi),
+\end{equation}
+where $p(u)$ is $u$'s immediate machine-predecessor under $\pi$'s ordering
+($f_{p(u)}:=0$ if none) and $\theta_{vu}(\pi)=\lambda_{x_vx_u}+
+d_{vu}/(\beta_{x_vx_u}\psi_{x_vx_u}(\pi))$ is the cross-edge transfer delay.
+\end{definition}
+
+\begin{lemma}[Well-posedness: the throttles are ordering-determined and the
+finish-time recursion has a unique, non-circular solution]\label{lem:wellposed}
+Fix a configuration $\pi=(x,\sigma)$ with its batching/ordering data of (S1)--(S2).
+Then:
+\begin{enumerate}
+\item[\textup{(i)}] The processor throttles $\phi_i(\pi)\in(0,1]$ and the link
+sharing factors $\psi_{ij}(\pi)\in(0,1]$ are determined by the
+\emph{combinatorial} batching/ordering of $\pi$ alone, independently of the
+demand profile $\mathbf d$ and of the realized start/finish times.
+\item[\textup{(ii)}] Given these throttles, the realized completion times
+$C_u(\pi)$ and transfer delays $\theta_{vu}(\pi)$ of \eqref{eq:Cform} and
+Definition~\ref{def:struct} are fixed nonnegative numbers, and the finish-time
+recursion \eqref{eq:recurdef} has a unique solution $(f_u(\pi))_{u\in U}$,
+computable by a single topological-order pass.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\textup{(i)} By (S1) the per-unit concurrency count $\nu_i$ is the size of the
+unit's sharing batch (a position within the fixed ordering $\prec_i$ and the
+fixed service degree $\kappa^{\mathrm{ps}}_i$), and by (S2) each link's
+concurrent-transfer count $c_{ij}$ is the size of the corresponding routing
+batch. Both are integer functions of the configuration's batching/ordering data,
+which (S1)--(S2) declare in advance and which contain \emph{no} reference to the
+demand magnitudes or to the continuous start times: a sharing batch is the set of
+units the discipline groups together by ordinal position, not by how long they
+take. Hence $\phi_i(\pi)=1/\nu_i$ and $\psi_{ij}(\pi)=1/c_{ij}$ are
+$\mathbf d$-independent constants determined by $\pi$.
+
+\textup{(ii)} With $\phi_{x_u}(\pi),\psi_{x_vx_u}(\pi)$ thus fixed, each
+$C_u(\pi)=\langle\kappa_{x_u},d_u\rangle/\phi_{x_u}(\pi)\ge0$ and each
+$\theta_{vu}(\pi)=\lambda_{x_vx_u}+d_{vu}/(\beta_{x_vx_u}\psi_{x_vx_u}(\pi))\ge0$
+is a fixed nonnegative real that does \emph{not} depend on any $f$. Consider the
+directed graph $H_\pi$ on $U$ whose arcs are (a) the DAG edges $(v,u)\in E$ and
+(b) the immediate-machine-predecessor arcs $p(u)\to u$ induced by each ordering
+$\prec_i$. Arcs of type (a) respect the partial order of the DAG $G$; arcs of
+type (b) point from an earlier to a later unit in the total order $\prec_i$ on a
+single machine. A total order extending all the $\prec_i$ and a topological order
+of $G$ exists simultaneously, because $G$ is acyclic and (S2) forbids a
+machine-ordering arc $p(u)\to u$ from contradicting a precedence arc $u\to p(u)$
+(else $\pi$ would be infeasible, as $u$ could not both precede and start after
+$p(u)$). Concretely, the start times $\sigma$ of an admissible $\pi$ furnish a
+real-valued potential that is strictly increasing along every arc of $H_\pi$
+(type (a): a successor starts after a predecessor finishes; type (b): a later
+unit starts no earlier than an earlier one), so $H_\pi$ is acyclic. The recursion
+\eqref{eq:recurdef} expresses $f_u$ as a $\max$ of sums over the in-neighbours of
+$u$ in $H_\pi$ plus the constant $C_u(\pi)$; on a finite DAG such a recursion has
+a unique solution obtained by evaluating the units in any topological order of
+$H_\pi$ (each $f_u$ depends only on already-evaluated predecessors). This is the
+earliest-feasible left-shifted schedule.
+\end{proof}
+
+\begin{remark}[No circularity between throttle and finish time]\label{rem:nocirc}
+Lemma~\ref{lem:wellposed} dispels the apparent circularity (raised in review)
+that ``the throttle depends on which units overlap, which depends on the finish
+times, which depend on the throttle.'' Under the ordering/batching semantics of
+(S1)--(S2) the overlap structure is \emph{decided combinatorially by the
+configuration} (who is batched with whom), and the throttle reads off that fixed
+combinatorial structure. The finish times are then computed \emph{downstream} by
+a well-founded topological recursion. The optimizer ranges over the finite set of
+admissible batchings/orderings $\Pi$; for each, the throttles -- and hence the
+$\mathbf d$-homogeneity of completion and finish times -- are pinned down before
+any finish time is computed. This is exactly the standard list-/batch-schedule
+reduction, made explicit here so that Lemma~\ref{lem:homog} below rests on a
+well-posed object.
+\end{remark}
+
+The key structural fact we will use is that $C_u(\pi)$ -- and through it the
+finish times and every objective below -- is \emph{positively homogeneous of
+degree one in the demand profile $\mathbf d$}, with the configuration held
+fixed. Crucially, this holds \emph{even though the load $L_i(\pi)$ depends on
+$\pi$}, because under Assumption~\ref{ass:regime} the configuration fixes the
+demand-independent throttle factors $\phi_i(\pi),\psi_{ij}(\pi)$.
+
+\begin{lemma}[Homogeneity of the finish times in demand]\label{lem:homog}
+Fix a configuration $\pi\in\Pi$. For every $c>0$, replacing $\mathbf d$ by
+$c\,\mathbf d$ replaces every realized completion time $C_u(\pi)$ by
+$c\,C_u(\pi)$, every transfer delay's data-dependent part by $c$ times itself,
+and hence every left-shifted finish time $f_u(\pi)$ by $c\,f_u(\pi)$, provided
+the latency part of transfers and the schedule \emph{ordering} are held fixed.
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:Cform}, $C_u(\pi)=\langle\kappa_{x_u}(\theta_{x_u}),d_u\rangle/\phi_{x_u}(\pi)$.
+The throttle $\phi_{x_u}(\pi)$ and rate $\kappa_{x_u}(\theta_{x_u})$ are fixed
+by the configuration (Assumption~\ref{ass:regime}: $\phi$ depends on the
+concurrency count, not on demand magnitudes), so $C_u(\pi)$ is linear in $d_u$
+and scaling $d_u\mapsto cd_u$ scales $C_u(\pi)\mapsto cC_u(\pi)$. A cross-edge
+transfer delay is $\theta_{vu}(\pi)=\lambda_{x_vx_u}+
+d_{vu}/(\beta_{x_vx_u}\psi_{x_vx_u}(\pi))$; with $\beta,\psi$ fixed by $\pi$, its
+data-dependent part $d_{vu}/(\beta_{x_vx_u}\psi_{x_vx_u}(\pi))$ scales by $c$.
+By Lemma~\ref{lem:wellposed} the throttles $\phi_i(\pi),\psi_{ij}(\pi)$ are
+ordering-determined constants, so scaling $\mathbf d\mapsto c\mathbf d$ leaves
+them unchanged; the recursion \eqref{eq:recurdef} is then a well-founded
+topological evaluation (Lemma~\ref{lem:wellposed}(ii)) of a finite max of sums of
+completion and transfer-delay terms along the arcs of $H_\pi$. If \emph{all}
+additive constituents that depend on $\mathbf d$ scale by $c$ and the latency
+constants $\lambda_{ij}$ are treated as fixed schedule overhead, then by
+induction over the topological order of $H_\pi$ each $f_u$ is a max/sum of
+$c$-scaled nonnegative terms, hence scales by $c$ (the base case is a source of
+$H_\pi$, with $f_u=C_u$). (When
+$\lambda_{ij}>0$, they form an additive $\mathbf d$-independent constant; the
+homogeneity holds for the work-dependent component and
+Remark~\ref{rem:latency} records the additive correction.)
+\end{proof}
+
+\section{Objectives and scale-coherence}\label{sec:objective}
+
+We now phrase the objective directly on configurations through the realized
+finish times, and isolate the structural property that drives the transfer
+theorem.
+
+\begin{definition}[Objective on configurations]\label{def:obj}
+An \emph{objective} is a function $F\colon\mathbb{R}^Q_{\ge0}\times\Pi\to
+\mathbb{R}_{\ge0}$, $F(\mathbf d,\pi)$, the cost of running configuration $\pi$
+under demand profile $\mathbf d$. The canonical objectives are
+\begin{align}
+\text{(makespan)}\quad &F_{\max}(\mathbf d,\pi):=\max_{u\in U} f_u(\pi),
+\label{eq:makespan}\\
+\text{(weighted completion)}\quad &F_{w}(\mathbf d,\pi):=\sum_{u\in U} w_u\, f_u(\pi),
+\label{eq:wsum}
+\end{align}
+with $w_u\ge0$, where $f_u(\pi)$ are the realized finish times of
+Definition~\ref{def:struct}. Makespan is the time the last unit finishes —
+correctly accounting, through $f_u$, for overlap, waiting, and precedence
+(unlike the naive sum of per-unit times).
+\end{definition}
+
+\begin{definition}[Demand-scale-coherence]\label{def:coherent}
+An objective $F$ is \emph{demand-scale-coherent} if it is built from the finish
+times $f_u(\pi)$ by a map that is (i) \emph{monotone} (increasing each $f_u$
+weakly increases $F$) and (ii) \emph{positively homogeneous of degree one in the
+finish-time vector}: $F$ evaluated at finish times $(c f_u)_u$ equals
+$c\cdot F$ evaluated at $(f_u)_u$, for all $c>0$. Combined with
+Lemma~\ref{lem:homog}, this yields the operative property: for fixed $\pi$ and
+all $c>0$,
+\begin{equation}\label{eq:scale}
+F(c\,\mathbf d,\pi)=c\,F(\mathbf d,\pi),
+\end{equation}
+and monotonicity in $\mathbf d$: $\mathbf d\le\mathbf d'$ (entrywise) implies
+$F(\mathbf d,\pi)\le F(\mathbf d',\pi)$ for every $\pi$.
+\end{definition}
+
+\begin{lemma}[The canonical objectives are demand-scale-coherent]\label{lem:canonical}
+$F_{\max}$ and $F_w$ are demand-scale-coherent.
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:homog}, scaling $\mathbf d\mapsto c\mathbf d$ with $\pi$ fixed
+scales every $f_u(\pi)\mapsto c\,f_u(\pi)$. Then
+$F_{\max}=\max_u f_u$ scales as $\max_u c f_u=c\max_u f_u$, and
+$F_w=\sum_u w_u f_u$ scales as $\sum_u w_u c f_u=c\sum_u w_u f_u$; both are
+positively homogeneous of degree one in $(f_u)_u$, giving \eqref{eq:scale}.
+Monotonicity: increasing any demand entry weakly increases every realized
+completion time (each $\kappa_i>0$) and hence, through the left-shift
+recursion, weakly increases every finish time; $\max$ and nonnegatively
+weighted sums are monotone in their arguments. Hence both objectives are
+monotone in $\mathbf d$.
+\end{proof}
+
+\begin{remark}\label{rem:classes}
+Demand-scale-coherence holds for any monotone, degree-one-homogeneous aggregate
+of finish times: $\ell_p$ norms of the finish-time vector ($p\ge1$), maximum
+weighted finish time $\max_u w_u f_u$, makespan over per-machine loads, and
+convex combinations thereof. The transfer theorem below uses \emph{only}
+Definition~\ref{def:coherent} and so applies to all of these verbatim.
+\end{remark}
+
+\section{Measurement: computing descriptors and demands (part (a))}\label{sec:measure}
+
+\begin{definition}[Descriptors]\label{def:descriptors}
+At sampling instant $\tau$ each machine $m_i$ exports
+$L_i(\tau)=(q_i(\tau),\rho^{\mathrm{cpu}}_i(\tau),\rho^{\mathrm{mem}}_i(\tau),
+a_i(\tau),\theta_i)\in\mathbb{R}^5$ (queue length, CPU/memory utilization,
+availability, nominal throughput), and each link exports
+$N_{ij}(\tau)=(\beta_{ij}(\tau),\lambda_{ij}(\tau))\in\mathbb{R}^2_{\ge0}$
+(effective bandwidth, latency). Consistent with Definition~\ref{def:load}, the
+\emph{schedule-independent} components -- nominal throughput $\theta_i$
+(equivalently the uncontended rate $\kappa_i(\theta_i)$), nominal bandwidth
+$\beta_{ij}$, and latency $\lambda_{ij}$ -- are the structural constants entering
+\eqref{eq:Cform}; the \emph{contention} components ($q_i,\rho^{\mathrm{cpu}}_i,
+\rho^{\mathrm{mem}}_i$) are diagnostic and are reproduced \emph{predictively} for
+any candidate configuration via the throttle factors $\phi_i(\pi),\psi_{ij}(\pi)$
+computed from the schedule's concurrency counts, rather than measured per
+configuration.
+\end{definition}
+
+\begin{algorithm}[h]
+\caption{ComputeDescriptors}\label{alg:descr}
+\begin{algorithmic}[1]
+\Require window length $r\in\mathbb N$; raw streams $L_i(\tau_1),\dots,L_i(\tau_r)$, $N_{ij}(\tau_1),\dots,N_{ij}(\tau_r)$.
+\Ensure averaged descriptors $\bar L_i,\bar N_{ij}$.
+\For{$i=1$ \textbf{to} $n$}
+  \State $\bar L_i\gets\frac1r\sum_{p=1}^r L_i(\tau_p)$
+  \For{$j\ne i$} \State $\bar N_{ij}\gets\frac1r\sum_{p=1}^r N_{ij}(\tau_p)$ \EndFor
+\EndFor
+\State \Return $(\bar L_i)_i,(\bar N_{ij})_{ij}$
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textbf{Correctness, termination, complexity.} A fixed number of
+additions/divisions: it computes exactly the empirical means, terminates, and
+runs in $O(rn^2)$ time, $O(n^2)$ space.
+
+The descriptors feed the estimator in two ways: their schedule-independent
+components instantiate the nominal rate vectors $\kappa_i(\theta_i)$ and transfer
+constants $(\beta_{ij},\lambda_{ij})$ of the structural model (estimated to
+relative accuracy \eqref{eq:rateacc}; Remark~\ref{rem:rates}), and the
+work-counter streams are used to estimate the demand profile $\mathbf d$, as we
+describe next. The contention-induced descriptor values are not probed per
+configuration; they are recovered from the schedule via the throttle factors.
+
+\section{Estimation: demands $\Rightarrow$ schedule-uniform accuracy (part (b))}\label{sec:estimate}
+
+The earlier version probed the completion time $C_{ui}$ \emph{directly}, which is
+unsound: $C_{ui}$ depends on the configuration, so a single probe corresponds to
+a single load condition and cannot certify accuracy under the (different) load
+of an optimal schedule, and one cannot probe a configuration without deploying
+it. We instead estimate the \emph{schedule-independent} structural parameters --
+the demand profile $\mathbf d$ together with the nominal rates and bandwidths
+(Remark~\ref{rem:rates}) -- and \emph{compute} $\Chat$ for every configuration
+via the known structural model, supplying each configuration's own,
+exactly-known contention throttles. This converts a per-configuration accuracy
+problem (with $|\Pi|$ exponentially large) into a per-parameter accuracy problem
+(with $Q'$ entries), and propagates a uniform relative error to \emph{all}
+configurations at once.
+
+\begin{assumption}[Probing model]\label{ass:probe}
+For each demand coordinate $\ell\in\{1,\dots,Q\}$ (i.e.\ each $d_u$ component or
+each $d_{uv}$), we obtain measured probes $Y^{(1)}_\ell,\dots,Y^{(r_\ell)}_\ell$
+of $d_\ell$ — e.g.\ instruction/FLOP counters, allocated-byte counters, and
+transferred-byte counters, read under a lightly loaded calibration run or
+directly from hardware performance counters that measure \emph{work}, not
+elapsed time. We assume:
+\begin{enumerate}
+\item[(M1$'$)] \emph{Bounded bias.} $|\E[\bar Y_\ell]-d_\ell|\le\beta\,d_\ell$
+for a known $\beta\in[0,1)$, where $\bar Y_\ell=\frac1{r_\ell}\sum_p Y^{(p)}_\ell$.
+(Counters of \emph{work performed} are nearly unbiased; $\beta$ budgets any
+residual systematic error. Setting $\beta=0$ recovers exact unbiasedness.)
+\item[(M2)] \emph{Boundedness.} $0\le Y^{(p)}_\ell\le b_\ell$ a.s., $b_\ell>0$ known.
+\item[(M3)] \emph{Positivity.} $d_\ell\ge a_\ell>0$ known.
+\item[(M4)] \emph{Finite-range dependence (block structure).} The probe stream is
+\emph{$m$-dependent}: probes more than $m$ steps apart are independent (e.g.\
+because each microbenchmark fully completes and resets shared state before the
+next begins, with $m$ accounting for residual cache/pipeline carry-over). We
+take probes in disjoint blocks: partition the $r_\ell$ probes into
+$B_\ell:=\lfloor r_\ell/(m+1)\rfloor$ groups separated by gaps of $m$ discarded
+probes, so the per-block averages
+$Z^{(1)}_\ell,\dots,Z^{(B_\ell)}_\ell$ (each the mean of one block's retained
+probes) are \emph{independent}, identically distributed, bounded in $[0,b_\ell]$,
+with common mean $\mu_\ell=\E[\bar Y_\ell]$. The \emph{effective sample size} is
+the number of independent blocks, $r_\ell^{\mathrm{eff}}:=B_\ell\ge
+r_\ell/(2(m+1))$. (For i.i.d.\ micro-probes, $m=0$ and
+$r_\ell^{\mathrm{eff}}=r_\ell$.) We use $\bar Y_\ell:=\frac1{B_\ell}\sum_{b}Z^{(b)}_\ell$
+as the estimator.
+\end{enumerate}
+\end{assumption}
+
+\begin{proposition}[Per-coordinate multiplicative accuracy]\label{prop:samples}
+Fix $\varepsilon\in(0,1)$ with $\varepsilon>\beta$, and $\delta\in(0,1)$. Put
+$\varepsilon_0:=\varepsilon-\beta>0$. Under
+Assumption~\ref{ass:probe}, if
+\begin{equation}\label{eq:rbound}
+r_\ell^{\mathrm{eff}}\ \ge\ \frac{b_\ell^2}{2\,a_\ell^2\,\varepsilon_0^2}\,
+\ln\frac2\delta
+\qquad\Big(\text{i.e. } r_\ell\ge 2(m+1)\,\frac{b_\ell^2}{2a_\ell^2\varepsilon_0^2}\ln\tfrac2\delta\Big),
+\end{equation}
+then $\Pr\big[(1-\varepsilon)d_\ell\le \bar Y_\ell\le(1+\varepsilon)d_\ell\big]\ge1-\delta$.
+\end{proposition}
+
+\begin{proof}
+Write $\mu_\ell:=\E[\bar Y_\ell]$. By (M4) the estimator $\bar Y_\ell$ is the
+mean of $B_\ell=r_\ell^{\mathrm{eff}}$ \emph{independent} block averages
+$Z^{(b)}_\ell\in[0,b_\ell]$ with common mean $\mu_\ell$. Hoeffding's inequality
+for bounded independent variables applies verbatim (no heuristic substitution):
+for any $s>0$,
+\[
+\Pr\big[|\bar Y_\ell-\mu_\ell|\ge s\big]\le 2\exp\!\Big(-\frac{2 r_\ell^{\mathrm{eff}} s^2}{b_\ell^2}\Big).
+\]
+Take $s=\varepsilon_0 a_\ell$. The right side is $\le\delta$ exactly when
+\eqref{eq:rbound} holds. On the complementary event,
+$|\bar Y_\ell-\mu_\ell|<\varepsilon_0 a_\ell\le\varepsilon_0 d_\ell$ by (M3).
+Combining with the bias bound (M1$'$), $|\mu_\ell-d_\ell|\le\beta d_\ell$, the
+triangle inequality gives
+\[
+|\bar Y_\ell-d_\ell|\ \le\ |\bar Y_\ell-\mu_\ell|+|\mu_\ell-d_\ell|
+\ <\ \varepsilon_0 d_\ell+\beta d_\ell\ =\ \varepsilon\, d_\ell,
+\]
+i.e.\ $(1-\varepsilon)d_\ell<\bar Y_\ell<(1+\varepsilon)d_\ell$.
+\end{proof}
+
+\begin{corollary}[Uniform demand accuracy]\label{cor:uniform}
+Define $\widehat{\mathbf d}:=(\bar Y_\ell)_{\ell=1}^Q$. If for each coordinate
+$r_\ell^{\mathrm{eff}}\ge\frac{b_\ell^2}{2a_\ell^2\varepsilon_0^2}\ln\frac{2Q}{\delta}$,
+then with probability $\ge1-\delta$,
+\begin{equation}\label{eq:Deps}
+(1-\varepsilon)\,d_\ell\ \le\ \widehat d_\ell\ \le\ (1+\varepsilon)\,d_\ell
+\qquad\text{for all }\ell=1,\dots,Q.
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+Apply Proposition~\ref{prop:samples} with $\delta\mapsto\delta/Q$ to each
+coordinate and take a union bound over the $Q$ coordinates.
+\end{proof}
+
+We call event \eqref{eq:Deps} the $\varepsilon$-accuracy event $E_\varepsilon$.
+The expected relative error per coordinate is
+$\E|\bar Y_\ell-d_\ell|/d_\ell\le\beta+\sqrt{\operatorname{Var}(\bar Y_\ell)}/d_\ell
+\le\beta+b_\ell/(2a_\ell\sqrt{r_\ell^{\mathrm{eff}}})=\beta+O(1/\sqrt r)$,
+so for $\beta\to0$ it is $O(1/\sqrt r)$.
+
+\begin{lemma}[Error propagation: demands and rates $\Rightarrow$ completion times]\label{lem:propagate}
+Suppose the accuracy event $E_\varepsilon$ of \eqref{eq:Deps} holds for the
+demand profile $\mathbf d$ and that, in addition, the estimated nominal
+structural constants are relatively accurate at the same level, i.e.\ the
+nominal rate vectors and bandwidths satisfy
+\begin{equation}\label{eq:rateacc}
+(1-\varepsilon)\,\kappa_{i\ell}\le\widehat\kappa_{i\ell}\le(1+\varepsilon)\,\kappa_{i\ell},
+\qquad
+(1-\varepsilon)\,\beta_{ij}\le\widehat\beta_{ij}\le(1+\varepsilon)\,\beta_{ij}
+\end{equation}
+for all $i,j,\ell$ (these are estimated by the same procedure of
+Section~\ref{sec:estimate} applied to the descriptor streams; see
+Remark~\ref{rem:rates}). Build the estimated completion and transfer times by
+evaluating the \emph{same} structural model \eqref{eq:Cform} at the estimated
+constants \emph{and the exactly-computed, demand-independent throttle factors of
+the configuration being evaluated}:
+\[
+\Chat_u(\pi):=\frac{\langle\widehat\kappa_{x_u},\widehat d_u\rangle}{\phi_{x_u}(\pi)},
+\qquad
+\widehat\theta_{vu}(\pi):=\lambda_{x_vx_u}+\frac{\widehat d_{vu}}
+{\widehat\beta_{x_vx_u}\,\psi_{x_vx_u}(\pi)} .
+\]
+Here $\phi_{x_u}(\pi)$ and $\psi_{x_vx_u}(\pi)$ are the \emph{same} throttle and
+sharing factors that appear in the realized $C_u(\pi),\theta_{vu}(\pi)$, because
+they are combinatorial functions of the schedule (concurrency counts) and are
+known exactly for the configuration under evaluation -- they are \emph{not}
+estimated. Set $\varepsilon_\star:=\tfrac{2\varepsilon}{1-\varepsilon}\ge2\varepsilon$.
+Then for every configuration $\pi\in\Pi$ and every unit $u$,
+\begin{equation}\label{eq:Ceps}
+(1-\varepsilon_\star)\,C_u(\pi)\ \le\ \Chat_u(\pi)\ \le\ (1+\varepsilon_\star)\,C_u(\pi),
+\end{equation}
+and the same two-sided multiplicative bound holds for every realized finish time
+$\widehat f_u(\pi)$ versus $f_u(\pi)$ (work-dependent components; see
+Remark~\ref{rem:latency} for latencies).
+\end{lemma}
+
+\begin{proof}
+Fix $\pi$. By \eqref{eq:Cform} the truth and estimate share the \emph{same}
+exactly-known throttle $\phi:=\phi_{x_u}(\pi)\in(0,1]$:
+\[
+C_u(\pi)=\frac{\langle\kappa_{x_u},d_u\rangle}{\phi},
+\qquad
+\Chat_u(\pi)=\frac{\langle\widehat\kappa_{x_u},\widehat d_u\rangle}{\phi}.
+\]
+The factor $1/\phi>0$ is common and cancels in every ratio, so it suffices to
+compare the nominal works $W_u:=\langle\kappa_{x_u},d_u\rangle$ and
+$\widehat W_u:=\langle\widehat\kappa_{x_u},\widehat d_u\rangle$. For each
+coordinate $\ell$, $\kappa_{x_u\ell}d_{u\ell}\ge0$ and, by \eqref{eq:Deps} and
+\eqref{eq:rateacc},
+\[
+(1-\varepsilon)^2\,\kappa_{x_u\ell}\,d_{u\ell}
+\ \le\ \widehat\kappa_{x_u\ell}\,\widehat d_{u\ell}
+\ \le\ (1+\varepsilon)^2\,\kappa_{x_u\ell}\,d_{u\ell}.
+\]
+Summing the nonnegative coordinatewise products gives
+$(1-\varepsilon)^2 W_u\le\widehat W_u\le(1+\varepsilon)^2 W_u$, hence
+$(1-\varepsilon)^2 C_u(\pi)\le\Chat_u(\pi)\le(1+\varepsilon)^2 C_u(\pi)$. Now
+$(1+\varepsilon)^2=1+2\varepsilon+\varepsilon^2\le1+\frac{2\varepsilon}{1-\varepsilon}
+=1+\varepsilon_\star$ (since $2\varepsilon+\varepsilon^2\le\frac{2\varepsilon}{1-\varepsilon}$
+for $\varepsilon\in(0,1)$) and $(1-\varepsilon)^2=1-2\varepsilon+\varepsilon^2
+\ge1-2\varepsilon\ge1-\varepsilon_\star$, so \eqref{eq:Ceps} follows. The same
+argument applied to each transfer's data-dependent part
+$d_{vu}/(\beta_{x_vx_u}\psi_{x_vx_u}(\pi))$ -- demand in the numerator,
+bandwidth in the denominator, sharing factor $\psi(\pi)$ common and exactly
+known -- gives the work part of the transfer delay sandwiched in
+$(1\pm\varepsilon_\star)$ of its true value: indeed
+$\widehat d_{vu}/\widehat\beta\in[(1-\varepsilon)/(1+\varepsilon),
+(1+\varepsilon)/(1-\varepsilon)]\cdot(d_{vu}/\beta)\subseteq
+[1-\varepsilon_\star,1+\varepsilon_\star]\cdot(d_{vu}/\beta)$, using
+$\frac{1+\varepsilon}{1-\varepsilon}=1+\varepsilon_\star$ and
+$\frac{1-\varepsilon}{1+\varepsilon}\ge1-\varepsilon_\star$. (The latency
+$\lambda_{ij}$ is an additive, $\mathbf d$-independent, exactly known constant;
+it is handled in Remark~\ref{rem:latency}.)
+
+We now prove the finish-time bound by induction on the topological order of the
+DAG $G$ (the schedule ordering of $\pi$ is fixed throughout, and with it all
+throttle/sharing factors). Recall the recursion \eqref{eq:recurdef}: writing
+$p(u)$ for the immediate machine-predecessor of $u$ under $\pi$ (with
+$f_{p(u)}:=0$ if none),
+\begin{equation}\label{eq:recur}
+f_u(\pi)=\max\Big(f_{p(u)}(\pi),\ \max_{(v,u)\in E}\big(f_v(\pi)+\theta_{vu}(\pi)\big)\Big)+C_u(\pi),
+\end{equation}
+and identically for $\widehat f_u$ with $\widehat C_u,\widehat\theta$ in place of
+$C_u,\theta$. We claim $(1-\varepsilon_\star)f_u(\pi)\le\widehat f_u(\pi)\le
+(1+\varepsilon_\star)f_u(\pi)$ for every $u$. \emph{Base case:} a source $u$ (no
+predecessors) has $f_u=C_u$ and $\widehat f_u=\widehat C_u$, so the claim is
+\eqref{eq:Ceps}. \emph{Inductive step:} assume the claim for all units preceding
+$u$ in \eqref{eq:recur}. Every term inside the outer $\max$ of \eqref{eq:recur}
+is nonnegative, and by the inductive hypothesis and the term bounds just
+established, each estimated term is sandwiched by $(1\pm\varepsilon_\star)$ times
+its exact counterpart:
+$\widehat f_{p(u)}\in(1\pm\varepsilon_\star)f_{p(u)}$, and for each $(v,u)\in E$,
+$\widehat f_v+\widehat\theta_{vu}\le(1+\varepsilon_\star)f_v+(1+\varepsilon_\star)\theta_{vu}
+=(1+\varepsilon_\star)(f_v+\theta_{vu})$ and symmetrically
+$\ge(1-\varepsilon_\star)(f_v+\theta_{vu})$.
+We use the elementary \emph{scaling-closure} facts, valid for finite families of
+nonnegative reals $\{a_r\}$ with $(1-\eta)a_r\le\hat a_r\le(1+\eta)a_r$:
+$\max_r\hat a_r\in[(1-\eta)\max_r a_r,(1+\eta)\max_r a_r]$ and
+$\sum_r\hat a_r\in[(1-\eta)\sum_r a_r,(1+\eta)\sum_r a_r]$ (each is immediate
+from the monotonicity of $\max$ and $\sum$ in nonnegative arguments and the
+common factor). Applying the $\max$-closure (with $\eta=\varepsilon_\star$) to
+the outer maximum and then the sum-closure to add $C_u$ (itself
+$(1\pm\varepsilon_\star)$-bounded by \eqref{eq:Ceps}) yields
+$\widehat f_u(\pi)\in[(1-\varepsilon_\star)f_u(\pi),(1+\varepsilon_\star)f_u(\pi)]$.
+This completes the induction and the lemma.
+\end{proof}
+
+\begin{remark}[Estimating the nominal rates and bandwidths]\label{rem:rates}
+The relative accuracy \eqref{eq:rateacc} is obtained by the identical
+estimation machinery of Section~\ref{sec:estimate} applied to descriptor
+probes: the nominal rate $\kappa_{i\ell}$ is read from uncontended calibration
+microbenchmarks ($\nu_i=1$, so the measured elapsed time directly reports
+$1/\kappa_{i\ell}$ per unit work) and the nominal bandwidth $\beta_{ij}$ from
+uncontended transfer probes ($c_{ij}=1$). These are schedule-independent
+hardware constants, so a single calibration -- not one per configuration --
+suffices; Proposition~\ref{prop:samples} and Corollary~\ref{cor:uniform} apply
+verbatim with these quantities adjoined to the parameter vector (the union
+bound's $Q$ becomes $Q'=Q+\sum_i q+|\{\text{links}\}|$, still polynomial).
+Because \eqref{eq:rateacc} is at the same relative level $\varepsilon$ as
+\eqref{eq:Deps}, the combined propagation constant is $\varepsilon_\star$; if one
+prefers a single budget, run all estimators at level $\varepsilon/2$, so that
+$(1\pm\varepsilon/2)^2$ lands inside $(1\pm\varepsilon)$ and \eqref{eq:Ceps}
+holds with $\varepsilon$ in place of $\varepsilon_\star$.
+\end{remark}
+
+\begin{lemma}[Residual bound for non-homogeneous completion functions]\label{lem:lipschitz}
+Suppose the true per-unit completion function deviates from the homogeneous
+model \eqref{eq:Cform} by a bounded multiplicative residual: there is
+$\xi\in[0,1)$ with
+\[
+(1-\xi)\,\frac{\langle\kappa_{x_u},d_u\rangle}{\phi_{x_u}(\pi)}
+\ \le\ C_u^{\mathrm{true}}(\pi)\ \le\
+(1+\xi)\,\frac{\langle\kappa_{x_u},d_u\rangle}{\phi_{x_u}(\pi)}
+\qquad\text{for all }u,\pi,
+\]
+i.e.\ nonlinearities (cache thresholds, memory-hierarchy effects) perturb the
+linear-throughput value by at most a factor $1\pm\xi$. Then, building $\Chat$
+from the homogeneous model at the estimated parameters as in
+Lemma~\ref{lem:propagate}, the realized finish times satisfy, for every $\pi$
+and $u$,
+\[
+\frac{1-\varepsilon_\star}{1+\xi}\,f_u^{\mathrm{true}}(\pi)
+\ \le\ \widehat f_u(\pi)\ \le\
+\frac{1+\varepsilon_\star}{1-\xi}\,f_u^{\mathrm{true}}(\pi),
+\]
+and consequently every demand-scale-coherent objective obeys the sandwich
+\eqref{eq:sandwich} with $\eta$ replaced by
+$\eta_\xi:=\frac{(1+\varepsilon_\star)(1+\xi)}{(1-\varepsilon_\star)(1-\xi)}-1$
+on the upper side and the symmetric lower bound, giving the transfer ratio
+\[
+\frac{F(\hat\pi)}{F(\pi^\star)}\ \le\
+\frac{1+\varepsilon_\star}{1-\varepsilon_\star}\cdot\frac{1+\xi}{1-\xi}.
+\]
+As $\xi\to0$ this recovers Theorem~\ref{thm:main} exactly; the model nonlinearity
+enters only through the explicit, multiplicative factor $\frac{1+\xi}{1-\xi}$.
+\end{lemma}
+
+\begin{proof}
+Write $C_u^{\mathrm{hom}}(\pi):=\langle\kappa_{x_u},d_u\rangle/\phi_{x_u}(\pi)$
+for the homogeneous value. By hypothesis
+$C_u^{\mathrm{true}}\in[(1-\xi),(1+\xi)]\,C_u^{\mathrm{hom}}$, and by
+Lemma~\ref{lem:propagate} $\Chat_u\in[(1-\varepsilon_\star),(1+\varepsilon_\star)]
+\,C_u^{\mathrm{hom}}$. Hence
+$\Chat_u/C_u^{\mathrm{true}}\in[\frac{1-\varepsilon_\star}{1+\xi},
+\frac{1+\varepsilon_\star}{1-\xi}]$, and the same per-unit two-sided factor
+propagates to the finish times by the identical max/sum scaling-closure
+induction of Lemma~\ref{lem:propagate} (the closure facts hold for any common
+two-sided factor on nonnegative terms; the true finish times $f_u^{\mathrm{true}}$
+satisfy the recursion \eqref{eq:recur} with $C_u^{\mathrm{true}}$ and the same
+exactly-known throttle/sharing factors). Feeding these finish-time factors into
+the monotone, degree-one-homogeneous objective (Definition~\ref{def:coherent})
+gives the stated objective sandwich, and the transfer argument of
+Theorem~\ref{thm:main} then yields the ratio.
+\end{proof}
+
+The decisive gain over direct probing: \eqref{eq:Ceps} holds for \emph{all}
+$\pi\in\Pi$ \emph{simultaneously} from the \emph{single} demand-accuracy event
+$E_\varepsilon$, because the structural model carries the configuration
+dependence deterministically. The sample budget is $O(Q\,\varepsilon_0^{-2}
+\ln(Q/\delta))$, polynomial in the input size, with no dependence on $|\Pi|$.
+
+\begin{remark}[Temporal drift as a bias term]\label{rem:drift}
+Assumption~\ref{ass:probe} (M4) requires stationarity \emph{within} the probing
+horizon. A genuinely drifting parameter is incompatible with strict
+stationarity, so drift is correctly modeled not by weakening (M4) but as an
+\emph{additional bias} of the (still-stationarity-analyzed) block estimator
+relative to the target value at decision time. Concretely, suppose the
+parameter is Lipschitz-in-time with constant $\zeta_\ell$,
+$|d_\ell(\tau)-d_\ell(\tau')|\le\zeta_\ell|\tau-\tau'|$, the probing horizon
+spans $H$ time units, and the decision is taken at the end of the horizon, so the
+target is $d_\ell:=d_\ell(\tau_{\mathrm{dec}})$. Run the concentration analysis
+treating each block as drawn from the \emph{frozen} law at its own time stamp;
+within a block of duration $\le H$ the law shifts by at most $\zeta_\ell H$, and
+hence the estimator's mean over the horizon obeys
+$|\E[\bar Y_\ell]-d_\ell|\le\beta d_\ell+\zeta_\ell H$, i.e.\ a per-coordinate
+relative-bias budget
+\[
+\beta'_\ell:=\beta+\frac{\zeta_\ell H}{d_\ell}\ \le\ \beta+\frac{\zeta_\ell H}{a_\ell},
+\]
+using (M3) ($d_\ell\ge a_\ell$). Substituting $\beta'_\ell$ for $\beta$ in
+Proposition~\ref{prop:samples} (so $\varepsilon_0=\varepsilon-\beta'_\ell$)
+preserves every conclusion verbatim, provided one keeps
+$\varepsilon>\beta'_\ell$, i.e.\ the horizon is short enough that
+$\zeta_\ell H\le(\varepsilon-\beta)\,a_\ell$ \emph{per coordinate}. (The earlier
+draft used a global $a_{\min}$; the correct, slightly stronger statement is the
+per-coordinate one above, which we adopt.) Thus drift is handled by a
+per-coordinate horizon constraint folded into the same bias accounting, with no
+appeal to stationarity across the drift.
+\end{remark}
+
+\section{Transfer theorem: accuracy $\Rightarrow$ mapping quality (part (c))}\label{sec:transfer}
+
+We argue \emph{deterministically} on $E_\varepsilon$; the high-probability
+statement follows by Corollary~\ref{cor:uniform}.
+
+For a demand-scale-coherent $F$ define the \emph{estimated objective}
+$\widehat F(\pi):=F(\widehat{\mathbf d},\pi)$ — i.e.\ $F$ evaluated with the
+estimated finish times $\widehat f_u(\pi)$ — and the \emph{exact objective}
+$F(\pi):=F(\mathbf d,\pi)$.
+
+\begin{lemma}[Pointwise objective sandwich]\label{lem:sandwich}
+Let $F$ be demand-scale-coherent and suppose the accuracy events $E_\varepsilon$
+\eqref{eq:Deps} and the rate accuracy \eqref{eq:rateacc} hold,
+$\varepsilon\in(0,1)$, with propagated finish-time accuracy
+$\varepsilon_\star=\frac{2\varepsilon}{1-\varepsilon}$ from
+Lemma~\ref{lem:propagate} (assume $\varepsilon_\star<1$, i.e.\ $\varepsilon<1/3$,
+or run estimators at level $\varepsilon/2$ as in Remark~\ref{rem:rates} so the
+propagated level is $\varepsilon<1$). Then for every configuration $\pi\in\Pi$,
+\begin{equation}\label{eq:sandwich}
+(1-\varepsilon_\star)\,F(\pi)\ \le\ \widehat F(\pi)\ \le\ (1+\varepsilon_\star)\,F(\pi).
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:propagate}, $\widehat f_u(\pi)\le(1+\varepsilon_\star)f_u(\pi)$
+for all $u$. By monotonicity of $F$ in the finish times and then degree-one
+homogeneity (Definition~\ref{def:coherent}),
+\[
+\widehat F(\pi)=F\big((\widehat f_u(\pi))_u\big)\le F\big(((1+\varepsilon_\star)f_u(\pi))_u\big)
+=(1+\varepsilon_\star)F(\pi).
+\]
+Symmetrically $\widehat f_u(\pi)\ge(1-\varepsilon_\star)f_u(\pi)$ and
+$1-\varepsilon_\star>0$ give $\widehat F(\pi)\ge(1-\varepsilon_\star)F(\pi)$.
+\end{proof}
+
+\begin{remark}[A single accuracy budget]\label{rem:budget}
+To avoid carrying both $\varepsilon$ and $\varepsilon_\star$, fix the desired
+\emph{finish-time} accuracy $\eta\in(0,1)$ and run every estimator
+(demands, rates, bandwidths) at relative level
+$\varepsilon=\varepsilon(\eta):=\eta/(2+\eta)$, so that
+$\varepsilon_\star=\frac{2\varepsilon}{1-\varepsilon}=\eta$. Then \eqref{eq:Ceps}
+and \eqref{eq:sandwich} hold with $\eta$ in place of $\varepsilon_\star$, and the
+transfer ratio below is $\frac{1+\eta}{1-\eta}$. We adopt this convention
+hereafter: \emph{$\eta$ denotes the propagated, uniform-over-$\Pi$ relative
+accuracy of completion and finish times}, achievable with the sample budget of
+Corollary~\ref{cor:uniform} at level $\varepsilon(\eta)$.
+\end{remark}
+
+\begin{theorem}[Approximation guarantee under estimated optimization]\label{thm:main}
+Let $F$ be demand-scale-coherent and suppose the finish-time accuracy
+\eqref{eq:sandwich} holds at propagated level $\eta\in(0,1)$
+(Remark~\ref{rem:budget}). Let $\hat\pi\in\arg\min_{\pi\in\Pi}\widehat F(\pi)$ and
+$\pi^\star\in\arg\min_{\pi\in\Pi}F(\pi)$. Then
+\begin{equation}\label{eq:approx}
+F(\hat\pi)\ \le\ \frac{1+\eta}{1-\eta}\;F(\pi^\star).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Both arg-min sets are nonempty since $\Pi$ is finite, nonempty. By the left
+inequality of \eqref{eq:sandwich} at $\hat\pi$, optimality of $\hat\pi$ for
+$\widehat F$ (so $\widehat F(\hat\pi)\le\widehat F(\pi^\star)$), and the right
+inequality at $\pi^\star$,
+\[
+(1-\eta)F(\hat\pi)\le\widehat F(\hat\pi)\le\widehat F(\pi^\star)
+\le(1+\eta)F(\pi^\star).
+\]
+Divide by $1-\eta>0$.
+\end{proof}
+
+\begin{theorem}[Robustness to approximate optimization]\label{thm:approxalg}
+Let $F$ be demand-scale-coherent, the finish-time accuracy \eqref{eq:sandwich}
+hold at level $\eta\in(0,1)$, and $\gamma\ge1$. If $\tilde\pi\in\Pi$ satisfies
+$\widehat F(\tilde\pi)\le\gamma\min_{\pi}\widehat F(\pi)$, then
+\begin{equation}\label{eq:approxalg}
+F(\tilde\pi)\ \le\ \gamma\,\frac{1+\eta}{1-\eta}\;\min_{\pi\in\Pi}F(\pi).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+With $\pi^\star\in\arg\min_\pi F(\pi)$, chain the left inequality of
+\eqref{eq:sandwich} at $\tilde\pi$, the $\gamma$-approximation hypothesis,
+$\min_\pi\widehat F\le\widehat F(\pi^\star)$, and the right inequality at
+$\pi^\star$:
+\[
+(1-\eta)F(\tilde\pi)\le\widehat F(\tilde\pi)\le\gamma\min_\pi\widehat F
+\le\gamma\widehat F(\pi^\star)\le\gamma(1+\eta)F(\pi^\star).
+\]
+Divide by $1-\eta$. Taking $\gamma=1$ recovers Theorem~\ref{thm:main}.
+\end{proof}
+
+This is the relevant form in practice. Optimal DAG scheduling is NP-hard, so the
+guarantee is stated relative to a $\gamma$-approximation \emph{oracle} for the
+estimated objective; the transfer theorem is black-box in $\gamma$ and contributes
+the multiplicative factor $\frac{1+\eta}{1-\eta}$ on top of whatever $\gamma$ the
+oracle achieves. Concrete values of $\gamma$ are inherited from the scheduling
+literature \emph{for the matching machine/communication model}: $\gamma=2-\tfrac1n$
+for makespan on identical machines without communication (Graham list scheduling);
+$\gamma=O(\log n)$-type or model-specific constants for unrelated machines
+($R\,|\,|\,C_{\max}$, $2$-approximable via the Lenstra--Shmoys--Tardos rounding)
+and for related/heterogeneous variants. We do \emph{not} claim a universal
+constant $\gamma$ for the fully general DAG-with-communication problem
+($P,R\,|\,\mathrm{prec},c_{ij}\,|\,F$), where no constant-factor polynomial
+approximation is known in general; for that case the statement is the honest
+conditional one: \emph{whatever} $\gamma$ a polynomial oracle attains on the
+estimated instance, the realized cost is within $\gamma\frac{1+\eta}{1-\eta}$ of
+the true optimum (Theorem~\ref{thm:approxalg}). The contribution of this paper is
+precisely the $\frac{1+\eta}{1-\eta}$ \emph{estimation} factor, decoupled from
+the $\gamma$ \emph{optimization} factor.
+
+\begin{remark}[Additive latency correction]\label{rem:latency}
+If nonzero pure latencies $\lambda_{ij}>0$ appear, write
+$f_u(\pi)=f_u^{\mathrm{work}}(\pi)+\Lambda_u(\pi)$ where $\Lambda_u(\pi)$ is the
+total accumulated latency along the critical chain to $u$ (a
+$\mathbf d$-independent, exactly known constant for fixed $\pi$). Then
+$\widehat f_u(\pi)$ satisfies $|\widehat f_u-f_u|\le\varepsilon f_u^{\mathrm{work}}
+\le\varepsilon f_u$, so \eqref{eq:sandwich} holds verbatim; if instead one wants
+the latency excluded from the relative budget, replace $\varepsilon$ by
+$\varepsilon\,\sup_\pi f_u^{\mathrm{work}}(\pi)/f_u(\pi)\le\varepsilon$ — the
+bound only improves. Hence latencies never worsen the ratio.
+\end{remark}
+
+\begin{corollary}[End-to-end high-probability guarantee]\label{cor:e2e}
+Fix a target finish-time accuracy $\eta\in(0,1)$, a bias bound
+$\beta\in[0,\varepsilon(\eta))$ with $\varepsilon(\eta)=\eta/(2+\eta)$,
+$\delta\in(0,1)$, a demand-scale-coherent $F$, and a $\gamma$-approximation
+oracle for $\min_\pi\widehat F$. Run \textsc{ComputeDescriptors}; estimate every
+structural parameter (the $Q'$ demand, rate, and bandwidth coordinates of
+Remark~\ref{rem:rates}) at relative level $\varepsilon(\eta)$ with
+$r_\ell^{\mathrm{eff}}\ge\frac{b_\ell^2}{2a_\ell^2(\varepsilon(\eta)-\beta)^2}\ln\frac{2Q'}{\delta}$
+probes per coordinate (Assumption~\ref{ass:probe}); and output $\tilde\pi$ from
+the oracle on $\widehat F$. Then with probability $\ge1-\delta$,
+\[
+F(\tilde\pi)\ \le\ \gamma\,\frac{1+\eta}{1-\eta}\,\min_{\pi\in\Pi}F(\pi).
+\]
+\end{corollary}
+
+\begin{proof}
+By Corollary~\ref{cor:uniform} applied to all $Q'$ parameters with target
+$\delta$, the accuracy events \eqref{eq:Deps} and \eqref{eq:rateacc} hold
+simultaneously at level $\varepsilon(\eta)$ w.p.\ $\ge1-\delta$; on this event
+Lemma~\ref{lem:propagate} gives uniform completion/finish-time accuracy at the
+propagated level $\varepsilon_\star=\eta$ over \emph{all} $\pi$
+(Remark~\ref{rem:budget}), and Theorem~\ref{thm:approxalg} gives the bound.
+\end{proof}
+
+\begin{remark}[Tightness]\label{rem:tight}
+The factor $\frac{1+\eta}{1-\eta}$ in $\eta$ (the propagated, uniform
+completion/finish-time relative accuracy of Remark~\ref{rem:budget}) is
+unimprovable for demand-scale-coherent objectives, and is attained by a single
+consistent estimate. Take a single unit $u$, two machines, $F=F_{\max}$ (so $f_u=C_u$, no
+precedence), and \emph{two} demand coordinates $\mathbf d=(d_1,d_2)$. Let the
+machines have disjoint rate vectors $\kappa_1=(1,0)$ and $\kappa_2=(0,1)$, so the
+true completion times are $C_{u1}=\langle\kappa_1,\mathbf d\rangle=d_1$ and
+$C_{u2}=\langle\kappa_2,\mathbf d\rangle=d_2$. Choose the exact demands
+$d_2=1$ and $d_1=\frac{1+\eta}{1-\eta}\,d_2>d_2$, so machine~$2$ is
+the unique true optimum with $F(\pi^\star)=d_2=1$.
+
+Now consider the single estimate
+\[
+\widehat{\mathbf d}=\big((1-\eta)\,d_1,\ (1+\eta)\,d_2\big),
+\]
+which is one consistent vector and satisfies the accuracy event \eqref{eq:Deps}
+coordinatewise: $\widehat d_1=(1-\eta)d_1$ and
+$\widehat d_2=(1+\eta)d_2$ both lie in $[(1-\eta)d_\ell,
+(1+\eta)d_\ell]$. The estimated completion times are
+$\widehat C_{u1}=\widehat d_1=(1-\eta)d_1
+=(1-\eta)\frac{1+\eta}{1-\eta}d_2=(1+\eta)d_2$ and
+$\widehat C_{u2}=\widehat d_2=(1+\eta)d_2$. Thus
+$\widehat C_{u1}=\widehat C_{u2}$: the two estimated objectives coincide, so an
+estimated-optimal $\hat\pi$ may legitimately place $u$ on machine~$1$, giving
+true cost $F(\hat\pi)=C_{u1}=d_1=\frac{1+\eta}{1-\eta}$. Hence
+\[
+\frac{F(\hat\pi)}{F(\pi^\star)}=\frac{1+\eta}{1-\eta},
+\]
+attained by an estimate obeying \eqref{eq:Deps}, so the bound of
+Theorem~\ref{thm:main} is tight. (To break the tie strictly one may perturb
+$d_1$ to $\frac{1+\eta}{1-\eta}d_2-\rho$ for arbitrarily small
+$\rho>0$, forcing the optimizer onto machine~$1$ and approaching the ratio from
+below.)
+\end{remark}
+
+\begin{algorithm}[h]
+\caption{EstimatedOptimalMapping}\label{alg:map}
+\begin{algorithmic}[1]
+\Require target finish-time accuracy $\eta\in(0,1)$; bias bound $\beta\in[0,\varepsilon(\eta))$ with $\varepsilon(\eta)=\eta/(2+\eta)$; $\delta\in(0,1)$; demand-scale-coherent $F$; bounds $a_\ell,b_\ell$; dependence range $m$; $\gamma$-oracle; configuration family $\Pi$.
+\Ensure $\tilde\pi$ with $F(\tilde\pi)\le\gamma\frac{1+\eta}{1-\eta}\min_\pi F(\pi)$ w.p.\ $\ge1-\delta$.
+\State $\varepsilon\gets\varepsilon(\eta)$; $(\bar L,\bar N)\gets$ \textsc{ComputeDescriptors}
+\For{each structural coordinate $\ell=1,\dots,Q'$ (demands, nominal rates $\kappa$, nominal bandwidths $\beta_{ij}$)}
+  \State $r_\ell\gets\big\lceil 2(m+1)\frac{b_\ell^2}{2a_\ell^2(\varepsilon-\beta)^2}\ln\frac{2Q'}{\delta}\big\rceil$ \Comment{$2(m+1)$ converts blocks to raw probes}
+  \State draw $r_\ell$ probes per Assumption~\ref{ass:probe}, form $B_\ell$ independent block means, set $\widehat\theta_\ell\gets$ their average
+\EndFor
+\State for each $\pi$, compute exact throttle/sharing factors $\phi_i(\pi),\psi_{ij}(\pi)$ and define $\widehat F(\pi):=F(\widehat{\mathbf d},\pi)$ via the structural model \eqref{eq:Cform} and recursion \eqref{eq:recurdef}
+\State $\tilde\pi\gets\gamma$-oracle$\big(\min_{\pi\in\Pi}\widehat F(\pi)\big)$
+\State \Return $\tilde\pi$
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textbf{Correctness.} Lines 2--5 realize the structural-parameter
+estimator (demands, rates, bandwidths) at the sample size of
+Corollary~\ref{cor:uniform}, so the accuracy events \eqref{eq:Deps} and
+\eqref{eq:rateacc} hold simultaneously at level $\varepsilon$ w.p.\ $\ge1-\delta$;
+line~6 evaluates $\widehat F$ deterministically through the structural model
+with the \emph{exact, configuration-specific} throttle factors (valid for
+\emph{all} $\pi$ by Lemma~\ref{lem:propagate}, propagated accuracy
+$\varepsilon_\star=\eta$), and line~7 returns a $\gamma$-approximate minimizer.
+Corollary~\ref{cor:e2e} certifies the output guarantee. \textbf{Termination:}
+finite loops, finite $\Pi$. \textbf{Complexity:} probing costs
+$\sum_\ell r_\ell=O\!\big((m{+}1)\,Q'\,\frac{b_{\max}^2}{a_{\min}^2(\varepsilon-\beta)^2}\ln\frac{Q'}{\delta}\big)$
+probes -- polynomial in the instance and \emph{independent of $|\Pi|$}; line~6
+evaluates $\widehat F$ at the cost charged by the oracle's queries, and line~7
+costs one call to the scheduling oracle. The reduction is black-box in the
+optimizer, so the heterogeneous scheduling literature's approximation algorithms
+plug in directly (subject to the model-matching caveat above for the achievable
+$\gamma$).
+
+\section{Summary of what is established}\label{sec:summary}
+
+(a) Descriptors $L_i(\tau),N_{ij}(\tau)$ are defined and computed by
+\textsc{ComputeDescriptors} (block-averaged measurements) and split into
+schedule-independent structural constants and configuration-induced contention
+state, the latter being an \emph{exactly computable} function of the schedule
+(Definition~\ref{def:load}). (b) The estimator of the structural parameters
+(demands, nominal rates, nominal bandwidths), propagated through the known
+structural completion-time model \emph{evaluated with each configuration's own,
+exactly-known contention throttles}, yields $\Chat$ and finish times that are
+uniformly $(1\pm\eta)$-accurate \emph{over all configurations}
+(Lemma~\ref{lem:propagate}), with explicit sample complexity (genuine Hoeffding
+on independent blocks under finite-range dependence,
+Proposition~\ref{prop:samples}) that honestly carries bias ($\beta$),
+dependence range ($m$), and temporal drift ($\zeta_\ell H$,
+Remark~\ref{rem:drift}). The load-dependence of completion time
+(contention/queueing) is modeled, not assumed away: the realized
+$C_u(\pi)$ depends on $\pi$ through $\phi_{x_u}(\pi)$, while degree-one
+homogeneity in demand is preserved by the homogeneous-contention regime
+(Assumption~\ref{ass:regime}); non-homogeneous nonlinearities are handled with
+an explicit residual factor (Lemma~\ref{lem:lipschitz}). (c) The transfer
+theorem (Theorems~\ref{thm:main}, \ref{thm:approxalg},
+Corollary~\ref{cor:e2e}) shows that minimizing the estimated objective -- exactly
+or $\gamma$-approximately -- yields a configuration within
+$\gamma\frac{1+\eta}{1-\eta}$ of the true optimum for every
+demand-scale-coherent objective (makespan under precedence, weighted completion
+time, $\ell_p$ loads, $\dots$), and the constant $\frac{1+\eta}{1-\eta}$ is
+tight. The $\gamma$ factor is inherited, with matching-model caveats, from the
+scheduling literature; the estimation factor $\frac{1+\eta}{1-\eta}$ is the
+contribution proved here, decoupled from optimization hardness.
+
+\paragraph{Scope and honest limitations.} The headline guarantee is
+\emph{conditional} on: (i) Assumption~\ref{ass:regime} (linear throughput with
+multiplicative, demand-independent contention sharing) -- the standard
+scheduling model, relaxed to a residual factor in Lemma~\ref{lem:lipschitz};
+(ii) the contention state being a \emph{known} combinatorial function of the
+schedule, so that throttles are computable without deploying $\pi$; (iii)
+availability of a $\gamma$-approximation oracle for the (NP-hard) estimated
+scheduling problem, whose constant depends on the machine/communication model
+and is not universal for general DAG-with-communication scheduling; and (iv) the
+probing model of Assumption~\ref{ass:probe} (bounded, $m$-dependent
+work-counter probes with bounded relative bias). Within this scope the chain
+measurement $\to$ estimation $\to$ mapping quality is fully rigorous and the
+transfer constant is tight.
+\end{document}

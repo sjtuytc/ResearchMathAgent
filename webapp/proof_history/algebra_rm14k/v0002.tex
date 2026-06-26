@@ -1,0 +1,651 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{amsfonts}
+
+\DeclareMathOperator{\vecop}{vec}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\col}{col}
+\DeclareMathOperator{\spanop}{span}
+\newcommand{\bR}{\mathbb{R}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+\title{Bounded-degree, camera-independent relations characterizing\\ rank-one weight tensors on determinantal tensors}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Statement and answer}
+
+Fix $n\ge 5$ and Zariski-generic matrices
+$A^{(1)},\dots,A^{(n)}\in\bR^{3\times 4}$.
+For $\alpha,\beta,\gamma,\delta\in[n]$ define
+$Q^{(\alpha\beta\gamma\delta)}\in\bR^{3\times3\times3\times3}$ by
+\begin{equation}\label{eq:Qdef}
+Q^{(\alpha\beta\gamma\delta)}_{ijk\ell}
+=\det\bigl[A^{(\alpha)}(i,:);\,A^{(\beta)}(j,:);\,A^{(\gamma)}(k,:);\,A^{(\delta)}(\ell,:)\bigr],
+\qquad 1\le i,j,k,\ell\le 3 .
+\end{equation}
+We are given a real array $\lambda\in\bR^{n\times n\times n\times n}$ whose support is
+\emph{exactly} the set of non-identical index tuples, i.e.
+\begin{equation}\label{eq:support}
+\lambda_{\alpha\beta\gamma\delta}\neq 0
+\iff (\alpha,\beta,\gamma,\delta)\ \text{is not of the form }(c,c,c,c).
+\end{equation}
+We call $\lambda$ \emph{rank-one off the diagonal} if there exist
+$u,v,w,x\in(\bR^{*})^{n}$ with
+\begin{equation}\label{eq:rankone}
+\lambda_{\alpha\beta\gamma\delta}=u_\alpha v_\beta w_\gamma x_\delta
+\qquad\text{for every non-identical }(\alpha,\beta,\gamma,\delta).
+\end{equation}
+
+\paragraph{Answer.} \emph{Yes.}  We exhibit an explicit polynomial map
+$\mathbf F$ with the three required properties.  Form the
+\emph{combined tensor}
+\begin{equation}\label{eq:bigP}
+\mathbf P\in\bR^{3n\times3n\times3n\times3n},
+\qquad
+\mathbf P_{(\alpha i)(\beta j)(\gamma k)(\delta\ell)}
+=\lambda_{\alpha\beta\gamma\delta}\,Q^{(\alpha\beta\gamma\delta)}_{ijk\ell},
+\end{equation}
+whose entries are precisely the numbers
+$\lambda_{\alpha\beta\gamma\delta}Q^{(\alpha\beta\gamma\delta)}$ supplied to $\mathbf F$
+(arranged in a $3n\times3n\times3n\times3n$ block layout; the diagonal blocks
+$\alpha=\beta=\gamma=\delta$ vanish identically by Lemma~\ref{lem:diag}, consistent
+with \eqref{eq:support}).  For $m\in\{1,2,3,4\}$ let
+$\mathbf P_{(m)}\in\bR^{3n\times(3n)^3}$ denote the mode-$m$ unfolding of
+$\mathbf P$.  Define
+\begin{equation}\label{eq:Fdef}
+\mathbf F(\mathbf P)
+=\Bigl(\ \text{all }5\times5\ \text{minors of }\mathbf P_{(m)}\ :\ m=1,2,3,4\ \Bigr).
+\end{equation}
+
+Each coordinate of $\mathbf F$ is a $5\times5$ minor, hence a polynomial of degree
+$5$ in the entries of $\mathbf P$ (equivalently in the input numbers
+$\lambda_{\alpha\beta\gamma\delta}Q^{(\alpha\beta\gamma\delta)}$); thus the
+degrees do not depend on $n$, and the map $\mathbf F$ is written without any
+reference to $A^{(1)},\dots,A^{(n)}$.  The remaining (and only nontrivial)
+property is the equivalence
+\begin{equation}\label{eq:goal}
+\mathbf F(\mathbf P)=0
+\iff
+\lambda\ \text{is rank-one off the diagonal},
+\end{equation}
+which we prove as Theorem~\ref{thm:main}.  Since $\mathbf F(\mathbf P)=0$ exactly
+says that every mode unfolding $\mathbf P_{(m)}$ has rank $\le 4$, the theorem is a
+consequence of the rank analysis below.
+
+\paragraph{A subtlety that drives the proof.}
+It is tempting to argue via the mode-$m$ unfoldings of the array $\lambda$ itself:
+one might hope that $\rank\mathbf P_{(m)}\le4$ is equivalent to the mode-$m$
+unfolding of (the off-diagonal-supported) $\lambda$ having rank $\le1$.  \emph{This
+is false.}  Because the diagonal positions $(c,c,c,c)$ are forced to vanish, the
+mode-$1$ unfolding of $\lambda$ can have rank as large as $n$ even when $\lambda$ is
+rank-one off the diagonal (the diagonal ``holes'' destroy exact proportionality of
+the unfolding's columns).  The resolution, made precise below, is that the columns
+carrying these holes correspond exactly to the \emph{all-equal} column triples
+$(c,c,c)$, whose cross-product matrices have rank $1$ and whose single direction
+$\kappa_c$ is annihilated by $A^{(c)}$; consequently those columns never see the
+hole at all.  The correct invariant is the rank of the fibers over the
+\emph{non-all-equal} column triples (Definition~\ref{def:rhostar}), and a separate
+argument controls the all-equal columns (Proposition~\ref{prop:alleq}).
+
+\section{Preliminaries: the multilinear structure of $\mathbf P$}
+
+Write $a^{(\alpha)}_i:=A^{(\alpha)}(i,:)\in\bR^4$ for the rows.
+
+\begin{lemma}[Generalized cross product]\label{lem:cross}
+For $p,q,r\in\bR^4$ there is a unique vector
+$\kappa(p,q,r)\in\bR^4$, depending multilinearly and alternatingly on $(p,q,r)$,
+such that
+$\det[v;p;q;r]=v^{\top}\kappa(p,q,r)$ for all $v\in\bR^4$.  Its $m$-th coordinate
+is $\kappa(p,q,r)_m=(-1)^{m-1}\det\bigl[p_{\widehat m};q_{\widehat m};r_{\widehat m}\bigr]$,
+where $z_{\widehat m}\in\bR^3$ deletes the $m$-th coordinate of $z\in\bR^4$.
+\end{lemma}
+
+\begin{proof}
+Expanding $\det[v;p;q;r]$ along its first row gives
+$\det[v;p;q;r]=\sum_{m=1}^4 v_m(-1)^{m-1}\det[p_{\widehat m};q_{\widehat m};r_{\widehat m}]$,
+which is $v^\top\kappa(p,q,r)$ with the stated coordinates; uniqueness holds because
+$v\mapsto\det[v;p;q;r]$ is a fixed linear functional on $\bR^4$.  Multilinearity and
+alternation in $(p,q,r)$ are inherited from the determinant.
+\end{proof}
+
+By Lemma~\ref{lem:cross} and \eqref{eq:Qdef},
+\begin{equation}\label{eq:Qcross}
+Q^{(\alpha\beta\gamma\delta)}_{ijk\ell}
+=\bigl(a^{(\alpha)}_i\bigr)^{\top}\,
+\kappa\bigl(a^{(\beta)}_j,a^{(\gamma)}_k,a^{(\delta)}_\ell\bigr).
+\end{equation}
+
+\begin{lemma}[Vanishing of identical blocks; annihilation of $\kappa_c$]\label{lem:diag}
+For every $c\in[n]$ we have $Q^{(cccc)}=0$.  Moreover, writing
+$\kappa_c:=\kappa\bigl(a^{(c)}_1,a^{(c)}_2,a^{(c)}_3\bigr)\in\bR^4$, one has
+\begin{equation}\label{eq:annihil}
+A^{(c)}\kappa_c=0 .
+\end{equation}
+Consequently $\mathbf P$ depends only on the values of $\lambda$ at non-identical
+tuples; the diagonal value $\lambda_{cccc}$ never enters $\mathbf P$.
+\end{lemma}
+
+\begin{proof}
+In \eqref{eq:Qdef} with $\alpha=\beta=\gamma=\delta=c$, the four rows
+$a^{(c)}_i,a^{(c)}_j,a^{(c)}_k,a^{(c)}_\ell$ are drawn from the three rows of
+$A^{(c)}$, so by pigeonhole two of them coincide and the determinant is $0$.
+For \eqref{eq:annihil}, the $i$-th entry of $A^{(c)}\kappa_c$ is
+$\bigl(a^{(c)}_i\bigr)^\top\kappa_c=\det\bigl[a^{(c)}_i;a^{(c)}_1;a^{(c)}_2;a^{(c)}_3\bigr]$
+by Lemma~\ref{lem:cross}; for each $i\in\{1,2,3\}$ this determinant has a repeated
+row and hence vanishes.  The last claim is immediate from \eqref{eq:bigP}.
+\end{proof}
+
+\medskip
+We now record the genericity facts that we use.  Throughout, ``for generic
+$A$'' means: there is a nonzero polynomial in the entries of
+$A^{(1)},\dots,A^{(n)}$ whose non-vanishing guarantees the stated conclusion;
+since the $A^{(\alpha)}$ are Zariski-generic, all of these finitely many
+conditions hold simultaneously.
+
+\begin{lemma}[Row matrices are nondegenerate]\label{lem:Arank}
+For generic $A$, each $A^{(\alpha)}\in\bR^{3\times4}$ has rank $3$.
+\end{lemma}
+
+\begin{proof}
+$\rank A^{(\alpha)}=3$ fails only on the proper subvariety where all four
+$3\times3$ minors of $A^{(\alpha)}$ vanish; the product of these minors is a
+nonzero polynomial, certifying genericity.
+\end{proof}
+
+For a triple $(\beta,\gamma,\delta)\in[n]^3$ define the matrix
+$N^{(\beta\gamma\delta)}\in\bR^{4\times27}$ whose column indexed by
+$(j,k,\ell)\in\{1,2,3\}^3$ is $\kappa(a^{(\beta)}_j,a^{(\gamma)}_k,a^{(\delta)}_\ell)$.
+
+\begin{lemma}[Rank of the cross-product matrix]\label{lem:Nrank}
+For generic $A$ and every triple $(\beta,\gamma,\delta)\in[n]^3$:
+\begin{enumerate}[label=\textup{(\roman*)}]
+\item if $\beta,\gamma,\delta$ are not all equal, then $\rank N^{(\beta\gamma\delta)}=4$;
+\item if $\beta=\gamma=\delta=c$, then $\rank N^{(\beta\gamma\delta)}=1$, and the
+column space of $N^{(ccc)}$ is the line $\bR\kappa_c$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\emph{(ii)} If $\beta=\gamma=\delta=c$, every column
+$\kappa(a^{(c)}_j,a^{(c)}_k,a^{(c)}_\ell)$ is the generalized cross product of three
+rows of $A^{(c)}$.  By alternation (Lemma~\ref{lem:cross}) the column vanishes unless
+$j,k,\ell$ are distinct, in which case it equals $\pm\kappa_c$.  Thus all columns lie
+on the line $\bR\kappa_c$.  This line is nonzero for generic $A$: by
+Lemma~\ref{lem:cross}, $v^\top\kappa_c=\det[v;a^{(c)}_1;a^{(c)}_2;a^{(c)}_3]\ne0$ for
+any $v$ outside the row space of $A^{(c)}$, which exists since $\rank A^{(c)}=3<4$.
+Hence the rank is $1$ and the column space is $\bR\kappa_c$.
+
+\emph{(i)} We must show $\{\kappa(a^{(\beta)}_j,a^{(\gamma)}_k,a^{(\delta)}_\ell)\}$
+spans $\bR^4$, equivalently that some $4\times4$ minor of $N^{(\beta\gamma\delta)}$ is
+nonzero.  Each such minor is a polynomial in the entries of
+$A^{(\beta)},A^{(\gamma)},A^{(\delta)}$, and it suffices to produce one assignment of
+these three matrices making one minor nonzero.  Consider the four columns indexed by
+$(1,1,1),(2,1,1),(1,2,1),(1,1,2)$, i.e.\ the vectors
+\[
+\kappa(a^{(\beta)}_1,a^{(\gamma)}_1,a^{(\delta)}_1),\
+\kappa(a^{(\beta)}_2,a^{(\gamma)}_1,a^{(\delta)}_1),\
+\kappa(a^{(\beta)}_1,a^{(\gamma)}_2,a^{(\delta)}_1),\
+\kappa(a^{(\beta)}_1,a^{(\gamma)}_1,a^{(\delta)}_2).
+\]
+By Lemma~\ref{lem:cross}, $w^\top\kappa(p,q,r)=\det[w;p;q;r]$, so for a test vector
+$w$ these four numbers are
+$\det[w;a^{(\beta)}_1;a^{(\gamma)}_1;a^{(\delta)}_1]$ and its variants.  Choose the
+rows so that $a^{(\beta)}_1,a^{(\gamma)}_1,a^{(\delta)}_1$ are linearly independent
+and $a^{(\beta)}_2,a^{(\gamma)}_2,a^{(\delta)}_2$ are chosen generically; the four
+displayed $\kappa$'s are then linearly independent (their Gram/coordinate determinant
+is a nonzero polynomial which can be exhibited explicitly, e.g.\ by taking the three
+base rows to be $e_1,e_2,e_3$ and the perturbing rows to have nonzero fourth
+coordinate, in which case the four $\kappa$'s are, up to sign, $e_4$ together with
+three vectors having nonzero $e_1,e_2,e_3$ components respectively).  Hence the
+corresponding $4\times4$ minor is a nonzero polynomial, and for generic $A$ it is
+nonzero, giving $\rank N^{(\beta\gamma\delta)}=4$.  (A numerical witness over all
+triples is reported in \S\ref{sec:num}.)
+\end{proof}
+
+\begin{lemma}[Block factorization of the unfolding]\label{lem:factor}
+Fix the mode $m=1$ (the other modes are symmetric).  The mode-$1$ unfolding
+$\mathbf P_{(1)}\in\bR^{3n\times(3n)^3}$, with rows indexed by $(\alpha,i)$ and
+columns by $(\beta j,\gamma k,\delta\ell)$, satisfies, for each fixed row block
+$\alpha$,
+\begin{equation}\label{eq:blockfactor}
+\bigl[\mathbf P_{(1)}\bigr]_{(\alpha,\cdot),(\beta j,\gamma k,\delta\ell)}
+=\lambda_{\alpha\beta\gamma\delta}\,
+A^{(\alpha)}\,\kappa\bigl(a^{(\beta)}_j,a^{(\gamma)}_k,a^{(\delta)}_\ell\bigr)
+\in\bR^3 ,
+\end{equation}
+where we adopt the convention $\lambda_{cccc}=0$ (Lemma~\ref{lem:diag}).  In
+particular, for a fixed column triple $(\beta,\gamma,\delta)$ the corresponding
+$3n\times27$ column block $\Sigma^{(\beta\gamma\delta)}$ of $\mathbf P_{(1)}$ has
+row block $\alpha$ equal to
+$\lambda_{\alpha\beta\gamma\delta}\,A^{(\alpha)}N^{(\beta\gamma\delta)}$.
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:bigP} and \eqref{eq:Qcross},
+$\mathbf P_{(\alpha i)(\beta j)(\gamma k)(\delta\ell)}
+=\lambda_{\alpha\beta\gamma\delta}(a^{(\alpha)}_i)^\top
+\kappa(a^{(\beta)}_j,a^{(\gamma)}_k,a^{(\delta)}_\ell)$.
+Stacking over $i=1,2,3$ (the rows of $A^{(\alpha)}$) yields
+\eqref{eq:blockfactor}; collecting the $27$ columns $(j,k,\ell)$ for fixed
+$(\beta,\gamma,\delta)$ gives $A^{(\alpha)}N^{(\beta\gamma\delta)}$ scaled by
+$\lambda_{\alpha\beta\gamma\delta}$.
+\end{proof}
+
+\section{The column space of a mode unfolding}
+
+Throughout this section we work with mode $1$; the other three modes are handled by
+the obvious symmetry of \eqref{eq:Qdef} under permuting $(\alpha,\beta,\gamma,\delta)$.
+
+For a vector $\ell\in\bR^n$ define the subspace
+\begin{equation}\label{eq:Vell}
+V(\ell):=\bigl\{\,(\ell_\alpha\,A^{(\alpha)}y)_{\alpha\in[n]}\in\bR^{3n}\ :\ y\in\bR^4\,\bigr\}
+=\col\bigl(\widehat A_\ell\bigr),\qquad
+\widehat A_\ell:=\begin{pmatrix}\ell_1A^{(1)}\\ \vdots\\ \ell_nA^{(n)}\end{pmatrix}\in\bR^{3n\times4}.
+\end{equation}
+
+\begin{lemma}[Column blocks]\label{lem:colblocks}
+Let $\mathcal C_1\subseteq\bR^{3n}$ be the column space of $\mathbf P_{(1)}$.  Then
+\begin{equation}\label{eq:Cdecomp}
+\mathcal C_1=\sum_{\substack{(\beta,\gamma,\delta)\\ \text{not all equal}}}
+V\bigl(\ell^{(1)}_{\beta\gamma\delta}\bigr)
+\ +\ \sum_{c\in[n]}\bR\,h_c,
+\qquad
+\ell^{(1)}_{\beta\gamma\delta}:=(\lambda_{\alpha\beta\gamma\delta})_{\alpha\in[n]},
+\quad
+h_c:=\bigl(\lambda_{\alpha ccc}\,A^{(\alpha)}\kappa_c\bigr)_{\alpha\in[n]} .
+\end{equation}
+Moreover, for generic $A$, $\dim V(\ell)=4$ whenever $\ell\ne0$, and $V(\ell)$
+depends on $\ell$ alone (not on the triple).
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:factor}, the columns of $\Sigma^{(\beta\gamma\delta)}$ are the
+vectors $(\lambda_{\alpha\beta\gamma\delta}A^{(\alpha)}\kappa(\cdots))_\alpha$.
+If $(\beta,\gamma,\delta)$ is not all equal then $N^{(\beta\gamma\delta)}$ has rank
+$4$ (Lemma~\ref{lem:Nrank}(i)), so its columns $\kappa(\cdots)$ span all of $\bR^4$;
+hence the column space of $\Sigma^{(\beta\gamma\delta)}$ is exactly
+$\{(\lambda_{\alpha\beta\gamma\delta}A^{(\alpha)}y)_\alpha:y\in\bR^4\}
+=V(\ell^{(1)}_{\beta\gamma\delta})$.
+If $(\beta,\gamma,\delta)=(c,c,c)$ then $N^{(ccc)}$ has rank $1$ with column space
+$\bR\kappa_c$ (Lemma~\ref{lem:Nrank}(ii)), so the column space of
+$\Sigma^{(ccc)}$ is the line spanned by
+$(\lambda_{\alpha ccc}A^{(\alpha)}\kappa_c)_\alpha=h_c$.  Summing over all column
+triples gives \eqref{eq:Cdecomp}.
+
+For the last claim, $\dim V(\ell)=\rank\widehat A_\ell$.  If $\ell\ne0$, pick
+$\alpha$ with $\ell_\alpha\ne0$; then $\ell_\alpha A^{(\alpha)}$ already has rank $3$
+(Lemma~\ref{lem:Arank}).  Taking two indices $\alpha_1,\alpha_2$ with
+$\ell_{\alpha_i}\ne0$ and generic $A$, the $4$ columns of $\widehat A_\ell$ are
+independent: a kernel vector $y\in\bR^4$ would satisfy $A^{(\alpha)}y=0$ for every
+$\alpha$ with $\ell_\alpha\ne0$, i.e.\ $y\in\bigcap_{\ell_\alpha\ne0}\ker A^{(\alpha)}
+=\bigcap\bR\kappa_\alpha$; for generic $A$ distinct lines $\bR\kappa_{\alpha_1},
+\bR\kappa_{\alpha_2}$ meet only in $0$, forcing $y=0$.  Hence $\dim V(\ell)=4$.
+(If only one $\ell_\alpha\ne0$ the rank is $3$; this case does not occur for the
+fibers used below, but in any event $\dim V(\ell)\le4$ always.)  Finally $V(\ell)$
+visibly depends only on $\ell$.
+\end{proof}
+
+\begin{definition}[Off-diagonal mode rank]\label{def:rhostar}
+For mode $1$ let
+\[
+\rho_1^\ast:=\dim\spanop\bigl\{\,\ell^{(1)}_{\beta\gamma\delta}\ :\ (\beta,\gamma,\delta)\ \text{not all equal}\,\bigr\}\subseteq\bR^n,
+\]
+the rank of the family of mode-$1$ fibers over \emph{non-all-equal} column triples;
+$\rho_2^\ast,\rho_3^\ast,\rho_4^\ast$ are defined symmetrically.  Note that for a
+non-all-equal triple $(\beta,\gamma,\delta)$, \emph{every} tuple
+$(\alpha,\beta,\gamma,\delta)$ is automatically non-identical, so the fiber
+$\ell^{(1)}_{\beta\gamma\delta}$ contains no diagonal ``hole.''
+\end{definition}
+
+\begin{proposition}[Two independent fibers force rank $\ge8$]\label{prop:lower}
+For generic $A$ and any mode $m$: if $\rho_m^\ast\ge2$ then $\rank\mathbf P_{(m)}\ge8$.
+\end{proposition}
+
+\begin{proof}
+Take $m=1$.  Since $\rho_1^\ast\ge2$, there are two non-all-equal triples whose
+fibers $\ell^1,\ell^2\in\bR^n$ are linearly independent.  By
+Lemma~\ref{lem:colblocks}, $V(\ell^1)+V(\ell^2)\subseteq\mathcal C_1$, so it suffices
+to prove $\dim\bigl(V(\ell^1)+V(\ell^2)\bigr)=8$, i.e.\ that the $3n\times8$ matrix
+$\widehat S:=[\widehat A_{\ell^1}\ \widehat A_{\ell^2}]$ has rank $8$.
+
+The transpose statement is that the linear map
+$\Phi:\bigoplus_{\alpha}\bR^3\to\bR^4\oplus\bR^4$,
+\[
+\Phi(z)=\Bigl(\textstyle\sum_\alpha\ell^1_\alpha (A^{(\alpha)})^\top z_\alpha,\ \
+\sum_\alpha\ell^2_\alpha (A^{(\alpha)})^\top z_\alpha\Bigr),
+\]
+is surjective.  Surjectivity is the non-vanishing of an $8\times8$ minor of the
+matrix of $\Phi$, a polynomial in the entries of $A$ and in $\ell^1,\ell^2$.  We
+exhibit a choice making it nonzero.  Because $\ell^1\not\parallel\ell^2$, there are
+two indices $p\ne q$ with
+$\det\bigl(\begin{smallmatrix}\ell^1_p&\ell^1_q\\ \ell^2_p&\ell^2_q\end{smallmatrix}\bigr)\ne0$.
+Take the four row spaces $R_\alpha:=\col((A^{(\alpha)})^\top)\subseteq\bR^4$ for
+$\alpha\in\{p,q\}$ in general position, so that $R_p+R_q=\bR^4$ and we may select
+six vectors $r_1,r_2,r_3\in R_p$, $r_4,r_5,r_6\in R_q$ with $r_1,\dots,r_4$ a basis
+of $\bR^4$ and $r_4,r_5,r_6,r_1$ a basis of $\bR^4$.  Restricting $\Phi$ to the
+coordinates $z_p,z_q$ and using the $2\times2$ nonsingularity above, the image
+contains $(\bR^4,0)$ (from $z_p,z_q$ with the second slot cancelled) and $(0,\bR^4)$
+(symmetrically), hence equals $\bR^8$.  Concretely: the $2\times2$ system
+$\ell^1_p\xi_p+\ell^1_q\xi_q=a$, $\ell^2_p\xi_p+\ell^2_q\xi_q=b$ is solvable for
+scalar pairs, and replacing scalars by the vector contributions
+$(A^{(p)})^\top z_p,(A^{(q)})^\top z_q$ ranging over $R_p,R_q=\bR^4$ (general
+position) lets us hit any $(a,b)\in\bR^4\oplus\bR^4$.  Thus the relevant $8\times8$
+minor is a nonzero polynomial, so for generic $A$ it is nonzero, giving
+$\rank\widehat S=8$ and $\rank\mathbf P_{(1)}\ge8$.  A numerical confirmation that
+two independent fibers always yield $\dim(V(\ell^1)+V(\ell^2))=8$ is in
+\S\ref{sec:num}.
+\end{proof}
+
+\begin{proposition}[All-equal columns]\label{prop:alleq}
+Fix mode $1$ and suppose $\rho_1^\ast\le1$, so that all non-all-equal mode-$1$
+fibers are scalar multiples of a single vector $u\in\bR^n$; set $V_0:=V(u)$
+(a $4$-dimensional space when $u\neq0$).  For generic $A$ and each $c\in[n]$ the
+following are equivalent:
+\begin{enumerate}[label=\textup{(\alph*)}]
+\item $h_c\in V_0$;
+\item the near-diagonal entries satisfy $\lambda_{\alpha ccc}=t_c\,u_\alpha$ for all
+$\alpha\neq c$, for some scalar $t_c$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+Recall $h_c=(\lambda_{\alpha ccc}A^{(\alpha)}\kappa_c)_\alpha$.  By
+\eqref{eq:annihil} the $\alpha=c$ block of $h_c$ is $\lambda_{cccc}A^{(c)}\kappa_c=0$
+(indeed $A^{(c)}\kappa_c=0$ \emph{regardless} of the value placed at the diagonal
+position), so $h_c$ does not depend on $\lambda_{cccc}$.
+
+\emph{(b)$\Rightarrow$(a).}  If $\lambda_{\alpha ccc}=t_cu_\alpha$ for $\alpha\ne c$,
+then for every $\alpha$ (including $\alpha=c$, where both sides' block vanishes since
+$A^{(c)}\kappa_c=0$)
+\[
+\lambda_{\alpha ccc}A^{(\alpha)}\kappa_c=t_c\,u_\alpha A^{(\alpha)}\kappa_c ,
+\]
+so $h_c=t_c\,(u_\alpha A^{(\alpha)}\kappa_c)_\alpha=t_c\,\widehat A_u\,\kappa_c\in
+V_0=\col(\widehat A_u)$.
+
+\emph{(a)$\Rightarrow$(b).}  Suppose $h_c=\widehat A_u\,y$ for some $y\in\bR^4$, i.e.
+\begin{equation}\label{eq:hcblock}
+\lambda_{\alpha ccc}A^{(\alpha)}\kappa_c=u_\alpha A^{(\alpha)}y\qquad\text{for all }\alpha .
+\end{equation}
+Fix $\alpha\ne c$.  For generic $A$ and $\alpha\ne c$, the vector $A^{(\alpha)}\kappa_c\in\bR^3$
+is nonzero (it vanishes only on the proper subvariety where $\kappa_c\in\ker A^{(\alpha)}
+=\bR\kappa_\alpha$, i.e.\ $\kappa_c\parallel\kappa_\alpha$, a nontrivial polynomial
+condition).  Also $u_\alpha\ne0$ (established in Theorem~\ref{thm:main}, Step~1).  Since
+$A^{(\alpha)}$ has rank $3$, the equation $\lambda_{\alpha ccc}A^{(\alpha)}\kappa_c
+=u_\alpha A^{(\alpha)}y$ in $\bR^3$ reads
+$A^{(\alpha)}\bigl(\lambda_{\alpha ccc}\kappa_c-u_\alpha y\bigr)=0$, i.e.\
+$\lambda_{\alpha ccc}\kappa_c-u_\alpha y\in\ker A^{(\alpha)}=\bR\kappa_\alpha$.  Thus
+for each $\alpha\ne c$ there is a scalar $\mu_\alpha$ with
+\begin{equation}\label{eq:linecond}
+\lambda_{\alpha ccc}\,\kappa_c-u_\alpha\,y=\mu_\alpha\,\kappa_\alpha .
+\end{equation}
+For generic $A$ the three vectors $\kappa_c,\kappa_\alpha$ and a second index
+$\kappa_{\alpha'}$ are linearly independent; subtracting \eqref{eq:linecond} for two
+indices $\alpha\ne\alpha'$ (both $\ne c$) gives
+$(\lambda_{\alpha ccc}-\lambda_{\alpha'ccc})\kappa_c-(u_\alpha-u_{\alpha'})y
+=\mu_\alpha\kappa_\alpha-\mu_{\alpha'}\kappa_{\alpha'}$.  Project onto the
+$1$-dimensional quotient $\bR^4/(\bR\kappa_\alpha+\bR\kappa_{\alpha'})$; since
+generically $\kappa_c$ and $y$ have nonzero, proportional images there (we show
+$y\in\bR\kappa_c$ momentarily), this pins down the ratios.  Cleanly: take the inner
+product of \eqref{eq:linecond} with a fixed covector $\xi$ that annihilates
+$\kappa_c$ but not $y$ (such $\xi$ exists iff $y\notin\bR\kappa_c$).  If
+$y\notin\bR\kappa_c$, choose additionally $\xi\perp\kappa_\alpha$ for the particular
+$\alpha$; then \eqref{eq:linecond} gives $-u_\alpha(\xi^\top y)=0$, whence
+$u_\alpha=0$, a contradiction.  Hence $y\in\bR\kappa_c$, say $y=t_c\kappa_c$.
+Substituting into \eqref{eq:linecond}:
+$(\lambda_{\alpha ccc}-t_cu_\alpha)\kappa_c=\mu_\alpha\kappa_\alpha$.  For generic
+$A$ and $\alpha\ne c$, $\kappa_c\not\parallel\kappa_\alpha$, so both sides vanish,
+giving $\lambda_{\alpha ccc}=t_cu_\alpha$ for all $\alpha\ne c$, which is (b).
+\end{proof}
+
+\section{Upper bound for rank-one $\lambda$}
+
+\begin{proposition}[Rank upper bound for rank-one $\lambda$]\label{prop:upper}
+If $\lambda$ is rank-one off the diagonal \eqref{eq:rankone}, then for every mode
+$m$ and every $A$ one has $\rank\mathbf P_{(m)}\le 4$.
+\end{proposition}
+
+\begin{proof}
+Take $m=1$.  Using \eqref{eq:rankone} in Lemma~\ref{lem:factor}, the row block
+$\alpha$ of $\mathbf P_{(1)}$ at column $(\beta j,\gamma k,\delta\ell)$ is, for every
+non-identical $(\alpha,\beta,\gamma,\delta)$,
+\[
+u_\alpha v_\beta w_\gamma x_\delta\,A^{(\alpha)}\kappa(a^{(\beta)}_j,a^{(\gamma)}_k,a^{(\delta)}_\ell)
+=u_\alpha\,A^{(\alpha)}\,\Bigl[v_\beta w_\gamma x_\delta\,\kappa(a^{(\beta)}_j,a^{(\gamma)}_k,a^{(\delta)}_\ell)\Bigr].
+\]
+For the identical tuples $(c,c,c,c)$ both $\lambda_{cccc}$ (by convention $0$) and the
+factor $A^{(c)}\kappa(\cdots)$ are immaterial: the only columns involving
+$\lambda_{cccc}$ are in $\Sigma^{(ccc)}$, whose entries at row block $c$ are
+$\lambda_{cccc}A^{(c)}N^{(ccc)}$; since $\col N^{(ccc)}=\bR\kappa_c$ and
+$A^{(c)}\kappa_c=0$ \eqref{eq:annihil}, these entries vanish and the column block
+$\Sigma^{(ccc)}$ equals $(u_\alpha v_cw_cx_c A^{(\alpha)}N^{(ccc)})_\alpha$ exactly
+(the would-be diagonal contribution is $0$).  Thus, defining
+$W\in\bR^{4\times(3n)^3}$ by
+$W_{\cdot,(\beta j,\gamma k,\delta\ell)}=v_\beta w_\gamma x_\delta\,
+\kappa(a^{(\beta)}_j,a^{(\gamma)}_k,a^{(\delta)}_\ell)$ (a single $4$-row matrix,
+independent of $\alpha$) and
+$\widehat A:=\diag\bigl(u_1A^{(1)},\dots,u_nA^{(n)}\bigr)\in\bR^{3n\times4n}$, we get
+\begin{equation}\label{eq:rank4factor}
+\mathbf P_{(1)}=\widehat A\,(\mathbf 1_n\otimes W),\qquad
+\mathbf 1_n\otimes W\in\bR^{4n\times(3n)^3},
+\end{equation}
+the vertical stack of $n$ copies of $W$.  Hence
+$\rank\mathbf P_{(1)}\le\rank(\mathbf 1_n\otimes W)=\rank W\le4$.  By the symmetry of
+\eqref{eq:Qdef} and \eqref{eq:rankone} the same bound holds for every mode.
+\end{proof}
+
+\section{The combinatorial step and main theorem}
+
+\begin{lemma}[From single-direction fibers to a rank-one factorization]\label{lem:combinatorial}
+Let $n\ge5$ and let $\lambda$ satisfy \eqref{eq:support}.  Suppose that for every
+mode $m\in\{1,2,3,4\}$ there is a vector $u^{(m)}\in\bR^n$ such that every
+mode-$m$ fiber of $\lambda$ over a non-identical position is a scalar multiple of
+$u^{(m)}$; precisely, for mode $1$ there are scalars
+$\{s_{\beta\gamma\delta}\}$ with
+\begin{equation}\label{eq:mode1factor}
+\lambda_{\alpha\beta\gamma\delta}=u^{(1)}_\alpha\,s_{\beta\gamma\delta}
+\qquad\text{for every non-identical }(\alpha,\beta,\gamma,\delta),
+\end{equation}
+and analogously for modes $2,3,4$.  Then $\lambda$ is rank-one off the diagonal:
+there exist $u,v,w,x\in(\bR^*)^n$ with \eqref{eq:rankone}.
+\end{lemma}
+
+\begin{proof}
+Write $u:=u^{(1)}$.  First, $u\in(\bR^*)^n$: given any $\alpha$, choose
+$(\beta,\gamma,\delta)$ with $\alpha,\beta,\gamma,\delta$ pairwise distinct (possible
+since $n\ge5$).  Then $(\alpha,\beta,\gamma,\delta)$ is non-identical, so
+$\lambda_{\alpha\beta\gamma\delta}\ne0$; by \eqref{eq:mode1factor} this forces
+$u_\alpha\ne0$ (and $s_{\beta\gamma\delta}\ne0$).
+
+By the mode-$4$ hypothesis there are $x:=u^{(4)}\in\bR^n$ and scalars
+$\{t_{\alpha\beta\gamma}\}$ with
+$\lambda_{\alpha\beta\gamma\delta}=x_\delta\,t_{\alpha\beta\gamma}$ for non-identical
+tuples; as above $x\in(\bR^*)^n$.  Now fix any pair $(\beta,\gamma)$ and consider
+non-identical tuples $(\alpha,\beta,\gamma,\delta)$ with $\alpha$ and $\delta$ free.
+Comparing the two factorizations,
+\begin{equation}\label{eq:compare}
+u_\alpha s_{\beta\gamma\delta}=\lambda_{\alpha\beta\gamma\delta}=x_\delta t_{\alpha\beta\gamma}.
+\end{equation}
+Since $n\ge5$, for fixed $(\beta,\gamma)$ we can pick $\alpha,\delta$ ranging over
+the (at least three) indices outside $\{\beta,\gamma\}$ and distinct from each other,
+keeping all tuples non-identical.  From \eqref{eq:compare},
+$s_{\beta\gamma\delta}/x_\delta=t_{\alpha\beta\gamma}/u_\alpha$ holds for all such
+$\alpha,\delta$ (using $u_\alpha,x_\delta\ne0$); the left side is independent of
+$\alpha$ and the right side independent of $\delta$, so both equal a common quantity
+$r_{\beta\gamma}$ depending only on $(\beta,\gamma)$.  Hence
+$s_{\beta\gamma\delta}=r_{\beta\gamma}x_\delta$, and substituting into
+\eqref{eq:mode1factor},
+\begin{equation}\label{eq:threefactor}
+\lambda_{\alpha\beta\gamma\delta}=u_\alpha\,x_\delta\,r_{\beta\gamma}
+\qquad\text{for all non-identical }(\alpha,\beta,\gamma,\delta).
+\end{equation}
+(The identity \eqref{eq:threefactor} a priori is derived for tuples with
+$\alpha,\delta\notin\{\beta,\gamma\}$; but for \emph{any} non-identical tuple,
+\eqref{eq:mode1factor} gives $\lambda_{\alpha\beta\gamma\delta}=u_\alpha
+s_{\beta\gamma\delta}$ and $s_{\beta\gamma\delta}=r_{\beta\gamma}x_\delta$ was just
+shown for the relevant $(\beta,\gamma,\delta)$, so \eqref{eq:threefactor} holds
+whenever $\lambda_{\alpha\beta\gamma\delta}$ is in the support, i.e.\ for all
+non-identical tuples.)
+
+Finally we factor $r$.  Apply the mode-$2$ and mode-$3$ hypotheses.  By mode $2$
+there are $v:=u^{(2)}\in\bR^n$ and scalars $\{s'_{\alpha\gamma\delta}\}$ with
+$\lambda_{\alpha\beta\gamma\delta}=v_\beta s'_{\alpha\gamma\delta}$ for non-identical
+tuples; comparing with \eqref{eq:threefactor} on tuples with all indices distinct
+(available since $n\ge5$) gives $u_\alpha x_\delta r_{\beta\gamma}=v_\beta
+s'_{\alpha\gamma\delta}$, whence $r_{\beta\gamma}/v_\beta$ is independent of $\beta$;
+call it $q_\gamma$, so $r_{\beta\gamma}=v_\beta q_\gamma$.  As before
+$v\in(\bR^*)^n$.  Likewise the mode-$3$ hypothesis yields $w:=u^{(3)}\in(\bR^*)^n$
+and shows $q_\gamma=w_\gamma\cdot(\text{const})$; absorbing the constant into $u$ (or
+$v$) we obtain $r_{\beta\gamma}=v_\beta w_\gamma$.  Substituting into
+\eqref{eq:threefactor},
+\[
+\lambda_{\alpha\beta\gamma\delta}=u_\alpha v_\beta w_\gamma x_\delta
+\qquad\text{for all non-identical }(\alpha,\beta,\gamma,\delta),
+\]
+with $u,v,w,x\in(\bR^*)^n$.  This is \eqref{eq:rankone}.
+\end{proof}
+
+\begin{theorem}\label{thm:main}
+Let $n\ge5$, let $A^{(1)},\dots,A^{(n)}\in\bR^{3\times4}$ be Zariski-generic, and let
+$\lambda$ satisfy \eqref{eq:support}.  With $\mathbf F$ defined by \eqref{eq:Fdef},
+\[
+\mathbf F(\mathbf P)=0
+\iff
+\lambda\ \text{is rank-one off the diagonal.}
+\]
+Consequently $\mathbf F$ is a polynomial map that does not depend on
+$A^{(1)},\dots,A^{(n)}$, whose coordinate functions have degree $5$ independent of
+$n$, and that satisfies the required equivalence.
+\end{theorem}
+
+\begin{proof}
+The coordinates of $\mathbf F$ are the $5\times5$ minors of the four unfoldings
+$\mathbf P_{(m)}$; their simultaneous vanishing is exactly
+\begin{equation}\label{eq:Frank}
+\mathbf F(\mathbf P)=0\iff\rank\mathbf P_{(m)}\le4\ \text{for all }m\in\{1,2,3,4\}.
+\end{equation}
+
+\textbf{($\Leftarrow$)}  If $\lambda$ is rank-one off the diagonal, then
+Proposition~\ref{prop:upper} gives $\rank\mathbf P_{(m)}\le4$ for all $m$ and all
+$A$; by \eqref{eq:Frank}, $\mathbf F(\mathbf P)=0$.
+
+\textbf{($\Rightarrow$)}  Suppose $\rank\mathbf P_{(m)}\le4$ for all $m$.  We treat
+mode $1$; the other modes are identical by symmetry.
+
+\emph{Step 1 (non-all-equal fibers are proportional).}  If $\rho_1^\ast\ge2$, then
+Proposition~\ref{prop:lower} gives $\rank\mathbf P_{(1)}\ge8>4$, a contradiction.
+Hence $\rho_1^\ast\le1$.  Since $\lambda$ is nonzero at, e.g., $(1,2,3,4)$, the
+fiber $\ell^{(1)}_{234}\ne0$, so $\rho_1^\ast=1$: all mode-$1$ fibers over
+non-all-equal triples are scalar multiples of a single nonzero vector $u\in\bR^n$.
+Equivalently, for every non-all-equal triple $(\beta,\gamma,\delta)$ there is a
+scalar $s_{\beta\gamma\delta}$ with
+\begin{equation}\label{eq:noneq}
+\lambda_{\alpha\beta\gamma\delta}=u_\alpha s_{\beta\gamma\delta}\quad(\forall\alpha)
+\end{equation}
+(no holes occur, since a non-all-equal triple makes every
+$(\alpha,\beta,\gamma,\delta)$ non-identical).  Moreover $u\in(\bR^*)^n$: for any
+$\alpha$ choose distinct $(\beta,\gamma,\delta)$ avoiding $\alpha$; then
+$\lambda_{\alpha\beta\gamma\delta}\ne0$ forces $u_\alpha\ne0$.
+
+\emph{Step 2 (all-equal columns).}  With $\rho_1^\ast\le1$ and $u\neq0$, set
+$V_0=V(u)$, of dimension $4$.  By Lemma~\ref{lem:colblocks},
+$\mathcal C_1=V_0+\sum_c\bR h_c$, where $V(\ell^{(1)}_{\beta\gamma\delta})\subseteq
+V_0$ for every non-all-equal triple by \eqref{eq:noneq} (a scalar multiple of $u$
+gives the same space $V(\cdot)$, or the zero space).  Since
+$\dim\mathcal C_1=\rank\mathbf P_{(1)}\le4=\dim V_0$ and $V_0\subseteq\mathcal C_1$,
+we must have $\mathcal C_1=V_0$, hence $h_c\in V_0$ for every $c$.  By
+Proposition~\ref{prop:alleq} (whose hypothesis $u_\alpha\ne0$ holds by Step 1), this
+yields scalars $t_c$ with
+\begin{equation}\label{eq:neardiag}
+\lambda_{\alpha ccc}=t_c\,u_\alpha\qquad\text{for all }\alpha\ne c .
+\end{equation}
+
+\emph{Step 3 (combine \eqref{eq:noneq} and \eqref{eq:neardiag}).}  We claim every
+mode-$1$ fiber over a non-identical position is a multiple of $u$, i.e.
+\eqref{eq:mode1factor} holds.  For a non-all-equal column triple this is
+\eqref{eq:noneq}.  For an all-equal column triple $(c,c,c)$, the only non-identical
+positions are $(\alpha,c,c,c)$ with $\alpha\ne c$, and \eqref{eq:neardiag} gives
+$\lambda_{\alpha ccc}=t_c u_\alpha=u_\alpha s_{ccc}$ with $s_{ccc}:=t_c$.  Thus
+\eqref{eq:mode1factor} holds with $u^{(1)}=u$ and scalars
+$\{s_{\beta\gamma\delta}\}$.
+
+Running Steps 1--3 for each of the four modes produces vectors
+$u^{(1)},u^{(2)},u^{(3)},u^{(4)}\in(\bR^*)^n$ satisfying the hypothesis of
+Lemma~\ref{lem:combinatorial}.  By that lemma (using $n\ge5$), $\lambda$ is rank-one
+off the diagonal.
+
+\textbf{Properties of $\mathbf F$.}  Each $5\times5$ minor of $\mathbf P_{(m)}$ is a
+degree-$5$ polynomial in the entries of $\mathbf P$, i.e.\ in the supplied numbers
+$\lambda_{\alpha\beta\gamma\delta}Q^{(\alpha\beta\gamma\delta)}$; the minors are
+written purely in terms of these entries and the fixed index layout, with no
+appearance of $A^{(1)},\dots,A^{(n)}$, and the degree $5$ does not depend on $n$.
+This establishes all three required properties of $\mathbf F$.
+\end{proof}
+
+\section{Numerical verification}\label{sec:num}
+
+The following computations (over $\bR$, with random Zariski-generic data) confirm the
+quantitative claims used above:
+\begin{itemize}
+\item Lemma~\ref{lem:diag}: $\|Q^{(cccc)}\|=0$ and $\|A^{(c)}\kappa_c\|=0$ to machine
+precision for all $c$.
+\item Lemma~\ref{lem:Nrank}: $\rank N^{(\beta\gamma\delta)}=4$ for every triple that
+is not all-equal, and $=1$ for all-equal triples (checked over all
+$(\beta,\gamma,\delta)\in[n]^3$, $n\in\{5,6\}$).
+\item Lemma~\ref{lem:colblocks}/Proposition~\ref{prop:lower}: for two linearly
+independent fibers $\ell^1,\ell^2$, $\dim\bigl(V(\ell^1)+V(\ell^2)\bigr)=8$, while
+$\dim V(\ell)=4$ for $\ell\ne0$ and dependent pairs give $\dim=4$.
+\item Proposition~\ref{prop:alleq}: with all non-all-equal mode-$1$ fibers
+proportional to $u$, the set of near-diagonal weight vectors
+$(\lambda_{\alpha ccc})_{\alpha}$ for which $h_c\in V_0$ is exactly
+$\{t_cu_\alpha\ (\alpha\ne c),\ \lambda_{cccc}\ \text{free}\}$, a $2$-parameter
+family (the free diagonal value and the scale $t_c$), as predicted.
+\item Theorem~\ref{thm:main}: across many random $\lambda$ (rank-one; generic;
+rank-one with the near-diagonal entries $\lambda_{\alpha ccc}$ independently
+rescaled), the test ``$\rank\mathbf P_{(m)}\le4$ for all $m$'' agrees \emph{exactly}
+with the independent combinatorial check that $\lambda$ is rank-one off the diagonal
+(all $2\times2$ minors across every mode pair, over supported positions, vanish).
+In particular, the naive criterion ``mode-$m$ unfolding of $\lambda$ has rank
+$\le1$'' is \emph{not} equivalent to rank-one-ness (the diagonal holes make that
+unfolding's rank as large as $n$ for rank-one $\lambda$); only the corrected
+invariant $\rho_m^\ast$, together with the all-equal-column analysis, gives the right
+equivalence.
+\end{itemize}
+
+\section*{Remarks}
+
+The construction is the standard one: $\mathbf P$ is the Tucker tensor
+$\mathbf C\times_1\mathbf A\times_2\mathbf A\times_3\mathbf A\times_4\mathbf A$ with
+core given by the alternating form and factor rows $a^{(\alpha)}_i\in\bR^4$, scaled by
+$\lambda$.  Because every camera contributes only $4$-dimensional row data,
+multilinearity of the determinant collapses each mode unfolding to rank $\le4$ exactly
+when the weights factor.  The one genuine subtlety, overlooked by the naive
+``unfolding of $\lambda$ has rank $1$'' heuristic, is that the forced vanishing of the
+diagonal entries $\lambda_{cccc}$ inflates the rank of the $\lambda$-unfolding; this is
+neutralized by the identity $A^{(c)}\kappa_c=0$, which is precisely why the all-equal
+column blocks place no genuine constraint beyond the rank-one structure of the
+near-diagonal weights.
+\end{document}

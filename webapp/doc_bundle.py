@@ -24,7 +24,7 @@ _FONT_BOLD    = "/usr/share/fonts/truetype/DejaVuSans-Bold.ttf"
 
 _EMOJI_MAP = {
     "✅": r"\checkmark{}",       # ✅
-    "❌": r"$\times$",           # ❌
+    "❌": r"\(\times\)",           # ❌
     "\U0001f7e1": r"(\textasciitilde{})",  # 🟡
     "\U0001f534": r"(!)",            # 🔴
     "\U0001f7e0": r"(!)",            # 🟠
@@ -33,12 +33,12 @@ _EMOJI_MAP = {
     "⚠": r"(!)",                # ⚠
     "\U0001f50d": r"",               # 🔍
     "\U0001f6ab": r"(!)",            # 🚫
-    "★": r"$\star$",            # ★
-    "▶": r"$\triangleright$",   # ▶
-    "▼": r"$\triangledown$",    # ▼
+    "★": r"\(\star\)",            # ★
+    "▶": r"\(\triangleright\)",   # ▶
+    "▼": r"\(\triangledown\)",    # ▼
     "◐": r"(\textopenbullet{})",# ◐
-    "●": r"$\bullet$",          # ●
-    "○": r"$\circ$",            # ○
+    "●": r"\(\bullet\)",          # ●
+    "○": r"\(\circ\)",            # ○
     "\U0001f4dd": r"",               # 📝
     "\U0001f4c4": r"",               # 📄
     "\U0001f4d6": r"",               # 📖
@@ -55,12 +55,12 @@ _EMOJI_MAP = {
     "“": "``",                  # " left double quote
     "”": "''",                  # " right double quote
     "…": r"\ldots{}",           # … ellipsis
-    "→": r"$\rightarrow$",      # → arrow
-    "←": r"$\leftarrow$",       # ← arrow
-    "×": r"$\times$",           # × times
-    "≤": r"$\leq$",             # ≤
-    "≥": r"$\geq$",             # ≥
-    "≠": r"$\neq$",             # ≠
+    "→": r"\(\rightarrow\)",      # → arrow
+    "←": r"\(\leftarrow\)",       # ← arrow
+    "×": r"\(\times\)",           # × times
+    "≤": r"\(\leq\)",             # ≤
+    "≥": r"\(\geq\)",             # ≥
+    "≠": r"\(\neq\)",             # ≠
 }
 
 
@@ -96,10 +96,10 @@ def _inline(s: str) -> str:
     # 1c. Auto-wrap bare math tokens (q_1, q_m, c_{n}, x^2, H^{(i)}) so subscripts
     #     and superscripts render instead of being escaped to a literal "q_1".
     def _save_auto(mm):
-        math_store.append("$" + mm.group(0) + "$")
+        math_store.append("\\(" + mm.group(0) + "\\)")
         return f"\x00M{len(math_store)-1}\x00"
-    _SUB = r"_(?:\{[^{}]*\}|[A-Za-z0-9]+)"
-    _SUP = r"\^(?:\{[^{}]*\}|\([^)]*\)|[A-Za-z0-9]+)"
+    _SUB = r"_(?:\{(?:[^{}]|\{[^{}]*\})*\}|[A-Za-z0-9]+)"
+    _SUP = r"\^(?:\{(?:[^{}]|\{[^{}]*\})*\}|\([^)]*\)|[A-Za-z0-9]+)"
     s = re.sub(r"(?<![\\\w$\x00/])([A-Za-z]\w*(?:" + _SUB + r")+)", _save_auto, s)
     s = re.sub(r"(?<![\\\w$\x00/])([A-Za-z]\w*(?:" + _SUP + r")+)", _save_auto, s)
 
@@ -141,12 +141,47 @@ def _escape_specials(s: str) -> str:
              .replace("%", r"\%")
              .replace("_", r"\_")
              .replace("~", r"\textasciitilde{}")
-             .replace("^", r"\textasciicircum{}"))
+             .replace("^", r"\textasciicircum{}")
+             # Any $ reaching here is unmatched (balanced $...$ math was protected
+             # earlier); it is a literal dollar (e.g. "$3.78") — escape it.
+             .replace("$", r"\$"))
 
 
 def _md_to_tex(text: str) -> str:
     """Convert markdown structural markup to LaTeX. Preserves existing LaTeX math."""
+    # No bibliography is compiled, so \cite/\ref render as "[?]"/"??". Clean these
+    # globally (here, not just in _inline) so raw-LaTeX equation lines — which are
+    # passed through verbatim below — are also covered.
+    text = re.sub(r"\\cite[a-zA-Z]*\s*(?:\[[^\]]*\])?\{([^}]*)\}",
+                  lambda m: "[" + m.group(1).replace("_", " ") + "]", text)
+    text = re.sub(r"\\(?:eqref|ref|autoref|cref|Cref)\{[^}]*\}", "", text)
+    text = re.sub(r"\\label\{[^}]*\}", "", text)
     lines = text.splitlines()
+
+    # Merge consecutive lines where an inline $...$ spans a line break (the line
+    # would otherwise carry an odd $ count and leak math into following prose).
+    # Skipped for blank lines, display delimiters, and list/heading/code structure;
+    # capped so a stray literal $ can't swallow the rest of the document.
+    _merged = []; _buf = None; _span = 0
+    for _ln in lines:
+        if _buf is not None:
+            if _ln.strip() == "" or _span >= 6:
+                _merged.append(_buf); _buf = None; _span = 0
+                _merged.append(_ln); continue
+            _buf = _buf + " " + _ln; _span += 1
+            if _buf.count("$") % 2 == 0:
+                _merged.append(_buf); _buf = None; _span = 0
+            continue
+        _st = _ln.strip()
+        if (_ln.count("$") % 2 == 1 and _st not in ("$$", "\\[")
+                and not _st.startswith(("#", "-", "*", "|", "```", "$$"))
+                and "\\begin{" not in _ln and "\\end{" not in _ln):
+            _buf = _ln; _span = 0
+        else:
+            _merged.append(_ln)
+    if _buf is not None:
+        _merged.append(_buf)
+    lines = _merged
     out: list[str] = []
     in_verbatim = False
     verbatim_buf: list[str] = []
@@ -184,6 +219,38 @@ def _md_to_tex(text: str) -> str:
         if in_verbatim:
             verbatim_buf.append(raw)
             i += 1
+            continue
+
+        # Raw LaTeX math environment (problem statements embed these without $$);
+        # pass through verbatim so it compiles as real display math.
+        _menv = re.match(r"\s*\\begin\{(equation|align|aligned|gather|multline|displaymath|eqnarray|array)\*?\}", raw)
+        if _menv:
+            _flush_list()
+            # One-liner \begin{equation} ... \end{equation}: emit as-is, do NOT
+            # scan forward (that would swallow following prose until the next \end).
+            if re.search(r"\\end\{" + _menv.group(1) + r"\*?\}", raw):
+                out.append(raw); i += 1; continue
+            _blk = [raw]; i += 1
+            while i < len(lines) and not re.search(r"\\end\{" + _menv.group(1) + r"\*?\}", lines[i]):
+                _blk.append(lines[i]); i += 1
+            if i < len(lines):
+                _blk.append(lines[i]); i += 1
+            out.append("\n".join(_blk))
+            continue
+
+        # Multi-line display math: $$ ... $$  or  \[ ... \]  (problem statements
+        # write these across several lines). Consume the whole block verbatim so it
+        # stays one math block instead of being corrupted line-by-line.
+        _disp = raw.strip()
+        if _disp in ("$$", "\\["):
+            _closer = "$$" if _disp == "$$" else "\\]"
+            _flush_list()
+            _dblk = [raw]; i += 1
+            while i < len(lines) and lines[i].strip() != _closer:
+                _dblk.append(lines[i]); i += 1
+            if i < len(lines):
+                _dblk.append(lines[i]); i += 1
+            out.append("\n".join(_dblk))
             continue
 
         # Markdown table
@@ -262,7 +329,21 @@ def _md_to_tex(text: str) -> str:
 
         # Normal paragraph line
         _flush_list()
-        out.append(_inline(raw))
+        stripped = raw.strip()
+        _fmt = re.match(r"\\(textbf|textit|texttt|emph|item|section|subsection|subsubsection|paragraph|noindent|vspace|hrule|rule|hline|begin|end)\b", stripped)
+        # A raw LaTeX equation line (the problem statement embeds these without $):
+        # starts with a math group/command, or a backslash-command carrying math.
+        _looks_math = (
+            stripped.startswith(("{\\", "\\[", "$$"))
+            or (stripped.startswith("\\") and not _fmt
+                and re.search(r"[_^=]|\\ldots|\\cdots|\\sum|\\frac|\\prod|\\int|\\Hilb|\\mathrm|\\langle", stripped))
+        )
+        if stripped.startswith(("\\[", "$$")):
+            out.append(stripped)
+        elif _looks_math:
+            out.append(r"\[" + stripped + r"\]")
+        else:
+            out.append(_inline(raw))
         i += 1
 
     _flush_list()

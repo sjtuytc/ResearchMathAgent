@@ -144,6 +144,82 @@ ResearchMathAgent/
 
 ---
 
+## Codebase Architecture
+
+One-sentence description of every Python module in the project.
+
+### `rma/` — CLI entry points
+
+| File | Role |
+|------|------|
+| `cli.py` | Top-level `rma` argument parser; dispatches to `solve`, `push`, `memory`, `doctor` subcommands. |
+| `push.py` | `rma push` — runs push-forward (issues + meetings + documents), refreshes concepts/insights/proof-eval, then builds the master context-report PDF. |
+| `solve.py` | `rma solve` — runs a full solver agent on one problem: parse → propose → verify → refine → consolidate. |
+| `models.py` | Model name constants and aliases used across CLI flags and API calls. |
+| `memory.py` | `rma memory` — prints or clears the push-forward state file. |
+| `doctor.py` | `rma doctor` — environment health check: Python version, tectonic, API keys, Vertex credentials. |
+| `__main__.py` | `python -m rma` entry point; delegates to `cli.py`. |
+
+### `webapp/` — FastAPI server
+
+| File | Role |
+|------|------|
+| `server.py` | All API endpoints for the research web app (proof CRUD, PDF compile, issues, meetings, insights, context reports, literature). |
+| `agent.py` | Base agent class and prompt-execution loop shared by all agent types (critic, solver, meeting, document). |
+| `claude_code.py` | Claude Code CLI driver — runs the `claude` binary for subscription-based (Pro/Max) LLM calls. |
+| `vertex.py` | Vertex AI client setup: ADC authentication, project/region config, and the low-level `complete()` call. |
+| `vertex_llm.py` | Thin wrapper around `vertex.py` that handles adaptive thinking mode, retries, and error normalization. |
+| `context_report.py` | Builds book-style LaTeX context reports per problem (Problem → Evaluation → Best Proof → Meetings → Issues → Insights) and compiles them to PDF via tectonic; also builds the combined master PDF for `rma push`. |
+| `proof_eval.py` | LLM rubric evaluation of the best proof: answer accuracy, logical correctness, proof completeness, proof clarity — stored in `documents/questions/<pid>/proof_eval.json`. |
+| `insight_agents.py` | LLM agents that generate system-level, dataset-level, and per-question insight summaries from current project state. |
+| `insight_loop.py` | Background polling loop that periodically regenerates insight summaries. |
+| `insights.py` | Load/save insight JSON files from `webapp/insights/<level>/`. |
+| `issue_agents.py` | Critic agent (discovers proof gaps → opens issues) and solver agent (resolves open issues via LLM proof-writing). |
+| `issue_loop.py` | Background loop that auto-runs the issue solver on open issues while the server is running. |
+| `issue_pdf.py` | Compiles a single issue thread or all issues for a problem into a PDF. |
+| `issues.py` | CRUD for issue JSON files under `webapp/issues/<dataset>/<pid>/`. |
+| `meet_agents.py` | Mathematician-persona discussion agents that run multi-round research meetings and produce action plans. |
+| `meet.py` | CRUD for meeting rooms stored under `documents/questions/<pid>/meets/`. |
+| `meet_pdf.py` | Compiles a meeting room's notes (plan + discussion transcript) into a PDF. |
+| `push_forward.py` | Orchestrator: for each problem runs issue-discovery → solver → meeting → document update; called by `rma push` and the nightly cron. |
+| `push_forward_cli.py` | CLI wrapper so `push_forward` can run outside uvicorn's auto-reload process. |
+| `concepts.py` | Load/save/generate per-problem concept lists (core + background) from problem LaTeX. |
+| `concepts_pdf.py` | Compiles a problem's concept list into a standalone PDF. |
+| `proofs.py` | Load/store best-proof records; `get_best_proof`, `consolidate_best`, `compile_best_pdf`. |
+| `proof_history.py` | Load and summarize the version history of proof attempts for a problem. |
+| `problem_pdf.py` | Compiles a raw problem `.tex` file (with shared preamble) into a standalone PDF. |
+| `problem_export.py` | Export problem statements in various formats (JSON, plain text, LaTeX). |
+| `latex.py` | tectonic / pdflatex wrapper: `compile_tex`, `compile_problem_pdf`, `safe_pdf_name`, PDF directory helpers. |
+| `dataset_store.py` | Read/query problem metadata from `data/datasets/<slug>/` (titles, statements, solution status). |
+| `documents.py` | List and read document files under `documents/questions/<pid>/` (overview, strategies, timeline, etc.). |
+| `rich_documents.py` | Regenerate question overview/progress documents with AI-written content after each push. |
+| `doc_bundle.py` | Build the combined "bundle.pdf" from all documents for a question or dataset. |
+| `literature.py` | Search, download, and seed the global paper library for a problem's area. |
+| `hero.py` | Generates the overview/strategy document for a problem (the "hero" document shown in the Documents tab). |
+| `runs.py` | Track experiment run metadata: start time, model name, experiment name, completion status. |
+| `smoke_pipeline.py` | External eval pipeline: `POST /api/solve` → async proof generation + LLM rubric evaluation. |
+| `solvability_eval.py` | Load/save per-problem solvability scores produced by the filter app. |
+| `solve_finalize.py` | Post-solve cleanup: consolidate proof files, update best-proof record, write summary. |
+| `todos.py` | Per-problem TODO list CRUD (stored in `documents/questions/<pid>/todos.json`). |
+| `token_log.py` | Track and display LLM token usage and cost per session, with provider attribution. |
+| `tools.py` | Tool definitions (file read/write/search/run) available to claude_code agents during solving. |
+| `github_issues.py` | GitHub Issues REST API wrapper for agent-coordinated issue tracking on real GitHub repositories. |
+| `devlog.py` | Append timestamped entries to `documents/devlog.jsonl` for session and event history. |
+| `daily.py` | Scheduled daily tasks — currently wraps push-forward as a cron-style target. |
+| `seed_fp2.py` | One-shot importer: seeds the `first_proof_2` dataset from the GitHub `1stproof/batch-2` repository. |
+| `prefix.py` | `API_PREFIX` constant (`/rmac/solve`) shared by modules that generate absolute API URLs. |
+| `__main__.py` | `python -m webapp` entry point: starts uvicorn with `HOST`/`PORT` env vars. |
+
+### Root-level scripts
+
+| File | Role |
+|------|------|
+| `proxy_server.py` | Lightweight reverse proxy: routes `/rmac/solve/*` → solve app on :8011 and `/rmac/filter/*` → filter app on :8012. |
+| `run_fp2_init.py` | One-shot script that seeds the `first_proof_2` dataset and initializes per-problem issue/insight directories. |
+| `run_pf_standalone.py` | Alias/wrapper for running push-forward outside the uvicorn process (keeps logs separate from the server). |
+
+---
+
 ## CLI
 
 Install once for the `rma` command:

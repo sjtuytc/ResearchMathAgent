@@ -843,9 +843,18 @@ def context_report_index(dataset: str = Query(None)) -> JSONResponse:
         res_n = sum(1 for i in issues if i.get("status") == "resolved")
         emoji, status = _status_label(pid, issues, best)
         prof = _profile(pid)
+        _title = prof.get("title") or ""
+        if not _title:
+            try:
+                from .dataset_store import get_problem as _ds_gp
+                _p = _ds_gp(ds, pid) or {}
+                _title = _p.get("title") or ""
+            except Exception:
+                pass
+        _title = _title or pid.upper()
         items.append({
             "scope": pid,
-            "title": prof.get("title", pid.upper()),
+            "title": _title,
             "area": prof.get("area", ""),
             "status": status,
             "status_emoji": emoji,
@@ -960,13 +969,18 @@ def compile_pdf(payload: dict = Body(...)) -> JSONResponse:
     return JSONResponse(result)
 
 
-@app.get("/api/pdf/{name}")
+@app.api_route("/api/pdf/{name}", methods=["GET", "HEAD"])
 def get_pdf(name: str):
     safe = safe_pdf_name(name)
     path = pdf_dir(REPO_ROOT) / safe
     if not path.is_file():
         return JSONResponse({"error": "not found"}, status_code=404)
-    return FileResponse(path, media_type="application/pdf", filename=safe)
+    # HEAD/GET both supported: HEAD lets the UI read Content-Length to decide
+    # whether a PDF is small enough to render inline vs. offer as a download.
+    # Inline so the browser renders it in-page (iframe/pdf viewer); the UI's
+    # Download links use the <a download> attribute for manual saving.
+    return FileResponse(path, media_type="application/pdf",
+                        headers={"Content-Disposition": f'inline; filename="{safe}"'})
 
 
 @app.get("/api/proof-pdf/{exp_name}/{problem_id}")
