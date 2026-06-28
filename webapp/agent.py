@@ -21,7 +21,6 @@ from typing import Iterator
 import anthropic
 
 from .tools import TOOL_DEFINITIONS, ToolContext, ToolError, execute_tool, seed_workspace
-from .vertex import estimate_vertex_cost_usd, vertex_adc_project, vertex_region
 
 DEFAULT_MODEL = "claude-opus-4-8"
 MAX_TOKENS = 32_000
@@ -90,8 +89,7 @@ class AgentConfig:
     workspace: Path | None = None
     repo_root: Path | None = None
     thinking: bool = True
-    provider: str = "vertex"
-    gcp_project: str = ""
+    provider: str = "claude-code"
     system_prompt: str | None = None
     initial_message: str | None = None
     status_label: str = ""
@@ -369,143 +367,6 @@ def run_agent(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
 
     yield AgentEvent("error", {"message": f"Stopped after {MAX_ITERATIONS} turns without finishing."})
     yield from _finish_turn(ctx, "max_iterations")
-
-
-def run_agent_vertex(cfg: AgentConfig, handle=None) -> Iterator[AgentEvent]:
-    """Same as run_agent() but authenticates via Google Cloud Application Default Credentials.
-
-    Set up ADC first: bash <(curl -sSL https://storage.googleapis.com/cloud-samples-data/adc/setup_adc.sh)
-    Then set GOOGLE_CLOUD_PROJECT (required) and GOOGLE_CLOUD_REGION (default: global)."""
-    try:
-        from anthropic import AnthropicVertex
-    except ImportError:
-        yield AgentEvent("error", {"message": "anthropic[vertex] is not installed. Run: pip install 'anthropic[vertex]'"})
-        yield AgentEvent("done", {"reason": "error"})
-        return
-
-    project_id = (cfg.gcp_project or vertex_adc_project()).strip()
-    if not project_id:
-        yield AgentEvent("error", {"message": "GCP project not set. Enter your Project ID in the UI, set GOOGLE_CLOUD_PROJECT on the server, or configure ADC with a quota project."})
-        yield AgentEvent("done", {"reason": "error"})
-        return
-
-    region = vertex_region()
-
-    repo_root = cfg.repo_root or Path(__file__).resolve().parents[1]
-    workspace = cfg.workspace or (repo_root / "webapp" / ".runs" / f"{cfg.problem_id}_{int(time.time())}")
-    seed_workspace(repo_root, cfg.problem_id, workspace)
-    ctx = ToolContext(repo_root=repo_root, workspace=workspace)
-
-    client = AnthropicVertex(region=region, project_id=project_id)
-
-    system_text = cfg.system_prompt or SYSTEM_PROMPT
-    system = [{"type": "text", "text": system_text, "cache_control": {"type": "ephemeral"}}]
-    create_kwargs: dict = {
-        "model": cfg.model or DEFAULT_MODEL,
-        "max_tokens": MAX_TOKENS,
-        "system": system,
-        "tools": TOOL_DEFINITIONS,
-    }
-    if cfg.thinking:
-        # Opus 4.8 uses adaptive thinking; the old {"type":"enabled","budget_tokens":N}
-        # form is rejected with a 400. effort=high maximizes reasoning depth.
-        create_kwargs["thinking"] = {"type": "adaptive"}
-        create_kwargs["output_config"] = {"effort": "high"}
-
-    if cfg.initial_message:
-        first_msg_content: list[dict] | str = cfg.initial_message
-    else:
-        first_msg_content = _build_first_message_content(cfg)
-    messages: list[dict] = [{"role": "user", "content": first_msg_content}]
-
-    status_data: dict = {
-        "state": "running",
-        "model": cfg.model,
-        "provider": "vertex",
-        "workspace": str(workspace.relative_to(repo_root)) if _within(workspace, repo_root) else str(workspace),
-    }
-    if cfg.status_label:
-        status_data["label"] = cfg.status_label
-    yield AgentEvent("status", status_data)
-
-    totals = {"input_tokens": 0, "output_tokens": 0,
-              "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}
-
-    max_iter = cfg.max_iterations or MAX_ITERATIONS
-    deadline = time.time() + cfg.max_wall_seconds if cfg.max_wall_seconds else None
-
-    for iteration in range(1, max_iter + 1):
-        if deadline is not None and time.time() > deadline:
-            yield AgentEvent("error", {"message": "Agent exceeded time limit."})
-            yield from _finish_turn(ctx, "timeout")
-            return
-        if _cancelled(handle):
-            yield from _finish_turn(ctx, "stopped")
-            return
-        yield AgentEvent("turn_start", {"iteration": iteration})
-        try:
-            final_message, stream_events, cancelled = _stream_turn(
-                client, create_kwargs, messages, handle
-            )
-        except anthropic.APIStatusError as exc:
-            yield AgentEvent("error", {"message": f"Vertex AI API error {exc.status_code}: {exc.message}"})
-            yield from _finish_turn(ctx, "error")
-            return
-        except anthropic.APIError as exc:
-            yield AgentEvent("error", {"message": f"Vertex AI API error: {exc}"})
-            yield from _finish_turn(ctx, "error")
-            return
-
-        yield from stream_events
-        if cancelled or final_message is None:
-            yield from _finish_turn(ctx, "stopped")
-            return
-
-        usage = getattr(final_message, "usage", None)
-        if usage is not None:
-            for k in totals:
-                totals[k] += getattr(usage, k, 0) or 0
-            yield AgentEvent("usage", _vertex_usage_payload(totals, cfg.model))
-
-        messages.append({"role": "assistant", "content": final_message.content})
-
-        tool_uses = [b for b in final_message.content if getattr(b, "type", None) == "tool_use"]
-        if final_message.stop_reason != "tool_use" or not tool_uses:
-            yield from _finish_turn(ctx, final_message.stop_reason or "end_turn")
-            return
-
-        if _cancelled(handle):
-            yield from _finish_turn(ctx, "stopped")
-            return
-
-        tool_results = []
-        for block in tool_uses:
-            yield AgentEvent("tool_use", {"id": block.id, "name": block.name, "input": block.input})
-            output, is_error = _run_tool(ctx, block.name, block.input)
-            yield AgentEvent("tool_result", {"id": block.id, "name": block.name,
-                                             "output": output, "is_error": is_error})
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": output,
-                "is_error": is_error,
-            })
-        messages.append({"role": "user", "content": tool_results})
-
-    yield AgentEvent("error", {"message": f"Stopped after {max_iter} turns without finishing."})
-    yield from _finish_turn(ctx, "max_iterations")
-
-
-def _vertex_usage_payload(totals: dict, model: str) -> dict:
-    payload = dict(totals)
-    payload["cost_usd"] = estimate_vertex_cost_usd(
-        model,
-        totals.get("input_tokens", 0),
-        totals.get("output_tokens", 0),
-        cache_read_input_tokens=totals.get("cache_read_input_tokens", 0),
-        cache_creation_input_tokens=totals.get("cache_creation_input_tokens", 0),
-    )
-    return payload
 
 
 def _cancelled(handle) -> bool:

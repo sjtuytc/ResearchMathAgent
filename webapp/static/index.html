@@ -13,12 +13,19 @@
    it to all fetch / EventSource / PDF URLs. No-op when served at root. */
 const API_PREFIX = (location.pathname.match(/^(.*\/rmac\/solve)(?:\/|$)/) || ["",""])[1];
 function apiU(u){ return (typeof u==="string" && u.startsWith("/api/")) ? API_PREFIX+u : u; }
+/* Append the agent key (injected by the server into window.RMA_AGENT_KEY) to the
+   expensive agent/solve endpoints. EventSource can't set headers, so it rides as a
+   query param. Blocks anonymous crawlers/bots hitting these URLs directly. */
+function keyU(u){
+  const k = window.RMA_AGENT_KEY;
+  if(!k || typeof u!=="string" || !/\/api\/(agent\/|solve(\?|$))/.test(u)) return u;
+  return u + (u.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(k);
+}
 (function(){
-  if(!API_PREFIX) return;            // served at root — nothing to rewrite
   const of = window.fetch.bind(window);
-  window.fetch = (u,o)=> of(apiU(u), o);
+  window.fetch = (u,o)=> of(keyU(apiU(u)), o);
   const ES = window.EventSource;
-  if(ES){ function PES(u,c){ return new ES(apiU(u), c); } PES.prototype = ES.prototype; window.EventSource = PES; }
+  if(ES){ function PES(u,c){ return new ES(keyU(apiU(u)), c); } PES.prototype = ES.prototype; window.EventSource = PES; }
 })();
 MathJax = {
   tex: {
@@ -350,7 +357,7 @@ MathJax = {
           <button id="pf-all-force-btn" class="btn-sec" style="font-size:11px;padding:3px 10px" title="Force re-run even if already ran today">Force re-run</button>
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-          Runs once per day across <strong>all 10 problems</strong>: discover proof gaps → resolve open issues → create expert mathematician meetings → run a round of AI discussion. Uses Vertex AI.
+          Runs once per day across <strong>all 10 problems</strong>: discover proof gaps → resolve open issues → create expert mathematician meetings → run a round of AI discussion. Uses your Claude subscription.
         </div>
         <div id="pf-all-progress" style="display:none">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -826,24 +833,17 @@ MathJax = {
           <label class="inline">Model
             <input type="text" id="model" style="width:170px" />
           </label>
-          <label class="inline" id="gcp-project-wrap" style="display:none">GCP Project
-            <input type="text" id="gcp-project" style="width:160px" placeholder="your-project-id" />
-          </label>
           <label class="inline"><input type="checkbox" id="thinking" checked /> show thinking</label>
           <button class="btn-pri" id="run">Push Forward ▶</button>
           <button class="btn-sec" id="stop" style="display:none">Stop</button>
           <span class="usage" id="usage"></span>
         </div>
         <div id="prov-note" class="muted" style="margin-bottom:10px;font-size:12px"></div>
-        <div id="vertex-billing-bar" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:rgba(52,168,83,.08);border:1px solid rgba(52,168,83,.28);border-radius:7px;font-size:12px">
-          <span style="font-weight:600;color:#3fb950">GCloud</span>
-          <span id="vertex-billing-project" style="color:var(--muted)"></span>
-          <span id="vertex-billing-totals" style="color:var(--text)"></span>
-          <span id="vertex-billing-today" style="color:var(--muted)"></span>
-          <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-            <a id="vertex-billing-link" href="#" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-size:11px">GCP billing ↗</a>
-            <a id="vertex-usage-link" href="#" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-size:11px">Vertex usage ↗</a>
-          </span>
+        <div id="usage-bar" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:rgba(52,168,83,.08);border:1px solid rgba(52,168,83,.28);border-radius:7px;font-size:12px">
+          <span style="font-weight:600;color:#3fb950">Usage</span>
+          <span id="usage-project" style="color:var(--muted)"></span>
+          <span id="usage-totals" style="color:var(--text)"></span>
+          <span id="usage-today" style="color:var(--muted)"></span>
         </div>
         <div class="tok-chart-wrap" id="tok-chart-wrap">
           <canvas id="tok-chart" height="72"></canvas>
@@ -1379,7 +1379,7 @@ if(typeof pdfjsLib!=="undefined"){
   pdfjsLib.GlobalWorkerOptions.workerSrc=
     "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 }
-let problems=[], selected=null, selectedDataset="first_proof_2", vertexCfg={available:false,project:"",region:"global",model:"claude-opus-4-8"}, vertexUsage=null, es=null, runId=null;
+let problems=[], selected=null, selectedDataset="first_proof_2", usageStats=null, es=null, runId=null;
 let cur={text:null,think:null}; const toolCards={}; let lastArtifact=null;
 let tokenHistory=[], curTurnSep=null, curAssistantCard=null;
 let allDatasets=[];
@@ -1686,23 +1686,18 @@ async function init(){
       const r=await fetchWithTimeout("/api/capabilities",5000);
       if(r.ok){
         const d=await r.json();
-        vertexCfg=d.vertex||vertexCfg;
         claudeCodeAvailable=!!d.claude_code;
       }
     }catch(_){}
     const prov=$("provider"); prov.innerHTML="";
-    // Default to the Claude AI subscription (Claude Code); Vertex is opt-in only.
+    // The Claude AI subscription (Claude Code) is the default and only managed backend.
     if(claudeCodeAvailable){
       prov.appendChild(new Option("Claude AI subscription (Claude Code)","claude-code"));
     }
-    prov.appendChild(new Option(
-      vertexCfg.available ? "Google Cloud (Vertex AI)" : "Google Cloud (Vertex AI — not configured)",
-      "vertex"));
     prov.appendChild(new Option("Anthropic API (per-token)","api"));
-    prov.value = claudeCodeAvailable ? "claude-code" : "vertex";
-    if(vertexCfg.project) $("gcp-project").value=vertexCfg.project;
+    prov.value = claudeCodeAvailable ? "claude-code" : "api";
     prov.onchange=onProviderChange; onProviderChange();
-    await refreshVertexUsage();
+    await refreshUsage();
   }catch(e){
     $("qlist").innerHTML=`<div style="padding:10px;color:var(--red);font-size:12px">Failed to load:<br>${esc(String(e))}<br><br>Is the server running?</div>`;
     setStatus("server error","err");
@@ -1711,22 +1706,13 @@ async function init(){
 
 function onProviderChange(){
   const p=$("provider").value;
-  $("model").value = vertexCfg.model||"claude-opus-4-8";
-  const isVertex = p==="vertex";
-  $("gcp-project-wrap").style.display = isVertex ? "" : "none";
-  const autoProject = vertexCfg.project && $("gcp-project").value.trim()===vertexCfg.project;
+  $("model").value = "claude-opus-4-8";
   if(p==="claude-code"){
-    $("prov-note").innerHTML = "Default provider: <strong>your Claude AI subscription</strong> (Claude Code CLI, billed to your Pro/Max plan — no Vertex / API credits used). Select Vertex above only if you explicitly want Google Cloud.";
-  } else if(isVertex){
-    $("prov-note").innerHTML = vertexCfg.available
-      ? (autoProject
-        ? `Google Cloud Vertex AI (project <code>${esc(vertexCfg.project)}</code>, region <code>${esc(vertexCfg.region||"global")}</code>). Model: <code>${esc(vertexCfg.model||"claude-opus-4-8")}</code>. <strong>Bills Google Cloud credits.</strong>`
-        : "Claude on Google Cloud Vertex AI via ADC. Enter your GCP Project ID above, or set <code>GOOGLE_CLOUD_PROJECT</code> on the server.")
-      : `Vertex AI not configured: ${esc(vertexCfg.error||"check ADC credentials")}`;
+    $("prov-note").innerHTML = "Default provider: <strong>your Claude AI subscription</strong> (Claude Code CLI, billed to your Pro/Max plan — no per-token API credits used).";
   } else {
     $("prov-note").innerHTML = "Anthropic Messages API (requires <code>ANTHROPIC_API_KEY</code>, billed per token).";
   }
-  renderVertexBillingBar();
+  renderUsageBar();
 }
 
 function fmtUsd(n){
@@ -1736,26 +1722,19 @@ function fmtUsd(n){
   return `$${v.toFixed(4)}`;
 }
 
-function renderVertexBillingBar(){
-  const bar=$("vertex-billing-bar");
+function renderUsageBar(){
+  const bar=$("usage-bar");
   if(!bar) return;
-  const show=vertexCfg.available || ($("provider")&&$("provider").value==="vertex");
+  const u=usageStats||{};
+  const show=(u.total_runs||0)>0;
   bar.style.display=show?"flex":"none";
   if(!show) return;
-  const u=vertexUsage||{};
-  const project=u.project||vertexCfg.project||($("gcp-project")&&$("gcp-project").value.trim())||"—";
-  $("vertex-billing-project").textContent=`project ${project}`;
-  const est=u.estimated?"est. ":"";
-  $("vertex-billing-totals").innerHTML=
-    `${est}spent <b>${fmtUsd(u.total_cost)}</b> total · `+
+  $("usage-project").textContent="";
+  $("usage-totals").innerHTML=
     `<b>${(u.total_in||0).toLocaleString()}</b> in / <b>${(u.total_out||0).toLocaleString()}</b> out · `+
     `${u.total_runs||0} runs`;
-  $("vertex-billing-today").textContent=
-    `today ${fmtUsd(u.today_cost)} · ${(u.today_in||0).toLocaleString()} in / ${(u.today_out||0).toLocaleString()} out`;
-  const urls=u.urls||{};
-  if(urls.billing) $("vertex-billing-link").href=urls.billing;
-  if(urls.vertex_usage) $("vertex-usage-link").href=urls.vertex_usage;
-  bar.title="Estimated from webapp agent runs. Open GCP billing for full project charges (all services).";
+  $("usage-today").textContent=
+    `today ${(u.today_in||0).toLocaleString()} in / ${(u.today_out||0).toLocaleString()} out`;
 }
 
 async function loadAgentStatus(pid){
@@ -1812,11 +1791,10 @@ async function loadAgentStatus(pid){
   }catch(_){}
 }
 
-async function refreshVertexUsage(){
-  if(!vertexCfg.available && !($("provider")&&$("provider").value==="vertex")) return;
+async function refreshUsage(){
   try{
-    const r=await fetch("/api/vertex/usage");
-    if(r.ok){ vertexUsage=await r.json(); renderVertexBillingBar(); }
+    const r=await fetch("/api/usage");
+    if(r.ok){ usageStats=await r.json(); renderUsageBar(); }
   }catch(_){}
 }
 
@@ -2582,7 +2560,7 @@ function setTab(name){
   if(name==="devlog"){ loadDevLog(); }
   if(name==="meet"){ if(q||selected) loadMeetRooms(q||selected); }
   if(name==="insights"){ loadInsights(); }
-  if(name==="agent"){ refreshVertexUsage(); if(selected) loadAgentStatus(selected); }
+  if(name==="agent"){ refreshUsage(); if(selected) loadAgentStatus(selected); }
   if(name==="issue"){ loadIssues(); }
   if(name==="hero"){ heroRefreshDiagram(); }
   if(name==="export"){ initExportTab(); }
@@ -3894,18 +3872,10 @@ function start(){
     return;
   }
   const provider=$("provider").value, model=$("model").value.trim(), thinking=$("thinking").checked?1:0;
-  const gcpProject=$("gcp-project").value.trim() || (vertexCfg.project||"");
-  if(provider==="vertex" && !gcpProject){
-    $("a-empty").style.display="block";
-    $("a-empty").textContent="Enter your GCP Project ID in the field above before running Vertex AI.";
-    setStatus("GCP project required");
-    return;
-  }
   runId=newRunId();
   $("run").style.display="none"; $("stop").style.display="inline-block"; setStatus("connecting…","run");
   let q=`/api/solve?problem=${encodeURIComponent(selected)}&provider=${encodeURIComponent(provider)}`
         +`&model=${encodeURIComponent(model)}&thinking=${thinking}&run_id=${encodeURIComponent(runId)}`;
-  if(gcpProject) q+=`&gcp_project=${encodeURIComponent(gcpProject)}`;
   es=new EventSource(q);
   es.onmessage=(e)=>handle(JSON.parse(e.data));
   es.onerror=()=>{setStatus("connection closed");cancelBackend();finish("disconnected");};
@@ -3929,7 +3899,7 @@ function finish(reason){
   const ok=["end_turn","stop_sequence","done",undefined].includes(reason);
   setStatus(ok?"done":String(reason),ok?"ok":"err");
   clearTimeout(_tsTimer); typeset($("stream"));
-  refreshVertexUsage();
+  refreshUsage();
 }
 $("run").onclick=start;
 $("stop").onclick=stop;

@@ -19,8 +19,6 @@ echo "[solve-dev] Solve app on 127.0.0.1:${PORT}"
 while true; do
     echo "[solve-dev $(date '+%Y-%m-%d %H:%M:%S')] launching…"
     PYTHONPATH="${HOME}/.local/lib/python3.12/site-packages${PYTHONPATH:+:$PYTHONPATH}" \
-    GOOGLE_CLOUD_PROJECT="nairr-260096-569948" \
-    GOOGLE_CLOUD_REGION="global" \
     "$PYTHON" -m uvicorn webapp.server:app \
         --host 127.0.0.1 \
         --port "$PORT" \

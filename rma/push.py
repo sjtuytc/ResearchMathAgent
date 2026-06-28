@@ -77,13 +77,9 @@ def run_push(args) -> int:
     os.environ["RMA_PROVIDER"] = provider
     if provider == "claude-code":
         # Subscription path: drive the `claude` CLI; strip any API key so it uses
-        # the Pro/Max OAuth, and do NOT touch Vertex at all.
+        # the Pro/Max OAuth credential.
         os.environ.pop("ANTHROPIC_API_KEY", None)
         os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
-    else:
-        os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "nairr-260096-569948")
-        if os.environ.get("GOOGLE_CLOUD_REGION", "") in ("", "us-east5"):
-            os.environ["GOOGLE_CLOUD_REGION"] = "global"
 
     repo = _find_repo_root(args)
     sys.path.insert(0, str(repo))

@@ -117,7 +117,7 @@ def evaluate_proof(repo_root: Path, problem_id: str, dataset: str = "first_proof
     prompt = _EVAL_PROMPT.format(problem=problem_text, proof=proof_tex)
 
     try:
-        from .vertex_llm import complete
+        from .llm import complete
         raw = complete(prompt, system=_EVAL_SYSTEM, max_tokens=1024)
         if not raw:
             return {"error": "LLM returned empty response"}

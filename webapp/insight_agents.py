@@ -1,6 +1,6 @@
 """AI insight generation — one LLM call per level (system / dataset / question).
 
-Uses _vertex_one_shot from issue_agents to call Claude via Vertex AI.
+Uses the one-shot LLM helper to call Claude on the subscription.
 All generated insights are attributed to "document-manager".
 """
 from __future__ import annotations
@@ -35,8 +35,8 @@ _INSIGHT_MODEL = "claude-opus-4-8"
 
 
 def _one_shot(prompt: str) -> dict:
-    """Call Vertex one-shot using Sonnet (fast, low quota usage), parse JSON, return dict."""
-    from .vertex_llm import complete
+    """Call the LLM one-shot, parse JSON, return dict."""
+    from .llm import complete
 
     raw = complete(prompt, max_tokens=4096, model=_INSIGHT_MODEL) or ""
     raw = raw.strip()
@@ -106,8 +106,8 @@ def _gather_system_context(repo_root: Path) -> str:
             f"Tokens in: {today.get('total_in', 0):,}  out: {today.get('total_out', 0):,}"
         )
         try:
-            from .token_log import vertex_usage_summary
-            all_time = vertex_usage_summary(repo_root, days=3650)
+            from .token_log import usage_summary
+            all_time = usage_summary(repo_root, days=3650)
             lines.append(
                 f"Cumulative cost: ${all_time.get('total_cost', 0):.2f}  "
                 f"Total runs: {all_time.get('total_runs', 0)}"
@@ -173,7 +173,7 @@ def _gather_system_context(repo_root: Path) -> str:
         "  insight-generator (this agent) — meta-analysis\n"
         "Pipeline steps: issue discovery → issue resolution → meeting discussion → solvability eval\n"
         "Automation: daily push-forward triggers all steps across all problems\n"
-        "LLM backend: Vertex AI (AnthropicVertex via ADC)\n"
+        "LLM backend: Claude subscription (claude CLI)\n"
         "LaTeX compilation: tectonic (local binary)\n"
         "Proof storage: best-proof JSON + .tex files per problem"
     )

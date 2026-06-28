@@ -40,7 +40,8 @@ _QUOTA_MAX_ATTEMPTS = 200  # ~33 hours of retries at 600s each
 
 def solve_one(problem_id: str, resume: bool) -> str:
     """Run the agent on one problem. Returns 'ok', 'quota', or 'failed'."""
-    from webapp.agent import AgentConfig, run_agent_vertex, DEFAULT_MODEL
+    from webapp.agent import AgentConfig, DEFAULT_MODEL
+    from webapp.claude_code import run_claude_code_agent
     from webapp.dataset_store import get_problem as ds_get
 
     out_dir = OUTPUT_DIR / problem_id
@@ -67,12 +68,11 @@ def solve_one(problem_id: str, resume: bool) -> str:
     cfg = AgentConfig(
         problem_id=problem_id,
         problem_text=problem_text,
-        model=DEFAULT_MODEL,
+        model="",
         repo_root=REPO_ROOT,
         workspace=ws,
         thinking=True,
-        provider="vertex",
-        gcp_project="nairr-260096-569948",
+        provider="claude-code",
     )
 
     log.info("%s: starting agent (model=%s)", problem_id, DEFAULT_MODEL)
@@ -81,7 +81,7 @@ def solve_one(problem_id: str, resume: bool) -> str:
     quota_hit = False
 
     try:
-        for event in run_agent_vertex(cfg, None):
+        for event in run_claude_code_agent(cfg, None):
             if event.type == "text_delta":
                 chunk = event.data.get("text", "")
                 transcript_parts.append(chunk)

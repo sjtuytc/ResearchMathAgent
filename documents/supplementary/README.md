@@ -23,8 +23,7 @@ tectonic rma_supplementary.tex
 
 ## Scope
 
-Documents the three execution channels (Claude Code / solver agent via
-AnthropicVertex / push-forward single-shot), the issue-cycle pipeline
-(critic → solver → verifier → expert meeting → synthesis), the document
-system, caching layers, and the Claude Code vs. API vs. Vertex AI
-clarification (Appendix I).
+Documents the execution channels (Claude Code solver agent / push-forward
+single-shot), the issue-cycle pipeline (critic → solver → verifier → expert
+meeting → synthesis), the document system, caching layers, and the Claude Code
+vs. API backend clarification (Appendix I).

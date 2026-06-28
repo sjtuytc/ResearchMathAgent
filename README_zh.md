@@ -155,7 +155,7 @@ ResearchMathAgent/
 | `solve.py` | `rma solve` — 对一道题运行完整求解智能体：解析 → 提出 → 验证 → 精化 → 整合。 |
 | `models.py` | CLI 标志和 API 调用中使用的模型名称常量与别名。 |
 | `memory.py` | `rma memory` — 打印或清除推进状态文件。 |
-| `doctor.py` | `rma doctor` — 环境健康检查：Python 版本、tectonic、API 密钥、Vertex 凭据。 |
+| `doctor.py` | `rma doctor` — 环境健康检查：Python 版本、tectonic、Claude CLI / API 密钥。 |
 | `__main__.py` | `python -m rma` 入口点；委托给 `cli.py`。 |
 
 ### `webapp/` — FastAPI 服务器
@@ -164,9 +164,8 @@ ResearchMathAgent/
 |------|------|
 | `server.py` | 研究 Web 应用的所有 API 端点（证明 CRUD、PDF 编译、issues、会议、洞察、上下文报告、文献）。 |
 | `agent.py` | 所有智能体类型（评论、求解、会议、文档）共享的基础智能体类与提示执行循环。 |
-| `claude_code.py` | Claude Code CLI 驱动 — 通过 `claude` 二进制文件进行基于订阅（Pro/Max）的 LLM 调用。 |
-| `vertex.py` | Vertex AI 客户端配置：ADC 认证、项目/区域配置及底层 `complete()` 调用。 |
-| `vertex_llm.py` | `vertex.py` 的轻量封装，处理自适应思考模式、重试和错误规范化。 |
+| `claude_code.py` | Claude Code CLI 驱动 — 通过 `claude` 二进制文件进行基于订阅（Pro/Max）的 LLM 调用，并提供一次性的 `complete_via_cli()` 辅助函数。 |
+| `llm.py` | 一次性补全辅助函数（`complete()`），经由 Claude 订阅 CLI 调用。 |
 | `context_report.py` | 为每道题构建书籍风格的 LaTeX 上下文报告（问题 → 评估 → 最佳证明 → 会议 → Issues → 洞察），并通过 tectonic 编译为 PDF；同时为 `rma push` 构建合并主 PDF。 |
 | `proof_eval.py` | 对最佳证明进行 LLM 评分：答案准确性、逻辑正确性、证明完整性、证明清晰度——存储于 `documents/questions/<pid>/proof_eval.json`。 |
 | `insight_agents.py` | 从当前项目状态生成系统级、数据集级和逐题洞察摘要的 LLM 智能体。 |
@@ -390,7 +389,7 @@ ssh -L 8000:localhost:8000 user@server
 <details>
 <summary>Web 应用功能列表</summary>
 
-- **概览（Overview）标签页** — 三级层次结构（系统 → 数据集 → 问题）；SVG 环形饼图展示费用来源归因（NAIRR / Google Cloud Vertex AI 与个人 Anthropic 订阅）及用途分类（证明研究 vs 网站开发）；所有图表与信息图标支持悬停提示
+- **概览（Overview）标签页** — 三级层次结构（系统 → 数据集 → 问题）；SVG 环形饼图按用途分类（证明研究 vs 网站开发）展示费用；所有图表与信息图标支持悬停提示
 - **问题（Question）标签页** — 以 KaTeX 渲染 `.tex` 问题陈述；支持原始/渲染切换
 - **议题（Issue）标签页** — 类 GitHub 风格的每题议题追踪器（多智能体评论线程、状态、标签）；支持完整 LaTeX / MathJax 渲染；同时暴露 `/api/gh/issues` 用于直接控制 GitHub Issues
 - **智能体（Agent）标签页** — 实时流式运行求解器，显示推理过程 + 工具调用 + 渲染数学公式 + token 费用
@@ -401,7 +400,7 @@ ssh -L 8000:localhost:8000 user@server
 - **停止按钮** — `POST /api/cancel` 立即终止后端进程组，停止消耗订阅额度
 - **活跃运行面板** — 列出所有进行中的运行，每个运行均有独立停止按钮，便于并行运行管理
 - **PDF 预览** — 在线编译 `solution.tex`（需服务器端 LaTeX）；无 LaTeX 时优雅降级
-- **Token / 费用显示** — 每轮用量图表、每张卡片费用标注及按来源分类（NAIRR vs 订阅）的费用明细
+- **Token / 费用显示** — 每轮用量图表及每张卡片费用标注
 - **自主每日工作器** — `python -m webapp.daily` 每晚自动运行求解器，写入 `documents/YYYY-MM-DD.md`，并将每次运行记录到对应问题的议题线程
 
 </details>

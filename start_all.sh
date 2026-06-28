@@ -20,6 +20,11 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="${ROOT}/logs"
 mkdir -p "$LOG_DIR"
 
+# Pull NGROK_DOMAIN (and other secrets) from .env.local so the public domain is
+# never hardcoded in tracked files.
+[ -f "${ROOT}/.env.local" ] && { set -a; . "${ROOT}/.env.local"; set +a; }
+PUBLIC_DOMAIN="${NGROK_DOMAIN:-<your-ngrok-domain>}"
+
 NGROK=/projects/bhov/zzhao18/software/bin/ngrok
 
 if [[ "${1:-}" == "--status" ]]; then
@@ -33,8 +38,8 @@ if [[ "${1:-}" == "--status" ]]; then
     echo -n "  ngrok   (prod tunnel):     "; pgrep -f "ngrok http" &>/dev/null && echo "RUNNING" || echo "stopped"
     echo -n "  serveo  (dev  tunnel):     "; pgrep -f "serveo.net" &>/dev/null && echo "RUNNING" || echo "stopped"
     echo ""
-    echo "  Prod solve:  https://zipfile-legume-gaining.ngrok-free.dev/rmac/solve/"
-    echo "  Prod filter: https://zipfile-legume-gaining.ngrok-free.dev/rmac/filter/"
+    echo "  Prod solve:  https://${PUBLIC_DOMAIN}/rmac/solve/"
+    echo "  Prod filter: https://${PUBLIC_DOMAIN}/rmac/filter/"
     DEV_URL=$(grep -oP 'https://[^\s\x1b]+serveo[^\s\x1b]+' "${LOG_DIR}/serveo.log" 2>/dev/null | tail -1 || echo "(see logs/serveo.log)")
     echo "  Dev  solve:  ${DEV_URL}/rmac/solve/"
     echo "  Dev  filter: ${DEV_URL}/rmac/filter/"
@@ -103,8 +108,8 @@ sleep 5
 
 echo ""
 echo "=== Stack is up ==="
-echo "  Prod solve:  https://zipfile-legume-gaining.ngrok-free.dev/rmac/solve/"
-echo "  Prod filter: https://zipfile-legume-gaining.ngrok-free.dev/rmac/filter/"
+echo "  Prod solve:  https://${PUBLIC_DOMAIN}/rmac/solve/"
+echo "  Prod filter: https://${PUBLIC_DOMAIN}/rmac/filter/"
 sleep 3
 DEV_URL=$(grep -oP 'https://[^\s\x1b]+serveo[^\s\x1b]+' "${LOG_DIR}/serveo.log" 2>/dev/null | tail -1 || echo "(starting… check logs/serveo.log)")
 echo "  Dev  solve:  ${DEV_URL}/rmac/solve/"

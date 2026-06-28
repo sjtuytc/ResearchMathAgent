@@ -135,10 +135,10 @@ def _entry_cost_usd(entry: dict) -> float:
     stored = entry.get("cost")
     if stored is not None:
         return float(stored)
-    from .vertex import DEFAULT_MODEL, estimate_vertex_cost_usd
+    from .llm import estimate_cost_usd
 
-    return estimate_vertex_cost_usd(
-        entry.get("model") or DEFAULT_MODEL,
+    return estimate_cost_usd(
+        entry.get("model"),
         entry.get("in", 0),
         entry.get("out", 0),
     )
@@ -176,11 +176,7 @@ def log_usage_delta(
         return prev
 
     cost = data.get("cost_usd")
-    if cost is None and provider == "vertex":
-        from .vertex import estimate_vertex_cost_usd
-
-        cost = estimate_vertex_cost_usd(model, delta_in, delta_out)
-    elif cost is not None and prev.get("cost_usd") is not None:
+    if cost is not None and prev.get("cost_usd") is not None:
         cost = max(0.0, float(cost) - float(prev.get("cost_usd", 0)))
     prev["cost_usd"] = float(cost) if cost is not None else prev.get("cost_usd")
 
@@ -197,8 +193,8 @@ def log_usage_delta(
     return prev
 
 
-def vertex_usage_summary(repo_root: Path, *, days: int = 365) -> dict:
-    """Aggregate webapp token log as estimated Vertex/GCP spend."""
+def usage_summary(repo_root: Path, *, days: int = 365) -> dict:
+    """Aggregate the webapp token log into estimated spend."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     entries = _dedupe_cumulative_entries(read_log(repo_root, days=days))
 

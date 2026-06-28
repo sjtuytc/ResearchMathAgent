@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Single-turn solver for first_proof_2 (prob-01 to prob-10).
 
-Uses vertex_llm.complete() directly — one API call per problem with built-in
+Uses llm.complete() directly — one API call per problem with built-in
 60→120→300→600→600→... second retry on quota exhaustion.  Much more quota-friendly
 than the full agent loop (which makes many calls and has only short built-in retries).
 
@@ -49,7 +49,7 @@ with the mathematical content (theorem statement + proof). Do not wrap in a code
 
 
 def solve_one(problem_id: str, resume: bool) -> bool:
-    from webapp.vertex_llm import complete
+    from webapp.llm import complete
     from webapp.dataset_store import get_problem as ds_get
 
     out_dir = OUTPUT_DIR / problem_id
@@ -72,7 +72,7 @@ def solve_one(problem_id: str, resume: bool) -> bool:
     out_dir.mkdir(parents=True, exist_ok=True)
     prompt = _PROMPT_TMPL.format(problem_text=problem_text)
 
-    log.info("%s: calling vertex_llm.complete() (will retry on quota until success)…", problem_id)
+    log.info("%s: calling llm.complete() (will retry on quota until success)…", problem_id)
     result = complete(
         prompt,
         system=_SYSTEM,

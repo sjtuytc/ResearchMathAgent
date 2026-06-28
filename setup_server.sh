@@ -13,8 +13,6 @@
 #   PYTHON                   path to Python 3.12 binary
 #   RMA_MODE                 dev | prod (default: dev)
 #   RMA_DEV_SUBDOMAIN        serveo subdomain (default: rma-dev)
-#   GOOGLE_CLOUD_PROJECT     GCP project for Vertex AI
-#   GOOGLE_CLOUD_REGION      Vertex AI region  (default: global)
 #
 set -euo pipefail
 
@@ -39,7 +37,7 @@ done
 if [[ "$MODE" == "prod" ]]; then
     PROXY_PORT=8000; SOLVE_PORT=8010; FILTER_PORT=8013
     TUNNEL_CMD="ngrok"
-    PUBLIC_URL="https://zipfile-legume-gaining.ngrok-free.dev"
+    PUBLIC_URL="https://${NGROK_DOMAIN:-<your-ngrok-domain>}"
     UVICORN_EXTRA=""           # no --reload in prod
 else
     PROXY_PORT=8001; SOLVE_PORT=8011; FILTER_PORT=8012
@@ -84,31 +82,20 @@ fi
 
 sleep 1
 
-# ── Step 1: install runtime deps ──────────────────────────────────────────────
+# ── Step 1: runtime deps dir ──────────────────────────────────────────────────
 DEPS_DIR="${ROOT}/.deps"
 mkdir -p "$DEPS_DIR"
-if [[ ! -d "${DEPS_DIR}/google/auth" ]]; then
-    echo "[setup] Installing google-auth into ${DEPS_DIR}…"
-    "$PYTHON" -m pip install --target "$DEPS_DIR" 'google-auth>=2.0' -q
-    echo "[setup]   google-auth installed."
-fi
 PYPATH="${DEPS_DIR}:${HOME}/.local/lib/python3.12/site-packages${PYTHONPATH:+:$PYTHONPATH}"
-
-# ── Step 2: Google Cloud env ───────────────────────────────────────────────────
-export GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT:-nairr-260096-569948}"
-export GOOGLE_CLOUD_REGION="${GOOGLE_CLOUD_REGION:-global}"
 
 # Source local secrets if present (ANTHROPIC_API_KEY etc.)
 if [[ -f "${ROOT}/.env.local" ]]; then
     set -a; . "${ROOT}/.env.local"; set +a
 fi
 
-# ── Step 3: launch solve app ──────────────────────────────────────────────────
+# ── Step 2: launch solve app ──────────────────────────────────────────────────
 echo "[setup] Starting solve app on 127.0.0.1:${SOLVE_PORT}…"
 ( while true; do
     PYTHONPATH="${PYPATH}" \
-    GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
-    GOOGLE_CLOUD_REGION="${GOOGLE_CLOUD_REGION}" \
     "$PYTHON" -m uvicorn webapp.server:app \
         --host 127.0.0.1 \
         --port "${SOLVE_PORT}" \
@@ -184,7 +171,7 @@ elif [[ "$TUNNEL_CMD" == "ngrok" ]]; then
         echo "[setup] WARNING: ngrok not found — skipping tunnel. Expose port ${PROXY_PORT} manually."
         TUNNEL_PID=""
     else
-        DOMAIN="zipfile-legume-gaining.ngrok-free.dev"
+        DOMAIN="${NGROK_DOMAIN:?set NGROK_DOMAIN to your ngrok reserved domain (e.g. in .env.local)}"
         echo "[setup] Opening ngrok tunnel (domain: ${DOMAIN})…"
         ( while true; do
             "$NGROK" http --domain="${DOMAIN}" "${PROXY_PORT}" 2>&1 || true

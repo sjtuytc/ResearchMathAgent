@@ -93,8 +93,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Dataset slug (e.g. aim_problem_lists, erdos_problems) when solving non-first_proof_1 problems.",
     )
     # `rma solve <q>` works out of the box on the user's Claude subscription
-    # (claude-code = local `claude` CLI, billed to their Pro/Max plan — no Vertex,
-    # no API key). Override with --model-name rma-skeleton for offline runs.
+    # (claude-code = local `claude` CLI, billed to their Pro/Max plan — no API
+    # key). Override with --model-name rma-skeleton for offline runs.
     solve.set_defaults(func=run_solve, model_name="claude-code")
 
     diff = subparsers.add_parser(
@@ -114,8 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
         "push",
         help="Run the push-forward, update every tab, and build ONE huge combined PDF (all problems, all tabs).",
     )
-    push.add_argument("--provider", default="claude-code", choices=["claude-code", "vertex", "api"],
-                      help="LLM backend (default: claude-code = Pro/Max subscription, no Vertex).")
+    push.add_argument("--provider", default="claude-code", choices=["claude-code", "api"],
+                      help="LLM backend (default: claude-code = Pro/Max subscription).")
     push.add_argument("--dataset", default="first_proof_1", help="Dataset slug (default: first_proof_1).")
     push.add_argument("--problems", nargs="*", default=None, help="Problem IDs to update (default: all in dataset).")
     push.add_argument("--rounds", type=int, default=1, help="Meeting discussion rounds (default: 1).")

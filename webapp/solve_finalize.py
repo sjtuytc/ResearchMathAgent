@@ -120,7 +120,7 @@ def _append_solve_to_strategies(
     solution_tex: str,
 ) -> None:
     """Summarise this run and append the entry to strategies.md (background-safe)."""
-    from .vertex_llm import complete
+    from .llm import complete
 
     strat_path = question_dir(repo_root, problem_id) / "strategies.md"
     if not strat_path.is_file():

@@ -157,7 +157,7 @@ One-sentence description of every Python module in the project.
 | `solve.py` | `rma solve` — runs a full solver agent on one problem: parse → propose → verify → refine → consolidate. |
 | `models.py` | Model name constants and aliases used across CLI flags and API calls. |
 | `memory.py` | `rma memory` — prints or clears the push-forward state file. |
-| `doctor.py` | `rma doctor` — environment health check: Python version, tectonic, API keys, Vertex credentials. |
+| `doctor.py` | `rma doctor` — environment health check: Python version, tectonic, Claude CLI / API keys. |
 | `__main__.py` | `python -m rma` entry point; delegates to `cli.py`. |
 
 ### `webapp/` — FastAPI server
@@ -166,9 +166,8 @@ One-sentence description of every Python module in the project.
 |------|------|
 | `server.py` | All API endpoints for the research web app (proof CRUD, PDF compile, issues, meetings, insights, context reports, literature). |
 | `agent.py` | Base agent class and prompt-execution loop shared by all agent types (critic, solver, meeting, document). |
-| `claude_code.py` | Claude Code CLI driver — runs the `claude` binary for subscription-based (Pro/Max) LLM calls. |
-| `vertex.py` | Vertex AI client setup: ADC authentication, project/region config, and the low-level `complete()` call. |
-| `vertex_llm.py` | Thin wrapper around `vertex.py` that handles adaptive thinking mode, retries, and error normalization. |
+| `claude_code.py` | Claude Code CLI driver — runs the `claude` binary for subscription-based (Pro/Max) LLM calls, plus the one-shot `complete_via_cli()` helper. |
+| `llm.py` | One-shot completion helper (`complete()`) routed through the Claude subscription CLI. |
 | `context_report.py` | Builds book-style LaTeX context reports per problem (Problem → Evaluation → Best Proof → Meetings → Issues → Insights) and compiles them to PDF via tectonic; also builds the combined master PDF for `rma push`. |
 | `proof_eval.py` | LLM rubric evaluation of the best proof: answer accuracy, logical correctness, proof completeness, proof clarity — stored in `documents/questions/<pid>/proof_eval.json`. |
 | `insight_agents.py` | LLM agents that generate system-level, dataset-level, and per-question insight summaries from current project state. |
@@ -392,7 +391,7 @@ ssh -L 8000:localhost:8000 user@server
 <details>
 <summary>Web app feature list</summary>
 
-- **Overview tab** — 3-level hierarchy (System → Dataset → Question) with SVG donut pie charts; cost attribution by source (NAIRR / Google Cloud Vertex AI vs personal Anthropic subscription) and by purpose (proof research vs website dev); hover tooltips on all charts and info icons
+- **Overview tab** — 3-level hierarchy (System → Dataset → Question) with SVG donut pie charts; cost attribution by purpose (proof research vs website dev); hover tooltips on all charts and info icons
 - **Question tab** — renders the `.tex` problem statement with KaTeX; toggle raw/rendered
 - **Issue tab** — GitHub-style per-problem issue tracker (multi-agent comment threads, status, labels); full LaTeX / MathJax rendering; also exposes `/api/gh/issues` for direct GitHub Issues control
 - **Agent tab** — run the solver live with streaming thinking + tool calls + rendered math + token cost
@@ -403,7 +402,7 @@ ssh -L 8000:localhost:8000 user@server
 - **Stop button** — `POST /api/cancel` kills the backend process group immediately, stopping subscription consumption
 - **Active runs panel** — lists every in-flight run with per-run Stop buttons for parallel-run control
 - **PDF preview** — compile `solution.tex` inline (requires server-side LaTeX); degrades gracefully
-- **Token / cost display** — per-turn usage chart, per-card annotation, and per-provider breakdown (NAIRR vs subscription)
+- **Token / cost display** — per-turn usage chart and per-card annotation
 - **Autonomous daily worker** — `python -m webapp.daily` runs the solver nightly, writes `documents/YYYY-MM-DD.md`, logs each run to the question's issue thread
 
 </details>

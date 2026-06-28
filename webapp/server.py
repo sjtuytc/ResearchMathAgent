@@ -15,20 +15,13 @@ import time
 from pathlib import Path
 
 from fastapi import Body, FastAPI, Header, Query
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 import threading
 import uuid
 
-# This project's Anthropic-on-Vertex quota lives on the *global* endpoint; the
-# regional (us-east5) quota is dead. Force global regardless of how the process
-# was launched, so model calls don't 429. (See ops notes.)
-if os.environ.get("GOOGLE_CLOUD_REGION", "") in ("", "us-east5"):
-    os.environ["GOOGLE_CLOUD_REGION"] = "global"
-
-from .agent import DEFAULT_MODEL, AgentConfig, run_agent, run_agent_vertex, build_prefix_context
-from .vertex import vertex_status, vertex_adc_project, gcp_console_urls
+from .agent import DEFAULT_MODEL, AgentConfig, run_agent, build_prefix_context
 from .documents import list_documents, read_document
 from .dataset_store import (
     list_datasets, get_dataset_meta, list_problems as ds_list_problems,
@@ -49,7 +42,7 @@ from .meet import (
 from . import github_issues as _gh
 from .latex import compile_tex, compile_problem_pdf, latex_available, pdf_dir, safe_pdf_name
 from .runs import REGISTRY
-from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary, vertex_usage_summary, log_usage_delta
+from .token_log import append_usage, read_log, daily_summary, per_problem_summary, today_summary, usage_summary, log_usage_delta
 from .solve_finalize import finalize_solve_run
 from .tools import _expand_tex_inputs, _extract_title, _problem_sort_key
 from .solvability_eval import load_eval, evaluate_all, ensure_all_evaluated
@@ -74,24 +67,20 @@ _PROBLEM_RE = re.compile(r"^(?:q(?:10|[1-9])|prob-\d{2})$")
 
 
 def _default_provider() -> str:
-    # Default to the user's Claude AI subscription (Claude Code CLI), NOT Vertex.
-    # Vertex AI is used only when explicitly selected. See [[feedback]].
+    # The user's Claude AI subscription (Claude Code CLI) is the only managed
+    # backend. An Anthropic API key may be used if explicitly configured.
     from .claude_code import claude_code_available
     if claude_code_available():
         return "claude-code"
     if os.environ.get("ANTHROPIC_API_KEY"):
         return "api"
-    if vertex_status()["available"]:
-        return "vertex"
     return "claude-code"
 
 
 def _capabilities_payload() -> dict:
     from .claude_code import claude_code_available
-    vtx = vertex_status()
     return {
         "claude_code": bool(claude_code_available()),
-        "vertex": vtx,
         "latex": bool(latex_available()),
         "default_provider": _default_provider(),
         "default_model": DEFAULT_MODEL,
@@ -801,13 +790,12 @@ def get_personas() -> JSONResponse:
 def solve(
     problem: str = Query(..., description="Problem id, e.g. q6"),
     model: str = Query(""),
-    provider: str = Query("", description="api | vertex (default: auto)"),
+    provider: str = Query("", description="claude-code | api (default: auto)"),
     thinking: int = Query(1),
     run_id: str = Query(""),
-    gcp_project: str = Query("", description="GCP project ID for Vertex AI provider"),
 ) -> StreamingResponse:
     return StreamingResponse(
-        _sse(problem, model, provider or _default_provider(), bool(thinking), run_id or uuid.uuid4().hex, gcp_project=gcp_project),
+        _sse(problem, model, provider or _default_provider(), bool(thinking), run_id or uuid.uuid4().hex),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -1098,17 +1086,10 @@ def capabilities() -> JSONResponse:
     return JSONResponse(_capabilities_payload())
 
 
-@app.get("/api/vertex/usage")
-def vertex_usage() -> JSONResponse:
-    """Estimated Vertex spend from webapp token log + GCP console billing links."""
-    project = vertex_adc_project()
-    summary = vertex_usage_summary(REPO_ROOT)
-    return JSONResponse({
-        **summary,
-        "project": project,
-        "urls": gcp_console_urls(project),
-        "available": bool(vertex_status()["available"]),
-    })
+@app.get("/api/usage")
+def usage() -> JSONResponse:
+    """Estimated spend from the webapp token log."""
+    return JSONResponse(usage_summary(REPO_ROOT))
 
 
 _FINAL_PROOFS_PATH = (
@@ -1193,46 +1174,85 @@ def proof_history_version_ep(problem_id: str, version: int) -> JSONResponse:
     return JSONResponse({"problem_id": problem_id, "version": version, "tex": tex})
 
 
-@app.get("/api/agent/discover/{problem_id}")
-def agent_discover(problem_id: str, run_id: str = Query(""), dataset: str = Query(None)) -> StreamingResponse:
+# ── agent-run authentication + per-problem concurrency guard ──────────────────
+# These endpoints each kick off an expensive agentic LLM run. They are reachable
+# on the public tunnel, and EventSource (the browser stream API) can't send custom
+# headers — so the UI passes a shared secret as the `key` query param, which the
+# server injects into the page (see _index_html). Anonymous crawlers/bots hitting
+# the URLs directly have no key and are rejected. The concurrency guard then caps
+# cost: at most one in-flight run per (kind, problem), plus a cooldown, so SSE
+# auto-reconnect storms and repeat triggers can't fan out into parallel runs.
+_AGENT_KEY = os.environ.get("RMA_AGENT_KEY", "")
+_AGENT_COOLDOWN_S = int(os.environ.get("RMA_AGENT_COOLDOWN", "20"))
+_agent_guard_lock = threading.Lock()
+_agent_inflight: set[str] = set()
+_agent_last_start: dict[str, float] = {}
+
+
+def _agent_auth_ok(key: str | None) -> bool:
+    """Open when RMA_AGENT_KEY is unset; otherwise the key must match."""
+    return not _AGENT_KEY or key == _AGENT_KEY
+
+
+def _agent_guard_acquire(guard_key: str) -> str | None:
+    """Mark a run in-flight. Returns an error message if it should be rejected."""
+    now = time.time()
+    with _agent_guard_lock:
+        if guard_key in _agent_inflight:
+            return "an agent run for this problem is already in progress"
+        wait = _AGENT_COOLDOWN_S - (now - _agent_last_start.get(guard_key, 0.0))
+        if wait > 0:
+            return f"rate limited — wait {int(wait) + 1}s before starting another run on this problem"
+        _agent_inflight.add(guard_key)
+        _agent_last_start[guard_key] = now
+    return None
+
+
+def _agent_guard_release(guard_key: str) -> None:
+    with _agent_guard_lock:
+        _agent_inflight.discard(guard_key)
+
+
+def _start_agent_stream(runner_fn, kind, problem_id, issue_id, run_id, ds, key):
     if not _ID_RE_LOOSE.match(problem_id):
         return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    ds = _ds_from_query(dataset)
-    rid = run_id or uuid.uuid4().hex
+    if not _agent_auth_ok(key):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    guard_key = f"{kind}:{problem_id}:{issue_id or ''}"
+    rejected = _agent_guard_acquire(guard_key)
+    if rejected:
+        return JSONResponse({"error": rejected}, status_code=429)
     return StreamingResponse(
-        _sse_issue_agent(run_discovery_agent, REPO_ROOT, problem_id, rid, dataset=ds),
+        _sse_issue_agent(runner_fn, REPO_ROOT, problem_id, run_id or uuid.uuid4().hex,
+                         issue_id=issue_id, dataset=ds, guard_key=guard_key),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/api/agent/discover/{problem_id}")
+def agent_discover(problem_id: str, run_id: str = Query(""), dataset: str = Query(None),
+                   key: str = Query(""), x_api_key: str = Header(None)):
+    return _start_agent_stream(run_discovery_agent, "discover", problem_id, None,
+                               run_id, _ds_from_query(dataset), key or x_api_key)
 
 
 @app.get("/api/agent/resolve/{problem_id}/{issue_id}")
-def agent_resolve(problem_id: str, issue_id: str, run_id: str = Query(""), dataset: str = Query(None)) -> StreamingResponse:
-    if not _ID_RE_LOOSE.match(problem_id):
-        return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    ds = _ds_from_query(dataset)
-    rid = run_id or uuid.uuid4().hex
-    return StreamingResponse(
-        _sse_issue_agent(run_resolver_agent, REPO_ROOT, problem_id, rid, issue_id=issue_id, dataset=ds),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+def agent_resolve(problem_id: str, issue_id: str, run_id: str = Query(""), dataset: str = Query(None),
+                  key: str = Query(""), x_api_key: str = Header(None)):
+    return _start_agent_stream(run_resolver_agent, "resolve", problem_id, issue_id,
+                               run_id, _ds_from_query(dataset), key or x_api_key)
 
 
 @app.get("/api/agent/verify/{problem_id}/{issue_id}")
-def agent_verify(problem_id: str, issue_id: str, run_id: str = Query(""), dataset: str = Query(None)) -> StreamingResponse:
-    if not _ID_RE_LOOSE.match(problem_id):
-        return JSONResponse({"error": "invalid problem id"}, status_code=400)
-    ds = _ds_from_query(dataset)
-    rid = run_id or uuid.uuid4().hex
-    return StreamingResponse(
-        _sse_issue_agent(run_verifier_agent, REPO_ROOT, problem_id, rid, issue_id=issue_id, dataset=ds),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+def agent_verify(problem_id: str, issue_id: str, run_id: str = Query(""), dataset: str = Query(None),
+                 key: str = Query(""), x_api_key: str = Header(None)):
+    return _start_agent_stream(run_verifier_agent, "verify", problem_id, issue_id,
+                               run_id, _ds_from_query(dataset), key or x_api_key)
 
 
-def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None, dataset="first_proof_1"):
+def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None,
+                     dataset="first_proof_1", guard_key=None):
     def send(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
 
@@ -1256,7 +1276,7 @@ def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None, da
                     d = event.data or {}
                     log_usage_delta(
                         repo_root, problem_id, kind, d, usage_prev,
-                        provider="vertex", model=DEFAULT_MODEL,
+                        provider="claude-code", model="",
                     )
                 except Exception:  # noqa: BLE001
                     pass
@@ -1266,6 +1286,8 @@ def _sse_issue_agent(runner_fn, repo_root, problem_id, run_id, issue_id=None, da
         yield send({"type": "done", "reason": "error"})
     finally:
         REGISTRY.unregister(run_id)
+        if guard_key:
+            _agent_guard_release(guard_key)
 
 
 @app.get("/api/overview")
@@ -1648,7 +1670,7 @@ def refresh_solvability_eval(force: bool = Query(False)) -> JSONResponse:
                          "message": "Opus solvability evaluation running in background; check /api/overview in ~3 minutes."})
 
 
-def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str, gcp_project: str = ""):
+def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str):
     def send(event: dict) -> str:
         return f"data: {json.dumps(event)}\n\n"
 
@@ -1683,18 +1705,15 @@ def _sse(problem: str, model: str, provider: str, thinking: bool, run_id: str, g
     cfg = AgentConfig(
         problem_id=problem,
         problem_text=problem_text,
-        model=model or (DEFAULT_MODEL if provider in ("api", "vertex") else ""),
+        model=model or (DEFAULT_MODEL if provider == "api" else ""),
         repo_root=REPO_ROOT,
         workspace=REPO_ROOT / "webapp" / ".runs" / f"{problem}_{int(time.time())}",
         thinking=thinking,
         provider=provider,
-        gcp_project=gcp_project,
         prefix_context=prefix_context,
     )
     if provider == "claude-code":
         runner = run_claude_code_agent
-    elif provider == "vertex":
-        runner = run_agent_vertex
     else:
         runner = run_agent
     handle = REGISTRY.register(run_id, {"problem": problem, "provider": provider, "model": cfg.model})
@@ -2627,10 +2646,23 @@ from fastapi.responses import RedirectResponse as _Redir
 def rmac_solve_root() -> _Redir:
     return _Redir("/rmac/solve/", status_code=302)
 
+def _index_html() -> HTMLResponse:
+    """Serve the SPA, injecting the agent key so same-origin EventSource calls can
+    authenticate (they can't set headers). Anonymous callers get no key."""
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    if _AGENT_KEY:
+        html = html.replace(
+            "<head>",
+            f"<head>\n<script>window.RMA_AGENT_KEY={json.dumps(_AGENT_KEY)};</script>",
+            1,
+        )
+    return HTMLResponse(html)
+
+
 if STATIC_DIR.is_dir():
     @app.get("/rmac/solve/")
-    def rmac_solve_index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+    def rmac_solve_index() -> HTMLResponse:
+        return _index_html()
 
 
 # ── /rmac/filter/ — filter sub-application (read-only, 14k dataset) ──────────
@@ -2650,8 +2682,8 @@ except Exception as _e:
 # Serve the SPA. Mounted last so /api/* routes take precedence.
 if STATIC_DIR.is_dir():
     @app.get("/")
-    def index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+    def index() -> HTMLResponse:
+        return _index_html()
 
     @app.api_route("/favicon.ico", methods=["GET", "HEAD"], include_in_schema=False)
     def favicon() -> FileResponse:

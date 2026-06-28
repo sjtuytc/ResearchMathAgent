@@ -4,6 +4,4 @@
 cd "$(dirname "$0")"
 PYTHON=/sw/user/python/miniforge3-pytorch-2.11.0/bin/python3.12
 export PYTHONPATH="${HOME}/.local/lib/python3.12/site-packages"
-export GOOGLE_CLOUD_PROJECT="nairr-260096-569948"
-export GOOGLE_CLOUD_REGION="us-east5"
 exec "$PYTHON" -u -m webapp.push_forward_cli "$@"

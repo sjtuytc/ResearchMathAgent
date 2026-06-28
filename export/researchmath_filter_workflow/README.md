@@ -48,5 +48,5 @@ Each problem is scored 1–5 on:
 
 ## Browse problems first
 
-Filter website: https://zipfile-legume-gaining.ngrok-free.dev/rmac/filter/  
+Filter website: https://<your-ngrok-domain>/rmac/filter/  
 Use the Insights tab for per-dataset statistics.

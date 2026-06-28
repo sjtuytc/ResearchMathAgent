@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Push meeting-round discussion turns for q1–q10 via the Vertex AI API.
+"""Push meeting-round discussion turns for q1–q10 on the Claude subscription.
 
 For each problem (default: q1–q10):
   1. Creates a mathematician meeting room if none exists yet.
   2. Runs one discussion round — each mathematician contributes once.
   3. Saves directly to webapp/meets/{pid}/{room_id}.json on disk.
 
-Uses vertex_llm.complete() (AnthropicVertex) so no user interaction is needed.
+Uses llm.complete() so no user interaction is needed.
 Run this from cron, a daily loop, or manually.
 
 Usage:
@@ -15,7 +15,7 @@ Usage:
 Options:
     --problems   Subset of problems to process (default: q1 q2 q3 q4 q5 q6 q7 q8 q9 q10)
     --rounds N   Number of full rounds per room (default: 1)
-    --dry-run    Print what would happen without calling Vertex AI
+    --dry-run    Print what would happen without calling the model
 """
 
 from __future__ import annotations
@@ -175,12 +175,12 @@ def run_one_round(problem_id: str, room: dict, dry_run: bool) -> int:
         system, user = _build_turn_prompt(participant, room, problem_tex)
 
         if dry_run:
-            log.info("    DRY-RUN: would call vertex_llm.complete() for %s", participant)
+            log.info("    DRY-RUN: would call llm.complete() for %s", participant)
             turns_done += 1
             continue
 
         try:
-            from webapp.vertex_llm import complete
+            from webapp.llm import complete
             response = complete(user, system=system, max_tokens=1024)
         except Exception as exc:
             log.warning("    Vertex call failed for %s: %s", participant, exc)
@@ -213,7 +213,7 @@ def main() -> None:
     parser.add_argument("--rounds", type=int, default=1, metavar="N",
                         help="Discussion rounds per room (default: 1)")
     parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would happen without calling Vertex AI")
+                        help="Show what would happen without calling the model")
     args = parser.parse_args()
 
     total_turns = 0

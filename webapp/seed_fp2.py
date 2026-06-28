@@ -1,9 +1,9 @@
-"""Seed all tab content for first_proof_2 problems using Vertex AI (gcloud credits).
+"""Seed all tab content for first_proof_2 problems using the Claude subscription.
 
 For each prob-01 … prob-10 in the first_proof_2 dataset this script:
   1. Creates documents/questions/{pid}/ with skeleton .tex documents
-  2. Generates concepts via Vertex (concepts.json)
-  3. Discovers literature via Vertex (literature/index.json)
+  2. Generates concepts via the Claude subscription (concepts.json)
+  3. Discovers literature via the Claude subscription (literature/index.json)
 
 Run directly:
     python -m webapp.seed_fp2
@@ -86,7 +86,7 @@ def _write_progress(q_dir: Path, pid: str, title: str) -> None:
 \\subsection*{{Recommended Next Steps}}
 
 \\begin{{enumerate}}
-\\item Run the solver agent with \\texttt{{claude-opus-4-8}} via Vertex AI.
+\\item Run the solver agent with \\texttt{{claude-opus-4-8}} on the Claude subscription.
 \\item Run the issue discovery agent to surface mathematical gaps.
 \\item Review generated concepts and literature to refine strategy.
 \\end{{enumerate}}
@@ -147,14 +147,14 @@ def _tex(s: str) -> str:
     return s.replace("&", r"\&").replace("%", r"\%").replace("#", r"\#").replace("_", r"\_")
 
 
-# ── Vertex AI helpers ─────────────────────────────────────────────────────────
+# ── LLM helpers ─────────────────────────────────────────────────────────
 
-def _call_vertex(prompt: str, system: str) -> str | None:
+def _call_llm(prompt: str, system: str) -> str | None:
     try:
-        from .vertex_llm import complete
+        from .llm import complete
         return complete(prompt, system=system, model="claude-opus-4-8", max_tokens=8192)
     except Exception as e:
-        _log(f"Vertex call failed: {e}")
+        _log(f"LLM call failed: {e}")
         return None
 
 
@@ -182,7 +182,7 @@ Aim for 8-16 entries. Output raw JSON only, no markdown fences.
 
 def _generate_concepts(pid: str, title: str, statement: str) -> list[dict]:
     prompt = _CONCEPT_PROMPT.format(pid=pid, title=title, statement=statement[:5000])
-    raw = _call_vertex(prompt, _CONCEPT_SYSTEM)
+    raw = _call_llm(prompt, _CONCEPT_SYSTEM)
     if not raw:
         return []
     import re
@@ -219,7 +219,7 @@ Output raw JSON array only.
 
 def _discover_literature(pid: str, title: str, statement: str) -> list[dict]:
     prompt = _LIT_PROMPT.format(pid=pid, title=title, statement=statement[:4000])
-    raw = _call_vertex(prompt, _LIT_SYSTEM)
+    raw = _call_llm(prompt, _LIT_SYSTEM)
     if not raw:
         return []
     import re
@@ -271,7 +271,7 @@ def seed_fp2(repo_root: Path = REPO_ROOT, problems: list[str] | None = None) -> 
             _log(f"  {pid}: concepts already exist, skipping")
             status["concepts"] = "cached"
         else:
-            _log(f"  {pid}: generating concepts via Vertex…")
+            _log(f"  {pid}: generating concepts…")
             concepts = _generate_concepts(pid, title, statement)
             if concepts:
                 save_concepts(repo_root, pid, concepts)
@@ -286,7 +286,7 @@ def seed_fp2(repo_root: Path = REPO_ROOT, problems: list[str] | None = None) -> 
             _log(f"  {pid}: literature already exists, skipping")
             status["literature"] = "cached"
         else:
-            _log(f"  {pid}: discovering literature via Vertex…")
+            _log(f"  {pid}: discovering literature…")
             papers = _discover_literature(pid, title, statement)
             if papers:
                 from datetime import datetime, timezone

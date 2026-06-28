@@ -1,6 +1,6 @@
 """Agent runners for virtual meeting rooms.
 
-Discussion turns use direct Vertex AI completions (no tool loop) and post
+Discussion turns use direct subscription completions (no tool loop) and post
 messages to the room JSON via Python. Synthesis produces a plan JSON and
 persists it the same way. This avoids the curl-in-agent-workspace problem.
 """
@@ -45,7 +45,7 @@ def run_discussion_turn(
     handle: RunHandle | None = None,
 ) -> Iterator[AgentEvent]:
     """Generate one discussion contribution and post it to the room."""
-    from .vertex_llm import complete
+    from .llm import complete
 
     yield AgentEvent("status", {"state": "running", "label": f"{participant} thinking…"})
     _DISCUSS_MODEL = None  # use DEFAULT_MODEL (claude-opus-4-8), only model available on this project
@@ -143,7 +143,7 @@ def run_synthesis(
     handle: RunHandle | None = None,
 ) -> Iterator[AgentEvent]:
     """Coordinator synthesizes a numbered action plan from the discussion."""
-    from .vertex_llm import complete
+    from .llm import complete
     _SYNTH_MODEL = None  # use DEFAULT_MODEL (claude-opus-4-8), only model available on this project
 
     yield AgentEvent("status", {"state": "running", "label": "synthesizing plan…"})
@@ -270,7 +270,7 @@ def run_round_offline(
 ) -> None:
     """Run n_rounds of discussion for all non-human participants (blocking).
 
-    Each participant speaks once per round in order. Uses direct Vertex AI
+    Each participant speaks once per round in order. Uses direct subscription
     completions — no tool loop, no curl. Messages post to room JSON immediately.
     """
     from datetime import datetime, timezone

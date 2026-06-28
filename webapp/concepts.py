@@ -87,7 +87,7 @@ _EXTRACTION_GAP_SECS = 20
 
 def _call_llm(prompt: str, system: str) -> str | None:
     """Call Claude via Vertex for concept extraction."""
-    from .vertex_llm import complete
+    from .llm import complete
     return complete(prompt, system=system, model=_VERTEX_CONCEPT_MODEL, max_tokens=8192)
 
 

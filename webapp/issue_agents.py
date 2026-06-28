@@ -1,6 +1,6 @@
 """Multi-agent issue discovery, resolution, and verification.
 
-Each agent runs via Google Cloud Vertex AI in an isolated scratch workspace.
+Each agent runs on the Claude subscription in an isolated scratch workspace.
 Agents communicate back to the issue tracker via ``curl`` calls to
 ``http://localhost:8000/api/...`` — the same FastAPI server that hosts the UI.
 
@@ -32,7 +32,7 @@ import time
 from pathlib import Path
 from typing import Iterator
 
-from .agent import AgentConfig, DEFAULT_MODEL, AgentEvent, run_agent_vertex
+from .agent import AgentConfig, AgentEvent
 from .runs import RunHandle
 
 _ALLOWED_TOOLS = "Read Write Edit Bash Glob"
@@ -523,13 +523,13 @@ def _thread_to_text(issue: dict, max_chars: int = 6000) -> str:
     return text[-max_chars:] if len(text) > max_chars else text
 
 
-def _vertex_one_shot(prompt: str, timeout: int = 120) -> str:
-    from .vertex_llm import complete
+def _one_shot(prompt: str, timeout: int = 120) -> str:
+    from .llm import complete
 
     text = complete(prompt, max_tokens=4096)
     if text:
         return text
-    return "(Vertex AI returned no response)"
+    return "(the model returned no response)"
 
 
 def run_discussion_agent(
@@ -580,7 +580,7 @@ def run_discussion_agent(
 
         yield AgentEvent("text_delta", {"text": f"[discuss] {agent_name} thinking…\n"})
 
-        response = _vertex_one_shot(prompt)
+        response = _one_shot(prompt)
         if response:
             add_comment(repo_root, problem_id, issue_id, agent_name, response, dataset)
             yield AgentEvent("text_delta", {"text": f"[discuss] {agent_name} posted.\n"})
@@ -618,7 +618,7 @@ def generate_issue_summary(
         "Write only the markdown. Be precise and mathematical."
     )
 
-    doc_text = _claude_one_shot(prompt, repo_root, timeout=180)
+    doc_text = _one_shot(prompt, timeout=180)
 
     doc_dir = repo_root / "documents" / "questions" / problem_id / "issues"
     doc_dir.mkdir(parents=True, exist_ok=True)
@@ -644,17 +644,17 @@ def _run_agent(
     on_done: "callable | None" = None,
     max_turns: int | None = None,
 ) -> Iterator[AgentEvent]:
-    """Drive an issue/meet agent via Vertex AI tool loop."""
+    """Drive an issue/meet agent on the Claude subscription tool loop."""
     cfg = AgentConfig(
         problem_id=label.replace("/", "_")[:32] or "issue",
         problem_text="",
         initial_message=prompt,
         system_prompt=system_extra,
         status_label=label,
-        model=("" if os.environ.get("RMA_PROVIDER") == "claude-code" else DEFAULT_MODEL),
+        model="",
         workspace=workspace,
         repo_root=repo_root,
-        provider=("claude-code" if os.environ.get("RMA_PROVIDER") == "claude-code" else "vertex"),
+        provider="claude-code",
         thinking=False,
         max_wall_seconds=_WALL_SECONDS,
         max_iterations=max_turns or _MAX_TURNS,
@@ -662,9 +662,7 @@ def _run_agent(
 
     saw_done = False
     reason = "error"
-    _runner = run_agent_vertex
-    if os.environ.get("RMA_PROVIDER") == "claude-code":
-        from .claude_code import run_claude_code_agent as _runner
+    from .claude_code import run_claude_code_agent as _runner
     try:
         for ev in _runner(cfg, handle):
             if ev.type == "done":
@@ -679,4 +677,4 @@ def _run_agent(
                 pass
 
 
-# Legacy CLI helpers removed — all agents use Vertex AI.
+# All agents run on the Claude subscription via the `claude` CLI.

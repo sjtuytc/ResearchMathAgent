@@ -1,7 +1,7 @@
 """Autonomous daily worker for the Research Math Agent.
 
-Runs the agent on its own, once a day, with no human in the loop, using
-Google Cloud Vertex AI (Claude via ADC). Each day it works one or more
+Runs the agent on its own, once a day, with no human in the loop, on the
+Claude subscription (the local ``claude`` CLI). Each day it works one or more
 benchmark problems, writes a dated report into ``documents/``
 (surfaced by the web UI's Documents tab), and logs the run to each problem's
 issue.
@@ -15,7 +15,7 @@ Run it in a shell on the server:
 Configuration via env vars:
     RMA_DAILY_AT        target local time "HH:MM" (default "09:00")
     RMA_DAILY_PROBLEMS  comma list, e.g. "q6" or "q1,q2" (default: one rotating problem/day)
-    RMA_DAILY_MODEL     Vertex model id (default "claude-opus-4-8")
+    RMA_DAILY_MODEL     model id (default "claude-opus-4-8")
 """
 
 from __future__ import annotations
@@ -28,7 +28,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from .agent import AgentConfig, DEFAULT_MODEL, run_agent_vertex
+from .agent import AgentConfig, DEFAULT_MODEL
+from .claude_code import run_claude_code_agent
 from .documents import write_or_append_report
 from .issue_agents import run_issue_cycle
 from .issues import append_activity
@@ -61,7 +62,7 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
                   problems: list[str] | None = None, runner=None) -> Path | None:
     """Work today's problem(s) and write a report. Returns the report path."""
     global _current
-    runner = runner or run_agent_vertex
+    runner = runner or run_claude_code_agent
     model = model or os.environ.get("RMA_DAILY_MODEL", DEFAULT_MODEL)
     problems = problems or chosen_problems(repo_root)
     if not problems:
@@ -70,19 +71,19 @@ def run_daily_job(repo_root: Path = REPO_ROOT, *, model: str | None = None,
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     started = datetime.now(timezone.utc).strftime("%H:%M UTC")
-    _log(f"starting daily run for {problems} (provider=vertex, model={model})")
+    _log(f"starting daily run for {problems} (provider=claude-code, model={model})")
     report_path = None
 
     for pid in problems:
         if _stop:
             break
         handle = REGISTRY.register(f"daily-{pid}-{int(time.time())}",
-                                   {"problem": pid, "provider": "vertex", "model": model, "kind": "daily"})
+                                   {"problem": pid, "provider": "claude-code", "model": model, "kind": "daily"})
         _current = handle
         problem_path = repo_root / "problems" / f"{pid}.tex"
         problem_text = problem_path.read_text(encoding="utf-8", errors="replace") if problem_path.is_file() else ""
-        cfg = AgentConfig(problem_id=pid, problem_text=problem_text, model=model,
-                          repo_root=repo_root, provider="vertex")
+        cfg = AgentConfig(problem_id=pid, problem_text=problem_text, model="",
+                          repo_root=repo_root, provider="claude-code")
         transcript: list[str] = []
         artifact = None
         usage = {}

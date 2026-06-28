@@ -30,7 +30,8 @@ except ImportError:
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-FILTER_API_URL = "https://zipfile-legume-gaining.ngrok-free.dev/rmac/filter"
+import os
+FILTER_API_URL = os.environ.get("FILTER_API_URL", "https://<your-ngrok-domain>/rmac/filter")
 
 DATASETS = [
     "researchmath_14k",

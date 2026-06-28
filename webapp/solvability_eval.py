@@ -88,8 +88,8 @@ def _save_eval(repo_root: Path, qid: str, data: dict) -> None:
 
 
 def _call_vertex(prompt: str, system: str, model: str = _EVAL_MODEL) -> str | None:
-    """Call Vertex AI with a single prompt and return the text result."""
-    from .vertex_llm import complete
+    """Call the LLM with a single prompt and return the text result."""
+    from .llm import complete
     return complete(prompt, system=system, model=model, max_tokens=4096)
 
 

@@ -24,6 +24,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+[ -f "${ROOT}/.env.local" ] && { set -a; . "${ROOT}/.env.local"; set +a; }
+PUBLIC_DOMAIN="${NGROK_DOMAIN:-<your-ngrok-domain>}"
 PROD_PORT="${RMA_PORT:-8000}"
 COMMIT_MSG="${1:-}"
 NO_COMMIT=false
@@ -82,7 +84,7 @@ fi
 
 echo ""
 echo "=== Deploy complete ==="
-echo "  Production solve:  https://zipfile-legume-gaining.ngrok-free.dev/rmac/solve/"
-echo "  Production filter: https://zipfile-legume-gaining.ngrok-free.dev/rmac/filter/"
+echo "  Production solve:  https://${PUBLIC_DOMAIN}/rmac/solve/"
+echo "  Production filter: https://${PUBLIC_DOMAIN}/rmac/filter/"
 echo "  Dev:               https://rma-dev.serveo.net/rmac/solve/  (if dev tunnel is running)"
 echo ""

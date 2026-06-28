@@ -140,7 +140,7 @@ Relevance must be one of: high, medium, low. Order papers by relevance descendin
 
 
 def _call_vertex_json(prompt: str, system: str, model: str = "claude-opus-4-8") -> str | None:
-    from .vertex_llm import complete
+    from .llm import complete
     return complete(prompt, system=system, model=model, max_tokens=8192)
 
 
@@ -397,7 +397,7 @@ Return ONLY valid JSON array — no markdown fences, no explanation:
 
 
 def discover_system_literature(repo_root: Path) -> Iterator[AgentEvent]:
-    """Survey agent/AI research literature for the RMAC system via Vertex AI."""
+    """Survey agent/AI research literature for the RMAC system via the Claude subscription."""
     yield AgentEvent("status", {"state": "running", "message": "Surveying agent research literature…"})
     raw = _call_vertex_json(_SYSTEM_SURVEY_PROMPT, _SYSTEM_SURVEY_SYSTEM)
     if not raw:

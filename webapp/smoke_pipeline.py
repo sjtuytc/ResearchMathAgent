@@ -21,18 +21,18 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from .agent import DEFAULT_MODEL, AgentConfig, run_agent, run_agent_vertex
+from .agent import DEFAULT_MODEL, AgentConfig, run_agent
 
 
 def _provider() -> str:
     """Which LLM backend the smoke endpoint bills to.
 
     Default ``claude-code`` = the user's Claude Pro/Max subscription via the local
-    `claude` CLI (no API key, no Vertex/GCP). Override with RMA_SMOKE_PROVIDER=
-    api (Anthropic API key) or vertex (Google Cloud) only when explicitly intended.
+    `claude` CLI (no API key, no paid backend). Override with RMA_SMOKE_PROVIDER=
+    api (Anthropic API key) only when explicitly intended.
     """
     prov = (os.environ.get("RMA_SMOKE_PROVIDER") or "").strip().lower()
-    if prov:
+    if prov == "api":
         return prov
     from .claude_code import claude_code_available
     if claude_code_available():
@@ -106,10 +106,7 @@ def evaluate_proof(problem: str, proof: str, model: str = DEFAULT_MODEL) -> dict
     """LLM evaluation of a proof: verdict + score + remaining issues."""
     prompt = _EVAL_PROMPT.format(problem=problem[:8000], proof=(proof or "")[:16000])
     prov = _provider()
-    if prov == "vertex":
-        from .vertex_llm import complete
-        raw = complete(prompt, system=_EVAL_SYSTEM, model=model, max_tokens=4096)
-    elif prov == "claude-code":
+    if prov == "claude-code":
         from .claude_code import complete_via_cli
         raw = complete_via_cli(prompt, system=_EVAL_SYSTEM, model=model)
     else:
@@ -143,9 +140,7 @@ def _run_solver(repo_root: Path, problem: str, workspace: Path,
         prefix_context=feedback or "",
         max_wall_seconds=max_wall,
     )
-    if provider == "vertex":
-        runner = run_agent_vertex
-    elif provider == "claude-code":
+    if provider == "claude-code":
         from .claude_code import run_claude_code_agent
         runner = run_claude_code_agent      # Claude Pro/Max subscription via the CLI
     else:

@@ -5,7 +5,7 @@ For each prob-01 through prob-10:
   2. Creates a meeting room with mathematician personas and runs 2 rounds of discussion
   3. Synthesizes an action plan
 
-Uses vertex_llm.complete() directly (200-attempt retry, global endpoint).
+Uses llm.complete() directly (200-attempt retry, Claude subscription).
 """
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ def _get_seed_issue_id(pid: str) -> str | None:
 
 
 def generate_critic_review(pid: str, problem_stmt: str, solution: str) -> str:
-    from webapp.vertex_llm import complete
+    from webapp.llm import complete
     prompt = f"""You are reviewing a proof attempt for the following mathematical problem.
 
 ## Problem Statement
@@ -112,7 +112,7 @@ Be mathematically precise. Use LaTeX notation where helpful."""
 
 
 def generate_verifier_assessment(pid: str, problem_stmt: str, solution: str, critic_review: str) -> str:
-    from webapp.vertex_llm import complete
+    from webapp.llm import complete
     prompt = f"""You are verifying a proof attempt after reading a critic's review.
 
 ## Problem (brief)

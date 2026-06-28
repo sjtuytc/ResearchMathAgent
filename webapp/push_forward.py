@@ -8,7 +8,7 @@ Runs once per day (gated by date stamp, overridable with force=True):
   5. Synthesize the discussion into a concrete action plan
   6. Save meeting notes to documents/questions/{pid}/meets/{room_id}-notes.md
 
-All agents use Vertex AI (AnthropicVertex via ADC).
+All agents use the Claude subscription (claude CLI).
 State is persisted in webapp/push_forward_state.json.
 """
 

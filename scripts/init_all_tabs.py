@@ -2,19 +2,18 @@
 """Initialize every solve-system tab for every problem across all curated datasets.
 
 For each (dataset, problem) it runs, in order:
-  1. Best proof  — full agentic solve (run_agent_vertex) -> outputs/<ds>/init_all_opus/<pid>/solution.tex
+  1. Best proof  — full agentic solve (run_claude_code_agent) -> outputs/<ds>/init_all_opus/<pid>/solution.tex
   2. Issues      — discovery (critic) + resolve up to N (solver)   [run_issue_cycle]
   3. Meeting     — field personas, multi-round discussion + synthesis + notes
   4. Documents   — refresh the per-problem rich documents
 Then consolidate_best per dataset so the Proofs tab shows the winners.
 
-Everything uses Vertex AI (claude-opus-4-8) on the GLOBAL endpoint — the regional
-quota for this NAIRR project is dead, so GOOGLE_CLOUD_REGION=global is forced.
+Everything runs on the Claude subscription via the local ``claude`` CLI.
 Resilient (per-step try/except), resumable (skips a step whose output exists),
-and meant to run detached for a long time, spending Vertex credits steadily.
+and meant to run detached for a long time.
 
 Usage:
-  GOOGLE_CLOUD_REGION=global python3 scripts/init_all_tabs.py [--datasets ...] [--limit N] [--no-solve]
+  python3 scripts/init_all_tabs.py [--datasets ...] [--limit N] [--no-solve]
 """
 from __future__ import annotations
 
@@ -26,10 +25,6 @@ import time
 import uuid
 from pathlib import Path
 
-# Force the working Vertex endpoint before anything imports the SDK.
-os.environ.setdefault("GOOGLE_CLOUD_REGION", "global")
-os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "nairr-260096-569948")
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
@@ -40,7 +35,6 @@ logging.basicConfig(
 )
 log = logging.getLogger("init_all_tabs")
 
-GCP_PROJECT = "nairr-260096-569948"
 EXP_NAME = "init_all_opus"
 MEETING_ROUNDS = 2
 MAX_RESOLVE = 2
@@ -74,7 +68,8 @@ def dataset_problem_ids(dataset: str) -> list[str]:
 # ── step 1: best proof ────────────────────────────────────────────────────────
 
 def solve_proof(dataset: str, pid: str) -> str:
-    from webapp.agent import AgentConfig, run_agent_vertex, DEFAULT_MODEL
+    from webapp.agent import AgentConfig
+    from webapp.claude_code import run_claude_code_agent
     from webapp.dataset_store import find_problem_tex
 
     out_dir = REPO_ROOT / "outputs" / dataset / EXP_NAME / pid
@@ -90,14 +85,14 @@ def solve_proof(dataset: str, pid: str) -> str:
     out_dir.mkdir(parents=True, exist_ok=True)
     ws = REPO_ROOT / "webapp" / ".runs" / f"init_{pid}_{int(time.time())}"
     cfg = AgentConfig(
-        problem_id=pid, problem_text=problem_text, model=DEFAULT_MODEL,
-        repo_root=REPO_ROOT, workspace=ws, thinking=True, provider="vertex",
-        gcp_project=GCP_PROJECT, max_wall_seconds=SOLVE_WALL_SECONDS,
+        problem_id=pid, problem_text=problem_text, model="",
+        repo_root=REPO_ROOT, workspace=ws, thinking=True, provider="claude-code",
+        max_wall_seconds=SOLVE_WALL_SECONDS,
     )
     artifact = None
     parts: list[str] = []
     try:
-        for ev in run_agent_vertex(cfg, None):
+        for ev in run_claude_code_agent(cfg, None):
             if ev.type == "text_delta":
                 parts.append(ev.data.get("text", ""))
             elif ev.type == "artifact":
@@ -192,8 +187,7 @@ def main() -> None:
     ap.add_argument("--no-solve", action="store_true", help="skip the (expensive) proof step")
     args = ap.parse_args()
 
-    log.info("region=%s project=%s datasets=%s",
-             os.environ.get("GOOGLE_CLOUD_REGION"), GCP_PROJECT, args.datasets)
+    log.info("datasets=%s", args.datasets)
 
     grand = {"proof": 0, "issues": 0, "meeting": 0, "docs": 0}
     for dataset in args.datasets:
